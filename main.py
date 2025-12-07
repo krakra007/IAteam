@@ -53,28 +53,41 @@ def toggle_ai(ai_name):
     st.session_state.ai_states[ai_name] = not st.session_state.ai_states[ai_name]
 
 # ==========================================
-# UTILITAIRES
+# UTILITAIRES (CSS "GRAND CONFORT" 18px)
 # ==========================================
 def inject_custom_css():
     st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+        
         html, body, [class*="css"] { font-family: 'Google Sans', sans-serif !important; }
-        p, .stMarkdown, .stText, li, div { font-size: 16px !important; line-height: 1.6 !important; font-weight: 400 !important; }
+        
+        /* === MODIFICATION TAILLE POLICE (18px) === */
+        p, .stMarkdown, .stText, li, div { 
+            font-size: 18px !important; 
+            line-height: 1.7 !important; /* Un peu plus d'espace entre les lignes */
+            font-weight: 400 !important; 
+        }
+        
         h1, h2, h3 { font-family: 'Google Sans', sans-serif !important; font-weight: 600 !important; }
         .main .block-container { max_width: 95% !important; padding-bottom: 8rem !important; }
         
+        /* INPUT DU BAS (Zone de saisie) */
         [data-testid="stChatInput"] { border: none !important; background: transparent !important; }
         [data-testid="stChatInput"] > div { background-color: transparent !important; border-color: transparent !important; box-shadow: none !important; }
         [data-testid="stChatInput"] textarea {
-            height: 150px !important; min-height: 150px !important; font-size: 16px !important;
-            padding: 15px !important; border: 1px solid rgba(128, 128, 128, 0.4) !important;
-            border-radius: 12px !important; background-color: transparent !important;
+            height: 150px !important; 
+            min-height: 150px !important; 
+            font-size: 18px !important; /* <-- 18px ICI AUSSI */
+            padding: 15px !important; 
+            border: 1px solid rgba(128, 128, 128, 0.4) !important;
+            border-radius: 12px !important; 
+            background-color: transparent !important;
             font-family: 'Google Sans', sans-serif !important;
         }
         [data-testid="stChatInput"] textarea:focus { border: 1px solid #777 !important; box-shadow: none !important; }
 
-        /* BOUTONS COMPACTS */
+        /* BOUTONS SIDEBAR */
         [data-testid="stSidebar"] button { font-size: 13px !important; padding: 0.25rem 0.5rem !important; font-weight: 600 !important; }
         [data-testid="stSidebar"] button[kind="primary"] { background-color: #2e7d32 !important; border-color: #2e7d32 !important; color: white !important; }
         [data-testid="stSidebar"] button[kind="secondary"] { border: 1px solid #444 !important; color: #888 !important; background-color: transparent !important; }
@@ -122,19 +135,16 @@ def reset_conversation():
 def get_conversation_history():
     history_text = ""
     if "messages" in st.session_state:
-        # On prend plus d'historique (les 6 derniers messages) pour donner plus de contexte
         recent_messages = st.session_state.messages[-6:] 
         for msg in recent_messages:
             role = "UTILISATEUR" if msg["role"] == "user" else "ASSISTANT (Réponse précédente)"
-            content = msg["content"][:2000] # On limite la taille pour pas saturer
+            content = msg["content"][:2000] 
             history_text += f"{role}: {content}\n\n"
     return history_text
 
 # ==========================================
 # RECHERCHE (AVEC MÉMOIRE PARTAGÉE)
 # ==========================================
-
-# Chaque IA reçoit maintenant 'history' en plus du 'current_prompt'
 
 def ask_gemini_generalist(current_prompt, history):
     try:
@@ -145,7 +155,6 @@ def ask_gemini_generalist(current_prompt, history):
 
 def ask_chatgpt_generalist(current_prompt, history):
     try:
-        # On injecte l'historique dans le message système ou utilisateur
         full_content = f"CONTEXTE PRÉCÉDENT:\n{history}\n\nQUESTION ACTUELLE:\n{current_prompt}"
         sys_msg = "Expert Universel. Markdown & LaTeX."
         response = client_openai.chat.completions.create(
@@ -158,7 +167,6 @@ def ask_chatgpt_generalist(current_prompt, history):
 
 def ask_perplexity_generalist(current_prompt, history):
     try:
-        # Perplexity a besoin de contexte aussi
         full_content = f"CONTEXTE PRÉCÉDENT:\n{history}\n\nQUESTION ACTUELLE:\n{current_prompt}"
         sys_msg = "Expert Web. URLs à la fin."
         response = client_perplexity.chat.completions.create(
@@ -208,7 +216,7 @@ def compile_quad_fusion(original_prompt, responses, file_content, history):
     RÈGLES :
     1. **MARKDOWN** pour le texte.
     2. **LATEX** pour les maths ($...$).
-    3. **CONTINUITÉ** : Si la question fait référence au passé ("comme dit précédemment"), utilise l'historique pour comprendre.
+    3. **CONTINUITÉ** : Si la question fait référence au passé, utilise l'historique.
     
     {responses_text}
     
@@ -280,7 +288,6 @@ if prompt := st.chat_input("Posez votre question...", key=st.session_state.chat_
     if not active_ais:
         st.error("⚠️ Activez au moins une IA !")
     else:
-        # 1. On récupère tout ce qui s'est dit avant
         history_str = get_conversation_history()
         
         st.session_state.messages.append({"role": "user", "content": prompt})
@@ -293,7 +300,6 @@ if prompt := st.chat_input("Posez votre question...", key=st.session_state.chat_
             
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 futures = {}
-                # 2. On passe 'history_str' à chaque IA active
                 if st.session_state.ai_states["gemini"]: 
                     futures["Gemini"] = executor.submit(ask_gemini_generalist, prompt, history_str)
                 if st.session_state.ai_states["chatgpt"]: 
@@ -310,7 +316,6 @@ if prompt := st.chat_input("Posez votre question...", key=st.session_state.chat_
                     else: status.write(f"✅ {name}")
                 
                 status.update(label="🧬 Fusion...", state="running")
-                # 3. La fusion finale prend aussi l'historique en compte
                 final_doc = compile_quad_fusion(prompt, responses, user_file_content, history_str)
                 status.update(label="Terminé !", state="complete", expanded=False)
 
