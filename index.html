@@ -31,10 +31,11 @@
     select,input{background:#222;border:1px solid var(--line);color:var(--text);border-radius:8px;padding:8px}
 
     .messages{flex:1;overflow:auto;padding:26px}
-    .msg{max-width:860px;margin:0 auto 16px;padding:12px 14px;border-radius:10px;white-space:pre-wrap}
-    .assistant{background:transparent}
-    .user{background:var(--panel)}
-    .copy{background:none;border:0;color:var(--muted);font-size:12px;cursor:pointer;margin-top:6px}
+    .msg{max-width:860px;margin:0 auto 16px;padding:12px 14px;border-radius:10px;white-space:pre-wrap;position:relative;padding-bottom:34px}
+    .assistant{background:transparent;border:1px solid #34343a}
+    .user{background:#1f6feb;color:#f8fbff}
+    .copy{position:absolute;right:8px;bottom:6px;background:transparent;border:0;color:#aeb4be;font-size:13px;cursor:pointer;line-height:1;padding:3px 4px;border-radius:6px}
+    .copy:hover{background:#2a2a2a;color:#d6dbe3}
 
     .composer{padding:12px;background:var(--top);border-top:1px solid var(--line)}
     .composer-wrap{max-width:900px;margin:0 auto;display:flex;gap:10px}
@@ -257,7 +258,8 @@
 
       const b = document.createElement("button");
       b.className = "copy";
-      b.textContent = "Copier";
+      b.textContent = "📋";
+      b.title = "Copier";
       b.onclick = () => navigator.clipboard.writeText(m.content);
 
       d.appendChild(b);
