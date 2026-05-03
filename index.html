@@ -30,10 +30,13 @@
     .btn{border:1px solid var(--line);background:transparent;color:var(--text);padding:8px 10px;border-radius:8px;cursor:pointer}
     select,input{background:#222;border:1px solid var(--line);color:var(--text);border-radius:8px;padding:8px}
 
-    .messages{flex:1;overflow:auto;padding:26px}
-    .msg{max-width:860px;margin:0 auto 16px;padding:12px 14px;border-radius:10px;white-space:pre-wrap;position:relative;padding-bottom:34px}
-    .assistant{background:transparent;border:1px solid #34343a}
-    .user{background:#1f6feb;color:#f8fbff}
+    .messages{flex:1;overflow:auto;padding:26px 32px;display:flex;flex-direction:column;gap:18px}
+    .msg-row{width:100%;display:flex}
+    .msg-row.user{justify-content:flex-end}
+    .msg-row.assistant{justify-content:flex-start}
+    .msg{max-width:760px;padding:12px 14px;border-radius:14px;white-space:pre-wrap;position:relative;padding-bottom:34px}
+    .assistant{background:transparent;border:none;border-radius:0;padding-left:0}
+    .user{background:#2f2f2f;color:#f8fbff;border-radius:24px}
     .copy{position:absolute;right:8px;bottom:6px;background:transparent;border:0;color:#aeb4be;font-size:13px;cursor:pointer;line-height:1;padding:3px 4px;border-radius:6px}
     .copy:hover{background:#2a2a2a;color:#d6dbe3}
 
@@ -252,6 +255,9 @@
     if(!c) return;
 
     c.messages.forEach(m => {
+      const row = document.createElement("div");
+      row.className = "msg-row " + m.role;
+
       const d = document.createElement("div");
       d.className = "msg " + m.role;
       d.textContent = m.content;
@@ -263,7 +269,8 @@
       b.onclick = () => navigator.clipboard.writeText(m.content);
 
       d.appendChild(b);
-      box.appendChild(d);
+      row.appendChild(d);
+      box.appendChild(row);
     });
 
     box.scrollTop = box.scrollHeight;
