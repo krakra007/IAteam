@@ -94,11 +94,18 @@
 </div>
 
 <script>
-  const MODELS = ["gpt-4.1","gpt-4.1-mini","gpt-4o","gpt-4o-mini","o3","o4-mini"];
+  const MODEL_GROUPS = [
+    { label: "OpenAI GPT-5.5", models: ["gpt-5.5", "gpt-5.5-pro"] },
+    { label: "OpenAI GPT-5.4", models: ["gpt-5.4", "gpt-5.4-mini", "gpt-5.4-nano"] },
+    { label: "OpenAI GPT-5 / 5.2", models: ["gpt-5", "gpt-5-mini", "gpt-5-nano", "gpt-5.2"] },
+    { label: "OpenAI GPT-4", models: ["gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano", "gpt-4o", "gpt-4o-mini"] },
+    { label: "OpenAI o-series", models: ["o3", "o4-mini", "o3-mini", "o1"] }
+  ];
+  const CURATED_MODELS = MODEL_GROUPS.flatMap(g => g.models);
   const DEF = {
     temperature:0.7,
     top_p:1,
-    max_tokens:1200,
+    max_completion_tokens:1200,
     frequency_penalty:0,
     presence_penalty:0,
     n:1,
@@ -112,11 +119,16 @@
     chats: JSON.parse(localStorage.getItem("chats") || "[]"),
     activeChat: localStorage.getItem("activeChat") || null,
     activeProject: localStorage.getItem("activeProject") || null,
-    model: localStorage.getItem("model") || MODELS[1],
-    params: JSON.parse(localStorage.getItem("params") || "null") || DEF
+    model: localStorage.getItem("model") || CURATED_MODELS[0],
+    params: (() => {
+      const p = JSON.parse(localStorage.getItem("params") || "null") || DEF;
+      if(p.max_completion_tokens == null && p.max_tokens != null) p.max_completion_tokens = p.max_tokens;
+      return p;
+    })()
   };
 
   const el = id => document.getElementById(id);
+  if(!CURATED_MODELS.includes(S.model)) S.model = CURATED_MODELS[0];
   const promptEl = el("prompt");
   const apiKeyEl = el("apiKey");
   apiKeyEl.value = localStorage.getItem("apiKey") || "";
@@ -383,7 +395,11 @@
   }
 
   function renderModels(){
-    el("modelSelect").innerHTML = MODELS.map(m => `<option ${m===S.model?"selected":""}>${m}</option>`).join("");
+    const sel = el("modelSelect");
+    sel.innerHTML = MODEL_GROUPS.map(group => {
+      const opts = group.models.map(m => `<option value="${m}" ${m===S.model?"selected":""}>${m}</option>`).join("");
+      return `<optgroup label="${group.label}">${opts}</optgroup>`;
+    }).join("");
   }
 
 
@@ -395,19 +411,15 @@
         headers: { "Authorization": "Bearer " + key }
       });
       const data = await r.json();
-      const ids = (data.data || []).map(m => m.id).filter(Boolean);
-      const chatLike = ids.filter(id => /^(gpt|o\d|o\d-mini)/.test(id));
-      const unique = [...new Set([...chatLike, ...MODELS])].sort((a,b)=>a.localeCompare(b));
-      if(unique.length){
-        el("modelSelect").innerHTML = unique.map(m => `<option ${m===S.model?"selected":""}>${m}</option>`).join("");
-        if(!unique.includes(S.model)){
-          S.model = unique[0];
-          save();
-          renderModels();
-        }
+      const ids = new Set((data.data || []).map(m => m.id).filter(Boolean));
+      const available = CURATED_MODELS.filter(m => ids.has(m));
+      if(available.length && !available.includes(S.model)){
+        S.model = available[0];
+        save();
       }
+      renderModels();
     }catch(_e){
-      // fallback silencieux: on garde la liste locale MODELS
+      // fallback silencieux: on garde la liste curatée
     }
   }
 
@@ -416,7 +428,7 @@
     p.innerHTML = `
       <div class='param'><label>temperature</label><input id='p_temperature' type='number' step='0.1' min='0' max='2' value='${S.params.temperature}'></div>
       <div class='param'><label>top_p</label><input id='p_top_p' type='number' step='0.1' min='0' max='1' value='${S.params.top_p}'></div>
-      <div class='param'><label>max_tokens</label><input id='p_max_tokens' type='number' step='1' min='1' max='16000' value='${S.params.max_tokens}'></div>
+      <div class='param'><label>max_completion_tokens</label><input id='p_max_completion_tokens' type='number' step='1' min='1' max='16000' value='${S.params.max_completion_tokens}'></div>
       <div class='param'><label>frequency_penalty</label><input id='p_frequency_penalty' type='number' step='0.1' min='-2' max='2' value='${S.params.frequency_penalty ?? 0}'></div>
       <div class='param'><label>presence_penalty</label><input id='p_presence_penalty' type='number' step='0.1' min='-2' max='2' value='${S.params.presence_penalty ?? 0}'></div>
       <div class='param'><label>n</label><input id='p_n' type='number' step='1' min='1' max='8' value='${S.params.n ?? 1}'></div>
@@ -428,7 +440,7 @@
     const num = (id,key) => el(id).onchange = e => { S.params[key] = Number(e.target.value); save(); };
     num("p_temperature","temperature");
     num("p_top_p","top_p");
-    num("p_max_tokens","max_tokens");
+    num("p_max_completion_tokens","max_completion_tokens");
     num("p_frequency_penalty","frequency_penalty");
     num("p_presence_penalty","presence_penalty");
     num("p_n","n");
@@ -469,7 +481,7 @@
           messages:c.messages.map(m => ({ role:m.role === "assistant" ? "assistant" : "user", content:m.content })),
           temperature:S.params.temperature,
           top_p:S.params.top_p,
-          max_tokens:S.params.max_tokens,
+          max_completion_tokens:S.params.max_completion_tokens,
           frequency_penalty:S.params.frequency_penalty ?? 0,
           presence_penalty:S.params.presence_penalty ?? 0,
           n:S.params.n ?? 1,
