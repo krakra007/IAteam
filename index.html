@@ -30,8 +30,8 @@
     .btn{border:1px solid var(--line);background:transparent;color:var(--text);padding:8px 10px;border-radius:8px;cursor:pointer}
     select,input{background:#222;border:1px solid var(--line);color:var(--text);border-radius:8px;padding:8px}
 
-    .messages{flex:1;overflow:auto;padding:26px 32px;display:flex;flex-direction:column;gap:18px}
-    .msg-row{width:100%;display:flex}
+    .messages{flex:1;overflow:auto;padding:26px 12px;display:flex;flex-direction:column;gap:18px}
+    .msg-row{width:min(100%,900px);margin:0 auto;display:flex}
     .msg-row.user{justify-content:flex-end}
     .msg-row.assistant{justify-content:flex-start}
     .msg-row.user > div{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;max-width:100%}
