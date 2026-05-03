@@ -73,6 +73,7 @@ function activeChat(){return S.chats.find(c=>c.id===S.active)}
 function createChat(){const id=crypto.randomUUID();S.chats.unshift({id,title:'Nouveau chat',messages:[]});S.active=id;save();render();}
 function renderChats(){const wrap=chatList;wrap.innerHTML='';S.chats.forEach(c=>{const d=document.createElement('div');d.className='chat-item'+(c.id===S.active?' active':'');d.textContent=c.title;d.onclick=()=>{S.active=c.id;save();render();};wrap.appendChild(d);});}
 function renderMessages(){const box=messages;box.innerHTML='';const c=activeChat();if(!c)return;c.messages.forEach(m=>{const d=document.createElement('div');d.className='msg '+m.role;d.textContent=m.content;const b=document.createElement('button');b.className='copy';b.textContent='Copier';b.onclick=()=>navigator.clipboard.writeText(m.content);d.appendChild(b);box.appendChild(d);});box.scrollTop=box.scrollHeight;}
+function render(){renderChats();renderMessages();}
 function renderModels(){modelSelect.innerHTML=MODELS.map(m=>`<option ${m===S.model?'selected':''}>${m}</option>`).join('');}
 function renderParams(){paramsPanel.innerHTML=`
   <div class='param'><label>temperature</label><input id='p_temperature' type='number' step='0.1' min='0' max='2' value='${S.params.temperature}'></div>
@@ -95,7 +96,7 @@ document.getElementById('newChat').onclick=()=>createChat();
 document.getElementById('sendBtn').onclick=send;
 promptEl.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter')send();});
 modelSelect.onchange=()=>{S.model=modelSelect.value;save();};paramsBtn.onclick=()=>paramsPanel.classList.toggle('open');
-if(!S.chats.length)createChat();renderModels();renderParams();renderChats();renderMessages();
+if(!S.chats.length)createChat();renderModels();renderParams();render();
 </script>
 </body>
 </html>
