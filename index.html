@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mini API Chat</title>
+  <style>
+    :root { --bg:#0f172a; --panel:#111827; --panel2:#1f2937; --text:#e5e7eb; --muted:#94a3b8; --accent:#22c55e; }
+    *{box-sizing:border-box} body{margin:0;font-family:Inter,Arial,sans-serif;background:var(--bg);color:var(--text)}
+    .app{display:grid;grid-template-columns:280px 1fr;height:100vh}
+    .sidebar{background:var(--panel);border-right:1px solid #334155;padding:14px;display:flex;flex-direction:column;gap:12px}
+    .btn{background:var(--accent);color:#052e16;border:0;padding:10px 12px;border-radius:10px;font-weight:700;cursor:pointer}
+    .chats{overflow:auto;display:flex;flex-direction:column;gap:8px}
+    .chat-item{padding:10px;border-radius:8px;background:#0b1220;cursor:pointer;border:1px solid transparent}
+    .chat-item.active{border-color:var(--accent)}
+    .main{display:flex;flex-direction:column}
+    .top{display:flex;justify-content:flex-end;align-items:center;padding:12px;border-bottom:1px solid #334155;background:var(--panel)}
+    .top input{width:min(440px,70%);background:#0b1220;color:var(--text);border:1px solid #475569;border-radius:10px;padding:10px}
+    .messages{flex:1;overflow:auto;padding:18px;display:flex;flex-direction:column;gap:14px}
+    .msg{max-width:900px;padding:12px;border-radius:12px;line-height:1.5;white-space:pre-wrap}
+    .user{align-self:flex-end;background:#1d4ed8}
+    .assistant{align-self:flex-start;background:var(--panel2)}
+    .msg-actions{margin-top:6px;display:flex;gap:8px}
+    .copy{font-size:12px;background:#0b1220;border:1px solid #475569;color:var(--muted);padding:4px 8px;border-radius:8px;cursor:pointer}
+    .composer{padding:14px;border-top:1px solid #334155;display:flex;gap:10px;background:var(--panel)}
+    textarea{flex:1;resize:none;height:90px;background:#0b1220;color:var(--text);border:1px solid #475569;border-radius:10px;padding:10px}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <button class="btn" id="newChat">+ Nouveau chat</button>
+      <div class="chats" id="chatList"></div>
+    </aside>
+    <section class="main">
+      <div class="top">
+        <input id="apiKey" type="password" placeholder="Clé API OpenAI (sk-...)" />
+      </div>
+      <div class="messages" id="messages"></div>
+      <div class="composer">
+        <textarea id="prompt" placeholder="Écris ton message..."></textarea>
+        <button class="btn" id="sendBtn">Envoyer</button>
+      </div>
+    </section>
+  </div>
+<script>
+const S={chats:JSON.parse(localStorage.getItem('mini_chats')||'[]'),active:localStorage.getItem('mini_active')||null};
+const apiKeyEl=document.getElementById('apiKey'); apiKeyEl.value=localStorage.getItem('mini_api_key')||'';
+apiKeyEl.addEventListener('change',()=>localStorage.setItem('mini_api_key',apiKeyEl.value.trim()));
+function newChat(){const id=crypto.randomUUID();S.chats.unshift({id,title:'Nouveau chat',messages:[]});S.active=id;save();render();}
+function save(){localStorage.setItem('mini_chats',JSON.stringify(S.chats));localStorage.setItem('mini_active',S.active||'');}
+function getActive(){return S.chats.find(c=>c.id===S.active);} 
+function renderChats(){const wrap=document.getElementById('chatList');wrap.innerHTML='';S.chats.forEach(c=>{const d=document.createElement('div');d.className='chat-item'+(c.id===S.active?' active':'');d.textContent=c.title;d.onclick=()=>{S.active=c.id;save();render();};wrap.appendChild(d);});}
+function copyText(t){navigator.clipboard.writeText(t);} 
+function renderMessages(){const box=document.getElementById('messages');box.innerHTML='';const chat=getActive();if(!chat)return;chat.messages.forEach(m=>{const div=document.createElement('div');div.className='msg '+m.role;div.textContent=m.content;const actions=document.createElement('div');actions.className='msg-actions';const b=document.createElement('button');b.className='copy';b.textContent='Copier';b.onclick=()=>copyText(m.content);actions.appendChild(b);div.appendChild(actions);box.appendChild(div);});box.scrollTop=box.scrollHeight;}
+function render(){if(!S.active&&S.chats.length)S.active=S.chats[0].id;renderChats();renderMessages();}
+async function send(){const key=apiKeyEl.value.trim();if(!key){alert('Ajoute ta clé API en haut à droite.');return;} const prompt=document.getElementById('prompt'); const text=prompt.value.trim(); if(!text) return;
+const chat=getActive();if(!chat){newChat();return send();}
+chat.messages.push({role:'user',content:text}); if(chat.title==='Nouveau chat') chat.title=text.slice(0,32); prompt.value=''; render();
+try{
+  const r=await fetch('https://api.openai.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model:'gpt-4.1-mini',messages:chat.messages.map(m=>({role:m.role==='assistant'?'assistant':'user',content:m.content}))})});
+  const data=await r.json();
+  const out=data.choices?.[0]?.message?.content||('Erreur API: '+JSON.stringify(data));
+  chat.messages.push({role:'assistant',content:out});
+} catch(e){chat.messages.push({role:'assistant',content:'Erreur réseau: '+e.message});}
+save();render();}
+
+document.getElementById('newChat').onclick=()=>{newChat();};
+document.getElementById('sendBtn').onclick=send;
+document.getElementById('prompt').addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter')send();});
+if(!S.chats.length)newChat();else render();
+</script>
+</body>
+</html>
