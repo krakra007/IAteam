@@ -34,12 +34,17 @@
     .msg-row{width:100%;display:flex}
     .msg-row.user{justify-content:flex-end}
     .msg-row.assistant{justify-content:flex-start}
-    .msg{max-width:760px;width:fit-content;padding:10px 14px;border-radius:14px;white-space:pre-wrap;position:relative;padding-bottom:30px;line-height:1.35}
-    .assistant{background:transparent;border:none;border-radius:0;padding-left:0}
-    .user{background:#1f6feb;color:#f8fbff;border-radius:24px;max-width:46%;margin-left:auto;padding:8px 14px 24px;font-size:14px}
-    .copy{position:absolute;right:8px;bottom:6px;background:transparent;border:0;color:#aeb4be;font-size:13px;cursor:pointer;line-height:1;padding:3px 4px;border-radius:6px}
+    .msg{max-width:820px;width:fit-content;padding:8px 12px;border-radius:14px;white-space:pre-wrap;line-height:1.45}
+    .assistant{background:transparent;border:none;border-radius:0;padding-left:0;max-width:78ch;font-size:15px;color:#e8eaee}
+    .user{background:#1f6feb;color:#f8fbff;border-radius:18px;max-width:fit-content;width:auto;display:inline-block;padding:6px 10px;font-size:14px}
+    .msg-foot{display:flex;justify-content:flex-end;margin-top:4px}
+    .copy{background:transparent;border:0;color:#aeb4be;font-size:13px;cursor:pointer;line-height:1;padding:3px 4px;border-radius:6px}
     .copy:hover{background:#2a2a2a;color:#d6dbe3}
-    .msg-actions{display:flex;gap:10px;margin-top:8px;align-items:center}
+    .msg-actions{display:flex;gap:10px;margin-top:6px;align-items:center}
+    .assistant-body p{margin:0 0 10px}
+    .assistant-body ul{margin:6px 0 12px 18px;padding:0}
+    .assistant-body li{margin:4px 0}
+    .assistant-body strong{font-weight:600}
     .msg-icon{border:0;background:transparent;color:#d0d4db;cursor:pointer;font-size:16px;line-height:1;padding:2px}
     .msg-icon:hover{color:#ffffff}
 
@@ -252,6 +257,41 @@
     el("newGeneralBtn").onclick = (e) => { e.stopPropagation(); createChat(null); };
   }
 
+
+  function escapeHtml(str){
+    return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  function formatAssistantContent(text){
+    const safe = escapeHtml(text || "");
+    const lines = safe.split("\n");
+    const blocks = [];
+    let list = [];
+
+    const flushList = () => {
+      if(!list.length) return;
+      blocks.push(`<ul>${list.map(i => `<li>${i}</li>`).join("")}</ul>`);
+      list = [];
+    };
+
+    for(const raw of lines){
+      const line = raw.trim();
+      if(!line){
+        flushList();
+        continue;
+      }
+      if(/^[-•]\s+/.test(line) || /^\d+[\.)]\s+/.test(line)){
+        list.push(line.replace(/^([-•]|\d+[\.)])\s+/,""));
+      } else {
+        flushList();
+        blocks.push(`<p>${line}</p>`);
+      }
+    }
+    flushList();
+
+    return blocks.join("") || `<p>${safe}</p>`;
+  }
+
   function renderMessages(){
     const box = el("messages");
     box.innerHTML = "";
@@ -262,9 +302,19 @@
       const row = document.createElement("div");
       row.className = "msg-row " + m.role;
 
+      const wrap = document.createElement("div");
+
       const d = document.createElement("div");
       d.className = "msg " + m.role;
-      d.textContent = m.content;
+      if(m.role === "assistant"){
+        d.innerHTML = `<div class="assistant-body">${formatAssistantContent(m.content)}</div>`;
+      } else {
+        d.textContent = m.content;
+      }
+      wrap.appendChild(d);
+
+      const foot = document.createElement("div");
+      foot.className = "msg-foot";
 
       if(m.role === "assistant"){
         const actions = document.createElement("div");
@@ -292,17 +342,18 @@
         moreBtn.title = "Plus";
 
         actions.append(copyBtn, shareBtn, regenBtn, moreBtn);
-        d.appendChild(actions);
+        foot.appendChild(actions);
       } else {
         const b = document.createElement("button");
         b.className = "copy";
         b.textContent = "⧉";
         b.title = "Copier";
         b.onclick = () => navigator.clipboard.writeText(m.content);
-        d.appendChild(b);
+        foot.appendChild(b);
       }
 
-      row.appendChild(d);
+      wrap.appendChild(foot);
+      row.appendChild(wrap);
       box.appendChild(row);
     });
 
