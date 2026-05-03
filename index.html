@@ -12,8 +12,10 @@
     *{box-sizing:border-box}
     body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 "Söhne","Inter",system-ui,sans-serif}
     .app{display:grid;grid-template-columns:300px 1fr;height:100vh}
+    .app.sidebar-collapsed{grid-template-columns:0 1fr}
 
     .sidebar{background:var(--side);border-right:1px solid var(--line);padding:10px;overflow:auto}
+    .app.sidebar-collapsed .sidebar{padding:0;border-right:0;overflow:hidden}
     .group-title{display:flex;justify-content:space-between;align-items:center;margin:10px 6px 6px;font-size:12px;color:var(--muted)}
     .separator{border-top:1px solid #2c2c2c;margin:10px 6px}
     .item{display:flex;align-items:center;gap:6px;padding:8px;border-radius:8px;cursor:pointer}
@@ -52,7 +54,10 @@
 
   <section class="main">
     <div class="top">
-      <div><select id="modelSelect"></select></div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn" id="toggleSidebarBtn" title="Ouvrir/Fermer la barre latérale">☰</button>
+        <select id="modelSelect"></select>
+      </div>
       <div style="display:flex;gap:8px;align-items:center">
         <input id="apiKey" type="password" placeholder="Clé API OpenAI" />
         <button class="btn" id="paramsBtn">Paramètres</button>
@@ -73,7 +78,17 @@
 
 <script>
   const MODELS = ["gpt-4.1","gpt-4.1-mini","gpt-4o","gpt-4o-mini","o3","o4-mini"];
-  const DEF = { temperature:0.7, top_p:1, max_tokens:1200 };
+  const DEF = {
+    temperature:0.7,
+    top_p:1,
+    max_tokens:1200,
+    frequency_penalty:0,
+    presence_penalty:0,
+    n:1,
+    stop:"",
+    seed:"",
+    top_k:""
+  };
 
   const S = {
     projects: JSON.parse(localStorage.getItem("projects") || "[]"),
@@ -259,14 +274,27 @@
   function renderParams(){
     const p = el("paramsPanel");
     p.innerHTML = `
-      <div class='param'><label>temperature</label><input id='p1' type='number' step='0.1' min='0' max='2' value='${S.params.temperature}'></div>
-      <div class='param'><label>top_p</label><input id='p2' type='number' step='0.1' min='0' max='1' value='${S.params.top_p}'></div>
-      <div class='param'><label>max_tokens</label><input id='p3' type='number' step='1' min='100' max='4000' value='${S.params.max_tokens}'></div>
+      <div class='param'><label>temperature</label><input id='p_temperature' type='number' step='0.1' min='0' max='2' value='${S.params.temperature}'></div>
+      <div class='param'><label>top_p</label><input id='p_top_p' type='number' step='0.1' min='0' max='1' value='${S.params.top_p}'></div>
+      <div class='param'><label>max_tokens</label><input id='p_max_tokens' type='number' step='1' min='1' max='16000' value='${S.params.max_tokens}'></div>
+      <div class='param'><label>frequency_penalty</label><input id='p_frequency_penalty' type='number' step='0.1' min='-2' max='2' value='${S.params.frequency_penalty ?? 0}'></div>
+      <div class='param'><label>presence_penalty</label><input id='p_presence_penalty' type='number' step='0.1' min='-2' max='2' value='${S.params.presence_penalty ?? 0}'></div>
+      <div class='param'><label>n</label><input id='p_n' type='number' step='1' min='1' max='8' value='${S.params.n ?? 1}'></div>
+      <div class='param'><label>stop</label><input id='p_stop' type='text' placeholder='Ex: END' value='${S.params.stop ?? ""}'></div>
+      <div class='param'><label>seed</label><input id='p_seed' type='number' step='1' min='0' placeholder='optionnel' value='${S.params.seed ?? ""}'></div>
+      <div class='param'><label>top_k</label><input id='p_top_k' type='number' step='1' min='1' placeholder='non supporté Chat Completions' value='${S.params.top_k ?? ""}'></div>
     `;
 
-    el("p1").onchange = e => { S.params.temperature = +e.target.value; save(); };
-    el("p2").onchange = e => { S.params.top_p = +e.target.value; save(); };
-    el("p3").onchange = e => { S.params.max_tokens = +e.target.value; save(); };
+    const num = (id,key) => el(id).onchange = e => { S.params[key] = Number(e.target.value); save(); };
+    num("p_temperature","temperature");
+    num("p_top_p","top_p");
+    num("p_max_tokens","max_tokens");
+    num("p_frequency_penalty","frequency_penalty");
+    num("p_presence_penalty","presence_penalty");
+    num("p_n","n");
+    el("p_stop").onchange = e => { S.params.stop = e.target.value; save(); };
+    el("p_seed").onchange = e => { S.params.seed = e.target.value; save(); };
+    el("p_top_k").onchange = e => { S.params.top_k = e.target.value; save(); };
   }
 
   function render(){
@@ -301,7 +329,12 @@
           messages:c.messages.map(m => ({ role:m.role === "assistant" ? "assistant" : "user", content:m.content })),
           temperature:S.params.temperature,
           top_p:S.params.top_p,
-          max_tokens:S.params.max_tokens
+          max_tokens:S.params.max_tokens,
+          frequency_penalty:S.params.frequency_penalty ?? 0,
+          presence_penalty:S.params.presence_penalty ?? 0,
+          n:S.params.n ?? 1,
+          ...(S.params.stop ? { stop:S.params.stop } : {}),
+          ...(S.params.seed !== "" ? { seed:Number(S.params.seed) } : {})
         })
       });
 
@@ -316,6 +349,15 @@
   }
 
   el("sendBtn").onclick = send;
+  const appEl = document.querySelector(".app");
+  const savedSidebarState = localStorage.getItem("sidebarCollapsed") === "1";
+  if(savedSidebarState) appEl.classList.add("sidebar-collapsed");
+
+  el("toggleSidebarBtn").onclick = () => {
+    appEl.classList.toggle("sidebar-collapsed");
+    localStorage.setItem("sidebarCollapsed", appEl.classList.contains("sidebar-collapsed") ? "1" : "0");
+  };
+
   el("modelSelect").onchange = e => { S.model = e.target.value; save(); };
   el("paramsBtn").onclick = () => el("paramsPanel").classList.toggle("open");
   promptEl.addEventListener("keydown", e => { if((e.ctrlKey || e.metaKey) && e.key === "Enter") send(); });
