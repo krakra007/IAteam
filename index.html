@@ -59,7 +59,14 @@
 const MODELS=["gpt-4.1","gpt-4.1-mini","gpt-4.1-nano","gpt-4o","gpt-4o-mini","o4-mini","o3","o3-mini"];
 const DEFAULT_PARAMS={temperature:0.7,top_p:1,max_tokens:1200,frequency_penalty:0,presence_penalty:0,top_k:0};
 const S={chats:JSON.parse(localStorage.getItem('mini_chats')||'[]'),active:localStorage.getItem('mini_active')||null,model:localStorage.getItem('mini_model')||MODELS[1],params:JSON.parse(localStorage.getItem('mini_params')||'null')||DEFAULT_PARAMS};
-const apiKeyEl=document.getElementById('apiKey'); apiKeyEl.value=localStorage.getItem('mini_api_key')||'';
+const apiKeyEl=document.getElementById('apiKey');
+const chatList=document.getElementById('chatList');
+const messages=document.getElementById('messages');
+const promptEl=document.getElementById('prompt');
+const modelSelect=document.getElementById('modelSelect');
+const paramsPanel=document.getElementById('paramsPanel');
+const paramsBtn=document.getElementById('paramsBtn');
+apiKeyEl.value=localStorage.getItem('mini_api_key')||'';
 apiKeyEl.onchange=()=>localStorage.setItem('mini_api_key',apiKeyEl.value.trim());
 function save(){localStorage.setItem('mini_chats',JSON.stringify(S.chats));localStorage.setItem('mini_active',S.active||'');localStorage.setItem('mini_model',S.model);localStorage.setItem('mini_params',JSON.stringify(S.params));}
 function activeChat(){return S.chats.find(c=>c.id===S.active)}
@@ -77,14 +84,16 @@ function renderParams(){paramsPanel.innerHTML=`
   <div class='tiny'>Note: top_k n'est pas pris en charge par l'API OpenAI Chat Completions.</div>`;
   paramsPanel.querySelectorAll('input').forEach(i=>i.onchange=()=>{const k=i.id.replace('p_','');S.params[k]=Number(i.value);save();});
 }
-async function send(){const key=apiKeyEl.value.trim();if(!key)return alert('Ajoute ta clé API OpenAI.');const t=prompt.value.trim();if(!t)return;let c=activeChat();if(!c){createChat();c=activeChat();}
-c.messages.push({role:'user',content:t});if(c.title==='Nouveau chat')c.title=t.slice(0,40);prompt.value='';render();
+async function send(){const key=apiKeyEl.value.trim();if(!key)return alert('Ajoute ta clé API OpenAI.');const t=promptEl.value.trim();if(!t)return;let c=activeChat();if(!c){createChat();c=activeChat();}
+c.messages.push({role:'user',content:t});if(c.title==='Nouveau chat')c.title=t.slice(0,40);promptEl.value='';render();
 try{const body={model:S.model,messages:c.messages.map(m=>({role:m.role==='assistant'?'assistant':'user',content:m.content})),temperature:S.params.temperature,top_p:S.params.top_p,max_tokens:S.params.max_tokens,frequency_penalty:S.params.frequency_penalty,presence_penalty:S.params.presence_penalty};
 const r=await fetch('https://api.openai.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify(body)});
 const data=await r.json();const out=data.choices?.[0]?.message?.content||('Erreur API: '+JSON.stringify(data));c.messages.push({role:'assistant',content:out});}
 catch(e){c.messages.push({role:'assistant',content:'Erreur réseau: '+e.message});}
 save();render();}
-document.getElementById('newChat').onclick=()=>createChat();document.getElementById('sendBtn').onclick=send;prompt.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter')send();});
+document.getElementById('newChat').onclick=()=>createChat();
+document.getElementById('sendBtn').onclick=send;
+promptEl.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter')send();});
 modelSelect.onchange=()=>{S.model=modelSelect.value;save();};paramsBtn.onclick=()=>paramsPanel.classList.toggle('open');
 if(!S.chats.length)createChat();renderModels();renderParams();renderChats();renderMessages();
 </script>
