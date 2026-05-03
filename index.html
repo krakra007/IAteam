@@ -34,6 +34,8 @@
     .msg-row{width:100%;display:flex}
     .msg-row.user{justify-content:flex-end}
     .msg-row.assistant{justify-content:flex-start}
+    .msg-row.user > div{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end}
+    .msg-row.assistant > div{display:flex;flex-direction:column;align-items:flex-start}
     .msg{max-width:820px;width:fit-content;padding:8px 12px;border-radius:14px;white-space:pre-wrap;line-height:1.45}
     .assistant{background:transparent;border:none;border-radius:0;padding-left:0;max-width:78ch;font-size:15px;color:#e8eaee}
     .user{background:#1f6feb;color:#f8fbff;border-radius:18px;max-width:fit-content;width:auto;display:inline-block;padding:6px 10px;font-size:14px}
@@ -384,6 +386,31 @@
     el("modelSelect").innerHTML = MODELS.map(m => `<option ${m===S.model?"selected":""}>${m}</option>`).join("");
   }
 
+
+  async function loadModelsFromApi(){
+    const key = apiKeyEl.value.trim();
+    if(!key) return;
+    try{
+      const r = await fetch("https://api.openai.com/v1/models", {
+        headers: { "Authorization": "Bearer " + key }
+      });
+      const data = await r.json();
+      const ids = (data.data || []).map(m => m.id).filter(Boolean);
+      const chatLike = ids.filter(id => /^(gpt|o\d|o\d-mini)/.test(id));
+      const unique = [...new Set([...chatLike, ...MODELS])].sort((a,b)=>a.localeCompare(b));
+      if(unique.length){
+        el("modelSelect").innerHTML = unique.map(m => `<option ${m===S.model?"selected":""}>${m}</option>`).join("");
+        if(!unique.includes(S.model)){
+          S.model = unique[0];
+          save();
+          renderModels();
+        }
+      }
+    }catch(_e){
+      // fallback silencieux: on garde la liste locale MODELS
+    }
+  }
+
   function renderParams(){
     const p = el("paramsPanel");
     p.innerHTML = `
@@ -474,12 +501,13 @@
   el("modelSelect").onchange = e => { S.model = e.target.value; save(); };
   el("paramsBtn").onclick = () => el("paramsPanel").classList.toggle("open");
   promptEl.addEventListener("keydown", e => { if((e.ctrlKey || e.metaKey) && e.key === "Enter") send(); });
-  apiKeyEl.onchange = save;
+  apiKeyEl.onchange = async () => { save(); await loadModelsFromApi(); };
 
   if(!S.chats.length) createChat(null);
   renderModels();
   renderParams();
   render();
+  loadModelsFromApi();
 </script>
 </body>
 </html>
