@@ -36,9 +36,13 @@
     .msg-row.assistant{justify-content:flex-start}
     .msg{max-width:760px;padding:12px 14px;border-radius:14px;white-space:pre-wrap;position:relative;padding-bottom:34px}
     .assistant{background:transparent;border:none;border-radius:0;padding-left:0}
-    .user{background:#2f2f2f;color:#f8fbff;border-radius:24px}
+    .user{background:#1f6feb;color:#f8fbff;border-radius:24px}
     .copy{position:absolute;right:8px;bottom:6px;background:transparent;border:0;color:#aeb4be;font-size:13px;cursor:pointer;line-height:1;padding:3px 4px;border-radius:6px}
     .copy:hover{background:#2a2a2a;color:#d6dbe3}
+    .msg-actions{display:flex;gap:10px;margin-top:8px;align-items:center}
+    .msg-icon{border:0;background:transparent;color:#d0d4db;cursor:pointer;font-size:16px;line-height:1;padding:2px}
+    .msg-icon:hover{color:#ffffff}
+
 
     .composer{padding:12px;background:var(--top);border-top:1px solid var(--line)}
     .composer-wrap{max-width:900px;margin:0 auto;display:flex;gap:10px}
@@ -262,13 +266,42 @@
       d.className = "msg " + m.role;
       d.textContent = m.content;
 
-      const b = document.createElement("button");
-      b.className = "copy";
-      b.textContent = "📋";
-      b.title = "Copier";
-      b.onclick = () => navigator.clipboard.writeText(m.content);
+      if(m.role === "assistant"){
+        const actions = document.createElement("div");
+        actions.className = "msg-actions";
 
-      d.appendChild(b);
+        const copyBtn = document.createElement("button");
+        copyBtn.className = "msg-icon";
+        copyBtn.textContent = "⧉";
+        copyBtn.title = "Copier";
+        copyBtn.onclick = () => navigator.clipboard.writeText(m.content);
+
+        const shareBtn = document.createElement("button");
+        shareBtn.className = "msg-icon";
+        shareBtn.textContent = "↥";
+        shareBtn.title = "Partager";
+
+        const regenBtn = document.createElement("button");
+        regenBtn.className = "msg-icon";
+        regenBtn.textContent = "↻";
+        regenBtn.title = "Régénérer";
+
+        const moreBtn = document.createElement("button");
+        moreBtn.className = "msg-icon";
+        moreBtn.textContent = "⋯";
+        moreBtn.title = "Plus";
+
+        actions.append(copyBtn, shareBtn, regenBtn, moreBtn);
+        d.appendChild(actions);
+      } else {
+        const b = document.createElement("button");
+        b.className = "copy";
+        b.textContent = "⧉";
+        b.title = "Copier";
+        b.onclick = () => navigator.clipboard.writeText(m.content);
+        d.appendChild(b);
+      }
+
       row.appendChild(d);
       box.appendChild(row);
     });
