@@ -1,101 +1,63 @@
 <!doctype html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>IAteam Chat</title>
-  <style>
-    :root{--bg:#212121;--panel:#171717;--panel2:#2f2f2f;--text:#ececec;--muted:#a1a1aa;--line:#3f3f46;--accent:#10a37f}
-    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,Segoe UI,Arial,sans-serif}
-    .app{display:grid;grid-template-columns:280px 1fr;height:100vh}
-    .sidebar{background:var(--panel);border-right:1px solid var(--line);padding:12px;display:flex;flex-direction:column;gap:10px}
-    .btn{background:transparent;border:1px solid var(--line);color:var(--text);padding:10px;border-radius:10px;cursor:pointer}
-    .btn.primary{border-color:var(--accent)} .btn:hover{background:#242424}
-    .chats{overflow:auto;display:flex;flex-direction:column;gap:6px}
-    .chat-item{padding:10px;border-radius:8px;cursor:pointer;color:#ddd}.chat-item:hover{background:#242424}.chat-item.active{background:#2b2b2b}
-    .main{display:flex;flex-direction:column}
-    .top{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--panel)}
-    .top-left,.top-right{display:flex;gap:8px;align-items:center}
-    select,input{background:#222;border:1px solid var(--line);color:var(--text);border-radius:8px;padding:8px 10px}
-    .messages{flex:1;overflow:auto;padding:20px;display:flex;flex-direction:column;gap:14px}
-    .msg{max-width:920px;padding:14px;border-radius:12px;white-space:pre-wrap;line-height:1.5}
-    .user{align-self:flex-end;background:#2b2b2b}.assistant{align-self:flex-start;background:transparent;border:1px solid var(--line)}
-    .copy{margin-top:8px;font-size:12px;color:var(--muted);cursor:pointer;background:none;border:none}
-    .composer{padding:14px;border-top:1px solid var(--line);background:var(--panel)}
-    .composer-wrap{max-width:980px;margin:0 auto;display:flex;gap:10px}
-    textarea{flex:1;resize:none;height:90px;background:#222;border:1px solid var(--line);color:var(--text);border-radius:12px;padding:12px}
-    .params{display:none;position:absolute;right:14px;top:56px;background:#1d1d1d;border:1px solid var(--line);padding:12px;border-radius:12px;width:320px;z-index:10}
-    .params.open{display:block}.param{display:grid;grid-template-columns:1fr 90px;gap:8px;align-items:center;margin-bottom:8px}
-    .tiny{font-size:12px;color:var(--muted)}
-  </style>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>IAteam Chat</title>
+<style>
+:root{--bg:#212121;--side:#171717;--panel:#2a2a2a;--line:#3f3f46;--text:#ececec;--muted:#9ca3af;--accent:#10a37f}
+*{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 "Söhne","Inter",system-ui,sans-serif}
+.app{display:grid;grid-template-columns:300px 1fr;height:100vh}.sidebar{background:var(--side);border-right:1px solid var(--line);padding:10px;overflow:auto}
+.btn{border:1px solid var(--line);background:transparent;color:var(--text);padding:8px 10px;border-radius:8px;cursor:pointer}.btn:hover{background:#242424}.btn.primary{border-color:var(--accent)}
+.top-actions{display:flex;gap:8px;margin-bottom:10px}.group-title{font-size:12px;color:var(--muted);margin:12px 6px 6px}
+.item{display:flex;align-items:center;gap:6px;padding:8px;border-radius:8px;cursor:pointer}.item:hover{background:#242424}.item.active{background:#2b2b2b}
+.name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.icon-btn{border:0;background:none;color:var(--muted);cursor:pointer;font-size:15px}
+.main{display:flex;flex-direction:column}.top{display:flex;justify-content:space-between;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);background:#181818}
+select,input{background:#222;border:1px solid var(--line);color:var(--text);border-radius:8px;padding:8px}.messages{flex:1;overflow:auto;padding:26px}
+.msg{max-width:860px;margin:0 auto 16px;padding:12px 14px;border-radius:10px;white-space:pre-wrap}.assistant{background:transparent}.user{background:var(--panel)}
+.copy{background:none;border:0;color:var(--muted);font-size:12px;cursor:pointer;margin-top:6px}.composer{padding:12px;background:#181818;border-top:1px solid var(--line)}
+.composer-wrap{max-width:900px;margin:0 auto;display:flex;gap:10px}textarea{flex:1;resize:none;height:90px;border-radius:12px;background:#222;color:var(--text);border:1px solid var(--line);padding:12px}
+.params{display:none;position:absolute;right:14px;top:58px;background:#1f1f1f;border:1px solid var(--line);padding:10px;border-radius:10px;width:300px}.params.open{display:block}
+.param{display:grid;grid-template-columns:1fr 95px;gap:8px;margin-bottom:8px;align-items:center}
+</style>
 </head>
 <body>
 <div class="app">
   <aside class="sidebar">
-    <button class="btn primary" id="newChat">+ Nouveau chat</button>
-    <a class="btn" href="index.html" download="iateam-chat.html">⬇ Télécharger HTML</a>
-    <div class="chats" id="chatList"></div>
+    <div class="top-actions"><button class="btn primary" id="newProject">+ Projet</button><button class="btn" id="newChat">+ Chat</button></div>
+    <div class="group-title">Projets</div><div id="projectList"></div>
+    <div class="group-title">Conversations</div><div id="chatList"></div>
   </aside>
   <section class="main">
     <div class="top">
-      <div class="top-left">
-        <label>Modèle</label>
-        <select id="modelSelect"></select>
-      </div>
-      <div class="top-right">
-        <input id="apiKey" type="password" placeholder="Clé API OpenAI" style="min-width:280px"/>
-        <button class="btn" id="paramsBtn">Paramètres LLM</button>
-      </div>
+      <div><select id="modelSelect"></select></div>
+      <div style="display:flex;gap:8px;align-items:center"><input id="apiKey" type="password" placeholder="Clé API OpenAI"/><button class="btn" id="paramsBtn">Paramètres</button></div>
       <div id="paramsPanel" class="params"></div>
     </div>
     <div class="messages" id="messages"></div>
-    <div class="composer"><div class="composer-wrap">
-      <textarea id="prompt" placeholder="Écris un message..."></textarea>
-      <button class="btn primary" id="sendBtn">Envoyer</button>
-    </div></div>
+    <div class="composer"><div class="composer-wrap"><textarea id="prompt" placeholder="Message..."></textarea><button class="btn primary" id="sendBtn">Envoyer</button></div></div>
   </section>
 </div>
 <script>
-const MODELS=["gpt-4.1","gpt-4.1-mini","gpt-4.1-nano","gpt-4o","gpt-4o-mini","o4-mini","o3","o3-mini"];
-const DEFAULT_PARAMS={temperature:0.7,top_p:1,max_tokens:1200,frequency_penalty:0,presence_penalty:0,top_k:0};
-const S={chats:JSON.parse(localStorage.getItem('mini_chats')||'[]'),active:localStorage.getItem('mini_active')||null,model:localStorage.getItem('mini_model')||MODELS[1],params:JSON.parse(localStorage.getItem('mini_params')||'null')||DEFAULT_PARAMS};
-const apiKeyEl=document.getElementById('apiKey');
-const chatList=document.getElementById('chatList');
-const messages=document.getElementById('messages');
-const promptEl=document.getElementById('prompt');
-const modelSelect=document.getElementById('modelSelect');
-const paramsPanel=document.getElementById('paramsPanel');
-const paramsBtn=document.getElementById('paramsBtn');
-apiKeyEl.value=localStorage.getItem('mini_api_key')||'';
-apiKeyEl.onchange=()=>localStorage.setItem('mini_api_key',apiKeyEl.value.trim());
-function save(){localStorage.setItem('mini_chats',JSON.stringify(S.chats));localStorage.setItem('mini_active',S.active||'');localStorage.setItem('mini_model',S.model);localStorage.setItem('mini_params',JSON.stringify(S.params));}
-function activeChat(){return S.chats.find(c=>c.id===S.active)}
-function createChat(){const id=crypto.randomUUID();S.chats.unshift({id,title:'Nouveau chat',messages:[]});S.active=id;save();render();}
-function renderChats(){const wrap=chatList;wrap.innerHTML='';S.chats.forEach(c=>{const d=document.createElement('div');d.className='chat-item'+(c.id===S.active?' active':'');d.textContent=c.title;d.onclick=()=>{S.active=c.id;save();render();};wrap.appendChild(d);});}
-function renderMessages(){const box=messages;box.innerHTML='';const c=activeChat();if(!c)return;c.messages.forEach(m=>{const d=document.createElement('div');d.className='msg '+m.role;d.textContent=m.content;const b=document.createElement('button');b.className='copy';b.textContent='Copier';b.onclick=()=>navigator.clipboard.writeText(m.content);d.appendChild(b);box.appendChild(d);});box.scrollTop=box.scrollHeight;}
-function render(){renderChats();renderMessages();}
-function renderModels(){modelSelect.innerHTML=MODELS.map(m=>`<option ${m===S.model?'selected':''}>${m}</option>`).join('');}
-function renderParams(){paramsPanel.innerHTML=`
-  <div class='param'><label>temperature</label><input id='p_temperature' type='number' step='0.1' min='0' max='2' value='${S.params.temperature}'></div>
-  <div class='param'><label>top_p</label><input id='p_top_p' type='number' step='0.05' min='0' max='1' value='${S.params.top_p}'></div>
-  <div class='param'><label>max_tokens</label><input id='p_max_tokens' type='number' step='1' min='100' max='16000' value='${S.params.max_tokens}'></div>
-  <div class='param'><label>freq_penalty</label><input id='p_frequency_penalty' type='number' step='0.1' min='-2' max='2' value='${S.params.frequency_penalty}'></div>
-  <div class='param'><label>presence_penalty</label><input id='p_presence_penalty' type='number' step='0.1' min='-2' max='2' value='${S.params.presence_penalty}'></div>
-  <div class='param'><label>top_k</label><input id='p_top_k' type='number' step='1' min='0' max='200' value='${S.params.top_k}'></div>
-  <div class='tiny'>Note: top_k n'est pas pris en charge par l'API OpenAI Chat Completions.</div>`;
-  paramsPanel.querySelectorAll('input').forEach(i=>i.onchange=()=>{const k=i.id.replace('p_','');S.params[k]=Number(i.value);save();});
-}
-async function send(){const key=apiKeyEl.value.trim();if(!key)return alert('Ajoute ta clé API OpenAI.');const t=promptEl.value.trim();if(!t)return;let c=activeChat();if(!c){createChat();c=activeChat();}
-c.messages.push({role:'user',content:t});if(c.title==='Nouveau chat')c.title=t.slice(0,40);promptEl.value='';render();
-try{const body={model:S.model,messages:c.messages.map(m=>({role:m.role==='assistant'?'assistant':'user',content:m.content})),temperature:S.params.temperature,top_p:S.params.top_p,max_tokens:S.params.max_tokens,frequency_penalty:S.params.frequency_penalty,presence_penalty:S.params.presence_penalty};
-const r=await fetch('https://api.openai.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify(body)});
-const data=await r.json();const out=data.choices?.[0]?.message?.content||('Erreur API: '+JSON.stringify(data));c.messages.push({role:'assistant',content:out});}
-catch(e){c.messages.push({role:'assistant',content:'Erreur réseau: '+e.message});}
+const MODELS=["gpt-4.1","gpt-4.1-mini","gpt-4o","gpt-4o-mini","o3","o4-mini"]; const DEF={temperature:.7,top_p:1,max_tokens:1200};
+const S={projects:JSON.parse(localStorage.getItem('projects')||'[]'),chats:JSON.parse(localStorage.getItem('chats')||'[]'),activeChat:localStorage.getItem('activeChat')||null,activeProject:localStorage.getItem('activeProject')||null,model:localStorage.getItem('model')||MODELS[1],params:JSON.parse(localStorage.getItem('params')||'null')||DEF};
+const el=id=>document.getElementById(id); const promptEl=el('prompt'); const apiKeyEl=el('apiKey'); apiKeyEl.value=localStorage.getItem('apiKey')||'';
+function save(){localStorage.setItem('projects',JSON.stringify(S.projects));localStorage.setItem('chats',JSON.stringify(S.chats));localStorage.setItem('activeChat',S.activeChat||'');localStorage.setItem('activeProject',S.activeProject||'');localStorage.setItem('model',S.model);localStorage.setItem('params',JSON.stringify(S.params));localStorage.setItem('apiKey',apiKeyEl.value.trim())}
+const activeChat=()=>S.chats.find(c=>c.id===S.activeChat);
+function createProject(){const n=prompt('Nom du projet ?','Nouveau projet');if(!n)return;const id=crypto.randomUUID();S.projects.unshift({id,name:n});S.activeProject=id;save();render();}
+function renameProject(id){const p=S.projects.find(x=>x.id===id);if(!p)return;const n=prompt('Nouveau nom du projet',p.name);if(!n)return;p.name=n;save();render();}
+function deleteProject(id){if(!confirm('Supprimer ce projet ?'))return;S.projects=S.projects.filter(p=>p.id!==id);S.chats=S.chats.map(c=>c.projectId===id?{...c,projectId:null}:c);if(S.activeProject===id)S.activeProject=null;save();render();}
+function createChat(){const id=crypto.randomUUID();S.chats.unshift({id,title:'Nouveau chat',projectId:S.activeProject,messages:[]});S.activeChat=id;save();render();}
+function deleteChat(id){S.chats=S.chats.filter(c=>c.id!==id);if(S.activeChat===id)S.activeChat=S.chats[0]?.id||null;save();render();}
+function renderProjects(){const w=el('projectList');w.innerHTML='';S.projects.forEach(p=>{const d=document.createElement('div');d.className='item'+(p.id===S.activeProject?' active':'');d.innerHTML=`<span class='name'>📁 ${p.name}</span><button class='icon-btn' data-a='edit'>✎</button><button class='icon-btn' data-a='del'>✕</button>`;d.onclick=(e)=>{const a=e.target.dataset.a;if(a==='edit')return renameProject(p.id);if(a==='del')return deleteProject(p.id);S.activeProject=p.id;save();render();};w.appendChild(d);});}
+function renderChats(){const w=el('chatList');w.innerHTML='';const chats=S.activeProject?S.chats.filter(c=>c.projectId===S.activeProject):S.chats;chats.forEach(c=>{const d=document.createElement('div');d.className='item'+(c.id===S.activeChat?' active':'');d.innerHTML=`<span class='name'>${c.title}</span><button class='icon-btn' data-del='1'>✕</button>`;d.onclick=(e)=>{if(e.target.dataset.del)return deleteChat(c.id);S.activeChat=c.id;save();render();};w.appendChild(d);});}
+function renderMessages(){const box=el('messages');box.innerHTML='';const c=activeChat();if(!c)return;c.messages.forEach(m=>{const d=document.createElement('div');d.className='msg '+m.role;d.textContent=m.content;const b=document.createElement('button');b.className='copy';b.textContent='Copier';b.onclick=()=>navigator.clipboard.writeText(m.content);d.appendChild(b);box.appendChild(d);});box.scrollTop=box.scrollHeight;}
+function renderModels(){el('modelSelect').innerHTML=MODELS.map(m=>`<option ${m===S.model?'selected':''}>${m}</option>`).join('')}
+function renderParams(){const p=el('paramsPanel');p.innerHTML=`<div class='param'><label>temperature</label><input id='p1' type='number' step='0.1' min='0' max='2' value='${S.params.temperature}'></div><div class='param'><label>top_p</label><input id='p2' type='number' step='0.1' min='0' max='1' value='${S.params.top_p}'></div><div class='param'><label>max_tokens</label><input id='p3' type='number' step='1' min='100' max='4000' value='${S.params.max_tokens}'></div>`;el('p1').onchange=e=>{S.params.temperature=+e.target.value;save()};el('p2').onchange=e=>{S.params.top_p=+e.target.value;save()};el('p3').onchange=e=>{S.params.max_tokens=+e.target.value;save()};}
+function render(){renderProjects();renderChats();renderMessages();}
+async function send(){const key=apiKeyEl.value.trim();if(!key)return alert('Ajoute la clé API');const text=promptEl.value.trim();if(!text)return;let c=activeChat();if(!c){createChat();c=activeChat();}c.messages.push({role:'user',content:text});if(c.title==='Nouveau chat')c.title=text.slice(0,38);promptEl.value='';render();
+try{const r=await fetch('https://api.openai.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model:S.model,messages:c.messages.map(m=>({role:m.role==='assistant'?'assistant':'user',content:m.content})),temperature:S.params.temperature,top_p:S.params.top_p,max_tokens:S.params.max_tokens})});const d=await r.json();c.messages.push({role:'assistant',content:d.choices?.[0]?.message?.content||JSON.stringify(d)});}catch(e){c.messages.push({role:'assistant',content:'Erreur: '+e.message})}
 save();render();}
-document.getElementById('newChat').onclick=()=>createChat();
-document.getElementById('sendBtn').onclick=send;
-promptEl.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter')send();});
-modelSelect.onchange=()=>{S.model=modelSelect.value;save();};paramsBtn.onclick=()=>paramsPanel.classList.toggle('open');
+el('newProject').onclick=createProject;el('newChat').onclick=createChat;el('sendBtn').onclick=send;el('modelSelect').onchange=e=>{S.model=e.target.value;save()};el('paramsBtn').onclick=()=>el('paramsPanel').classList.toggle('open');promptEl.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter')send()});apiKeyEl.onchange=save;
 if(!S.chats.length)createChat();renderModels();renderParams();render();
 </script>
 </body>
