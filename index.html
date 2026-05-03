@@ -10,11 +10,11 @@
       --line:#3f3f46; --text:#ececec; --muted:#9ca3af; --muted2:#8d939c;
     }
     *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 "Söhne","Inter",system-ui,sans-serif}
+    body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 "Söhne","Inter",system-ui,sans-serif;overflow:hidden}
     .app{display:grid;grid-template-columns:300px 1fr;height:100vh}
     .app.sidebar-collapsed{grid-template-columns:0 1fr}
 
-    .sidebar{background:var(--side);border-right:1px solid var(--line);padding:10px;overflow:auto}
+    .sidebar{background:var(--side);border-right:1px solid var(--line);padding:10px;overflow:auto;position:sticky;top:0;height:100vh}
     .app.sidebar-collapsed .sidebar{padding:0;border-right:0;overflow:hidden}
     .group-title{display:flex;justify-content:space-between;align-items:center;margin:10px 6px 6px;font-size:12px;color:var(--muted)}
     .separator{border-top:1px solid #2c2c2c;margin:10px 6px}
@@ -25,12 +25,12 @@
     .icon-btn{border:0;background:none;color:var(--muted2);cursor:pointer;font-size:13px;opacity:.75}
     .icon-btn:hover{opacity:1;color:#b8bec8}
 
-    .main{display:flex;flex-direction:column}
-    .top{display:flex;justify-content:space-between;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--top);position:relative}
+    .main{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+    .top{display:flex;justify-content:space-between;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--top);position:sticky;top:0;z-index:5}
     .btn{border:1px solid var(--line);background:transparent;color:var(--text);padding:8px 10px;border-radius:8px;cursor:pointer}
     select,input{background:#222;border:1px solid var(--line);color:var(--text);border-radius:8px;padding:8px}
 
-    .messages{flex:1;overflow:auto;padding:26px 12px;display:flex;flex-direction:column;gap:18px}
+    .messages{flex:1;overflow:auto;padding:26px 12px;display:flex;flex-direction:column;gap:18px;min-height:0}
     .msg-row{width:min(100%,900px);margin:0 auto;display:flex}
     .msg-row.user{justify-content:flex-end}
     .msg-row.assistant{justify-content:flex-start}
