@@ -42,9 +42,11 @@
     .copy:hover{background:#2a2a2a;color:#d6dbe3}
     .msg-actions{display:flex;gap:10px;margin-top:6px;align-items:center}
     .assistant-body p{margin:0 0 10px}
-    .assistant-body ul{margin:6px 0 12px 18px;padding:0}
+    .assistant-body h3{margin:10px 0 8px;font-size:16px;line-height:1.35}
+    .assistant-body ul{margin:6px 0 12px 20px;padding:0}
     .assistant-body li{margin:4px 0}
-    .assistant-body strong{font-weight:600}
+    .assistant-body blockquote{margin:10px 0;padding:8px 12px;border-left:3px solid #4b5563;background:#242424;border-radius:6px;color:#d9dde5}
+    .assistant-body strong{font-weight:650}
     .msg-icon{border:0;background:transparent;color:#d0d4db;cursor:pointer;font-size:16px;line-height:1;padding:2px}
     .msg-icon:hover{color:#ffffff}
 
@@ -262,15 +264,20 @@
     return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   }
 
+  function formatInline(text){
+    let safe = escapeHtml(text || "");
+    safe = safe.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+    return safe;
+  }
+
   function formatAssistantContent(text){
-    const safe = escapeHtml(text || "");
-    const lines = safe.split("\n");
+    const lines = (text || "").split("\n");
     const blocks = [];
     let list = [];
 
     const flushList = () => {
       if(!list.length) return;
-      blocks.push(`<ul>${list.map(i => `<li>${i}</li>`).join("")}</ul>`);
+      blocks.push(`<ul>${list.map(i => `<li>${formatInline(i)}</li>`).join("")}</ul>`);
       list = [];
     };
 
@@ -280,16 +287,29 @@
         flushList();
         continue;
       }
-      if(/^[-•]\s+/.test(line) || /^\d+[\.)]\s+/.test(line)){
-        list.push(line.replace(/^([-•]|\d+[\.)])\s+/,""));
+
+      if(/^#{3}\s+/.test(line)){
+        flushList();
+        blocks.push(`<h3>${formatInline(line.replace(/^#{3}\s+/,""))}</h3>`);
+        continue;
+      }
+
+      if(/^>\s+/.test(line)){
+        flushList();
+        blocks.push(`<blockquote>${formatInline(line.replace(/^>\s+/,""))}</blockquote>`);
+        continue;
+      }
+
+      if(/^[-•*]\s+/.test(line) || /^\d+[\.)]\s+/.test(line)){
+        list.push(line.replace(/^([-•*]|\d+[\.)])\s+/,""));
       } else {
         flushList();
-        blocks.push(`<p>${line}</p>`);
+        blocks.push(`<p>${formatInline(line)}</p>`);
       }
     }
-    flushList();
 
-    return blocks.join("") || `<p>${safe}</p>`;
+    flushList();
+    return blocks.join("") || `<p>${formatInline(text || "")}</p>`;
   }
 
   function renderMessages(){
