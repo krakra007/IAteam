@@ -37,8 +37,8 @@
     .msg-row.user > div{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;max-width:100%}
     .msg-row.assistant > div{display:flex;flex-direction:column;align-items:flex-start;max-width:100%}
     .msg{max-width:820px;width:fit-content;padding:8px 12px;border-radius:14px;white-space:pre-wrap;line-height:1.45}
-    .assistant{background:transparent;border:none;border-radius:0;padding-left:0;max-width:78ch;font-size:15px;color:#e8eaee}
-    .user{background:#1f6feb;color:#f8fbff;border-radius:18px;display:inline-block;width:auto;max-width:min(60%,56ch);padding:6px 10px;font-size:14px}
+    .msg.assistant{background:transparent;border:none;border-radius:0;padding-left:0;max-width:78ch;font-size:15px;color:#e8eaee}
+    .msg.user{background:#1f6feb;color:#f8fbff;border-radius:18px;display:inline-block;width:auto;max-width:min(60%,56ch);padding:6px 10px;font-size:14px}
     .msg-foot{display:flex;justify-content:flex-end;margin-top:4px;width:100%}
     .copy{background:transparent;border:0;color:#aeb4be;font-size:13px;cursor:pointer;line-height:1;padding:3px 4px;border-radius:6px}
     .copy:hover{background:#2a2a2a;color:#d6dbe3}
@@ -500,7 +500,12 @@
 
   el("modelSelect").onchange = e => { S.model = e.target.value; save(); };
   el("paramsBtn").onclick = () => el("paramsPanel").classList.toggle("open");
-  promptEl.addEventListener("keydown", e => { if((e.ctrlKey || e.metaKey) && e.key === "Enter") send(); });
+  promptEl.addEventListener("keydown", e => {
+    if(e.key === "Enter" && !e.shiftKey){
+      e.preventDefault();
+      send();
+    }
+  });
   apiKeyEl.onchange = async () => { save(); await loadModelsFromApi(); };
 
   if(!S.chats.length) createChat(null);
