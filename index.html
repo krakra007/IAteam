@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>IAteam Chat</title>
+<style>
+:root{--bg:#212121;--side:#171717;--panel:#2a2a2a;--line:#3f3f46;--text:#ececec;--muted:#9ca3af;--accent:#10a37f}
+*{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 "Söhne","Inter",system-ui,sans-serif}
+.app{display:grid;grid-template-columns:300px 1fr;height:100vh}.sidebar{background:var(--side);border-right:1px solid var(--line);padding:10px;overflow:auto}
+.btn{border:1px solid var(--line);background:transparent;color:var(--text);padding:8px 10px;border-radius:8px;cursor:pointer}.btn:hover{background:#242424}.btn.primary{border-color:var(--accent)}
+.top-actions{display:flex;gap:8px;margin-bottom:10px}.group-title{font-size:12px;color:var(--muted);margin:12px 6px 6px}
+.item{display:flex;align-items:center;gap:6px;padding:8px;border-radius:8px;cursor:pointer}.item:hover{background:#242424}.item.active{background:#2b2b2b}
+.name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.icon-btn{border:0;background:none;color:var(--muted);cursor:pointer;font-size:15px}
+.main{display:flex;flex-direction:column}.top{display:flex;justify-content:space-between;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);background:#181818}
+select,input{background:#222;border:1px solid var(--line);color:var(--text);border-radius:8px;padding:8px}.messages{flex:1;overflow:auto;padding:26px}
+.msg{max-width:860px;margin:0 auto 16px;padding:12px 14px;border-radius:10px;white-space:pre-wrap}.assistant{background:transparent}.user{background:var(--panel)}
+.copy{background:none;border:0;color:var(--muted);font-size:12px;cursor:pointer;margin-top:6px}.composer{padding:12px;background:#181818;border-top:1px solid var(--line)}
+.composer-wrap{max-width:900px;margin:0 auto;display:flex;gap:10px}textarea{flex:1;resize:none;height:90px;border-radius:12px;background:#222;color:var(--text);border:1px solid var(--line);padding:12px}
+.params{display:none;position:absolute;right:14px;top:58px;background:#1f1f1f;border:1px solid var(--line);padding:10px;border-radius:10px;width:300px}.params.open{display:block}
+.param{display:grid;grid-template-columns:1fr 95px;gap:8px;margin-bottom:8px;align-items:center}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="top-actions"><button class="btn" id="newGeneralChat">+ Conversation générale</button><button class="btn primary" id="newProject">+ Projet</button></div>
+    <div class="group-title" style="display:flex;justify-content:space-between;align-items:center;">Projets <button class="icon-btn" id="plusInProject">＋</button></div><div id="projectList"></div>
+    <div id="chatList"></div>
+  </aside>
+  <section class="main">
+    <div class="top">
+      <div><select id="modelSelect"></select></div>
+      <div style="display:flex;gap:8px;align-items:center"><input id="apiKey" type="password" placeholder="Clé API OpenAI"/><button class="btn" id="paramsBtn">Paramètres</button></div>
+      <div id="paramsPanel" class="params"></div>
+    </div>
+    <div class="messages" id="messages"></div>
+    <div class="composer"><div class="composer-wrap"><textarea id="prompt" placeholder="Message..."></textarea><button class="btn primary" id="sendBtn">Envoyer</button></div></div>
+  </section>
+</div>
+<script>
+const MODELS=["gpt-4.1","gpt-4.1-mini","gpt-4o","gpt-4o-mini","o3","o4-mini"]; const DEF={temperature:.7,top_p:1,max_tokens:1200};
+const S={projects:JSON.parse(localStorage.getItem('projects')||'[]'),chats:JSON.parse(localStorage.getItem('chats')||'[]'),activeChat:localStorage.getItem('activeChat')||null,activeProject:localStorage.getItem('activeProject')||null,model:localStorage.getItem('model')||MODELS[1],params:JSON.parse(localStorage.getItem('params')||'null')||DEF};
+const el=id=>document.getElementById(id); const promptEl=el('prompt'); const apiKeyEl=el('apiKey'); apiKeyEl.value=localStorage.getItem('apiKey')||'';
+function save(){localStorage.setItem('projects',JSON.stringify(S.projects));localStorage.setItem('chats',JSON.stringify(S.chats));localStorage.setItem('activeChat',S.activeChat||'');localStorage.setItem('activeProject',S.activeProject||'');localStorage.setItem('model',S.model);localStorage.setItem('params',JSON.stringify(S.params));localStorage.setItem('apiKey',apiKeyEl.value.trim())}
+const activeChat=()=>S.chats.find(c=>c.id===S.activeChat);
+function createProject(){const n=prompt('Nom du projet ?','Nouveau projet');if(!n)return;const id=crypto.randomUUID();S.projects.unshift({id,name:n});S.activeProject=id;save();render();}
+function renameProject(id){const p=S.projects.find(x=>x.id===id);if(!p)return;const n=prompt('Nouveau nom du projet',p.name);if(!n)return;p.name=n;save();render();}
+function deleteProject(id){if(!confirm('Supprimer ce projet ?'))return;S.projects=S.projects.filter(p=>p.id!==id);S.chats=S.chats.map(c=>c.projectId===id?{...c,projectId:null}:c);if(S.activeProject===id)S.activeProject=null;save();render();}
+function createChat(projectId=null){const id=crypto.randomUUID();S.chats.unshift({id,title:'Nouveau chat',projectId,messages:[]});S.activeChat=id;if(projectId)S.activeProject=projectId;save();render();}
+function deleteChat(id){S.chats=S.chats.filter(c=>c.id!==id);if(S.activeChat===id)S.activeChat=S.chats[0]?.id||null;save();render();}
+
+function renameChat(id){const c=S.chats.find(x=>x.id===id);if(!c)return;const n=prompt('Nouveau nom de la conversation',c.title);if(!n)return;c.title=n;save();render();}
+function moveChat(id){if(!S.projects.length)return alert("Crée d'abord un projet.");const list=S.projects.map((p,i)=>`${i+1}. ${p.name}`).join('\n');const idx=prompt(`Déplacer vers quel projet ?\n${list}`,'1');if(!idx)return;const p=S.projects[Number(idx)-1];if(!p)return alert('Choix invalide');const c=S.chats.find(x=>x.id===id);if(!c)return;c.projectId=p.id;S.activeProject=p.id;save();render();}
+function renderProjects(){const w=el('projectList');w.innerHTML='';S.projects.forEach(p=>{const d=document.createElement('div');d.className='item'+(p.id===S.activeProject?' active':'');d.innerHTML=`<span class='name'>📁 ${p.name}</span><button class='icon-btn' data-a='addchat' title='Nouveau chat'>＋</button><button class='icon-btn' data-a='edit' title='Renommer projet'>✎</button><button class='icon-btn' data-a='del' title='Supprimer projet'>✕</button>`;d.onclick=(e)=>{const a=e.target.dataset.a;if(a==='addchat'){S.activeProject=p.id;save();return createChat();}if(a==='edit')return renameProject(p.id);if(a==='del')return deleteProject(p.id);S.activeProject=p.id;save();render();};w.appendChild(d);});}
+function renderChats(){const w=el('chatList');w.innerHTML='';
+  const general=S.chats.filter(c=>!c.projectId);
+  const genTitle=document.createElement('div');genTitle.className='group-title';genTitle.textContent='Conversations générales';w.appendChild(genTitle);
+  general.forEach(c=>w.appendChild(chatRow(c)));
+  const projTitle=document.createElement('div');projTitle.className='group-title';projTitle.textContent='Conversations par projet';w.appendChild(projTitle);
+  S.projects.forEach(p=>{const h=document.createElement('div');h.className='item'+(p.id===S.activeProject?' active':'');h.innerHTML=`<span class='name'>📁 ${p.name}</span><button class='icon-btn' data-a='addchat'>＋</button><button class='icon-btn' data-a='edit'>✎</button><button class='icon-btn' data-a='del'>✕</button>`;
+    h.onclick=(e)=>{const a=e.target.dataset.a;if(a==='addchat')return createChat(p.id);if(a==='edit')return renameProject(p.id);if(a==='del')return deleteProject(p.id);S.activeProject=p.id;save();render();};w.appendChild(h);
+    S.chats.filter(c=>c.projectId===p.id).forEach(c=>{const row=chatRow(c);row.style.marginLeft='18px';w.appendChild(row);});
+  });
+}
+function chatRow(c){const d=document.createElement('div');d.className='item'+(c.id===S.activeChat?' active':'');d.innerHTML=`<span class='name'>${c.title}</span><button class='icon-btn' data-a='edit'>✎</button><button class='icon-btn' data-a='del'>✕</button>`;d.onclick=(e)=>{const a=e.target.dataset.a;if(a==='edit')return renameChat(c.id);if(a==='del')return deleteChat(c.id);S.activeChat=c.id;save();render();};return d;}
+function renderMessages(){const box=el('messages');box.innerHTML='';const c=activeChat();if(!c)return;c.messages.forEach(m=>{const d=document.createElement('div');d.className='msg '+m.role;d.textContent=m.content;const b=document.createElement('button');b.className='copy';b.textContent='Copier';b.onclick=()=>navigator.clipboard.writeText(m.content);d.appendChild(b);box.appendChild(d);});box.scrollTop=box.scrollHeight;}
+function renderModels(){el('modelSelect').innerHTML=MODELS.map(m=>`<option ${m===S.model?'selected':''}>${m}</option>`).join('')}
+function renderParams(){const p=el('paramsPanel');p.innerHTML=`<div class='param'><label>temperature</label><input id='p1' type='number' step='0.1' min='0' max='2' value='${S.params.temperature}'></div><div class='param'><label>top_p</label><input id='p2' type='number' step='0.1' min='0' max='1' value='${S.params.top_p}'></div><div class='param'><label>max_tokens</label><input id='p3' type='number' step='1' min='100' max='4000' value='${S.params.max_tokens}'></div>`;el('p1').onchange=e=>{S.params.temperature=+e.target.value;save()};el('p2').onchange=e=>{S.params.top_p=+e.target.value;save()};el('p3').onchange=e=>{S.params.max_tokens=+e.target.value;save()};}
+function render(){renderChats();renderMessages();}
+async function send(){const key=apiKeyEl.value.trim();if(!key)return alert('Ajoute la clé API');const text=promptEl.value.trim();if(!text)return;let c=activeChat();if(!c){createChat();c=activeChat();}c.messages.push({role:'user',content:text});if(c.title==='Nouveau chat')c.title=text.slice(0,38);promptEl.value='';render();
+try{const r=await fetch('https://api.openai.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model:S.model,messages:c.messages.map(m=>({role:m.role==='assistant'?'assistant':'user',content:m.content})),temperature:S.params.temperature,top_p:S.params.top_p,max_tokens:S.params.max_tokens})});const d=await r.json();c.messages.push({role:'assistant',content:d.choices?.[0]?.message?.content||JSON.stringify(d)});}catch(e){c.messages.push({role:'assistant',content:'Erreur: '+e.message})}
+save();render();}
+el('newProject').onclick=createProject;el('newGeneralChat').onclick=()=>createChat(null);el('plusInProject').onclick=()=>{if(!S.activeProject&&S.projects.length)return alert('Choisis un projet');createChat(S.activeProject);};el('sendBtn').onclick=send;el('modelSelect').onchange=e=>{S.model=e.target.value;save()};el('paramsBtn').onclick=()=>el('paramsPanel').classList.toggle('open');promptEl.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter')send()});apiKeyEl.onchange=save;
+if(!S.projects.length){const id=crypto.randomUUID();S.projects.push({id,name:'Projet 1'});S.activeProject=id;} if(!S.chats.length)createChat(null);renderModels();renderParams();render();
+</script>
+</body>
+</html>
