@@ -20,6 +20,11 @@ Tu as deux possibilités :
 ### Télécharger seulement l'app
 - Récupère le fichier `index.html` (c’est toute l’application).
 
+### Télécharger depuis ce dossier vers ton disque
+```bash
+cp index.html ~/Downloads/mini-api-chat.html
+```
+
 ### Télécharger tout le projet en ZIP
 ```bash
 zip -r mini-api-chat.zip index.html README.md
