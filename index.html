@@ -64,7 +64,8 @@
     .params.open{display:block}
     .param{display:grid;grid-template-columns:1fr 95px;gap:8px;margin-bottom:8px;align-items:center}
 
-    #sendBtn.send-circle{width:38px;height:38px;border-radius:999px;background:#fff;color:#111;border:none;display:inline-flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;padding:0}
+    #sendBtn.send-circle{width:38px;height:38px;border-radius:999px;background:#fff;color:#111;border:none;display:inline-flex;align-items:center;justify-content:center;padding:0}
+    #sendBtn.send-circle svg{width:18px;height:18px;stroke:#111;stroke-width:3.2;fill:none;stroke-linecap:round;stroke-linejoin:round}
     #sendBtn.send-circle:hover{background:#e8e8e8}
   </style>
 </head>
@@ -93,7 +94,7 @@
     <div class="composer">
       <div class="composer-wrap">
         <textarea id="prompt" placeholder="Message..."></textarea>
-        <button class="send-circle" id="sendBtn" aria-label="Envoyer" title="Envoyer">↑</button>
+        <button class="send-circle" id="sendBtn" aria-label="Envoyer" title="Envoyer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V6"></path><path d="M6.5 11.5 12 6l5.5 5.5"></path></svg></button>
       </div>
     </div>
   </section>
@@ -309,9 +310,9 @@
         continue;
       }
 
-      if(/^#{3}\s+/.test(line)){
+      if(/^#{1,6}\s+/.test(line)){
         flushList();
-        blocks.push(`<h3>${formatInline(line.replace(/^#{3}\s+/,""))}</h3>`);
+        blocks.push(`<p><strong>${formatInline(line.replace(/^#{1,6}\s+/,""))}</strong></p>`);
         continue;
       }
 
@@ -371,16 +372,31 @@
         shareBtn.className = "msg-icon";
         shareBtn.textContent = "↥";
         shareBtn.title = "Partager";
+        shareBtn.onclick = async () => {
+          await navigator.clipboard.writeText(m.content);
+          shareBtn.title = "Copié";
+          setTimeout(() => shareBtn.title = "Partager", 1000);
+        };
 
         const regenBtn = document.createElement("button");
         regenBtn.className = "msg-icon";
         regenBtn.textContent = "↻";
         regenBtn.title = "Régénérer";
+        regenBtn.onclick = () => {
+          const lastUser = [...c.messages].reverse().find(x => x.role === "user");
+          if(!lastUser) return;
+          promptEl.value = lastUser.content;
+          send();
+        };
 
         const moreBtn = document.createElement("button");
         moreBtn.className = "msg-icon";
         moreBtn.textContent = "⋯";
         moreBtn.title = "Plus";
+        moreBtn.onclick = async () => {
+          await navigator.clipboard.writeText(m.content);
+          alert("Texte copié.");
+        };
 
         actions.append(copyBtn, shareBtn, regenBtn, moreBtn);
         foot.appendChild(actions);
