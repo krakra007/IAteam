@@ -37,29 +37,35 @@
     .msg-row.user > div{margin-left:auto;display:inline-flex;flex-direction:column;align-items:flex-end;max-width:min(72%,56ch)}
     .msg-row.assistant > div{display:flex;flex-direction:column;align-items:flex-start;max-width:100%}
     .msg{max-width:820px;width:fit-content;padding:8px 12px;border-radius:14px;white-space:pre-wrap;line-height:1.45}
-    .msg.assistant{background:transparent;border:none;border-radius:0;padding-left:0;max-width:78ch;font-size:15px;color:#e8eaee}
-    .msg.user{background:#1f6feb;color:#f8fbff;border-radius:18px;display:inline-block;width:fit-content;max-width:100%;padding:6px 10px;font-size:14px;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word}
+    .msg.assistant{background:transparent;border:none;border-radius:0;padding-left:0;max-width:78ch;font-size:18px;color:#e8eaee;line-height:1.6}
+    .msg.user{background:#1f6feb;color:#f8fbff;border-radius:18px;display:inline-block;width:fit-content;max-width:100%;padding:8px 12px;font-size:16px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word}
     .msg-foot{display:flex;justify-content:flex-end;margin-top:4px;width:100%}
     .copy{background:transparent;border:0;color:#aeb4be;font-size:13px;cursor:pointer;line-height:1;padding:3px 4px;border-radius:6px}
     .copy:hover{background:#2a2a2a;color:#d6dbe3}
     .msg-actions{display:flex;gap:10px;margin-top:6px;align-items:center}
     .assistant-body p{margin:0 0 10px}
-    .assistant-body h3{margin:10px 0 8px;font-size:16px;line-height:1.35}
+    .assistant-body h3{margin:12px 0 10px;font-size:20px;line-height:1.4}
     .assistant-body ul{margin:6px 0 12px 20px;padding:0}
-    .assistant-body li{margin:4px 0}
+    .assistant-body li{margin:6px 0;font-size:17px;line-height:1.6}
     .assistant-body blockquote{margin:10px 0;padding:8px 12px;border-left:3px solid #4b5563;background:#242424;border-radius:6px;color:#d9dde5}
     .assistant-body strong{font-weight:650}
     .msg-icon{border:0;background:transparent;color:#d0d4db;cursor:pointer;font-size:16px;line-height:1;padding:2px}
     .msg-icon:hover{color:#ffffff}
 
+    .typing{display:flex;align-items:center;gap:8px;color:#b8bec8;font-size:14px}
+    .typing-spinner{width:14px;height:14px;border:2px solid #4b5563;border-top-color:#d1d5db;border-radius:50%;animation:spin 0.8s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
 
     .composer{padding:12px;background:var(--top);border-top:1px solid var(--line)}
     .composer-wrap{max-width:900px;margin:0 auto;display:flex;gap:10px}
-    textarea{flex:1;resize:none;height:90px;border-radius:12px;background:#222;color:var(--text);border:1px solid var(--line);padding:12px;font-family:inherit}
+    textarea{flex:1;resize:none;height:90px;border-radius:12px;background:#222;color:var(--text);border:1px solid var(--line);padding:12px 14px;font-family:inherit;font-size:17px;line-height:1.5}
 
     .params{display:none;position:absolute;right:14px;top:58px;background:#1f1f1f;border:1px solid var(--line);padding:10px;border-radius:10px;width:300px}
     .params.open{display:block}
     .param{display:grid;grid-template-columns:1fr 95px;gap:8px;margin-bottom:8px;align-items:center}
+
+    #sendBtn.send-circle{width:38px;height:38px;border-radius:999px;background:#fff;color:#111;border:none;display:inline-flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;padding:0}
+    #sendBtn.send-circle:hover{background:#e8e8e8}
   </style>
 </head>
 <body>
@@ -87,7 +93,7 @@
     <div class="composer">
       <div class="composer-wrap">
         <textarea id="prompt" placeholder="Message..."></textarea>
-        <button class="btn" id="sendBtn">Envoyer</button>
+        <button class="send-circle" id="sendBtn" aria-label="Envoyer" title="Envoyer">↑</button>
       </div>
     </div>
   </section>
@@ -128,6 +134,7 @@
   };
 
   const el = id => document.getElementById(id);
+  let isWaitingResponse = false;
   if(!CURATED_MODELS.includes(S.model)) S.model = CURATED_MODELS[0];
   const promptEl = el("prompt");
   const apiKeyEl = el("apiKey");
@@ -391,6 +398,19 @@
       box.appendChild(row);
     });
 
+
+    if(isWaitingResponse){
+      const row = document.createElement("div");
+      row.className = "msg-row assistant";
+      const wrap = document.createElement("div");
+      const typing = document.createElement("div");
+      typing.className = "typing";
+      typing.innerHTML = '<span class="typing-spinner" aria-hidden="true"></span><span>Le modèle réfléchit…</span>';
+      wrap.appendChild(typing);
+      row.appendChild(wrap);
+      box.appendChild(row);
+    }
+
     box.scrollTop = box.scrollHeight;
   }
 
@@ -470,6 +490,7 @@
     c.messages.push({ role:"user", content:text });
     if(c.title === "Nouveau chat") c.title = text.slice(0, 38);
     promptEl.value = "";
+    isWaitingResponse = true;
     render();
 
     try{
@@ -494,6 +515,8 @@
       c.messages.push({ role:"assistant", content:d.choices?.[0]?.message?.content || JSON.stringify(d) });
     }catch(e){
       c.messages.push({ role:"assistant", content:"Erreur: " + e.message });
+    }finally{
+      isWaitingResponse = false;
     }
 
     save();
