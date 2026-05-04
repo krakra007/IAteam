@@ -368,16 +368,6 @@
         copyBtn.title = "Copier";
         copyBtn.onclick = () => navigator.clipboard.writeText(m.content);
 
-        const shareBtn = document.createElement("button");
-        shareBtn.className = "msg-icon";
-        shareBtn.textContent = "↥";
-        shareBtn.title = "Partager";
-        shareBtn.onclick = async () => {
-          await navigator.clipboard.writeText(m.content);
-          shareBtn.title = "Copié";
-          setTimeout(() => shareBtn.title = "Partager", 1000);
-        };
-
         const regenBtn = document.createElement("button");
         regenBtn.className = "msg-icon";
         regenBtn.textContent = "↻";
@@ -389,16 +379,7 @@
           send();
         };
 
-        const moreBtn = document.createElement("button");
-        moreBtn.className = "msg-icon";
-        moreBtn.textContent = "⋯";
-        moreBtn.title = "Plus";
-        moreBtn.onclick = async () => {
-          await navigator.clipboard.writeText(m.content);
-          alert("Texte copié.");
-        };
-
-        actions.append(copyBtn, shareBtn, regenBtn, moreBtn);
+        actions.append(copyBtn, regenBtn);
         foot.appendChild(actions);
       } else {
         const b = document.createElement("button");
