@@ -60,6 +60,18 @@
     .composer-wrap{max-width:900px;margin:0 auto;display:flex;gap:10px}
     textarea{flex:1;resize:none;height:90px;border-radius:12px;background:#222;color:var(--text);border:1px solid var(--line);padding:12px 14px;font-family:inherit;font-size:17px;line-height:1.5}
 
+
+    .main.home-mode .top{border-bottom:none}
+    .main.home-mode .messages{display:none}
+    .main.home-mode .composer{margin:auto 0 28vh;border-top:none;background:transparent}
+    .home-hero{display:none;text-align:center;color:#f3f4f6;font-size:42px;line-height:1.2;font-weight:500;margin-top:18vh}
+    .main.home-mode .home-hero{display:block}
+    .composer-wrap{transition:max-width .2s ease}
+    .main.home-mode .composer-wrap{max-width:780px;display:block}
+    .main.home-mode textarea{height:56px;border-radius:28px;padding:16px 120px 16px 20px;overflow:hidden}
+    .main.home-mode .send-circle{position:absolute;right:10px;top:9px}
+    .composer-box{position:relative}
+
     .params{display:none;position:absolute;right:14px;top:58px;background:#1f1f1f;border:1px solid var(--line);padding:10px;border-radius:10px;width:300px}
     .params.open{display:block}
     .param{display:grid;grid-template-columns:1fr 95px;gap:8px;margin-bottom:8px;align-items:center}
@@ -90,12 +102,13 @@
     </div>
 
     <div class="messages" id="messages"></div>
+    <div class="home-hero" id="homeHero">Qu'est-ce qui vous intéresse aujourd'hui ?</div>
 
     <div class="composer">
-      <div class="composer-wrap">
-        <textarea id="prompt" placeholder="Message..."></textarea>
+      <div class="composer-wrap"><div class="composer-box">
+        <textarea id="prompt" placeholder="Poser une question"></textarea>
         <button class="send-circle" id="sendBtn" aria-label="Envoyer" title="Envoyer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V6"></path><path d="M6.5 11.5 12 6l5.5 5.5"></path></svg></button>
-      </div>
+      </div></div>
     </div>
   </section>
 </div>
@@ -466,9 +479,17 @@
     el("p_top_k").onchange = e => { S.params.top_k = e.target.value; save(); };
   }
 
+  function updateLayoutMode(){
+    const main = document.querySelector(".main");
+    const c = activeChat();
+    const isHome = !isWaitingResponse && (!c || !c.messages || c.messages.length === 0);
+    main.classList.toggle("home-mode", isHome);
+  }
+
   function render(){
     renderChats();
     renderMessages();
+    updateLayoutMode();
   }
 
   async function send(){
