@@ -76,6 +76,9 @@
     .params{display:none;position:absolute;right:14px;top:58px;background:#1f1f1f;border:1px solid var(--line);padding:10px;border-radius:10px;width:300px}
     .params.open{display:block}
     .param{display:grid;grid-template-columns:1fr 95px;gap:8px;margin-bottom:8px;align-items:center}
+    .diag{margin:8px auto 0;max-width:900px;background:#171717;border:1px solid #343a46;border-radius:10px;padding:10px 12px;font-size:12px;color:#cfd5df;white-space:pre-wrap;display:none}
+    .diag.open{display:block}
+    .diag-title{font-weight:600;color:#e5e7eb;margin-bottom:6px}
 
     #sendBtn.send-circle{width:38px;height:38px;border-radius:999px;background:#fff;color:#111;border:none;display:inline-flex;align-items:center;justify-content:center;padding:0}
     #sendBtn.send-circle svg{width:18px;height:18px;stroke:#111;stroke-width:3.2;fill:none;stroke-linecap:round;stroke-linejoin:round}
@@ -117,6 +120,7 @@
         <button class="send-circle" id="sendBtn" aria-label="Envoyer" title="Envoyer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V6"></path><path d="M6.5 11.5 12 6l5.5 5.5"></path></svg></button>
       </div></div>
     </div>
+    <div id="diagPanel" class="diag"></div>
   </section>
 </div>
 
@@ -163,6 +167,8 @@
 
   const el = id => document.getElementById(id);
   let isWaitingResponse = false;
+  let diagnosticMode = localStorage.getItem("diagnosticMode") === "1";
+  let lastDiagnostic = null;
   if(!CURATED_MODELS.includes(S.model)) S.model = CURATED_MODELS[0];
   const promptEl = el("prompt");
   const PROVIDERS = ["ANTHROPIC","OPENAI","DEEPSEEK","GOOGLE GEMINI"];
@@ -188,6 +194,7 @@
     localStorage.setItem("apiKey", activeApiKey || "");
     localStorage.setItem("apiKeysByProvider", JSON.stringify(apiKeysByProvider));
     localStorage.setItem("providerEndpoints", JSON.stringify(providerEndpoints));
+    localStorage.setItem("diagnosticMode", diagnosticMode ? "1" : "0");
   }
 
   function renderApiKeys(){
@@ -530,6 +537,7 @@
     el("p_stop").onchange = e => { S.params.stop = e.target.value; save(); };
     el("p_seed").onchange = e => { S.params.seed = e.target.value; save(); };
     el("p_top_k").onchange = e => { S.params.top_k = e.target.value; save(); };
+    el("p_diag").onchange = e => { diagnosticMode = !!e.target.checked; save(); renderDiagnosticPanel(); };
   }
 
   function updateLayoutMode(){
@@ -539,10 +547,23 @@
     main.classList.toggle("home-mode", isHome);
   }
 
+
+  function renderDiagnosticPanel(){
+    const panel = el("diagPanel");
+    if(!diagnosticMode || !lastDiagnostic){
+      panel.classList.remove("open");
+      panel.textContent = "";
+      return;
+    }
+    panel.classList.add("open");
+    panel.innerHTML = `<div class="diag-title">Diagnostic requête</div>${lastDiagnostic}`;
+  }
+
   function render(){
     renderChats();
     renderMessages();
     updateLayoutMode();
+    renderDiagnosticPanel();
   }
 
 
@@ -555,12 +576,31 @@
   }
 
 
+
+  function normalizeModelId(provider, model){
+    if(provider !== "ANTHROPIC") return model;
+    const map = {
+      "haiku-4.5": "claude-haiku-4-5",
+      "sonnet-4.5": "claude-sonnet-4-5",
+      "sonnet-4.6": "claude-sonnet-4-6",
+      "opus-4.6": "claude-opus-4-6",
+      "opus-4.7": "claude-opus-4-7",
+      "opus-4.1": "claude-opus-4-1"
+    };
+    return map[model] || model;
+  }
+
+  function supportsTopP(model){
+    return !/^gpt-5/.test((model || "").toLowerCase());
+  }
+
   function buildOpenAICompatBody(provider, c){
+    const modelId = normalizeModelId(provider, S.model);
     const base = {
-      model:S.model,
+      model:modelId,
       messages:c.messages.map(m => ({ role:m.role === "assistant" ? "assistant" : "user", content:m.content })),
       temperature:S.params.temperature,
-      top_p:S.params.top_p
+      ...(supportsTopP(modelId) ? { top_p:S.params.top_p } : {})
     };
 
     if(provider === "GOOGLE GEMINI"){
@@ -591,7 +631,7 @@
 
   function buildAnthropicBody(c){
     return {
-      model: S.model,
+      model: normalizeModelId("ANTHROPIC", S.model),
       max_tokens: Number(S.params.max_completion_tokens || 1200),
       temperature: Number(S.params.temperature ?? 0.7),
       top_p: Number(S.params.top_p ?? 1),
@@ -608,6 +648,21 @@
       return txt || JSON.stringify(data);
     }
     return data?.choices?.[0]?.message?.content || JSON.stringify(data);
+  }
+
+
+  async function postWithProviderFallback(provider, endpoint, options){
+    try{
+      return await fetch(endpoint, options);
+    }catch(e){
+      if(provider === "DEEPSEEK" && e?.message === "Failed to fetch"){
+        const alt = endpoint.includes('/v1/chat/completions')
+          ? endpoint.replace('/v1/chat/completions','/chat/completions')
+          : endpoint.replace('/chat/completions','/v1/chat/completions');
+        return await fetch(alt, options);
+      }
+      throw e;
+    }
   }
 
   async function send(){
@@ -646,13 +701,20 @@
         body = buildOpenAICompatBody(provider, c);
       }
 
-      const r = await fetch(endpoint, {
+      const requestPayload = body;
+      const r = await postWithProviderFallback(provider, endpoint, {
         method:"POST",
         headers,
         body: JSON.stringify(body)
       });
 
       const d = await r.json();
+      lastDiagnostic = [
+        `Provider: ${provider}`,
+        `Endpoint: ${endpoint}`,
+        `HTTP: ${r.status} ${r.statusText}`,
+        `Payload: ${JSON.stringify(requestPayload, null, 2)}`
+      ].join("\n");
       if(!r.ok){
         throw new Error(d?.error?.message || d?.message || `HTTP ${r.status}`);
       }
@@ -660,6 +722,12 @@
       c.messages.push({ role:"assistant", content:extractAssistantText(provider, d) });
     }catch(e){
       const extra = e?.message === "Failed to fetch" ? " (souvent CORS/endpoint invalide ou clé refusée côté navigateur)" : "";
+      lastDiagnostic = [
+        `Provider: ${provider}`,
+        `Endpoint: ${endpoint}`,
+        `HTTP: échec réseau`,
+        `Erreur: ${e.message}`
+      ].join("\n");
       c.messages.push({ role:"assistant", content:"Erreur: " + e.message + extra });
     }finally{
       isWaitingResponse = false;
