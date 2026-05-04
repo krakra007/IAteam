@@ -171,7 +171,7 @@
   const providerEndpoints = JSON.parse(localStorage.getItem("providerEndpoints") || "{}");
   const defaultEndpoints = {
     "OPENAI": "https://api.openai.com/v1/chat/completions",
-    "DEEPSEEK": "https://api.deepseek.com/chat/completions",
+    "DEEPSEEK": "https://api.deepseek.com/v1/chat/completions",
     "GOOGLE GEMINI": "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
     "ANTHROPIC": "https://api.anthropic.com/v1/messages"
   };
@@ -515,7 +515,12 @@
       <div class='param'><label>top_k</label><input id='p_top_k' type='number' step='1' min='1' placeholder='non supporté Chat Completions' value='${S.params.top_k ?? ""}'></div>
     `;
 
-    const num = (id,key) => el(id).onchange = e => { S.params[key] = Number(e.target.value); save(); };
+    const num = (id,key) => el(id).onchange = e => {
+      const raw = Number(e.target.value);
+      if(Number.isNaN(raw)) return;
+      S.params[key] = key === "n" ? Math.max(1, Math.floor(raw)) : raw;
+      save();
+    };
     num("p_temperature","temperature");
     num("p_top_p","top_p");
     num("p_max_completion_tokens","max_completion_tokens");
@@ -578,7 +583,7 @@
       max_completion_tokens:S.params.max_completion_tokens,
       frequency_penalty:S.params.frequency_penalty ?? 0,
       presence_penalty:S.params.presence_penalty ?? 0,
-      n:S.params.n ?? 1,
+      n: Math.max(1, Number(S.params.n) || 1),
       ...(S.params.stop ? { stop:S.params.stop } : {}),
       ...(S.params.seed !== "" ? { seed:Number(S.params.seed) } : {})
     };
@@ -634,6 +639,7 @@
       if(provider === "ANTHROPIC"){
         headers["x-api-key"] = key;
         headers["anthropic-version"] = "2023-06-01";
+        headers["anthropic-dangerous-direct-browser-access"] = "true";
         body = buildAnthropicBody(c);
       } else {
         headers["Authorization"] = "Bearer " + key;
@@ -653,7 +659,8 @@
 
       c.messages.push({ role:"assistant", content:extractAssistantText(provider, d) });
     }catch(e){
-      c.messages.push({ role:"assistant", content:"Erreur: " + e.message });
+      const extra = e?.message === "Failed to fetch" ? " (souvent CORS/endpoint invalide ou clé refusée côté navigateur)" : "";
+      c.messages.push({ role:"assistant", content:"Erreur: " + e.message + extra });
     }finally{
       isWaitingResponse = false;
     }
