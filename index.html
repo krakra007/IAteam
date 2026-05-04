@@ -95,9 +95,20 @@
         <button class="btn" id="toggleSidebarBtn" title="Ouvrir/Fermer la barre latérale">☰</button>
         <select id="modelSelect"></select>
       </div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <input id="apiKey" type="password" placeholder="Clé API OpenAI" />
+      <div style="display:flex;gap:8px;align-items:center;position:relative">
+        <button class="btn" id="apiKeyBtn" title="Gérer les clés API">🔑</button>
         <button class="btn" id="paramsBtn">Paramètres</button>
+        <div id="apiKeyPanel" class="params" style="right:90px;top:46px;width:340px">
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <label style="font-size:12px;color:#9ca3af">Clés API sauvegardées</label>
+            <select id="apiKeySelect"></select>
+            <input id="apiKeyInput" type="password" placeholder="Ajouter une nouvelle clé API" />
+            <div style="display:flex;gap:8px">
+              <button class="btn" id="saveApiKeyBtn">Ajouter</button>
+              <button class="btn" id="deleteApiKeyBtn">Supprimer</button>
+            </div>
+          </div>
+        </div>
       </div>
       <div id="paramsPanel" class="params"></div>
     </div>
@@ -152,8 +163,10 @@
   let isWaitingResponse = false;
   if(!CURATED_MODELS.includes(S.model)) S.model = CURATED_MODELS[0];
   const promptEl = el("prompt");
-  const apiKeyEl = el("apiKey");
-  apiKeyEl.value = localStorage.getItem("apiKey") || "";
+  const apiKeyInputEl = el("apiKeyInput");
+  const apiKeySelectEl = el("apiKeySelect");
+  const apiKeysState = JSON.parse(localStorage.getItem("apiKeys") || "[]");
+  let activeApiKey = localStorage.getItem("apiKey") || apiKeysState[0] || "";
 
   function save(){
     localStorage.setItem("projects", JSON.stringify(S.projects));
@@ -162,7 +175,13 @@
     localStorage.setItem("activeProject", S.activeProject || "");
     localStorage.setItem("model", S.model);
     localStorage.setItem("params", JSON.stringify(S.params));
-    localStorage.setItem("apiKey", apiKeyEl.value.trim());
+    localStorage.setItem("apiKey", activeApiKey || "");
+    localStorage.setItem("apiKeys", JSON.stringify(apiKeysState));
+  }
+
+  function renderApiKeys(){
+    apiKeySelectEl.innerHTML = (apiKeysState.length ? apiKeysState : ["Aucune clé"]).map(k => `<option value="${k}">${k === "Aucune clé" ? k : k.slice(0,10)+"..."+k.slice(-4)}</option>`).join("");
+    if(activeApiKey){ apiKeySelectEl.value = activeApiKey; }
   }
 
   const activeChat = () => S.chats.find(c => c.id === S.activeChat);
@@ -435,7 +454,7 @@
 
 
   async function loadModelsFromApi(){
-    const key = apiKeyEl.value.trim();
+    const key = (activeApiKey || "").trim();
     if(!key) return;
     try{
       const r = await fetch("https://api.openai.com/v1/models", {
@@ -448,7 +467,8 @@
         S.model = available[0];
         save();
       }
-      renderModels();
+      renderApiKeys();
+  renderModels();
     }catch(_e){
       // fallback silencieux: on garde la liste curatée
     }
@@ -494,7 +514,7 @@
   }
 
   async function send(){
-    const key = apiKeyEl.value.trim();
+    const key = (activeApiKey || "").trim();
     if(!key) return alert("Ajoute la clé API");
 
     const text = promptEl.value.trim();
@@ -560,9 +580,33 @@
       send();
     }
   });
-  apiKeyEl.onchange = async () => { save(); await loadModelsFromApi(); };
+  el("apiKeyBtn").onclick = () => el("apiKeyPanel").classList.toggle("open");
+  el("saveApiKeyBtn").onclick = () => {
+    const k = apiKeyInputEl.value.trim();
+    if(!k) return;
+    if(!apiKeysState.includes(k)) apiKeysState.unshift(k);
+    activeApiKey = k;
+    apiKeyInputEl.value = "";
+    save();
+    renderApiKeys();
+    loadModelsFromApi();
+  };
+  el("deleteApiKeyBtn").onclick = () => {
+    if(!activeApiKey) return;
+    const i = apiKeysState.indexOf(activeApiKey);
+    if(i>=0) apiKeysState.splice(i,1);
+    activeApiKey = apiKeysState[0] || "";
+    save();
+    renderApiKeys();
+  };
+  apiKeySelectEl.onchange = async (e) => {
+    activeApiKey = e.target.value === "Aucune clé" ? "" : e.target.value;
+    save();
+    await loadModelsFromApi();
+  };
 
   if(!S.chats.length) createChat(null);
+  renderApiKeys();
   renderModels();
   renderParams();
   render();
