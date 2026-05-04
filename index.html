@@ -550,12 +550,31 @@
   }
 
 
-  function buildOpenAICompatBody(c){
-    return {
+  function buildOpenAICompatBody(provider, c){
+    const base = {
       model:S.model,
       messages:c.messages.map(m => ({ role:m.role === "assistant" ? "assistant" : "user", content:m.content })),
       temperature:S.params.temperature,
-      top_p:S.params.top_p,
+      top_p:S.params.top_p
+    };
+
+    if(provider === "GOOGLE GEMINI"){
+      return {
+        ...base,
+        max_tokens: Number(S.params.max_completion_tokens || 1200)
+      };
+    }
+
+    if(provider === "DEEPSEEK"){
+      return {
+        ...base,
+        max_tokens: Number(S.params.max_completion_tokens || 1200),
+        ...(S.params.stop ? { stop:S.params.stop } : {})
+      };
+    }
+
+    return {
+      ...base,
       max_completion_tokens:S.params.max_completion_tokens,
       frequency_penalty:S.params.frequency_penalty ?? 0,
       presence_penalty:S.params.presence_penalty ?? 0,
@@ -573,7 +592,7 @@
       top_p: Number(S.params.top_p ?? 1),
       messages: c.messages
         .filter(m => m.role === "user" || m.role === "assistant")
-        .map(m => ({ role: m.role, content: m.content }))
+        .map(m => ({ role: m.role, content: [{ type:"text", text: m.content }] }))
     };
   }
 
@@ -618,7 +637,7 @@
         body = buildAnthropicBody(c);
       } else {
         headers["Authorization"] = "Bearer " + key;
-        body = buildOpenAICompatBody(c);
+        body = buildOpenAICompatBody(provider, c);
       }
 
       const r = await fetch(endpoint, {
