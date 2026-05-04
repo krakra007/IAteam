@@ -98,15 +98,10 @@
       <div style="display:flex;gap:8px;align-items:center;position:relative">
         <button class="btn" id="apiKeyBtn" title="Gérer les clés API">🔑</button>
         <button class="btn" id="paramsBtn">Paramètres</button>
-        <div id="apiKeyPanel" class="params" style="right:90px;top:46px;width:340px">
-          <div style="display:flex;flex-direction:column;gap:8px">
-            <label style="font-size:12px;color:#9ca3af">Clés API sauvegardées</label>
-            <select id="apiKeySelect"></select>
-            <input id="apiKeyInput" type="password" placeholder="Ajouter une nouvelle clé API" />
-            <div style="display:flex;gap:8px">
-              <button class="btn" id="saveApiKeyBtn">Ajouter</button>
-              <button class="btn" id="deleteApiKeyBtn">Supprimer</button>
-            </div>
+        <div id="apiKeyPanel" class="params" style="right:90px;top:46px;width:360px">
+          <div id="providerKeys" style="display:flex;flex-direction:column;gap:10px"></div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button class="btn" id="saveApiKeyBtn">Enregistrer</button>
           </div>
         </div>
       </div>
@@ -163,10 +158,11 @@
   let isWaitingResponse = false;
   if(!CURATED_MODELS.includes(S.model)) S.model = CURATED_MODELS[0];
   const promptEl = el("prompt");
-  const apiKeyInputEl = el("apiKeyInput");
-  const apiKeySelectEl = el("apiKeySelect");
-  const apiKeysState = JSON.parse(localStorage.getItem("apiKeys") || "[]");
-  let activeApiKey = localStorage.getItem("apiKey") || apiKeysState[0] || "";
+  const PROVIDERS = ["ANTHROPIC","OPENAI","DEEPSEEK","GOOGLE GEMINI"];
+  const providerKeysEl = el("providerKeys");
+  const apiKeysByProvider = JSON.parse(localStorage.getItem("apiKeysByProvider") || "{}");
+  PROVIDERS.forEach(p => { if(!(p in apiKeysByProvider)) apiKeysByProvider[p] = ""; });
+  let activeApiKey = localStorage.getItem("apiKey") || apiKeysByProvider["OPENAI"] || "";
 
   function save(){
     localStorage.setItem("projects", JSON.stringify(S.projects));
@@ -176,12 +172,20 @@
     localStorage.setItem("model", S.model);
     localStorage.setItem("params", JSON.stringify(S.params));
     localStorage.setItem("apiKey", activeApiKey || "");
-    localStorage.setItem("apiKeys", JSON.stringify(apiKeysState));
+    localStorage.setItem("apiKeysByProvider", JSON.stringify(apiKeysByProvider));
   }
 
   function renderApiKeys(){
-    apiKeySelectEl.innerHTML = (apiKeysState.length ? apiKeysState : ["Aucune clé"]).map(k => `<option value="${k}">${k === "Aucune clé" ? k : k.slice(0,10)+"..."+k.slice(-4)}</option>`).join("");
-    if(activeApiKey){ apiKeySelectEl.value = activeApiKey; }
+    providerKeysEl.innerHTML = PROVIDERS.map(name => {
+      const val = apiKeysByProvider[name] || "";
+      const status = val ? "Clé configurée" : "Aucune clé";
+      const dot = val ? "#22c55e" : "#6b7280";
+      return `<div style="display:flex;flex-direction:column;gap:6px">
+        <div style="font-size:12px;color:#9ca3af;font-weight:600;letter-spacing:.04em">${name}</div>
+        <input data-provider="${name}" type="password" value="${val}" placeholder="Entrer la clé ${name}" />
+        <div style="font-size:12px;color:#9ca3af"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${dot};margin-right:6px"></span>${status}</div>
+      </div>`;
+    }).join("");
   }
 
   const activeChat = () => S.chats.find(c => c.id === S.activeChat);
@@ -581,27 +585,13 @@
     }
   });
   el("apiKeyBtn").onclick = () => el("apiKeyPanel").classList.toggle("open");
-  el("saveApiKeyBtn").onclick = () => {
-    const k = apiKeyInputEl.value.trim();
-    if(!k) return;
-    if(!apiKeysState.includes(k)) apiKeysState.unshift(k);
-    activeApiKey = k;
-    apiKeyInputEl.value = "";
+  el("saveApiKeyBtn").onclick = async () => {
+    providerKeysEl.querySelectorAll("input[data-provider]").forEach(inp => {
+      apiKeysByProvider[inp.dataset.provider] = inp.value.trim();
+    });
+    activeApiKey = apiKeysByProvider["OPENAI"] || "";
     save();
     renderApiKeys();
-    loadModelsFromApi();
-  };
-  el("deleteApiKeyBtn").onclick = () => {
-    if(!activeApiKey) return;
-    const i = apiKeysState.indexOf(activeApiKey);
-    if(i>=0) apiKeysState.splice(i,1);
-    activeApiKey = apiKeysState[0] || "";
-    save();
-    renderApiKeys();
-  };
-  apiKeySelectEl.onchange = async (e) => {
-    activeApiKey = e.target.value === "Aucune clé" ? "" : e.target.value;
-    save();
     await loadModelsFromApi();
   };
 
