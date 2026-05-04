@@ -168,7 +168,14 @@
   const PROVIDERS = ["ANTHROPIC","OPENAI","DEEPSEEK","GOOGLE GEMINI"];
   const providerKeysEl = el("providerKeys");
   const apiKeysByProvider = JSON.parse(localStorage.getItem("apiKeysByProvider") || "{}");
-  PROVIDERS.forEach(p => { if(!(p in apiKeysByProvider)) apiKeysByProvider[p] = ""; });
+  const providerEndpoints = JSON.parse(localStorage.getItem("providerEndpoints") || "{}");
+  const defaultEndpoints = {
+    "OPENAI": "https://api.openai.com/v1/chat/completions",
+    "DEEPSEEK": "https://api.deepseek.com/chat/completions",
+    "GOOGLE GEMINI": "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+    "ANTHROPIC": "https://api.anthropic.com/v1/messages"
+  };
+  PROVIDERS.forEach(p => { if(!(p in apiKeysByProvider)) apiKeysByProvider[p] = ""; if(!(p in providerEndpoints)) providerEndpoints[p] = defaultEndpoints[p] || ""; });
   let activeApiKey = localStorage.getItem("apiKey") || apiKeysByProvider["OPENAI"] || "";
 
   function save(){
@@ -180,6 +187,7 @@
     localStorage.setItem("params", JSON.stringify(S.params));
     localStorage.setItem("apiKey", activeApiKey || "");
     localStorage.setItem("apiKeysByProvider", JSON.stringify(apiKeysByProvider));
+    localStorage.setItem("providerEndpoints", JSON.stringify(providerEndpoints));
   }
 
   function renderApiKeys(){
@@ -190,6 +198,7 @@
       return `<div style="display:flex;flex-direction:column;gap:6px">
         <div style="font-size:12px;color:#9ca3af;font-weight:600;letter-spacing:.04em">${name}</div>
         <input data-provider="${name}" type="password" value="${val}" placeholder="Entrer la clé ${name}" />
+        <input data-endpoint="${name}" type="text" value="${providerEndpoints[name] || ""}" placeholder="Endpoint ${name}" style="font-size:12px" />
         <div data-status="${name}" style="font-size:12px;color:#9ca3af"><span data-dot="${name}" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${dot};margin-right:6px"></span>${status}</div>
       </div>`;
     }).join("");
@@ -475,7 +484,7 @@
 
 
   async function loadModelsFromApi(){
-    const key = (activeApiKey || "").trim();
+    const key = ((apiKeysByProvider["OPENAI"] || activeApiKey || "")).trim();
     if(!key) return;
     try{
       const r = await fetch("https://api.openai.com/v1/models", {
@@ -531,9 +540,21 @@
     updateLayoutMode();
   }
 
+
+  function inferProviderFromModel(model){
+    const m = (model || "").toLowerCase();
+    if(m.includes("gemini")) return "GOOGLE GEMINI";
+    if(m.includes("deepseek")) return "DEEPSEEK";
+    if(m.includes("opus") || m.includes("sonnet") || m.includes("haiku") || m.includes("claude")) return "ANTHROPIC";
+    return "OPENAI";
+  }
+
   async function send(){
-    const key = (activeApiKey || "").trim();
-    if(!key) return alert("Ajoute la clé API");
+    const provider = inferProviderFromModel(S.model);
+    const key = ((provider === "OPENAI" ? activeApiKey : apiKeysByProvider[provider]) || "").trim();
+    if(!key) return alert(`Ajoute la clé API pour ${provider}.`);
+    const endpoint = (providerEndpoints[provider] || "").trim();
+    if(!endpoint) return alert(`Ajoute un endpoint API pour ${provider}.`);
 
     const text = promptEl.value.trim();
     if(!text) return;
@@ -551,7 +572,7 @@
     render();
 
     try{
-      const r = await fetch("https://api.openai.com/v1/chat/completions", {
+      const r = await fetch(endpoint, {
         method:"POST",
         headers:{ "Content-Type":"application/json", "Authorization":"Bearer " + key },
         body: JSON.stringify({
@@ -602,6 +623,9 @@
   el("saveApiKeyBtn").onclick = async () => {
     providerKeysEl.querySelectorAll("input[data-provider]").forEach(inp => {
       apiKeysByProvider[inp.dataset.provider] = inp.value.trim();
+    });
+    providerKeysEl.querySelectorAll("input[data-endpoint]").forEach(inp => {
+      providerEndpoints[inp.dataset.endpoint] = inp.value.trim();
     });
     activeApiKey = apiKeysByProvider["OPENAI"] || "";
     save();
