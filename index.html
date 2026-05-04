@@ -58,7 +58,7 @@
 
     .composer{padding:12px;background:var(--top);border-top:1px solid var(--line)}
     .composer-wrap{max-width:900px;margin:0 auto;display:flex;gap:10px}
-    textarea{flex:1;resize:none;height:90px;border-radius:12px;background:#222;color:var(--text);border:1px solid var(--line);padding:12px 14px;font-family:inherit;font-size:17px;line-height:1.5}
+    textarea{flex:1;resize:none;height:90px;border-radius:12px;background:#222;color:var(--text);border:1px solid var(--line);padding:12px 14px;font-family:inherit;font-size:17px;line-height:1.5;width:100%}
 
 
     .main.home-mode .top{border-bottom:none}
@@ -67,10 +67,10 @@
     .home-hero{display:none;text-align:center;color:#f3f4f6;font-size:42px;line-height:1.2;font-weight:500;margin-top:18vh}
     .main.home-mode .home-hero{display:block}
     .composer-wrap{transition:max-width .2s ease}
-    .main.home-mode .composer-wrap{max-width:780px;display:block}
-    .main.home-mode textarea{height:56px;border-radius:28px;padding:16px 120px 16px 20px;overflow:hidden}
+    .main.home-mode .composer-wrap{max-width:920px;width:min(92vw,920px);display:block}
+    .main.home-mode textarea{height:56px;min-height:56px;border-radius:28px;padding:16px 72px 16px 20px;overflow:hidden}
     .main.home-mode .send-circle{position:absolute;right:10px;top:9px}
-    .composer-box{position:relative}
+    .composer-box{position:relative;width:100%}
 
     .params{display:none;position:absolute;right:14px;top:58px;background:#1f1f1f;border:1px solid var(--line);padding:10px;border-radius:10px;width:300px}
     .params.open{display:block}
