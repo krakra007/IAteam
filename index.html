@@ -549,6 +549,43 @@
     return "OPENAI";
   }
 
+
+  function buildOpenAICompatBody(c){
+    return {
+      model:S.model,
+      messages:c.messages.map(m => ({ role:m.role === "assistant" ? "assistant" : "user", content:m.content })),
+      temperature:S.params.temperature,
+      top_p:S.params.top_p,
+      max_completion_tokens:S.params.max_completion_tokens,
+      frequency_penalty:S.params.frequency_penalty ?? 0,
+      presence_penalty:S.params.presence_penalty ?? 0,
+      n:S.params.n ?? 1,
+      ...(S.params.stop ? { stop:S.params.stop } : {}),
+      ...(S.params.seed !== "" ? { seed:Number(S.params.seed) } : {})
+    };
+  }
+
+  function buildAnthropicBody(c){
+    return {
+      model: S.model,
+      max_tokens: Number(S.params.max_completion_tokens || 1200),
+      temperature: Number(S.params.temperature ?? 0.7),
+      top_p: Number(S.params.top_p ?? 1),
+      messages: c.messages
+        .filter(m => m.role === "user" || m.role === "assistant")
+        .map(m => ({ role: m.role, content: m.content }))
+    };
+  }
+
+  function extractAssistantText(provider, data){
+    if(provider === "ANTHROPIC"){
+      const chunks = Array.isArray(data?.content) ? data.content : [];
+      const txt = chunks.filter(x => x?.type === "text").map(x => x.text).join("\n").trim();
+      return txt || JSON.stringify(data);
+    }
+    return data?.choices?.[0]?.message?.content || JSON.stringify(data);
+  }
+
   async function send(){
     const provider = inferProviderFromModel(S.model);
     const key = ((provider === "OPENAI" ? activeApiKey : apiKeysByProvider[provider]) || "").trim();
@@ -572,25 +609,30 @@
     render();
 
     try{
+      const headers = { "Content-Type":"application/json" };
+      let body;
+
+      if(provider === "ANTHROPIC"){
+        headers["x-api-key"] = key;
+        headers["anthropic-version"] = "2023-06-01";
+        body = buildAnthropicBody(c);
+      } else {
+        headers["Authorization"] = "Bearer " + key;
+        body = buildOpenAICompatBody(c);
+      }
+
       const r = await fetch(endpoint, {
         method:"POST",
-        headers:{ "Content-Type":"application/json", "Authorization":"Bearer " + key },
-        body: JSON.stringify({
-          model:S.model,
-          messages:c.messages.map(m => ({ role:m.role === "assistant" ? "assistant" : "user", content:m.content })),
-          temperature:S.params.temperature,
-          top_p:S.params.top_p,
-          max_completion_tokens:S.params.max_completion_tokens,
-          frequency_penalty:S.params.frequency_penalty ?? 0,
-          presence_penalty:S.params.presence_penalty ?? 0,
-          n:S.params.n ?? 1,
-          ...(S.params.stop ? { stop:S.params.stop } : {}),
-          ...(S.params.seed !== "" ? { seed:Number(S.params.seed) } : {})
-        })
+        headers,
+        body: JSON.stringify(body)
       });
 
       const d = await r.json();
-      c.messages.push({ role:"assistant", content:d.choices?.[0]?.message?.content || JSON.stringify(d) });
+      if(!r.ok){
+        throw new Error(d?.error?.message || d?.message || `HTTP ${r.status}`);
+      }
+
+      c.messages.push({ role:"assistant", content:extractAssistantText(provider, d) });
     }catch(e){
       c.messages.push({ role:"assistant", content:"Erreur: " + e.message });
     }finally{
