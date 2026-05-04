@@ -183,9 +183,19 @@
       return `<div style="display:flex;flex-direction:column;gap:6px">
         <div style="font-size:12px;color:#9ca3af;font-weight:600;letter-spacing:.04em">${name}</div>
         <input data-provider="${name}" type="password" value="${val}" placeholder="Entrer la clé ${name}" />
-        <div style="font-size:12px;color:#9ca3af"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${dot};margin-right:6px"></span>${status}</div>
+        <div data-status="${name}" style="font-size:12px;color:#9ca3af"><span data-dot="${name}" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${dot};margin-right:6px"></span>${status}</div>
       </div>`;
     }).join("");
+
+    providerKeysEl.querySelectorAll("input[data-provider]").forEach(inp => {
+      inp.addEventListener("input", () => {
+        const hasKey = inp.value.trim().length > 0;
+        const statusEl = providerKeysEl.querySelector(`[data-status="${inp.dataset.provider}"]`);
+        const dotEl = providerKeysEl.querySelector(`[data-dot="${inp.dataset.provider}"]`);
+        if(statusEl) statusEl.lastChild.textContent = hasKey ? "Clé configurée" : "Aucune clé";
+        if(dotEl) dotEl.style.background = hasKey ? "#22c55e" : "#6b7280";
+      });
+    });
   }
 
   const activeChat = () => S.chats.find(c => c.id === S.activeChat);
