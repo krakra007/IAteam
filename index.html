@@ -594,13 +594,36 @@
     return !/^gpt-5/.test((model || "").toLowerCase());
   }
 
+
+  function buildSamplingParams(provider, model){
+    const temp = Number(S.params.temperature);
+    const topP = Number(S.params.top_p);
+    const hasTemp = Number.isFinite(temp);
+    const hasTopP = Number.isFinite(topP) && topP > 0;
+    const m = (model || "").toLowerCase();
+
+    if(m.startsWith("gpt-5")){
+      return hasTemp ? { temperature: temp } : {};
+    }
+
+    // Pour éviter les erreurs "temperature and top_p cannot both be specified"
+    if(provider === "ANTHROPIC" || provider === "GOOGLE GEMINI"){
+      if(hasTemp) return { temperature: temp };
+      if(hasTopP) return { top_p: topP };
+      return {};
+    }
+
+    if(hasTemp) return { temperature: temp };
+    if(hasTopP) return { top_p: topP };
+    return {};
+  }
+
   function buildOpenAICompatBody(provider, c){
     const modelId = normalizeModelId(provider, S.model);
     const base = {
       model:modelId,
       messages:c.messages.map(m => ({ role:m.role === "assistant" ? "assistant" : "user", content:m.content })),
-      temperature:S.params.temperature,
-      ...(supportsTopP(modelId) ? { top_p:S.params.top_p } : {})
+      ...buildSamplingParams(provider, modelId)
     };
 
     if(provider === "GOOGLE GEMINI"){
@@ -633,8 +656,7 @@
     return {
       model: normalizeModelId("ANTHROPIC", S.model),
       max_tokens: Number(S.params.max_completion_tokens || 1200),
-      temperature: Number(S.params.temperature ?? 0.7),
-      top_p: Number(S.params.top_p ?? 1),
+      ...buildSamplingParams("ANTHROPIC", S.model),
       messages: c.messages
         .filter(m => m.role === "user" || m.role === "assistant")
         .map(m => ({ role: m.role, content: [{ type:"text", text: m.content }] }))
