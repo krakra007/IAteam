@@ -578,6 +578,36 @@ function nextProjectColor(){
   _colorIdx++;
   return c;
 }
+
+// ─────────────────────────────────────────────────────────────
+// SYSTEM PROMPT UNIVERSEL
+// Injecté dans chaque appel API pour interdire le HTML
+// et imposer des conventions de formatage professionnel.
+// ─────────────────────────────────────────────────────────────
+const SYSTEM_PROMPT = `Tu es un assistant expert. Règles de formatage STRICTES :
+
+INTERDIT :
+- N'utilise JAMAIS de balises HTML (<span>, <sup>, <sub>, <div>, <p>, etc.)
+- N'utilise JAMAIS de classes CSS comme chem-eq, math-block, etc.
+- N'utilise JAMAIS de syntaxe markdown avec des astérisques excessifs
+
+CHIMIE & MATHÉMATIQUES :
+- Pour les équations affichées seules : utilise $$...$$  
+  Exemple : $$CH_3Br + OH^- \\rightarrow CH_3OH + Br^-$$
+- Pour les formules dans une phrase : utilise $...$  
+  Exemple : la vitesse suit $v = k[A][B]$
+- Exposants : ^{} → $CH_3^{+}$ ou écriture Unicode : CH₃⁺
+- Indices : _{} → $H_{2}O$ ou écriture Unicode : H₂O
+- Flèche réaction : → ou \\rightarrow dans LaTeX
+- Équilibre : ⇌ ou \\leftrightarrow dans LaTeX
+
+STRUCTURE DES RÉPONSES :
+- Titres avec ## ou ###
+- Listes avec - ou 1.
+- Termes importants en **gras**
+- Formules de code avec \`backticks\`
+- Séparateurs avec ---`;
+
 // ─────────────────────────────────────────────────
 // ÉTAT
 // ─────────────────────────────────────────────────
@@ -917,6 +947,52 @@ function formatInline(text) {
 }
 
 
+
+// ─────────────────────────────────────────────────────────────
+// SANITISEUR DE RÉPONSE
+// Nettoie le HTML brut éventuellement généré par le modèle
+// et le convertit en notation LaTeX/Unicode propre.
+// ─────────────────────────────────────────────────────────────
+function sanitizeModelResponse(text) {
+  if (!text) return text;
+
+  // 1. <span class="chem-eq">...</span> → $$...$$
+  text = text.replace(/<span[^>]*class=["'][^"']*chem[^"']*["'][^>]*>([\s\S]*?)<\/span>/gi,
+    (_, inner) => {
+      const clean = inner.replace(/<[^>]+>/g, "").trim();
+      return "\n$$" + clean + "$$\n";
+    }
+  );
+
+  // 2. <sup>x</sup> → ^{x}   (exposants)
+  text = text.replace(/<sup>(.*?)<\/sup>/gi, "^{$1}");
+
+  // 3. <sub>x</sub> → _{x}   (indices)
+  text = text.replace(/<sub>(.*?)<\/sub>/gi, "_{$1}");
+
+  // 4. <strong>...</strong> → **...**
+  text = text.replace(/<strong>(.*?)<\/strong>/gi, "**$1**");
+
+  // 5. <em>...</em> → *...*
+  text = text.replace(/<em>(.*?)<\/em>/gi, "*$1*");
+
+  // 6. <br> et <br/> → saut de ligne
+  text = text.replace(/<br\s*\/?>/gi, "\n");
+
+  // 7. Supprimer toutes les autres balises HTML résiduelles
+  text = text.replace(/<[^>]+>/g, "");
+
+  // 8. Décoder les entités HTML de base
+  text = text
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
+
+  return text;
+}
+
 // ─────────────────────────────────────────────────────
 // CONVERSION LATEX → HTML (chimie, maths)
 // Pas de dépendance externe — rendu professionnel
@@ -1035,8 +1111,9 @@ function convertLatex(text) {
 }
 
 function formatAssistantContent(text) {
-  // Convertir LaTeX en HTML avant tout traitement Markdown
-  text = convertLatex(text || "");
+  // Sanitiser d'abord le HTML brut éventuel, puis convertir LaTeX
+  text = sanitizeModelResponse(text || "");
+  text = convertLatex(text);
   const lines  = text.split("\n");
   const blocks = [];
   let list = [];
@@ -1356,9 +1433,16 @@ function buildRequestParams(model, apiType) {
  * DeepSeek est compatible OpenAI mais sur son propre endpoint.
  */
 async function callOpenAICompatible(endpoint, key, model, messages) {
+  // Préparer les messages avec system prompt en tête
+  const chatMessages = [
+    { role: "system", content: SYSTEM_PROMPT },
+    ...messages
+      .filter(m => m.role === "user" || m.role === "assistant")
+      .map(m => ({ role: m.role, content: m.content }))
+  ];
   const body = {
     model,
-    messages: messages.map(m => ({ role: m.role, content: m.content })),
+    messages: chatMessages,
     ...buildRequestParams(model, "chat")
   };
 
@@ -1390,6 +1474,7 @@ async function callOpenAICompatible(endpoint, key, model, messages) {
 async function callAnthropic(key, model, messages) {
   const body = {
     model,
+    system: SYSTEM_PROMPT,                           // ← system prompt Anthropic
     messages: messages
       .filter(m => m.role === "user" || m.role === "assistant")
       .map(m => ({ role: m.role, content: m.content })),
@@ -1430,9 +1515,12 @@ async function callGemini(key, model, messages) {
       },
       body: JSON.stringify({
         model,
-        messages: messages
-          .filter(m => m.role === "user" || m.role === "assistant")
-          .map(m => ({ role: m.role, content: m.content })),
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          ...messages
+            .filter(m => m.role === "user" || m.role === "assistant")
+            .map(m => ({ role: m.role, content: m.content }))
+        ],
         ...buildRequestParams(model, "gemini")
       })
     }
@@ -1452,13 +1540,14 @@ async function callGemini(key, model, messages) {
  * Endpoint : /v1/responses  (pas /v1/chat/completions)
  */
 async function callOpenAIResponses(key, model, messages) {
-  // Convertir l'historique au format Responses API
+  // Responses API : system via instructions, historique via input
   const input = messages
     .filter(m => m.role === "user" || m.role === "assistant")
     .map(m => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.content }));
 
   const body = {
     model,
+    instructions: SYSTEM_PROMPT,                    // ← system prompt Responses API
     input,
     ...buildRequestParams(model, "responses")
   };
@@ -1491,11 +1580,15 @@ async function callOpenAIResponses(key, model, messages) {
  * Pas de frequency_penalty ni presence_penalty pour certains modèles.
  */
 async function callGroq(key, model, messages) {
+  const groqMessages = [
+    { role: "system", content: SYSTEM_PROMPT },
+    ...messages
+      .filter(m => m.role === "user" || m.role === "assistant")
+      .map(m => ({ role: m.role, content: m.content }))
+  ];
   const body = {
     model,
-    messages: messages
-      .filter(m => m.role === "user" || m.role === "assistant")
-      .map(m => ({ role: m.role, content: m.content })),
+    messages: groqMessages,
     ...buildRequestParams(model, "groq")
   };
 
