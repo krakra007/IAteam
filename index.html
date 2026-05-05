@@ -248,11 +248,6 @@
         <select id="modelSelect"></select>
       </div>
       <div style="display:flex;gap:8px;align-items:center;position:relative">
-        <!-- Chip modèle actif -->
-        <div id="activeModelChip" class="active-model-chip" title="Modèle du chat actif">
-          <span class="dot" id="chipDot"></span>
-          <span id="chipLabel" class="label-txt">…</span>
-        </div>
         <button class="btn" id="githubBtn" title="Synchronisation GitHub">⬡ GitHub</button>
         <button class="btn" id="apiKeyBtn" title="Gérer les clés API">🔑</button>
         <button class="btn" id="paramsBtn">Paramètres</button>
@@ -292,6 +287,11 @@
           </div>
         </div>
         <div id="apiKeyPanel" class="params" style="right:90px;top:46px;width:360px">
+          <!-- Chip modèle actif (caché dans le panneau clés) -->
+          <div id="activeModelChip" class="active-model-chip" style="margin-bottom:10px;width:100%">
+            <span class="dot" id="chipDot"></span>
+            <span id="chipLabel" class="label-txt">…</span>
+          </div>
           <div id="providerKeys" style="display:flex;flex-direction:column;gap:10px"></div>
           <div style="display:flex;gap:8px;margin-top:8px">
             <button class="btn" id="saveApiKeyBtn">Enregistrer</button>
@@ -1223,15 +1223,17 @@ async function callAnthropic(key, model, messages) {
     method: "POST",
     headers: {
       "Content-Type":      "application/json",
-      "x-api-key":         key,                    // ← Header Anthropic (pas Bearer)
-      "anthropic-version": "2023-06-01"
+      "x-api-key":         key,
+      "anthropic-version": "2023-06-01",
+      // REQUIS pour les appels depuis un navigateur (CORS)
+      "anthropic-dangerous-direct-browser-access": "true"
     },
     body: JSON.stringify(body)
   });
 
   const d = await r.json();
 
-  if (d.error) throw new Error(`[Anthropic ${d.error.type}] ${d.error.message}`);
+  if (d.error) throw new Error(`[Anthropic ${d.error.type || d.error.error_type || "erreur"}] ${d.error.message || JSON.stringify(d.error)}`);
 
   return d.content?.[0]?.text || JSON.stringify(d);
 }
@@ -1267,6 +1269,54 @@ async function callGemini(key, model, messages) {
   return d.choices?.[0]?.message?.content || JSON.stringify(d);
 }
 
+
+
+/**
+ * OpenAI Responses API — pour les modèles GPT-5.x (gpt-5.5, gpt-5.4, gpt-5.2…)
+ * Endpoint : /v1/responses  (pas /v1/chat/completions)
+ * Format   : { input: [...], model, ... }
+ * Réponse  : output[0].content[0].text
+ */
+const GPT5_MODELS = new Set([
+  "gpt-5.5","gpt-5.5-pro","gpt-5.4","gpt-5.4-mini","gpt-5.4-nano","gpt-5.2","gpt-5.1","gpt-5"
+]);
+
+async function callOpenAIResponses(key, model, messages) {
+  // Convertir l'historique au format Responses API
+  const input = messages
+    .filter(m => m.role === "user" || m.role === "assistant")
+    .map(m => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.content }));
+
+  const body = {
+    model,
+    input,
+    max_output_tokens: S.params.max_tokens || 1200,
+    temperature:       S.params.temperature,
+    top_p:             S.params.top_p,
+    ...(S.params.stop ? { stop: [S.params.stop] } : {})
+  };
+
+  const r = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: {
+      "Content-Type":  "application/json",
+      "Authorization": "Bearer " + key
+    },
+    body: JSON.stringify(body)
+  });
+
+  const d = await r.json();
+  if (d.error) throw new Error(`[OpenAI ${d.error.code || "API"}] ${d.error.message}`);
+
+  // Extraire le texte depuis output[].content[].text
+  const outputMsg = (d.output || []).find(o => o.type === "message");
+  if (outputMsg) {
+    const textBlock = (outputMsg.content || []).find(c => c.type === "output_text");
+    if (textBlock) return textBlock.text;
+  }
+  // Fallback : essai format alternatif
+  return d.output_text || d.choices?.[0]?.message?.content || JSON.stringify(d);
+}
 
 /**
  * Groq — API compatible OpenAI mais endpoint propre.
@@ -1344,8 +1394,12 @@ async function send() {
         key, S.model, c.messages
       );
 
+    } else if (GPT5_MODELS.has(S.model)) {
+      // GPT-5.x → Responses API (/v1/responses)
+      responseContent = await callOpenAIResponses(key, S.model, c.messages);
+
     } else {
-      // OpenAI par défaut
+      // GPT-4.x, o-series → Chat Completions classique
       responseContent = await callOpenAICompatible(
         "https://api.openai.com/v1/chat/completions",
         key, S.model, c.messages
