@@ -156,6 +156,49 @@
   };
 
   const el = id => document.getElementById(id);
+
+  function sanitizeParams(){
+    const nNum = Number(S.params.n);
+    S.params.n = Number.isFinite(nNum) ? Math.max(1, Math.floor(nNum)) : 1;
+    const mct = Number(S.params.max_completion_tokens);
+    S.params.max_completion_tokens = Number.isFinite(mct) ? Math.max(1, Math.floor(mct)) : 1200;
+    const t = Number(S.params.temperature);
+    S.params.temperature = Number.isFinite(t) ? Math.min(2, Math.max(0, t)) : 0.7;
+    const p = Number(S.params.top_p);
+    S.params.top_p = Number.isFinite(p) ? Math.min(1, Math.max(0, p)) : 1;
+  }
+
+  function buildModelCompatiblePayload(chat){
+    sanitizeParams();
+    const modelName = (S.model || "").toLowerCase();
+    const payload = {
+      model:S.model,
+      messages:chat.messages.map(m => ({ role:m.role === "assistant" ? "assistant" : "user", content:m.content })),
+      max_completion_tokens:S.params.max_completion_tokens,
+      n:S.params.n,
+      ...(S.params.stop ? { stop:S.params.stop } : {}),
+      ...(S.params.seed !== "" ? { seed:Number(S.params.seed) } : {})
+    };
+
+    // Compatibilité large: éviter d'envoyer temperature + top_p ensemble sur modèles stricts.
+    if(modelName.startsWith("gpt-5") || modelName.includes("o3") || modelName.includes("o4")){
+      payload.temperature = S.params.temperature;
+    } else {
+      payload.temperature = S.params.temperature;
+      payload.top_p = S.params.top_p;
+    }
+
+    // Certains providers OpenAI-compat rejettent n/frequency/presence.
+    if(modelName.includes("gemini") || modelName.includes("deepseek")){
+      delete payload.n;
+      delete payload.seed;
+    } else {
+      payload.frequency_penalty = S.params.frequency_penalty ?? 0;
+      payload.presence_penalty = S.params.presence_penalty ?? 0;
+    }
+
+    return payload;
+  }
   let isWaitingResponse = false;
   if(!CURATED_MODELS.includes(S.model)) S.model = CURATED_MODELS[0];
   const promptEl = el("prompt");
@@ -495,6 +538,7 @@
   }
 
   function renderParams(){
+    sanitizeParams();
     const p = el("paramsPanel");
     p.innerHTML = `
       <div class='param'><label>temperature</label><input id='p_temperature' type='number' step='0.1' min='0' max='2' value='${S.params.temperature}'></div>
@@ -508,7 +552,7 @@
       <div class='param'><label>top_k</label><input id='p_top_k' type='number' step='1' min='1' placeholder='non supporté Chat Completions' value='${S.params.top_k ?? ""}'></div>
     `;
 
-    const num = (id,key) => el(id).onchange = e => { S.params[key] = Number(e.target.value); save(); };
+    const num = (id,key) => el(id).onchange = e => { S.params[key] = Number(e.target.value); sanitizeParams(); save(); };
     num("p_temperature","temperature");
     num("p_top_p","top_p");
     num("p_max_completion_tokens","max_completion_tokens");
@@ -557,18 +601,7 @@
       const r = await fetch("https://api.openai.com/v1/chat/completions", {
         method:"POST",
         headers:{ "Content-Type":"application/json", "Authorization":"Bearer " + key },
-        body: JSON.stringify({
-          model:S.model,
-          messages:c.messages.map(m => ({ role:m.role === "assistant" ? "assistant" : "user", content:m.content })),
-          temperature:S.params.temperature,
-          top_p:S.params.top_p,
-          max_completion_tokens:S.params.max_completion_tokens,
-          frequency_penalty:S.params.frequency_penalty ?? 0,
-          presence_penalty:S.params.presence_penalty ?? 0,
-          n:S.params.n ?? 1,
-          ...(S.params.stop ? { stop:S.params.stop } : {}),
-          ...(S.params.seed !== "" ? { seed:Number(S.params.seed) } : {})
-        })
+        body: JSON.stringify(buildModelCompatiblePayload(c))
       });
 
       const d = await r.json();
@@ -611,6 +644,7 @@
     await loadModelsFromApi();
   };
 
+  sanitizeParams();
   if(!S.chats.length) createChat(null);
   ensureLandingBlankChat();
   renderApiKeys();
