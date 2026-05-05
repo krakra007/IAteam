@@ -58,6 +58,7 @@
     .badge-anthropic{background:#c8621a22;color:#c8621a;border:1px solid #c8621a44}
     .badge-deepseek{background:#4a6cf722;color:#7b9cf7;border:1px solid #4a6cf744}
     .badge-gemini{background:#4285f422;color:#7baaf7;border:1px solid #4285f444}
+    .badge-groq{background:#f5501622;color:#f55016;border:1px solid #f5501644}
 
     .typing{display:flex;align-items:center;gap:8px;color:#b8bec8;font-size:14px}
     .typing-spinner{width:14px;height:14px;border:2px solid #4b5563;border-top-color:#d1d5db;border-radius:50%;animation:spin 0.8s linear infinite}
@@ -205,6 +206,21 @@ const MODEL_GROUPS = [
   {
     label: "DeepSeek",
     models: ["deepseek-v4-pro", "deepseek-v4-flash", "deepseek-chat", "deepseek-reasoner"]
+  },
+  // ── Groq (Open Source, ultra-rapide via LPU) ──────
+  // Source : groq.com/pricing & console.groq.com/docs/models — mai 2026
+  // API compatible OpenAI → endpoint dédié api.groq.com
+  {
+    label: "🚀 Groq — Open Source",
+    models: [
+      "openai/gpt-oss-120b",
+      "openai/gpt-oss-20b",
+      "moonshotai/kimi-k2-instruct-0905",
+      "meta-llama/llama-4-scout-17b-16e-instruct",
+      "qwen/qwen3-32b",
+      "llama-3.3-70b-versatile",
+      "llama-3.1-8b-instant"
+    ]
   }
 ];
 
@@ -251,7 +267,7 @@ const apiErrorEl = el("apiError");
 // ─────────────────────────────────────────────────
 // CLÉS API — 4 fournisseurs
 // ─────────────────────────────────────────────────
-const PROVIDERS = ["ANTHROPIC", "OPENAI", "DEEPSEEK", "GOOGLE GEMINI"];
+const PROVIDERS = ["ANTHROPIC", "OPENAI", "DEEPSEEK", "GOOGLE GEMINI", "GROQ"];
 const providerKeysEl = el("providerKeys");
 const apiKeysByProvider = JSON.parse(localStorage.getItem("apiKeysByProvider") || "{}");
 PROVIDERS.forEach(p => { if (!(p in apiKeysByProvider)) apiKeysByProvider[p] = ""; });
@@ -276,9 +292,12 @@ const activeChat = () => S.chats.find(c => c.id === S.activeChat);
 // ─────────────────────────────────────────────────
 function inferProviderFromModel(model) {
   const m = (model || "").toLowerCase();
-  if (m.startsWith("claude"))  return "ANTHROPIC";
-  if (m.startsWith("gemini"))  return "GOOGLE GEMINI";
+  if (m.startsWith("claude"))   return "ANTHROPIC";
+  if (m.startsWith("gemini"))   return "GOOGLE GEMINI";
   if (m.startsWith("deepseek")) return "DEEPSEEK";
+  // Groq models — détection par préfixe de famille ou nom connu
+  const GROQ_MODELS = MODEL_GROUPS.find(g => g.label.includes("Groq"))?.models || [];
+  if (GROQ_MODELS.includes(model)) return "GROQ";
   return "OPENAI";
 }
 
@@ -287,7 +306,8 @@ function providerBadgeHtml(provider) {
     "ANTHROPIC":    ["badge-anthropic", "Claude"],
     "OPENAI":       ["badge-openai",    "OpenAI"],
     "DEEPSEEK":     ["badge-deepseek",  "DeepSeek"],
-    "GOOGLE GEMINI":["badge-gemini",    "Gemini"]
+    "GOOGLE GEMINI":["badge-gemini",    "Gemini"],
+    "GROQ":          ["badge-groq",      "Groq"]
   };
   const [cls, label] = map[provider] || ["badge-openai", provider];
   return `<span class="provider-badge ${cls}">${label}</span>`;
@@ -764,6 +784,37 @@ async function callGemini(key, model, messages) {
   return d.choices?.[0]?.message?.content || JSON.stringify(d);
 }
 
+
+/**
+ * Groq — API compatible OpenAI mais endpoint propre.
+ * Ultra-rapide (LPU), modèles open source.
+ * Pas de frequency_penalty ni presence_penalty pour certains modèles.
+ */
+async function callGroq(key, model, messages) {
+  const body = {
+    model,
+    messages: messages
+      .filter(m => m.role === "user" || m.role === "assistant")
+      .map(m => ({ role: m.role, content: m.content })),
+    temperature: S.params.temperature,
+    top_p:       S.params.top_p,
+    max_tokens:  S.params.max_tokens || 1200,
+    ...(S.params.stop ? { stop: S.params.stop } : {})
+  };
+
+  const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type":  "application/json",
+      "Authorization": "Bearer " + key
+    },
+    body: JSON.stringify(body)
+  });
+
+  const d = await r.json();
+  if (d.error) throw new Error(`[Groq ${d.error.code || ""}] ${d.error.message}`);
+  return d.choices?.[0]?.message?.content || JSON.stringify(d);
+}
 // ─────────────────────────────────────────────────
 // ENVOI — aiguillage selon le provider
 // ─────────────────────────────────────────────────
@@ -799,6 +850,9 @@ async function send() {
 
     } else if (provider === "GOOGLE GEMINI") {
       responseContent = await callGemini(key, S.model, c.messages);
+
+    } else if (provider === "GROQ") {
+      responseContent = await callGroq(key, S.model, c.messages);
 
     } else if (provider === "DEEPSEEK") {
       // BUG CORRIGÉ : endpoint DeepSeek propre (pas OpenAI)
