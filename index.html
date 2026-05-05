@@ -168,6 +168,45 @@
     /* ── Erreur API ── */
     .api-error{background:#7f1d1d;color:#fca5a5;padding:10px 16px;font-size:13px;border-radius:8px;margin:8px auto;max-width:900px;display:none}
     .api-error.visible{display:block}
+
+    /* ── Color picker popup projet ── */
+    .color-picker-popup{
+      position:fixed;z-index:999;background:#1e1e1e;border:1px solid #3f3f46;
+      border-radius:10px;padding:10px;box-shadow:0 8px 32px rgba(0,0,0,.7);
+      display:none;flex-wrap:wrap;gap:6px;width:200px;
+    }
+    .color-picker-popup.open{display:flex}
+    .color-swatch{
+      width:26px;height:26px;border-radius:50%;cursor:pointer;border:2px solid transparent;
+      transition:transform .12s,border-color .12s;flex-shrink:0;
+    }
+    .color-swatch:hover{transform:scale(1.18);border-color:rgba(255,255,255,.5)}
+    .color-swatch.selected{border-color:#fff;transform:scale(1.12)}
+
+    /* ── Modèle actif affiché dans la top bar ── */
+    .active-model-chip{
+      display:flex;align-items:center;gap:5px;
+      background:#ffffff0d;border:1px solid #3f3f4699;
+      border-radius:20px;padding:3px 10px;font-size:11px;
+      color:var(--muted);white-space:nowrap;max-width:200px;
+      overflow:hidden;text-overflow:ellipsis;
+    }
+    .active-model-chip .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+
+    /* ── GitHub panel ── */
+    .gh-status{font-size:12px;color:var(--muted);margin-top:8px;min-height:18px}
+    .gh-status.ok{color:#22c55e}
+    .gh-status.err{color:#f87171}
+    .gh-status.warn{color:#fbbf24}
+    .gh-btn-row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+    .gh-btn{border:1px solid var(--line);background:#ffffff0d;color:var(--text);
+      padding:7px 12px;border-radius:8px;cursor:pointer;font-size:13px;transition:background .15s}
+    .gh-btn:hover{background:#ffffff1a}
+    .gh-btn.primary{background:#1f6feb;border-color:#1f6feb;color:#fff}
+    .gh-btn.primary:hover{background:#2d7ef7}
+    .gh-btn:disabled{opacity:.45;cursor:default}
+    .gh-auto-row{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px;color:var(--muted)}
+    .gh-auto-row input[type=checkbox]{accent-color:#1f6feb;width:15px;height:15px;cursor:pointer}
   </style>
 </head>
 <body>
@@ -184,9 +223,50 @@
         <button class="btn" id="toggleSidebarBtn" title="Ouvrir/Fermer la barre latérale">☰</button>
         <select id="modelSelect"></select>
       </div>
+      <!-- Chip modèle actif -->
+      <div id="activeModelChip" class="active-model-chip" title="Modèle du chat actif">
+        <span class="dot" id="chipDot"></span>
+        <span id="chipLabel">—</span>
+      </div>
       <div style="display:flex;gap:8px;align-items:center;position:relative">
+        <button class="btn" id="githubBtn" title="Synchronisation GitHub">⬡ GitHub</button>
         <button class="btn" id="apiKeyBtn" title="Gérer les clés API">🔑</button>
         <button class="btn" id="paramsBtn">Paramètres</button>
+        <!-- Panneau GitHub -->
+        <div id="githubPanel" class="params" style="right:200px;top:46px;width:380px">
+          <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:#e2e8f0">⬡ Synchronisation GitHub</div>
+          <div style="display:grid;gap:8px">
+            <div class="param" style="grid-template-columns:110px 1fr">
+              <label style="font-size:12px;color:var(--muted)">Token (PAT)</label>
+              <input id="ghToken" type="password" placeholder="ghp_xxxxxxxxxxxx" />
+            </div>
+            <div class="param" style="grid-template-columns:110px 1fr">
+              <label style="font-size:12px;color:var(--muted)">Owner / User</label>
+              <input id="ghOwner" type="text" placeholder="votre-username" />
+            </div>
+            <div class="param" style="grid-template-columns:110px 1fr">
+              <label style="font-size:12px;color:var(--muted)">Repository</label>
+              <input id="ghRepo" type="text" placeholder="iateam-data" />
+            </div>
+            <div class="param" style="grid-template-columns:110px 1fr">
+              <label style="font-size:12px;color:var(--muted)">Fichier path</label>
+              <input id="ghPath" type="text" placeholder="data/chats.json" value="data/chats.json" />
+            </div>
+          </div>
+          <div class="gh-auto-row">
+            <input type="checkbox" id="ghAutoSync" />
+            <label for="ghAutoSync">Synchronisation automatique après chaque message</label>
+          </div>
+          <div class="gh-btn-row">
+            <button class="gh-btn primary" id="ghSaveConfig">💾 Enregistrer config</button>
+            <button class="gh-btn" id="ghPush">⬆ Push</button>
+            <button class="gh-btn" id="ghPull">⬇ Pull</button>
+          </div>
+          <div class="gh-status" id="ghStatus"></div>
+          <div style="font-size:11px;color:#6b7280;margin-top:10px;line-height:1.5;border-top:1px solid #2c2c2c;padding-top:8px">
+            ℹ️ Le token doit avoir le scope <code style="background:#2a2a2a;padding:1px 4px;border-radius:3px">repo</code> (ou <code style="background:#2a2a2a;padding:1px 4px;border-radius:3px">contents:write</code> pour un token fin-grained).
+          </div>
+        </div>
         <div id="apiKeyPanel" class="params" style="right:90px;top:46px;width:360px">
           <div id="providerKeys" style="display:flex;flex-direction:column;gap:10px"></div>
           <div style="display:flex;gap:8px;margin-top:8px">
@@ -317,8 +397,11 @@ const DEF = {
 
 // ── Palette couleurs projets ──
 const PROJECT_COLORS = [
-  "#e05c5c","#e08a3c","#d4b44a","#6abf69","#4a9fd4",
-  "#7b68d4","#d46abf","#4abfbf","#a0c060","#d47b4a"
+  "#e05c5c","#e87040","#e09a3c","#d4b44a","#a8c244",
+  "#6abf69","#3dbf8a","#4abfbf","#4a9fd4","#4a6fd4",
+  "#7b68d4","#a85cd4","#d46abf","#d44a7b","#d44a4a",
+  "#c07840","#8c9c40","#406a40","#406c8c","#404c8c",
+  "#7840a8","#a84080","#8c8c8c","#b0b0b0"
 ];
 let _colorIdx = 0;
 function nextProjectColor(){
@@ -508,6 +591,57 @@ function chatRow(c, indent = false) {
   return d;
 }
 
+
+// ─────────────────────────────────────────────────────
+// COLOR PICKER POPUP
+// ─────────────────────────────────────────────────────
+let _pickerTargetId = null;
+
+function buildColorPicker() {
+  const popup = el("colorPickerPopup");
+  popup.innerHTML = "";
+  PROJECT_COLORS.forEach(c => {
+    const sw = document.createElement("div");
+    sw.className = "color-swatch";
+    sw.style.background = c;
+    sw.dataset.color = c;
+    sw.title = c;
+    sw.onclick = e => {
+      e.stopPropagation();
+      if (_pickerTargetId) {
+        const p = S.projects.find(x => x.id === _pickerTargetId);
+        if (p) { p.color = c; save(); render(); }
+      }
+      closeColorPicker();
+    };
+    popup.appendChild(sw);
+  });
+}
+
+function openColorPicker(projectId, anchorEl) {
+  _pickerTargetId = projectId;
+  const popup = el("colorPickerPopup");
+  // Marquer la couleur actuelle
+  const p = S.projects.find(x => x.id === projectId);
+  popup.querySelectorAll(".color-swatch").forEach(sw => {
+    sw.classList.toggle("selected", p && sw.dataset.color === p.color);
+  });
+  // Positionner près du bouton
+  const rect = anchorEl.getBoundingClientRect();
+  popup.style.left = Math.min(rect.left, window.innerWidth - 220) + "px";
+  popup.style.top  = (rect.bottom + 6) + "px";
+  popup.classList.add("open");
+}
+
+function closeColorPicker() {
+  el("colorPickerPopup").classList.remove("open");
+  _pickerTargetId = null;
+}
+
+document.addEventListener("click", e => {
+  if (!el("colorPickerPopup").contains(e.target)) closeColorPicker();
+});
+
 function renderChats() {
   const w = el("chatList");
   w.innerHTML = "";
@@ -536,10 +670,8 @@ function renderChats() {
       if (a === "edit")    return renameProject(p.id);
       if (a === "del")     return deleteProject(p.id);
       if (a === "color"){
-        // Cycle through palette
-        const cur = PROJECT_COLORS.indexOf(p.color || PROJECT_COLORS[0]);
-        p.color = PROJECT_COLORS[(cur + 1) % PROJECT_COLORS.length];
-        save(); render(); return;
+        openColorPicker(p.id, e.target);
+        return;
       }
       S.activeProject = p.id; save(); render();
     };
@@ -886,6 +1018,36 @@ function renderParams() {
 // ─────────────────────────────────────────────────
 // LAYOUT
 // ─────────────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────
+// CHIP MODÈLE ACTIF (top bar)
+// ─────────────────────────────────────────────────────
+function updateActiveModelChip() {
+  const chip  = el("activeModelChip");
+  const dot   = el("chipDot");
+  const label = el("chipLabel");
+  const c = activeChat();
+  const lastMsg = c ? [...(c.messages||[])].reverse().find(m => m.role==="assistant" && m.model) : null;
+  const providerColors = {
+    "ANTHROPIC":"#c8621a","OPENAI":"#10a37f","DEEPSEEK":"#7b9cf7",
+    "GOOGLE GEMINI":"#7baaf7","GROQ":"#f55016"
+  };
+  if (lastMsg && lastMsg.model) {
+    const col = providerColors[lastMsg.provider] || "#9ca3af";
+    dot.style.background   = col;
+    chip.style.borderColor = col + "55";
+    label.textContent      = lastMsg.model;
+    chip.style.display     = "flex";
+  } else {
+    // Affiche le modèle sélectionné dans le select
+    const col = providerColors[inferProviderFromModel(S.model)] || "#9ca3af";
+    dot.style.background   = col;
+    chip.style.borderColor = col + "55";
+    label.textContent      = S.model;
+    chip.style.display     = "flex";
+  }
+}
+
 function updateLayoutMode() {
   const main = document.querySelector(".main");
   const c    = activeChat();
@@ -897,6 +1059,7 @@ function render() {
   renderChats();
   renderMessages();
   updateLayoutMode();
+  updateActiveModelChip();
 }
 
 function showApiError(msg) {
@@ -1107,6 +1270,147 @@ async function send() {
 
   save();
   render();
+  // Auto-sync GitHub après chaque message
+  if (GH.autoSync && GH.token) ghPush().catch(()=>{});
+}
+
+
+// ═════════════════════════════════════════════════════════════
+// GITHUB SYNC — stockage & synchronisation multi-machine
+// API utilisée : GitHub Contents API (REST)
+// Endpoint : https://api.github.com/repos/{owner}/{repo}/contents/{path}
+// ═════════════════════════════════════════════════════════════
+
+const GH = {
+  token:    localStorage.getItem("ghToken")    || "",
+  owner:    localStorage.getItem("ghOwner")    || "",
+  repo:     localStorage.getItem("ghRepo")     || "",
+  path:     localStorage.getItem("ghPath")     || "data/chats.json",
+  autoSync: localStorage.getItem("ghAutoSync") === "1"
+};
+
+function ghSaveConfig() {
+  GH.token    = el("ghToken").value.trim();
+  GH.owner    = el("ghOwner").value.trim();
+  GH.repo     = el("ghRepo").value.trim();
+  GH.path     = el("ghPath").value.trim() || "data/chats.json";
+  GH.autoSync = el("ghAutoSync").checked;
+  localStorage.setItem("ghToken",    GH.token);
+  localStorage.setItem("ghOwner",    GH.owner);
+  localStorage.setItem("ghRepo",     GH.repo);
+  localStorage.setItem("ghPath",     GH.path);
+  localStorage.setItem("ghAutoSync", GH.autoSync ? "1" : "0");
+  ghStatus("✅ Configuration sauvegardée", "ok");
+}
+
+function ghStatus(msg, type="") {
+  const s = el("ghStatus");
+  s.textContent  = msg;
+  s.className    = "gh-status " + type;
+}
+
+// Construit les headers GitHub
+function ghHeaders() {
+  return {
+    "Authorization": "Bearer " + GH.token,
+    "Accept": "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2022-11-28",
+    "Content-Type": "application/json"
+  };
+}
+
+// Récupère le SHA du fichier actuel (nécessaire pour PUT)
+async function ghGetFileSha() {
+  const url = `https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${GH.path}`;
+  const r = await fetch(url, { headers: ghHeaders() });
+  if (r.status === 404) return null;      // fichier inexistant → création
+  if (!r.ok) throw new Error(`GitHub GET ${r.status}: ${(await r.json()).message}`);
+  const d = await r.json();
+  return d.sha || null;
+}
+
+// ── PUSH : envoie les données locales vers GitHub ──
+async function ghPush() {
+  if (!GH.token || !GH.owner || !GH.repo) {
+    ghStatus("⚠ Configurez d'abord le token, owner et repo.", "warn"); return;
+  }
+  ghStatus("⏳ Push en cours…", "warn");
+  el("ghPush").disabled = true;
+  try {
+    const sha = await ghGetFileSha();
+    const data = {
+      chats:    S.chats,
+      projects: S.projects,
+      params:   S.params,
+      model:    S.model,
+      savedAt:  new Date().toISOString()
+    };
+    const content = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))));
+    const body = {
+      message: "IAteam: sync " + new Date().toLocaleString("fr-FR"),
+      content,
+      ...(sha ? { sha } : {})
+    };
+    const url = `https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${GH.path}`;
+    const r = await fetch(url, { method:"PUT", headers: ghHeaders(), body: JSON.stringify(body) });
+    if (!r.ok) throw new Error(`GitHub PUT ${r.status}: ${(await r.json()).message}`);
+    ghStatus("✅ Push réussi — " + new Date().toLocaleTimeString("fr-FR"), "ok");
+  } catch(e) {
+    ghStatus("❌ " + e.message, "err");
+  } finally {
+    el("ghPush").disabled = false;
+  }
+}
+
+// ── PULL : charge les données depuis GitHub ──
+async function ghPull() {
+  if (!GH.token || !GH.owner || !GH.repo) {
+    ghStatus("⚠ Configurez d'abord le token, owner et repo.", "warn"); return;
+  }
+  ghStatus("⏳ Pull en cours…", "warn");
+  el("ghPull").disabled = true;
+  try {
+    const url = `https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${GH.path}`;
+    const r = await fetch(url, { headers: ghHeaders() });
+    if (r.status === 404) { ghStatus("⚠ Fichier introuvable. Faites un Push d'abord.", "warn"); return; }
+    if (!r.ok) throw new Error(`GitHub GET ${r.status}: ${(await r.json()).message}`);
+    const d = await r.json();
+    const raw = JSON.parse(decodeURIComponent(escape(atob(d.content.replace(/\n/g,"")))));
+    if (raw.chats)    S.chats    = raw.chats;
+    if (raw.projects) S.projects = raw.projects;
+    if (raw.params)   S.params   = raw.params;
+    if (raw.model)    S.model    = raw.model;
+    // Reconstruire activeChat si nécessaire
+    if (!S.chats.find(c => c.id === S.activeChat)) S.activeChat = S.chats[0]?.id || null;
+    save();
+    render();
+    ghStatus("✅ Pull réussi — " + new Date().toLocaleTimeString("fr-FR"), "ok");
+  } catch(e) {
+    ghStatus("❌ " + e.message, "err");
+  } finally {
+    el("ghPull").disabled = false;
+  }
+}
+
+// ── Initialisation du panneau GitHub ──
+function initGithubPanel() {
+  el("ghToken").value    = GH.token;
+  el("ghOwner").value    = GH.owner;
+  el("ghRepo").value     = GH.repo;
+  el("ghPath").value     = GH.path;
+  el("ghAutoSync").checked = GH.autoSync;
+
+  el("ghSaveConfig").onclick = () => { ghSaveConfig(); };
+  el("ghPush").onclick       = () => ghPush();
+  el("ghPull").onclick       = () => ghPull();
+  el("githubBtn").onclick    = () => el("githubPanel").classList.toggle("open");
+
+  // Fermer au clic extérieur
+  document.addEventListener("click", e => {
+    const panel = el("githubPanel");
+    if (!el("githubBtn").contains(e.target) && !panel.contains(e.target))
+      panel.classList.remove("open");
+  });
 }
 
 // ─────────────────────────────────────────────────
@@ -1200,6 +1504,8 @@ document.addEventListener("click", e => {
 // ─────────────────────────────────────────────────
 // INIT
 // ─────────────────────────────────────────────────
+buildColorPicker();
+initGithubPanel();
 if (!S.chats.length) createChat(null);
 ensureLandingBlankChat();
 renderApiKeys();
@@ -1208,5 +1514,6 @@ renderParams();
 render();
 loadModelsFromApi();
 </script>
+<div class="color-picker-popup" id="colorPickerPopup"></div>
 </body>
 </html>
