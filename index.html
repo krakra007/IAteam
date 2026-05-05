@@ -231,6 +231,47 @@
       background-clip:text;
     }
     .hero-sub{font-size:15px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;font-weight:400}
+
+    /* ── Modal création de projet ── */
+    .modal-overlay{
+      position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:1000;
+      display:none;align-items:center;justify-content:center;
+    }
+    .modal-overlay.open{display:flex}
+    .modal-box{
+      background:#1e1e1e;border:1px solid var(--line);border-radius:14px;
+      padding:22px 24px;width:320px;box-shadow:0 16px 48px rgba(0,0,0,.7);
+      display:flex;flex-direction:column;gap:14px;
+    }
+    .modal-title{font-size:15px;font-weight:600;color:#e2e8f0}
+    .modal-label{font-size:12px;color:var(--muted);margin-bottom:4px}
+    .modal-input{
+      width:100%;background:#161616;border:1px solid var(--line);
+      color:var(--text);border-radius:8px;padding:8px 10px;font-size:14px;font-family:inherit;
+    }
+    .modal-input:focus{outline:none;border-color:#4a9fd4}
+    .modal-swatches{display:flex;flex-wrap:wrap;gap:8px;padding:4px 0}
+    .modal-swatch{
+      width:28px;height:28px;border-radius:50%;cursor:pointer;
+      border:2px solid transparent;transition:transform .12s,border-color .12s;
+    }
+    .modal-swatch:hover{transform:scale(1.15)}
+    .modal-swatch.selected{border-color:#fff;transform:scale(1.1)}
+    .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:4px}
+    .modal-btn{
+      padding:7px 16px;border-radius:8px;font-size:13px;cursor:pointer;border:1px solid var(--line);
+    }
+    .modal-btn.cancel{background:transparent;color:var(--muted)}
+    .modal-btn.confirm{background:#1f6feb;border-color:#1f6feb;color:#fff}
+    .modal-btn.confirm:hover{background:#2d7ef7}
+
+    /* ── Bandeau coloré sur les projets (bordure gauche) ── */
+    .item.project-item{
+      border-left:3px solid transparent;
+      padding-left:6px;
+      border-radius:0 8px 8px 0;
+      transition:border-color .2s;
+    }
   </style>
 </head>
 <body>
@@ -386,6 +427,25 @@
     </div>
   </section>
   <div class="color-picker-popup" id="colorPickerPopup"></div>
+
+  <!-- Modal création de projet -->
+  <div class="modal-overlay" id="projectModal">
+    <div class="modal-box">
+      <div class="modal-title">✦ Nouveau projet</div>
+      <div>
+        <div class="modal-label">Nom du projet</div>
+        <input class="modal-input" id="projectModalName" placeholder="Ex: Chimie organique" maxlength="40" />
+      </div>
+      <div>
+        <div class="modal-label">Couleur</div>
+        <div class="modal-swatches" id="projectModalSwatches"></div>
+      </div>
+      <div class="modal-actions">
+        <button class="modal-btn cancel" id="projectModalCancel">Annuler</button>
+        <button class="modal-btn confirm" id="projectModalConfirm">Créer</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -486,6 +546,22 @@ const DEF = {
   stop: "",
   seed: ""
 };
+
+// ─────────────────────────────────────────────────────────────
+// DÉTECTION FAMILLE DE MODÈLE — placé en haut pour être
+// accessible partout dans le script dès le démarrage.
+// ─────────────────────────────────────────────────────────────
+
+/** Modèles OpenAI utilisant la Responses API (/v1/responses) */
+function isGPT5Model(model) {
+  // Toute version gpt-5.x → Responses API (plus robuste qu'un Set statique)
+  return /^gpt-5[.\-]|^gpt-5$/.test(model);
+}
+
+/** Modèles de raisonnement o-series (pas de paramètres de sampling) */
+function isOSeriesModel(model) {
+  return /^o[1-9](-|$)/i.test(model) || model === "o3" || model === "o1";
+}
 
 
 // ── Palette couleurs projets ──
@@ -610,12 +686,45 @@ function ensureLandingBlankChat() {
   S.activeProject = null;
 }
 
+// Couleur sélectionnée dans le modal
+let _modalColor = null;
+
+function buildProjectModal() {
+  const container = el("projectModalSwatches");
+  if (!container) return;
+  container.innerHTML = "";
+  _modalColor = PROJECT_COLORS[0];
+  PROJECT_COLORS.forEach((c, i) => {
+    const sw = document.createElement("div");
+    sw.className = "modal-swatch" + (i === 0 ? " selected" : "");
+    sw.style.background = c;
+    sw.dataset.color = c;
+    sw.onclick = () => {
+      _modalColor = c;
+      container.querySelectorAll(".modal-swatch").forEach(s =>
+        s.classList.toggle("selected", s.dataset.color === c)
+      );
+    };
+    container.appendChild(sw);
+  });
+}
+
 function createProject() {
-  const n = prompt("Nom du projet ?", "Nouveau projet");
-  if (!n) return;
+  // Préparer le modal
+  buildProjectModal();
+  const nameInput = el("projectModalName");
+  nameInput.value = "";
+  el("projectModal").classList.add("open");
+  setTimeout(() => nameInput.focus(), 80);
+}
+
+// Confirmer la création
+function _confirmCreateProject() {
+  const name = el("projectModalName").value.trim();
+  if (!name) { el("projectModalName").focus(); return; }
+  el("projectModal").classList.remove("open");
   const id = crypto.randomUUID();
-  const color = nextProjectColor();
-  S.projects.unshift({ id, name: n, color });
+  S.projects.unshift({ id, name, color: _modalColor || PROJECT_COLORS[0] });
   S.activeProject = id;
   save(); render();
 }
@@ -748,7 +857,8 @@ function renderChats() {
 
   S.projects.forEach(p => {
     const h = document.createElement("div");
-    h.className = "item" + (p.id === S.activeProject ? " active" : "");
+    h.className = "item project-item" + (p.id === S.activeProject ? " active" : "");
+    h.style.borderLeftColor = p.color || PROJECT_COLORS[0];
     const dotColor = p.color || PROJECT_COLORS[0];
     h.innerHTML = `
       <span class='proj-dot' style='background:${dotColor}' title='Couleur projet'></span>
@@ -1162,6 +1272,81 @@ function showApiError(msg) {
   setTimeout(() => apiErrorEl.classList.remove("visible"), 8000);
 }
 
+
+// ─────────────────────────────────────────────────────────────
+// FILTRAGE AUTOMATIQUE DES PARAMÈTRES PAR MODÈLE
+// Chaque famille de modèle a ses propres contraintes.
+// Cette fonction centrale évite les erreurs "Unsupported parameter".
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Retourne uniquement les paramètres supportés par ce modèle.
+ * Appelé par toutes les fonctions d'appel API.
+ * @param {string} model  — identifiant exact du modèle
+ * @param {string} apiType — "chat" | "responses" | "anthropic" | "groq" | "gemini"
+ */
+function buildRequestParams(model, apiType) {
+  const p   = S.params;
+  const m   = (model || "").toLowerCase();
+
+  // ── o-series OpenAI (o1, o3, o4…) ────────────────────────────
+  // Aucun paramètre de sampling (pas de temperature, top_p, etc.)
+  // Seul max_completion_tokens est supporté.
+  if (isOSeriesModel(model)) {
+    return { max_completion_tokens: p.max_tokens || 1200 };
+  }
+
+  // ── GPT-5.x via Responses API ────────────────────────────────
+  // temperature / top_p non supportés sur certains modèles GPT-5.
+  // max_output_tokens remplace max_completion_tokens.
+  if (apiType === "responses") {
+    return {
+      max_output_tokens: p.max_tokens || 1200,
+      ...(p.stop ? { stop: [p.stop] } : {})
+    };
+  }
+
+  // ── Anthropic Claude ─────────────────────────────────────────
+  // temperature max = 1.0, pas de frequency/presence penalty.
+  if (apiType === "anthropic") {
+    return {
+      max_tokens:  p.max_tokens || 1200,
+      temperature: Math.min(Number(p.temperature) || 0.7, 1.0),
+      top_p:       p.top_p
+    };
+  }
+
+  // ── Groq (open source LPU) ───────────────────────────────────
+  // frequency_penalty et presence_penalty non supportés sur certains.
+  if (apiType === "groq") {
+    return {
+      temperature: p.temperature,
+      top_p:       p.top_p,
+      max_tokens:  p.max_tokens || 1200,
+      ...(p.stop ? { stop: p.stop } : {})
+    };
+  }
+
+  // ── Gemini (OpenAI compat layer) ─────────────────────────────
+  if (apiType === "gemini") {
+    return {
+      temperature: p.temperature,
+      max_tokens:  p.max_tokens || 1200
+    };
+  }
+
+  // ── Chat Completions standard (OpenAI GPT-4.x, DeepSeek…) ───
+  return {
+    temperature:           p.temperature,
+    top_p:                 p.top_p,
+    max_completion_tokens: p.max_tokens || 1200,
+    frequency_penalty:     p.frequency_penalty ?? 0,
+    presence_penalty:      p.presence_penalty  ?? 0,
+    ...(p.stop ? { stop: p.stop } : {}),
+    ...(p.seed !== "" && p.seed != null ? { seed: Number(p.seed) } : {})
+  };
+}
+
 // ─────────────────────────────────────────────────
 // APPELS API — BUG CORRIGÉ : routage multi-provider
 // ─────────────────────────────────────────────────
@@ -1174,13 +1359,7 @@ async function callOpenAICompatible(endpoint, key, model, messages) {
   const body = {
     model,
     messages: messages.map(m => ({ role: m.role, content: m.content })),
-    temperature:       S.params.temperature,
-    top_p:             S.params.top_p,
-    max_completion_tokens: S.params.max_tokens,  // paramètre correct pour GPT-4.1+
-    frequency_penalty: S.params.frequency_penalty ?? 0,
-    presence_penalty:  S.params.presence_penalty  ?? 0,
-    ...(S.params.stop ? { stop: S.params.stop } : {}),
-    ...(S.params.seed !== "" && S.params.seed != null ? { seed: Number(S.params.seed) } : {})
+    ...buildRequestParams(model, "chat")
   };
 
   const r = await fetch(endpoint, {
@@ -1211,12 +1390,10 @@ async function callOpenAICompatible(endpoint, key, model, messages) {
 async function callAnthropic(key, model, messages) {
   const body = {
     model,
-    max_tokens: S.params.max_tokens || 1200,
     messages: messages
       .filter(m => m.role === "user" || m.role === "assistant")
       .map(m => ({ role: m.role, content: m.content })),
-    temperature: Math.min(S.params.temperature, 1),  // Anthropic max = 1
-    top_p:       S.params.top_p
+    ...buildRequestParams(model, "anthropic")
   };
 
   const r = await fetch("https://api.anthropic.com/v1/messages", {
@@ -1256,8 +1433,7 @@ async function callGemini(key, model, messages) {
         messages: messages
           .filter(m => m.role === "user" || m.role === "assistant")
           .map(m => ({ role: m.role, content: m.content })),
-        temperature: S.params.temperature,
-        max_tokens:  S.params.max_tokens
+        ...buildRequestParams(model, "gemini")
       })
     }
   );
@@ -1274,13 +1450,7 @@ async function callGemini(key, model, messages) {
 /**
  * OpenAI Responses API — pour les modèles GPT-5.x (gpt-5.5, gpt-5.4, gpt-5.2…)
  * Endpoint : /v1/responses  (pas /v1/chat/completions)
- * Format   : { input: [...], model, ... }
- * Réponse  : output[0].content[0].text
  */
-const GPT5_MODELS = new Set([
-  "gpt-5.5","gpt-5.5-pro","gpt-5.4","gpt-5.4-mini","gpt-5.4-nano","gpt-5.2","gpt-5.1","gpt-5"
-]);
-
 async function callOpenAIResponses(key, model, messages) {
   // Convertir l'historique au format Responses API
   const input = messages
@@ -1290,10 +1460,7 @@ async function callOpenAIResponses(key, model, messages) {
   const body = {
     model,
     input,
-    max_output_tokens: S.params.max_tokens || 1200,
-    temperature:       S.params.temperature,
-    top_p:             S.params.top_p,
-    ...(S.params.stop ? { stop: [S.params.stop] } : {})
+    ...buildRequestParams(model, "responses")
   };
 
   const r = await fetch("https://api.openai.com/v1/responses", {
@@ -1329,10 +1496,7 @@ async function callGroq(key, model, messages) {
     messages: messages
       .filter(m => m.role === "user" || m.role === "assistant")
       .map(m => ({ role: m.role, content: m.content })),
-    temperature: S.params.temperature,
-    top_p:       S.params.top_p,
-    max_tokens:  S.params.max_tokens || 1200,
-    ...(S.params.stop ? { stop: S.params.stop } : {})
+    ...buildRequestParams(model, "groq")
   };
 
   const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -1394,7 +1558,7 @@ async function send() {
         key, S.model, c.messages
       );
 
-    } else if (GPT5_MODELS.has(S.model)) {
+    } else if (isGPT5Model(S.model)) {
       // GPT-5.x → Responses API (/v1/responses)
       responseContent = await callOpenAIResponses(key, S.model, c.messages);
 
@@ -1654,6 +1818,18 @@ document.addEventListener("click", e => {
 // ─────────────────────────────────────────────────
 buildColorPicker();
 initGithubPanel();
+
+// Modal projet
+el("projectModalConfirm").onclick = _confirmCreateProject;
+el("projectModalCancel").onclick  = () => el("projectModal").classList.remove("open");
+el("projectModalName").addEventListener("keydown", e => {
+  if (e.key === "Enter") _confirmCreateProject();
+  if (e.key === "Escape") el("projectModal").classList.remove("open");
+});
+// Fermer en cliquant l'overlay
+el("projectModal").addEventListener("click", e => {
+  if (e.target === el("projectModal")) el("projectModal").classList.remove("open");
+});
 if (!S.chats.length) createChat(null);
 ensureLandingBlankChat();
 renderApiKeys();
