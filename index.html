@@ -421,9 +421,13 @@
           <div class="gh-btn-row">
             <button class="gh-btn primary" id="ghSaveConfig">💾 Enregistrer</button>
             <button class="gh-btn" id="ghTest">🔌 Tester</button>
+            <button class="gh-btn" id="ghListRepos" title="Lister vos repos accessibles">📋 Mes repos</button>
+          </div>
+          <div class="gh-btn-row" style="margin-top:4px">
             <button class="gh-btn" id="ghPush">⬆ Push</button>
             <button class="gh-btn" id="ghPull">⬇ Pull</button>
           </div>
+          <div id="ghReposList" style="display:none;margin-top:8px;background:#111;border-radius:8px;padding:8px;max-height:160px;overflow-y:auto;font-size:12px;color:#9ca3af"></div>
           <div class="gh-status" id="ghStatus"></div>
           <div id="ghRepoLink" style="font-size:11px;margin-top:6px;display:none"><a id="ghRepoAnchor" href="#" target="_blank" style="color:#7baaf7;text-decoration:none">🔗 Ouvrir le repo sur GitHub</a></div>
           <div style="font-size:11px;color:#6b7280;margin-top:10px;line-height:1.5;border-top:1px solid #2c2c2c;padding-top:8px">
@@ -2202,6 +2206,37 @@ async function ghPull() {
   }
 }
 
+async function ghListRepos() {
+  ghAutoSave();
+  if (!GH.token) { ghStatus("⚠ Entrez d'abord le token.", "warn"); return; }
+  ghStatus("⏳ Chargement de vos repos…", "warn");
+  const listEl = el("ghReposList");
+  listEl.style.display = "none";
+  try {
+    const r = await fetch("https://api.github.com/user/repos?per_page=50&sort=updated", {
+      headers: ghHeaders()
+    });
+    const repos = await r.json();
+    if (!r.ok) throw new Error(repos.message);
+    if (!repos.length) {
+      ghStatus("Aucun repo trouvé.", "warn"); return;
+    }
+    ghStatus(`✅ ${repos.length} repo(s) trouvé(s) — cliquez sur le bon pour le sélectionner :`, "ok");
+    listEl.style.display = "block";
+    listEl.innerHTML = repos.map(rp => `
+      <div style="padding:5px 8px;border-radius:6px;cursor:pointer;display:flex;gap:6px;align-items:center"
+           onmouseover="this.style.background='#222'" onmouseout="this.style.background=''"
+           onclick="el('ghRepo').value='${rp.name}';ghAutoSave();el('ghReposList').style.display='none';ghStatus('Repo sélectionné : ${rp.name}','ok')">
+        <span style="color:${rp.private?'#7baaf7':'#6abf69'}">${rp.private ? '🔒' : '🌐'}</span>
+        <span style="color:#e2e8f0;font-weight:500">${rp.name}</span>
+        <span style="color:#6b7280;font-size:11px;margin-left:auto">${rp.private?'privé':'public'}</span>
+      </div>
+    `).join("");
+  } catch(e) {
+    ghStatus("❌ " + e.message, "err");
+  }
+}
+
 function initGithubPanel() {
   el("ghToken").value      = GH.token;
   el("ghOwner").value      = GH.owner;
@@ -2209,8 +2244,9 @@ function initGithubPanel() {
   el("ghPath").value       = GH.path;
   el("ghAutoSync").checked = GH.autoSync;
 
-  el("ghSaveConfig").onclick = ghSaveConfig;
-  el("ghTest").onclick       = ghTest;
+  el("ghSaveConfig").onclick  = ghSaveConfig;
+  el("ghTest").onclick        = ghTest;
+  el("ghListRepos").onclick   = ghListRepos;
   el("ghPush").onclick       = ghPush;
   el("ghPull").onclick       = ghPull;
   el("githubBtn").onclick    = () => el("githubPanel").classList.toggle("open");
