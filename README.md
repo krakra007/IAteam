@@ -38,3 +38,16 @@ zip -r mini-api-chat.zip index.html README.md
 
 ## Remarque importante
 La clé API est stockée dans le navigateur (`localStorage`) sur ta machine.
+
+
+## 4) Publier sur GitHub Pages (lien cliquable)
+1. Pousse ce dépôt sur GitHub.
+2. Va dans **Settings → Pages**.
+3. Dans **Build and deployment**, choisis **Source: GitHub Actions**.
+4. Le workflow `.github/workflows/pages.yml` déploiera automatiquement `index.html`.
+
+Lien public attendu :
+- `https://<ton-user>.github.io/<ton-repo>/`
+
+Exemple :
+- `https://moncompte.github.io/mini-api-chat/`
