@@ -953,44 +953,50 @@ function formatInline(text) {
 // Nettoie le HTML brut éventuellement généré par le modèle
 // et le convertit en notation LaTeX/Unicode propre.
 // ─────────────────────────────────────────────────────────────
-function sanitizeModelResponse(text) {
-  if (!text) return text;
+function sanitizeModelResponse(raw) {
+  // Sortie rapide si pas de HTML
+  if (!raw || !raw.includes('<')) return raw;
 
-  // 1. <span class="chem-eq">...</span> → $$...$$
-  text = text.replace(/<span[^>]*class=["'][^"']*chem[^"']*["'][^>]*>([\s\S]*?)<\/span>/gi,
-    (_, inner) => {
-      const clean = inner.replace(/<[^>]+>/g, "").trim();
-      return "\n$$" + clean + "$$\n";
+  // Utiliser le parser DOM du navigateur — pas de regex complexe
+  const tmp = document.createElement('div');
+  tmp.innerHTML = raw;
+
+  // ── Étape 1 : éléments feuilles d'abord ──────────────────────
+  // (ils sont à l'intérieur des spans → traiter avant les spans)
+  tmp.querySelectorAll('sup').forEach(e =>
+    e.replaceWith('^{' + e.textContent + '}'));
+  tmp.querySelectorAll('sub').forEach(e =>
+    e.replaceWith('_{' + e.textContent + '}'));
+  tmp.querySelectorAll('strong, b').forEach(e =>
+    e.replaceWith('**' + e.textContent + '**'));
+  tmp.querySelectorAll('em, i').forEach(e =>
+    e.replaceWith('*' + e.textContent + '*'));
+  tmp.querySelectorAll('br').forEach(e => e.replaceWith('\n'));
+  tmp.querySelectorAll('code').forEach(e =>
+    e.replaceWith('`' + e.textContent + '`'));
+
+  // ── Étape 2 : spans chimie → LaTeX ───────────────────────────
+  // À ce stade, leur textContent contient déjà les ^{} et _{}.
+  tmp.querySelectorAll('span').forEach(sp => {
+    const cls = (sp.getAttribute('class') || '').toLowerCase();
+    const txt = sp.textContent;
+    if (cls.includes('chem-eq') || cls.includes('math-block')) {
+      sp.replaceWith('\n$$' + txt + '$$\n');
+    } else if (cls.includes('chem-inline') || cls.includes('math-inline')) {
+      sp.replaceWith('$' + txt + '$');
+    } else {
+      // Span sans classe particulière → garder le texte brut
+      sp.replaceWith(txt);
     }
-  );
+  });
 
-  // 2. <sup>x</sup> → ^{x}   (exposants)
-  text = text.replace(/<sup>(.*?)<\/sup>/gi, "^{$1}");
+  // ── Étape 3 : blocs de paragraphe → texte + saut de ligne ────
+  tmp.querySelectorAll('p').forEach(e => e.replaceWith(e.textContent + '\n'));
+  tmp.querySelectorAll('div').forEach(e => e.replaceWith(e.textContent + '\n'));
 
-  // 3. <sub>x</sub> → _{x}   (indices)
-  text = text.replace(/<sub>(.*?)<\/sub>/gi, "_{$1}");
-
-  // 4. <strong>...</strong> → **...**
-  text = text.replace(/<strong>(.*?)<\/strong>/gi, "**$1**");
-
-  // 5. <em>...</em> → *...*
-  text = text.replace(/<em>(.*?)<\/em>/gi, "*$1*");
-
-  // 6. <br> et <br/> → saut de ligne
-  text = text.replace(/<br\s*\/?>/gi, "\n");
-
-  // 7. Supprimer toutes les autres balises HTML résiduelles
-  text = text.replace(/<[^>]+>/g, "");
-
-  // 8. Décoder les entités HTML de base
-  text = text
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&amp;/g, "&")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'");
-
-  return text;
+  // ── Étape 4 : récupérer le texte pur ─────────────────────────
+  // textContent supprime tous les tags restants
+  return tmp.textContent;
 }
 
 // ─────────────────────────────────────────────────────
