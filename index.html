@@ -272,6 +272,101 @@
       border-radius:0 8px 8px 0;
       transition:border-color .2s;
     }
+
+    /* ═══════════════════════════════════════════════
+       PANNEAU PROFILS (droite)
+    ═══════════════════════════════════════════════ */
+    .right-panel{
+      background:var(--side);
+      border-left:1px solid var(--line);
+      height:100vh;
+      width:320px;
+      min-width:240px;
+      max-width:480px;
+      flex-shrink:0;
+      display:flex;
+      flex-direction:column;
+      transition:width .18s ease, padding .18s ease, border .18s ease;
+      overflow:hidden;
+    }
+    .app.rpanel-collapsed .right-panel{width:0;border-left:0;min-width:0}
+
+    .right-panel-head{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:12px 14px 10px;border-bottom:1px solid var(--line);
+      flex-shrink:0;
+    }
+    .right-panel-title{font-size:13px;font-weight:600;color:#e2e8f0;letter-spacing:.03em}
+
+    /* Liste des profils */
+    .profile-list{flex:1;overflow-y:auto;padding:8px}
+    .profile-item{
+      display:flex;align-items:center;gap:8px;
+      padding:8px 10px;border-radius:9px;cursor:pointer;
+      border:1px solid transparent;transition:background .12s,border-color .12s;
+      margin-bottom:4px;
+    }
+    .profile-item:hover{background:#242424}
+    .profile-item.active{background:#1e2a3a;border-color:#1f6feb55}
+    .profile-icon{font-size:18px;flex-shrink:0;width:28px;text-align:center}
+    .profile-name{flex:1;font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .profile-active-dot{
+      width:7px;height:7px;border-radius:50%;background:#1f6feb;
+      flex-shrink:0;display:none;
+    }
+    .profile-item.active .profile-active-dot{display:block}
+    .profile-btns{display:flex;gap:3px;opacity:0;transition:opacity .12s}
+    .profile-item:hover .profile-btns{opacity:1}
+    .profile-btn{
+      border:0;background:none;color:var(--muted2);cursor:pointer;
+      font-size:12px;padding:2px 4px;border-radius:4px;
+    }
+    .profile-btn:hover{background:#333;color:#e2e8f0}
+
+    /* Éditeur de profil */
+    .profile-editor{
+      border-top:1px solid var(--line);padding:12px;
+      display:flex;flex-direction:column;gap:10px;
+      max-height:60vh;overflow-y:auto;
+    }
+    .profile-editor.hidden{display:none}
+    .pe-title{font-size:12px;font-weight:600;color:#a0aec0;letter-spacing:.04em;text-transform:uppercase}
+    .pe-row{display:flex;gap:8px;align-items:center}
+    .pe-input{
+      flex:1;background:#161616;border:1px solid var(--line);color:var(--text);
+      border-radius:8px;padding:7px 10px;font-size:13px;font-family:inherit;
+    }
+    .pe-input:focus{outline:none;border-color:#4a9fd4}
+    .pe-emoji{
+      width:42px;height:34px;background:#161616;border:1px solid var(--line);
+      color:var(--text);border-radius:8px;text-align:center;font-size:18px;cursor:pointer;
+    }
+    .pe-textarea{
+      width:100%;background:#0f0f0f;border:1px solid var(--line);color:#d4d8e0;
+      border-radius:8px;padding:10px 12px;font-size:12.5px;font-family:"SFMono-Regular",monospace;
+      line-height:1.6;resize:vertical;min-height:160px;max-height:380px;
+    }
+    .pe-textarea:focus{outline:none;border-color:#4a9fd4}
+    .pe-actions{display:flex;gap:8px;flex-wrap:wrap}
+    .pe-btn{
+      padding:6px 14px;border-radius:8px;font-size:12px;cursor:pointer;
+      border:1px solid var(--line);background:#ffffff0d;color:var(--text);transition:background .12s;
+    }
+    .pe-btn:hover{background:#ffffff1a}
+    .pe-btn.primary{background:#1f6feb;border-color:#1f6feb;color:#fff}
+    .pe-btn.primary:hover{background:#2d7ef7}
+    .pe-btn.danger{border-color:#ef444455;color:#f87171}
+    .pe-btn.danger:hover{background:#ef444422}
+
+    /* Chip profil actif dans la topbar */
+    .active-profile-chip{
+      display:inline-flex;align-items:center;gap:5px;
+      background:#1f6feb18;border:1px solid #1f6feb44;
+      border-radius:20px;padding:3px 10px 3px 7px;font-size:11px;
+      color:#7baaf7;white-space:nowrap;cursor:pointer;
+    }
+    .active-profile-chip:hover{background:#1f6feb28}
+    .active-profile-chip span{font-size:14px}
   </style>
 </head>
 <body>
@@ -289,6 +384,12 @@
         <select id="modelSelect"></select>
       </div>
       <div style="display:flex;gap:8px;align-items:center;position:relative">
+        <!-- Chip profil actif -->
+        <div class="active-profile-chip" id="activeProfileChip" onclick="el('rightPanel').classList.toggle('hidden-override'); el('toggleRightPanelBtn').click()" title="Profil système actif">
+          <span id="chipProfileIcon">🤖</span>
+          <span id="chipProfileName">Aucun profil</span>
+        </div>
+        <button class="btn" id="toggleRightPanelBtn" title="Profils système">⚙ Profils</button>
         <button class="btn" id="githubBtn" title="Synchronisation GitHub">⬡ GitHub</button>
         <button class="btn" id="apiKeyBtn" title="Gérer les clés API">🔑</button>
         <button class="btn" id="paramsBtn">Paramètres</button>
@@ -426,6 +527,33 @@
       </div></div>
     </div>
   </section>
+  <!-- Panneau Profils (droite) -->
+  <aside class="right-panel" id="rightPanel">
+    <div class="right-panel-head">
+      <span class="right-panel-title">⚙ Profils système</span>
+      <button class="icon-btn" id="newProfileBtn" title="Nouveau profil" style="font-size:18px;color:#7baaf7">＋</button>
+    </div>
+    <div class="profile-list" id="profileList"></div>
+    <!-- Éditeur -->
+    <div class="profile-editor hidden" id="profileEditor">
+      <div class="pe-title" id="peEditorTitle">Nouveau profil</div>
+      <div class="pe-row">
+        <input class="pe-emoji" id="peIcon" value="🤖" maxlength="2" title="Emoji icône" />
+        <input class="pe-input" id="peName" placeholder="Nom du profil" maxlength="40" />
+      </div>
+      <textarea class="pe-textarea" id="pePrompt" placeholder="Entrez ici votre prompt système…
+
+Exemple pour la chimie :
+- Utilise toujours $$...$$ pour les équations
+- Ne jamais utiliser de HTML
+- Réponses structurées avec ##"></textarea>
+      <div class="pe-actions">
+        <button class="pe-btn primary" id="peSave">💾 Enregistrer</button>
+        <button class="pe-btn" id="peCancel">Annuler</button>
+        <button class="pe-btn danger" id="peDelete" style="margin-left:auto">🗑 Supprimer</button>
+      </div>
+    </div>
+  </aside>
   <div class="color-picker-popup" id="colorPickerPopup"></div>
 
   <!-- Modal création de projet -->
@@ -614,6 +742,33 @@ STRUCTURE DES RÉPONSES :
 const S = {
   projects: JSON.parse(localStorage.getItem("projects") || "[]"),
   chats:    JSON.parse(localStorage.getItem("chats")    || "[]"),
+  profiles: JSON.parse(localStorage.getItem("profiles") || "null") || [
+    {
+      id: "chemistry",
+      name: "Chimie & Sciences",
+      icon: "⚗️",
+      prompt: "Tu es un expert en chimie et sciences. Règles strictes :\n- JAMAIS de balises HTML dans ta réponse\n- Équations chimiques en LaTeX : $$CH_3Br + OH^- \\rightarrow CH_3OH + Br^-$$\n- Formules inline : $H_2O$, $v = k[A][B]$\n- Indices : _{} → $H_{2}O$, Exposants : ^{} → $OH^{-}$\n- Flèches : → ou \\rightarrow dans LaTeX, ⇌ pour équilibre\n- Structure : titres ##, listes -, termes clés en **gras**\n- Jamais de balises <span>, <sup>, <sub>, <div>"
+    },
+    {
+      id: "coding",
+      name: "Programmation",
+      icon: "💻",
+      prompt: "Tu es un expert développeur. Règles :\n- Code dans des blocs ```langage\n- Explications concises et précises\n- Propose des optimisations quand pertinent\n- Signale les problèmes de sécurité\n- Pas de HTML dans le texte, uniquement Markdown"
+    },
+    {
+      id: "redaction",
+      name: "Rédaction & Analyse",
+      icon: "📝",
+      prompt: "Tu es un assistant expert en rédaction et analyse. Règles :\n- Réponses structurées avec titres ## et sous-titres ###\n- Arguments clairs et sourcés\n- Vocabulaire précis et professionnel\n- Pas de HTML, uniquement du texte et Markdown\n- Conclusions synthétiques en fin de réponse"
+    },
+    {
+      id: "general",
+      name: "Général (sans profil)",
+      icon: "🌐",
+      prompt: "Tu es un assistant IA expert et polyvalent. Réponds de manière précise, structurée et professionnelle. N'utilise jamais de balises HTML dans tes réponses. Utilise Markdown pour la mise en forme."
+    }
+  ],
+  activeProfile: localStorage.getItem("activeProfile") || null,
   activeChat:    localStorage.getItem("activeChat")    || null,
   activeProject: localStorage.getItem("activeProject") || null,
   model:  localStorage.getItem("model") || CURATED_MODELS[0],
@@ -649,6 +804,8 @@ PROVIDERS.forEach(p => { if (!(p in apiKeysByProvider)) apiKeysByProvider[p] = "
 // ─────────────────────────────────────────────────
 function save() {
   localStorage.setItem("projects",           JSON.stringify(S.projects));
+  localStorage.setItem("profiles",           JSON.stringify(S.profiles));
+  localStorage.setItem("activeProfile",      S.activeProfile || "");
   localStorage.setItem("chats",              JSON.stringify(S.chats));
   localStorage.setItem("activeChat",         S.activeChat    || "");
   localStorage.setItem("activeProject",      S.activeProject || "");
@@ -1441,7 +1598,7 @@ function buildRequestParams(model, apiType) {
 async function callOpenAICompatible(endpoint, key, model, messages) {
   // Préparer les messages avec system prompt en tête
   const chatMessages = [
-    { role: "system", content: SYSTEM_PROMPT },
+    { role: "system", content: getActiveSystemPrompt() },
     ...messages
       .filter(m => m.role === "user" || m.role === "assistant")
       .map(m => ({ role: m.role, content: m.content }))
@@ -1480,7 +1637,7 @@ async function callOpenAICompatible(endpoint, key, model, messages) {
 async function callAnthropic(key, model, messages) {
   const body = {
     model,
-    system: SYSTEM_PROMPT,                           // ← system prompt Anthropic
+    system: getActiveSystemPrompt(),                 // ← profil système actif
     messages: messages
       .filter(m => m.role === "user" || m.role === "assistant")
       .map(m => ({ role: m.role, content: m.content })),
@@ -1522,7 +1679,7 @@ async function callGemini(key, model, messages) {
       body: JSON.stringify({
         model,
         messages: [
-          { role: "system", content: SYSTEM_PROMPT },
+          { role: "system", content: getActiveSystemPrompt() },
           ...messages
             .filter(m => m.role === "user" || m.role === "assistant")
             .map(m => ({ role: m.role, content: m.content }))
@@ -1553,7 +1710,7 @@ async function callOpenAIResponses(key, model, messages) {
 
   const body = {
     model,
-    instructions: SYSTEM_PROMPT,                    // ← system prompt Responses API
+    instructions: getActiveSystemPrompt(),           // ← profil système actif
     input,
     ...buildRequestParams(model, "responses")
   };
@@ -1587,7 +1744,7 @@ async function callOpenAIResponses(key, model, messages) {
  */
 async function callGroq(key, model, messages) {
   const groqMessages = [
-    { role: "system", content: SYSTEM_PROMPT },
+    { role: "system", content: getActiveSystemPrompt() },
     ...messages
       .filter(m => m.role === "user" || m.role === "assistant")
       .map(m => ({ role: m.role, content: m.content }))
@@ -1685,6 +1842,134 @@ async function send() {
   if (GH.autoSync && GH.token) ghPush().catch(()=>{});
 }
 
+
+
+// ═════════════════════════════════════════════════════════════
+// GESTION DES PROFILS SYSTÈME
+// ═════════════════════════════════════════════════════════════
+
+/** Retourne le prompt système actif (profil sélectionné ou défaut) */
+function getActiveSystemPrompt() {
+  if (!S.activeProfile) return SYSTEM_PROMPT;
+  const p = S.profiles.find(p => p.id === S.activeProfile);
+  return p ? p.prompt : SYSTEM_PROMPT;
+}
+
+/** Met à jour le chip profil dans la topbar */
+function updateProfileChip() {
+  const chip   = el("activeProfileChip");
+  const icon   = el("chipProfileIcon");
+  const name   = el("chipProfileName");
+  if (!chip) return;
+  const p = S.profiles.find(p => p.id === S.activeProfile);
+  if (p) {
+    icon.textContent = p.icon || "🤖";
+    name.textContent = p.name;
+    chip.style.display = "inline-flex";
+  } else {
+    icon.textContent = "🔲";
+    name.textContent = "Sans profil";
+  }
+}
+
+let _editingProfileId = null;
+
+function renderProfiles() {
+  const list = el("profileList");
+  if (!list) return;
+  list.innerHTML = "";
+
+  if (!S.profiles.length) {
+    list.innerHTML = '<div style="padding:16px;color:var(--muted);font-size:13px;text-align:center">Aucun profil.<br>Cliquez sur ＋ pour en créer un.</div>';
+    return;
+  }
+
+  S.profiles.forEach(p => {
+    const d = document.createElement("div");
+    d.className = "profile-item" + (p.id === S.activeProfile ? " active" : "");
+    d.innerHTML = `
+      <span class="profile-icon">${p.icon || "🤖"}</span>
+      <span class="profile-name" title="${p.name}">${p.name}</span>
+      <span class="profile-active-dot"></span>
+      <div class="profile-btns">
+        <button class="profile-btn" data-a="edit"  title="Modifier">✎</button>
+        <button class="profile-btn" data-a="clone" title="Dupliquer">⧉</button>
+      </div>
+    `;
+    d.onclick = e => {
+      const a = e.target.dataset.a;
+      if (a === "edit")  { openProfileEditor(p.id); return; }
+      if (a === "clone") { cloneProfile(p.id);       return; }
+      // Activer / désactiver le profil
+      S.activeProfile = (S.activeProfile === p.id) ? null : p.id;
+      save(); renderProfiles(); updateProfileChip();
+    };
+    list.appendChild(d);
+  });
+}
+
+function openProfileEditor(id) {
+  const editor  = el("profileEditor");
+  const title   = el("peEditorTitle");
+  const delBtn  = el("peDelete");
+  editor.classList.remove("hidden");
+
+  if (id) {
+    const p = S.profiles.find(x => x.id === id);
+    if (!p) return;
+    _editingProfileId   = id;
+    el("peIcon").value   = p.icon || "🤖";
+    el("peName").value   = p.name;
+    el("pePrompt").value = p.prompt;
+    title.textContent   = "Modifier le profil";
+    delBtn.style.display = "inline-flex";
+  } else {
+    _editingProfileId   = null;
+    el("peIcon").value   = "🤖";
+    el("peName").value   = "";
+    el("pePrompt").value = "";
+    title.textContent   = "Nouveau profil";
+    delBtn.style.display = "none";
+  }
+}
+
+function saveProfileEditor() {
+  const name   = el("peName").value.trim();
+  const icon   = el("peIcon").value.trim() || "🤖";
+  const prompt = el("pePrompt").value.trim();
+  if (!name)   { el("peName").focus();   return; }
+  if (!prompt) { el("pePrompt").focus(); return; }
+
+  if (_editingProfileId) {
+    const p = S.profiles.find(x => x.id === _editingProfileId);
+    if (p) { p.name = name; p.icon = icon; p.prompt = prompt; }
+  } else {
+    S.profiles.push({ id: crypto.randomUUID(), name, icon, prompt });
+  }
+  closeProfileEditor();
+  save(); renderProfiles(); updateProfileChip();
+}
+
+function deleteActiveProfile() {
+  if (!_editingProfileId) return;
+  if (!confirm("Supprimer ce profil ?")) return;
+  S.profiles = S.profiles.filter(p => p.id !== _editingProfileId);
+  if (S.activeProfile === _editingProfileId) S.activeProfile = null;
+  closeProfileEditor();
+  save(); renderProfiles(); updateProfileChip();
+}
+
+function cloneProfile(id) {
+  const p = S.profiles.find(x => x.id === id);
+  if (!p) return;
+  S.profiles.push({ id: crypto.randomUUID(), name: p.name + " (copie)", icon: p.icon, prompt: p.prompt });
+  save(); renderProfiles();
+}
+
+function closeProfileEditor() {
+  el("profileEditor").classList.add("hidden");
+  _editingProfileId = null;
+}
 
 // ═════════════════════════════════════════════════════════════
 // GITHUB SYNC — stockage & synchronisation multi-machine
@@ -1917,6 +2202,24 @@ document.addEventListener("click", e => {
 // ─────────────────────────────────────────────────
 buildColorPicker();
 initGithubPanel();
+
+// ── Panneau Profils droit ──
+el("toggleRightPanelBtn").onclick = () => {
+  const app = document.querySelector(".app");
+  app.classList.toggle("rpanel-collapsed");
+  localStorage.setItem("rpanelCollapsed", app.classList.contains("rpanel-collapsed") ? "1" : "0");
+};
+if (localStorage.getItem("rpanelCollapsed") === "1")
+  document.querySelector(".app").classList.add("rpanel-collapsed");
+
+el("newProfileBtn").onclick  = () => openProfileEditor(null);
+el("peSave").onclick         = saveProfileEditor;
+el("peCancel").onclick       = closeProfileEditor;
+el("peDelete").onclick       = deleteActiveProfile;
+el("peName").addEventListener("keydown", e => { if (e.key === "Enter") saveProfileEditor(); });
+
+renderProfiles();
+updateProfileChip();
 
 // Modal projet
 el("projectModalConfirm").onclick = _confirmCreateProject;
