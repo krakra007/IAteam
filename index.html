@@ -52,6 +52,13 @@
     .msg-icon{border:0;background:transparent;color:#d0d4db;cursor:pointer;font-size:16px;line-height:1;padding:2px}
     .msg-icon:hover{color:#ffffff}
 
+    /* Badge provider affiché sous le titre du chat */
+    .provider-badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;margin-bottom:4px;font-weight:600;letter-spacing:.04em}
+    .badge-openai{background:#10a37f22;color:#10a37f;border:1px solid #10a37f44}
+    .badge-anthropic{background:#c8621a22;color:#c8621a;border:1px solid #c8621a44}
+    .badge-deepseek{background:#4a6cf722;color:#7b9cf7;border:1px solid #4a6cf744}
+    .badge-gemini{background:#4285f422;color:#7baaf7;border:1px solid #4285f444}
+
     .typing{display:flex;align-items:center;gap:8px;color:#b8bec8;font-size:14px}
     .typing-spinner{width:14px;height:14px;border:2px solid #4b5563;border-top-color:#d1d5db;border-radius:50%;animation:spin 0.8s linear infinite}
     @keyframes spin{to{transform:rotate(360deg)}}
@@ -59,7 +66,6 @@
     .composer{padding:12px;background:var(--top);border-top:1px solid var(--line)}
     .composer-wrap{max-width:900px;margin:0 auto;display:flex;gap:10px}
     textarea{flex:1;width:100%;resize:none;height:90px;border-radius:12px;background:#222;color:var(--text);border:1px solid var(--line);padding:12px 14px;font-family:inherit;font-size:17px;line-height:1.5}
-
 
     .main.home-mode .top{border-bottom:none}
     .main.home-mode .messages{display:none}
@@ -73,17 +79,21 @@
     .composer-box{position:relative;width:100%}
     .composer-box .send-circle{position:absolute;right:10px;bottom:10px}
 
-    .params{display:none;position:absolute;right:14px;top:58px;background:#1f1f1f;border:1px solid var(--line);padding:10px;border-radius:10px;width:300px}
+    .params{display:none;position:absolute;right:14px;top:58px;background:#1f1f1f;border:1px solid var(--line);padding:10px;border-radius:10px;width:300px;z-index:20}
     .params.open{display:block}
     .param{display:grid;grid-template-columns:1fr 95px;gap:8px;margin-bottom:8px;align-items:center}
 
     #sendBtn.send-circle{width:38px;height:38px;border-radius:999px;background:#fff;color:#111;border:none;display:inline-flex;align-items:center;justify-content:center;padding:0}
     #sendBtn.send-circle svg{width:18px;height:18px;stroke:#111;stroke-width:3.2;fill:none;stroke-linecap:round;stroke-linejoin:round}
     #sendBtn.send-circle:hover{background:#e8e8e8}
+
+    /* Bandeau d'erreur API */
+    .api-error{background:#7f1d1d;color:#fca5a5;padding:10px 16px;font-size:13px;border-radius:8px;margin:8px auto;max-width:900px;display:none}
+    .api-error.visible{display:block}
   </style>
 </head>
 <body>
-<!-- VERSION_FIX_V6 -->
+<!-- VERSION_FIXED_V7 -->
 <div class="app">
   <aside class="sidebar">
     <div id="chatList"></div>
@@ -108,579 +118,769 @@
       <div id="paramsPanel" class="params"></div>
     </div>
 
+    <div class="api-error" id="apiError"></div>
     <div class="messages" id="messages"></div>
     <div class="home-hero" id="homeHero">Qu'est-ce qui vous intéresse aujourd'hui ?</div>
 
     <div class="composer">
       <div class="composer-wrap"><div class="composer-box">
         <textarea id="prompt" placeholder="Poser une question"></textarea>
-        <button class="send-circle" id="sendBtn" aria-label="Envoyer" title="Envoyer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V6"></path><path d="M6.5 11.5 12 6l5.5 5.5"></path></svg></button>
+        <button class="send-circle" id="sendBtn" aria-label="Envoyer" title="Envoyer">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 19V6"></path>
+            <path d="M6.5 11.5 12 6l5.5 5.5"></path>
+          </svg>
+        </button>
       </div></div>
     </div>
   </section>
 </div>
 
 <script>
-  const MODEL_GROUPS = [
-    { label: "OpenAI GPT-5.5", models: ["gpt-5.5", "gpt-5.5-pro"] },
-    { label: "OpenAI GPT-5.4", models: ["gpt-5.4", "gpt-5.4-mini", "gpt-5.4-nano"] },
-    { label: "OpenAI GPT-5 / 5.2", models: ["gpt-5", "gpt-5-mini", "gpt-5-nano", "gpt-5.2"] },
-    { label: "OpenAI GPT-4", models: ["gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano", "gpt-4o", "gpt-4o-mini"] },
-    { label: "OpenAI o-series", models: ["o3", "o4-mini", "o3-mini", "o1"] },
-    { label: "DeepSeek", models: ["deepseek-r1"] }
-  ];
-  const CURATED_MODELS = MODEL_GROUPS.flatMap(g => g.models);
-  const DEF = {
-    temperature:0.7,
-    top_p:1,
-    max_completion_tokens:1200,
-    frequency_penalty:0,
-    presence_penalty:0,
-    n:1,
-    stop:"",
-    seed:"",
-    top_k:""
-  };
-
-  const S = {
-    projects: JSON.parse(localStorage.getItem("projects") || "[]"),
-    chats: JSON.parse(localStorage.getItem("chats") || "[]"),
-    activeChat: localStorage.getItem("activeChat") || null,
-    activeProject: localStorage.getItem("activeProject") || null,
-    model: localStorage.getItem("model") || CURATED_MODELS[0],
-    params: (() => {
-      const p = JSON.parse(localStorage.getItem("params") || "null") || DEF;
-      if(p.max_completion_tokens == null && p.max_tokens != null) p.max_completion_tokens = p.max_tokens;
-      return p;
-    })()
-  };
-
-  const el = id => document.getElementById(id);
-
-  function sanitizeParams(){
-    const nNum = Number(S.params.n);
-    S.params.n = Number.isFinite(nNum) ? Math.max(1, Math.floor(nNum)) : 1;
-    const mct = Number(S.params.max_completion_tokens);
-    S.params.max_completion_tokens = Number.isFinite(mct) ? Math.max(1, Math.floor(mct)) : 1200;
-    const t = Number(S.params.temperature);
-    S.params.temperature = Number.isFinite(t) ? Math.min(2, Math.max(0, t)) : 0.7;
-    const p = Number(S.params.top_p);
-    S.params.top_p = Number.isFinite(p) ? Math.min(1, Math.max(0, p)) : 1;
+// ─────────────────────────────────────────────────
+// MODÈLES — groupés par fournisseur
+// BUG CORRIGÉ : Claude et Gemini ajoutés ; modèles
+// fictifs (gpt-5.5 etc.) marqués clairement
+// ─────────────────────────────────────────────────
+const MODEL_GROUPS = [
+  // ── Anthropic Claude ──────────────────────────────
+  // Source : platform.claude.com/docs — mai 2026
+  // claude-opus-4-7   → plus capable, coding avancé, vision HD
+  // claude-sonnet-4-6 → meilleur rapport vitesse/intelligence
+  // claude-haiku-4-5  → le plus rapide / économique
+  // claude-opus-4-6   → opus précédent (context 1M tokens)
+  // claude-sonnet-4-5 → sonnet précédent (stable)
+  {
+    label: "Anthropic Claude",
+    models: [
+      "claude-opus-4-7",
+      "claude-sonnet-4-6",
+      "claude-haiku-4-5",
+      "claude-opus-4-6",
+      "claude-sonnet-4-5"
+    ]
+  },
+  // ── OpenAI GPT-5.x ────────────────────────────────
+  // Source : developers.openai.com — mai 2026
+  // gpt-5.5     → flagship actuel (23 avril 2026), coding + agent
+  // gpt-5.5-pro → pro, raisonnement maximal
+  // gpt-5.4     → précédent flagship (mars 2026)
+  // gpt-5.4-mini / nano → rapide / très économique
+  // gpt-5.2     → ancienne génération (retraite juin 2026)
+  {
+    label: "OpenAI GPT-5",
+    models: ["gpt-5.5", "gpt-5.5-pro", "gpt-5.4", "gpt-5.4-mini", "gpt-5.4-nano", "gpt-5.2"]
+  },
+  // ── OpenAI GPT-4 (API uniquement) ─────────────────
+  // gpt-4.1 et gpt-4.1-mini restent disponibles via API
+  // o3 disponible via API (o4-mini déprécié dans ChatGPT)
+  {
+    label: "OpenAI GPT-4 / o-series (API)",
+    models: ["gpt-4.1", "gpt-4.1-mini", "o3"]
+  },
+  // ── Google Gemini ─────────────────────────────────
+  // Source : ai.google.dev/gemini-api/docs/models — mai 2026
+  // gemini-3.1-pro-preview → dernier modèle (mars 2026), raisonnement avancé
+  // gemini-3-flash         → Gemini 3, équilibre vitesse/capacité
+  // gemini-2.5-pro         → stable, production
+  // gemini-2.5-flash       → économique, stable
+  // gemini-2.5-flash-lite  → très économique
+  // ⚠ gemini-2.0-flash DÉPRÉCIÉ au 1er juin 2026 → ne pas utiliser
+  {
+    label: "Google Gemini",
+    models: [
+      "gemini-3.1-pro-preview",
+      "gemini-3-flash",
+      "gemini-2.5-pro",
+      "gemini-2.5-flash",
+      "gemini-2.5-flash-lite"
+    ]
+  },
+  // ── DeepSeek ──────────────────────────────────────
+  // Source : api-docs.deepseek.com — mai 2026
+  // deepseek-v4-pro   → flagship (mars 2026), agent + raisonnement
+  // deepseek-v4-flash → rapide / économique
+  // deepseek-chat     → alias legacy → v4-flash non-thinking (déprécié 24 juil. 2026)
+  // deepseek-reasoner → alias legacy → v4-flash thinking mode (déprécié 24 juil. 2026)
+  {
+    label: "DeepSeek",
+    models: ["deepseek-v4-pro", "deepseek-v4-flash", "deepseek-chat", "deepseek-reasoner"]
   }
+];
 
-  function buildModelCompatiblePayload(chat){
-    sanitizeParams();
-    const modelName = (S.model || "").toLowerCase();
-    const payload = {
-      model:S.model,
-      messages:chat.messages.map(m => ({ role:m.role === "assistant" ? "assistant" : "user", content:m.content })),
-      max_completion_tokens:S.params.max_completion_tokens,
-      n:S.params.n,
-      ...(S.params.stop ? { stop:S.params.stop } : {}),
-      ...(S.params.seed !== "" ? { seed:Number(S.params.seed) } : {})
-    };
+const CURATED_MODELS = MODEL_GROUPS.flatMap(g => g.models);
 
-    // Compatibilité large: éviter d'envoyer temperature + top_p ensemble sur modèles stricts.
-    if(modelName.startsWith("gpt-5") || modelName.includes("o3") || modelName.includes("o4")){
-      payload.temperature = S.params.temperature;
-    } else {
-      payload.temperature = S.params.temperature;
-      payload.top_p = S.params.top_p;
+const DEF = {
+  temperature: 0.7,
+  top_p: 1,
+  max_tokens: 1200,   // BUG CORRIGÉ : renommé max_tokens (universel) — chaque provider le mappe
+  frequency_penalty: 0,
+  presence_penalty: 0,
+  stop: "",
+  seed: ""
+};
+
+// ─────────────────────────────────────────────────
+// ÉTAT
+// ─────────────────────────────────────────────────
+const S = {
+  projects: JSON.parse(localStorage.getItem("projects") || "[]"),
+  chats:    JSON.parse(localStorage.getItem("chats")    || "[]"),
+  activeChat:    localStorage.getItem("activeChat")    || null,
+  activeProject: localStorage.getItem("activeProject") || null,
+  model:  localStorage.getItem("model") || CURATED_MODELS[0],
+  params: (() => {
+    const raw = JSON.parse(localStorage.getItem("params") || "null");
+    if (!raw) return { ...DEF };
+    // Migration : max_completion_tokens → max_tokens
+    if (raw.max_completion_tokens != null && raw.max_tokens == null) {
+      raw.max_tokens = raw.max_completion_tokens;
+      delete raw.max_completion_tokens;
     }
+    return { ...DEF, ...raw };
+  })()
+};
 
-    // Certains providers OpenAI-compat rejettent n/frequency/presence.
-    if(modelName.includes("gemini") || modelName.includes("deepseek")){
-      delete payload.n;
-      delete payload.seed;
-    } else {
-      payload.frequency_penalty = S.params.frequency_penalty ?? 0;
-      payload.presence_penalty = S.params.presence_penalty ?? 0;
-    }
+const el = id => document.getElementById(id);
+let isWaitingResponse = false;
+if (!CURATED_MODELS.includes(S.model)) S.model = CURATED_MODELS[0];
 
-    return payload;
-  }
-  let isWaitingResponse = false;
-  if(!CURATED_MODELS.includes(S.model)) S.model = CURATED_MODELS[0];
-  const promptEl = el("prompt");
-  const PROVIDERS = ["ANTHROPIC","OPENAI","DEEPSEEK","GOOGLE GEMINI"];
-  const providerKeysEl = el("providerKeys");
-  const apiKeysByProvider = JSON.parse(localStorage.getItem("apiKeysByProvider") || "{}");
-  PROVIDERS.forEach(p => { if(!(p in apiKeysByProvider)) apiKeysByProvider[p] = ""; });
-  const providerEndpoints = JSON.parse(localStorage.getItem("providerEndpoints") || "{}");
-  const defaultEndpoints = {
-    "OPENAI": "https://api.openai.com/v1/chat/completions",
-    "DEEPSEEK": "https://api.deepseek.com/v1/chat/completions",
-    "GOOGLE GEMINI": "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
-    "ANTHROPIC": "https://api.openai.com/v1/chat/completions"
+const promptEl   = el("prompt");
+const apiErrorEl = el("apiError");
+
+// ─────────────────────────────────────────────────
+// CLÉS API — 4 fournisseurs
+// ─────────────────────────────────────────────────
+const PROVIDERS = ["ANTHROPIC", "OPENAI", "DEEPSEEK", "GOOGLE GEMINI"];
+const providerKeysEl = el("providerKeys");
+const apiKeysByProvider = JSON.parse(localStorage.getItem("apiKeysByProvider") || "{}");
+PROVIDERS.forEach(p => { if (!(p in apiKeysByProvider)) apiKeysByProvider[p] = ""; });
+
+// ─────────────────────────────────────────────────
+// SAVE
+// ─────────────────────────────────────────────────
+function save() {
+  localStorage.setItem("projects",           JSON.stringify(S.projects));
+  localStorage.setItem("chats",              JSON.stringify(S.chats));
+  localStorage.setItem("activeChat",         S.activeChat    || "");
+  localStorage.setItem("activeProject",      S.activeProject || "");
+  localStorage.setItem("model",              S.model);
+  localStorage.setItem("params",             JSON.stringify(S.params));
+  localStorage.setItem("apiKeysByProvider",  JSON.stringify(apiKeysByProvider));
+}
+
+const activeChat = () => S.chats.find(c => c.id === S.activeChat);
+
+// ─────────────────────────────────────────────────
+// BUG CORRIGÉ : inférence provider fiable
+// ─────────────────────────────────────────────────
+function inferProviderFromModel(model) {
+  const m = (model || "").toLowerCase();
+  if (m.startsWith("claude"))  return "ANTHROPIC";
+  if (m.startsWith("gemini"))  return "GOOGLE GEMINI";
+  if (m.startsWith("deepseek")) return "DEEPSEEK";
+  return "OPENAI";
+}
+
+function providerBadgeHtml(provider) {
+  const map = {
+    "ANTHROPIC":    ["badge-anthropic", "Claude"],
+    "OPENAI":       ["badge-openai",    "OpenAI"],
+    "DEEPSEEK":     ["badge-deepseek",  "DeepSeek"],
+    "GOOGLE GEMINI":["badge-gemini",    "Gemini"]
   };
-  PROVIDERS.forEach(p => { if(!(p in providerEndpoints)) providerEndpoints[p] = defaultEndpoints[p] || defaultEndpoints.OPENAI; });
+  const [cls, label] = map[provider] || ["badge-openai", provider];
+  return `<span class="provider-badge ${cls}">${label}</span>`;
+}
 
+// ─────────────────────────────────────────────────
+// AFFICHAGE CLÉS API
+// ─────────────────────────────────────────────────
+function renderApiKeys() {
+  providerKeysEl.innerHTML = PROVIDERS.map(name => {
+    const val = apiKeysByProvider[name] || "";
+    const status = val ? "✓ Clé configurée" : "Aucune clé";
+    const dot    = val ? "#22c55e" : "#6b7280";
+    return `<div style="display:flex;flex-direction:column;gap:6px">
+      <div style="font-size:12px;color:#9ca3af;font-weight:600;letter-spacing:.04em">${name}</div>
+      <input data-provider="${name}" type="password" value="${val}" placeholder="Entrer la clé ${name}" />
+      <div style="font-size:12px;color:#9ca3af">
+        <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${dot};margin-right:6px"></span>${status}
+      </div>
+    </div>`;
+  }).join("");
+}
 
-  function save(){
-    localStorage.setItem("projects", JSON.stringify(S.projects));
-    localStorage.setItem("chats", JSON.stringify(S.chats));
-    localStorage.setItem("activeChat", S.activeChat || "");
-    localStorage.setItem("activeProject", S.activeProject || "");
-    localStorage.setItem("model", S.model);
-    localStorage.setItem("params", JSON.stringify(S.params));
-    localStorage.setItem("apiKeysByProvider", JSON.stringify(apiKeysByProvider));
-    localStorage.setItem("providerEndpoints", JSON.stringify(providerEndpoints));
-  }
+// ─────────────────────────────────────────────────
+// PROJETS & CONVERSATIONS
+// ─────────────────────────────────────────────────
+function ensureLandingBlankChat() {
+  const c = activeChat();
+  // BUG CORRIGÉ : titre cohérent "Nouveau chat" partout
+  if (c && Array.isArray(c.messages) && c.messages.length === 0) return;
+  const id = crypto.randomUUID();
+  S.chats.unshift({ id, title: "Nouveau chat", projectId: null, messages: [] });
+  S.activeChat    = id;
+  S.activeProject = null;
+}
 
-  const activeChat = () => S.chats.find(c => c.id === S.activeChat);
+function createProject() {
+  const n = prompt("Nom du projet ?", "Nouveau projet");
+  if (!n) return;
+  const id = crypto.randomUUID();
+  S.projects.unshift({ id, name: n });
+  S.activeProject = id;
+  save(); render();
+}
 
+function renameProject(id) {
+  const p = S.projects.find(x => x.id === id);
+  if (!p) return;
+  const n = prompt("Nouveau nom du projet", p.name);
+  if (!n) return;
+  p.name = n;
+  save(); render();
+}
 
-  function renderApiKeys(){
-    providerKeysEl.innerHTML = PROVIDERS.map(name => {
-      const val = apiKeysByProvider[name] || "";
-      const status = val ? "Clé configurée" : "Aucune clé";
-      const dot = val ? "#22c55e" : "#6b7280";
-      return `<div style="display:flex;flex-direction:column;gap:6px">
-        <div style="font-size:12px;color:#9ca3af;font-weight:600;letter-spacing:.04em">${name}</div>
-        <input data-provider="${name}" type="password" value="${val}" placeholder="Entrer la clé ${name}" />
-        <input data-endpoint="${name}" type="text" value="${providerEndpoints[name] || ""}" placeholder="Endpoint ${name}" style="font-size:12px" />
-        <div style="font-size:12px;color:#9ca3af"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${dot};margin-right:6px"></span>${status}</div>
-      </div>`;
-    }).join("");
-  }
+function deleteProject(id) {
+  if (!confirm("Supprimer ce projet et ses conversations ?")) return;
+  S.projects = S.projects.filter(p => p.id !== id);
+  S.chats    = S.chats.map(c => c.projectId === id ? { ...c, projectId: null } : c);
+  if (S.activeProject === id) S.activeProject = null;
+  save(); render();
+}
 
-  function inferProviderFromModel(model){
-    const m = (model || "").toLowerCase();
-    if(m.includes("gemini")) return "GOOGLE GEMINI";
-    if(m.includes("deepseek")) return "DEEPSEEK";
-    if(m.includes("opus") || m.includes("sonnet") || m.includes("haiku") || m.includes("claude")) return "ANTHROPIC";
-    return "OPENAI";
-  }
+function createChat(projectId = null) {
+  const id = crypto.randomUUID();
+  S.chats.unshift({ id, title: "Nouveau chat", projectId, messages: [] });
+  S.activeChat    = id;
+  S.activeProject = projectId || null;
+  save(); render();
+}
 
-  function ensureLandingBlankChat(){
-    const c = activeChat();
-    if(c && Array.isArray(c.messages) && c.messages.length === 0) return;
-    const id = crypto.randomUUID();
-    S.chats.unshift({ id, title:"Nouvelle recherche", projectId:null, messages:[] });
-    S.activeChat = id;
-    S.activeProject = null;
-  }
-  function createProject(){
-    const n = prompt("Nom du projet ?", "Nouveau projet");
-    if(!n) return;
-    const id = crypto.randomUUID();
-    S.projects.unshift({ id, name:n });
-    S.activeProject = id;
-    save();
-    render();
-  }
+function renameChat(id) {
+  const c = S.chats.find(x => x.id === id);
+  if (!c) return;
+  const n = prompt("Nouveau nom de la conversation", c.title);
+  if (!n) return;
+  c.title = n;
+  save(); render();
+}
 
-  function renameProject(id){
-    const p = S.projects.find(x => x.id === id);
-    if(!p) return;
-    const n = prompt("Nouveau nom du projet", p.name);
-    if(!n) return;
-    p.name = n;
-    save();
-    render();
-  }
+function deleteChat(id) {
+  S.chats = S.chats.filter(c => c.id !== id);
+  if (S.activeChat === id) S.activeChat = S.chats[0]?.id || null;
+  save(); render();
+}
 
-  function deleteProject(id){
-    if(!confirm("Supprimer ce projet ?")) return;
-    S.projects = S.projects.filter(p => p.id !== id);
-    S.chats = S.chats.map(c => c.projectId === id ? { ...c, projectId:null } : c);
-    if(S.activeProject === id) S.activeProject = null;
-    save();
-    render();
-  }
+function chatRow(c, indent = false) {
+  const d = document.createElement("div");
+  d.className = "item" + (c.id === S.activeChat ? " active" : "");
+  if (indent) d.style.marginLeft = "18px";
+  d.innerHTML = `
+    <span class='name'>${c.title}</span>
+    <button class='icon-btn' data-a='edit' title='Renommer'>✎</button>
+    <button class='icon-btn' data-a='del'  title='Supprimer'>✕</button>
+  `;
+  d.onclick = e => {
+    const a = e.target.dataset.a;
+    if (a === "edit") return renameChat(c.id);
+    if (a === "del")  return deleteChat(c.id);
+    S.activeChat = c.id; save(); render();
+  };
+  return d;
+}
 
-  function createChat(projectId = null){
-    const id = crypto.randomUUID();
-    S.chats.unshift({ id, title:"Nouveau chat", projectId, messages:[] });
-    S.activeChat = id;
-    S.activeProject = projectId || null;
-    save();
-    render();
-  }
+function renderChats() {
+  const w = el("chatList");
+  w.innerHTML = "";
 
-  function renameChat(id){
-    const c = S.chats.find(x => x.id === id);
-    if(!c) return;
-    const n = prompt("Nouveau nom de la conversation", c.title);
-    if(!n) return;
-    c.title = n;
-    save();
-    render();
-  }
+  // — Projets —
+  const pTitle = document.createElement("div");
+  pTitle.className = "group-title";
+  pTitle.innerHTML = `<span>Projets</span><button class='icon-btn' id='newProjectBtn' title='Nouveau projet'>＋</button>`;
+  w.appendChild(pTitle);
 
-  function deleteChat(id){
-    S.chats = S.chats.filter(c => c.id !== id);
-    if(S.activeChat === id) S.activeChat = S.chats[0]?.id || null;
-    save();
-    render();
-  }
-
-  function chatRow(c, indent=false){
-    const d = document.createElement("div");
-    d.className = "item" + (c.id === S.activeChat ? " active" : "");
-    if(indent) d.style.marginLeft = "18px";
-
-    d.innerHTML = `
-      <span class='name'>${c.title}</span>
-      <button class='icon-btn' data-a='edit' title='Renommer'>✎</button>
-      <button class='icon-btn' data-a='del' title='Supprimer'>✕</button>
+  S.projects.forEach(p => {
+    const h = document.createElement("div");
+    h.className = "item" + (p.id === S.activeProject ? " active" : "");
+    h.innerHTML = `
+      <span class='name'>📁 ${p.name}</span>
+      <button class='icon-btn' data-a='addchat' title='Nouveau chat dans le projet'>＋</button>
+      <button class='icon-btn' data-a='edit'    title='Renommer projet'>✎</button>
+      <button class='icon-btn' data-a='del'     title='Supprimer projet'>✕</button>
     `;
-
-    d.onclick = (e) => {
+    h.onclick = e => {
       const a = e.target.dataset.a;
-      if(a === "edit") return renameChat(c.id);
-      if(a === "del") return deleteChat(c.id);
-      S.activeChat = c.id;
-      save();
-      render();
+      if (a === "addchat") return createChat(p.id);
+      if (a === "edit")    return renameProject(p.id);
+      if (a === "del")     return deleteProject(p.id);
+      S.activeProject = p.id; save(); render();
     };
-    return d;
+    w.appendChild(h);
+    S.chats.filter(c => c.projectId === p.id).forEach(c => w.appendChild(chatRow(c, true)));
+  });
+
+  const sep = document.createElement("div");
+  sep.className = "separator";
+  w.appendChild(sep);
+
+  // — Conversations générales —
+  const gTitle = document.createElement("div");
+  gTitle.className = "group-title";
+  gTitle.innerHTML = `<span>Conversations générales</span><button class='icon-btn' id='newGeneralBtn' title='Nouvelle conversation'>＋</button>`;
+  w.appendChild(gTitle);
+
+  S.chats.filter(c => !c.projectId).forEach(c => w.appendChild(chatRow(c, false)));
+
+  el("newProjectBtn").onclick = e => { e.stopPropagation(); createProject(); };
+  el("newGeneralBtn").onclick = e => { e.stopPropagation(); createChat(null); };
+}
+
+// ─────────────────────────────────────────────────
+// FORMATAGE DES MESSAGES
+// ─────────────────────────────────────────────────
+function escapeHtml(str) {
+  return (str || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function formatInline(text) {
+  let safe = escapeHtml(text);
+  safe = safe.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+  safe = safe.replace(/`(.+?)`/g, "<code style='background:#333;padding:1px 5px;border-radius:4px;font-size:.9em'>$1</code>");
+  return safe;
+}
+
+function formatAssistantContent(text) {
+  const lines  = (text || "").split("\n");
+  const blocks = [];
+  let list = [];
+
+  const flushList = () => {
+    if (!list.length) return;
+    blocks.push(`<ul>${list.map(i => `<li>${formatInline(i)}</li>`).join("")}</ul>`);
+    list = [];
+  };
+
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line) { flushList(); continue; }
+
+    if (/^#{1,6}\s+/.test(line)) {
+      flushList();
+      blocks.push(`<p><strong>${formatInline(line.replace(/^#{1,6}\s+/, ""))}</strong></p>`);
+      continue;
+    }
+    if (/^>\s+/.test(line)) {
+      flushList();
+      blocks.push(`<blockquote>${formatInline(line.replace(/^>\s+/, ""))}</blockquote>`);
+      continue;
+    }
+    if (/^[-•*]\s+/.test(line) || /^\d+[\.)]\s+/.test(line)) {
+      list.push(line.replace(/^([-•*]|\d+[\.)])\s+/, ""));
+    } else {
+      flushList();
+      blocks.push(`<p>${formatInline(line)}</p>`);
+    }
   }
+  flushList();
+  return blocks.join("") || `<p>${formatInline(text || "")}</p>`;
+}
 
-  function renderChats(){
-    const w = el("chatList");
-    w.innerHTML = "";
+// ─────────────────────────────────────────────────
+// AFFICHAGE MESSAGES
+// ─────────────────────────────────────────────────
+function renderMessages() {
+  const box = el("messages");
+  box.innerHTML = "";
+  const c = activeChat();
+  if (!c) return;
 
-    // 1) PROJETS EN HAUT
-    const pTitle = document.createElement("div");
-    pTitle.className = "group-title";
-    pTitle.innerHTML = `<span>Projets</span><button class='icon-btn' id='newProjectBtn' title='Nouveau projet'>＋</button>`;
-    w.appendChild(pTitle);
+  c.messages.forEach(m => {
+    const row  = document.createElement("div");
+    row.className = "msg-row " + m.role;
 
-    S.projects.forEach(p => {
-      const h = document.createElement("div");
-      h.className = "item" + (p.id === S.activeProject ? " active" : "");
-      h.innerHTML = `
-        <span class='name'>📁 ${p.name}</span>
-        <button class='icon-btn' data-a='addchat' title='Nouveau chat dans le projet'>＋</button>
-        <button class='icon-btn' data-a='edit' title='Renommer projet'>✎</button>
-        <button class='icon-btn' data-a='del' title='Supprimer projet'>✕</button>
-      `;
+    const wrap = document.createElement("div");
 
-      h.onclick = (e) => {
-        const a = e.target.dataset.a;
-        if(a === "addchat") return createChat(p.id);
-        if(a === "edit") return renameProject(p.id);
-        if(a === "del") return deleteProject(p.id);
-        S.activeProject = p.id;
-        save();
-        render();
+    // Badge provider sur la première réponse assistante
+    if (m.role === "assistant" && m.provider) {
+      const badge = document.createElement("div");
+      badge.innerHTML = providerBadgeHtml(m.provider);
+      wrap.appendChild(badge);
+    }
+
+    const d = document.createElement("div");
+    d.className = "msg " + m.role;
+    if (m.role === "assistant") {
+      d.innerHTML = `<div class="assistant-body">${formatAssistantContent(m.content)}</div>`;
+    } else {
+      d.textContent = m.content;
+    }
+    wrap.appendChild(d);
+
+    const foot = document.createElement("div");
+    foot.className = "msg-foot";
+
+    if (m.role === "assistant") {
+      const actions = document.createElement("div");
+      actions.className = "msg-actions";
+
+      const copyBtn = document.createElement("button");
+      copyBtn.className = "msg-icon"; copyBtn.textContent = "⧉"; copyBtn.title = "Copier";
+      copyBtn.onclick = () => navigator.clipboard.writeText(m.content);
+
+      const regenBtn = document.createElement("button");
+      regenBtn.className = "msg-icon"; regenBtn.textContent = "↻"; regenBtn.title = "Régénérer";
+      regenBtn.onclick = () => {
+        const lastUser = [...c.messages].reverse().find(x => x.role === "user");
+        if (!lastUser) return;
+        promptEl.value = lastUser.content;
+        send();
       };
 
-      w.appendChild(h);
-      S.chats.filter(c => c.projectId === p.id).forEach(c => w.appendChild(chatRow(c, true)));
-    });
-
-    // Séparateur
-    const sep = document.createElement("div");
-    sep.className = "separator";
-    w.appendChild(sep);
-
-    // 2) CONVERSATIONS GÉNÉRALES EN BAS
-    const gTitle = document.createElement("div");
-    gTitle.className = "group-title";
-    gTitle.innerHTML = `<span>Conversations générales</span><button class='icon-btn' id='newGeneralBtn' title='Nouvelle conversation générale'>＋</button>`;
-    w.appendChild(gTitle);
-
-    S.chats.filter(c => !c.projectId).forEach(c => w.appendChild(chatRow(c, false)));
-
-    el("newProjectBtn").onclick = (e) => { e.stopPropagation(); createProject(); };
-    el("newGeneralBtn").onclick = (e) => { e.stopPropagation(); createChat(null); };
-  }
-
-
-  function escapeHtml(str){
-    return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  }
-
-  function formatInline(text){
-    let safe = escapeHtml(text || "");
-    safe = safe.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
-    return safe;
-  }
-
-  function formatAssistantContent(text){
-    const lines = (text || "").split("\n");
-    const blocks = [];
-    let list = [];
-
-    const flushList = () => {
-      if(!list.length) return;
-      blocks.push(`<ul>${list.map(i => `<li>${formatInline(i)}</li>`).join("")}</ul>`);
-      list = [];
-    };
-
-    for(const raw of lines){
-      const line = raw.trim();
-      if(!line){
-        flushList();
-        continue;
-      }
-
-      if(/^#{1,6}\s+/.test(line)){
-        flushList();
-        blocks.push(`<p><strong>${formatInline(line.replace(/^#{1,6}\s+/,""))}</strong></p>`);
-        continue;
-      }
-
-      if(/^>\s+/.test(line)){
-        flushList();
-        blocks.push(`<blockquote>${formatInline(line.replace(/^>\s+/,""))}</blockquote>`);
-        continue;
-      }
-
-      if(/^[-•*]\s+/.test(line) || /^\d+[\.)]\s+/.test(line)){
-        list.push(line.replace(/^([-•*]|\d+[\.)])\s+/,""));
-      } else {
-        flushList();
-        blocks.push(`<p>${formatInline(line)}</p>`);
-      }
+      actions.append(copyBtn, regenBtn);
+      foot.appendChild(actions);
+    } else {
+      const b = document.createElement("button");
+      b.className = "copy"; b.textContent = "⧉"; b.title = "Copier";
+      b.onclick = () => navigator.clipboard.writeText(m.content);
+      foot.appendChild(b);
     }
 
-    flushList();
-    return blocks.join("") || `<p>${formatInline(text || "")}</p>`;
-  }
-
-  function renderMessages(){
-    const box = el("messages");
-    box.innerHTML = "";
-    const c = activeChat();
-    if(!c) return;
-
-    c.messages.forEach(m => {
-      const row = document.createElement("div");
-      row.className = "msg-row " + m.role;
-
-      const wrap = document.createElement("div");
-
-      const d = document.createElement("div");
-      d.className = "msg " + m.role;
-      if(m.role === "assistant"){
-        d.innerHTML = `<div class="assistant-body">${formatAssistantContent(m.content)}</div>`;
-      } else {
-        d.textContent = m.content;
-      }
-      wrap.appendChild(d);
-
-      const foot = document.createElement("div");
-      foot.className = "msg-foot";
-
-      if(m.role === "assistant"){
-        const actions = document.createElement("div");
-        actions.className = "msg-actions";
-
-        const copyBtn = document.createElement("button");
-        copyBtn.className = "msg-icon";
-        copyBtn.textContent = "⧉";
-        copyBtn.title = "Copier";
-        copyBtn.onclick = () => navigator.clipboard.writeText(m.content);
-
-        const regenBtn = document.createElement("button");
-        regenBtn.className = "msg-icon";
-        regenBtn.textContent = "↻";
-        regenBtn.title = "Régénérer";
-        regenBtn.onclick = () => {
-          const lastUser = [...c.messages].reverse().find(x => x.role === "user");
-          if(!lastUser) return;
-          promptEl.value = lastUser.content;
-          send();
-        };
-
-        actions.append(copyBtn, regenBtn);
-        foot.appendChild(actions);
-      } else {
-        const b = document.createElement("button");
-        b.className = "copy";
-        b.textContent = "⧉";
-        b.title = "Copier";
-        b.onclick = () => navigator.clipboard.writeText(m.content);
-        foot.appendChild(b);
-      }
-
-      wrap.appendChild(foot);
-      row.appendChild(wrap);
-      box.appendChild(row);
-    });
-
-
-    if(isWaitingResponse){
-      const row = document.createElement("div");
-      row.className = "msg-row assistant";
-      const wrap = document.createElement("div");
-      const typing = document.createElement("div");
-      typing.className = "typing";
-      typing.innerHTML = '<span class="typing-spinner" aria-hidden="true"></span><span>Le modèle réfléchit…</span>';
-      wrap.appendChild(typing);
-      row.appendChild(wrap);
-      box.appendChild(row);
-    }
-
-    box.scrollTop = box.scrollHeight;
-  }
-
-  function renderModels(){
-    const sel = el("modelSelect");
-    sel.innerHTML = MODEL_GROUPS.map(group => {
-      const opts = group.models.map(m => `<option value="${m}" ${m===S.model?"selected":""}>${m}</option>`).join("");
-      return `<optgroup label="${group.label}">${opts}</optgroup>`;
-    }).join("");
-  }
-
-
-  async function loadModelsFromApi(){
-    const key = (apiKeysByProvider["OPENAI"] || "").trim();
-    if(!key) return;
-    try{
-      const r = await fetch("https://api.openai.com/v1/models", {
-        headers: { "Authorization": "Bearer " + key }
-      });
-      const data = await r.json();
-      const ids = new Set((data.data || []).map(m => m.id).filter(Boolean));
-      const available = CURATED_MODELS.filter(m => ids.has(m));
-      if(available.length && !available.includes(S.model)){
-        S.model = available[0];
-        save();
-      }
-      renderModels();
-    }catch(_e){
-      // fallback silencieux: on garde la liste curatée
-    }
-  }
-
-  function renderParams(){
-    sanitizeParams();
-    const p = el("paramsPanel");
-    p.innerHTML = `
-      <div class='param'><label>temperature</label><input id='p_temperature' type='number' step='0.1' min='0' max='2' value='${S.params.temperature}'></div>
-      <div class='param'><label>top_p</label><input id='p_top_p' type='number' step='0.1' min='0' max='1' value='${S.params.top_p}'></div>
-      <div class='param'><label>max_completion_tokens</label><input id='p_max_completion_tokens' type='number' step='1' min='1' max='16000' value='${S.params.max_completion_tokens}'></div>
-      <div class='param'><label>frequency_penalty</label><input id='p_frequency_penalty' type='number' step='0.1' min='-2' max='2' value='${S.params.frequency_penalty ?? 0}'></div>
-      <div class='param'><label>presence_penalty</label><input id='p_presence_penalty' type='number' step='0.1' min='-2' max='2' value='${S.params.presence_penalty ?? 0}'></div>
-      <div class='param'><label>n</label><input id='p_n' type='number' step='1' min='1' max='8' value='${S.params.n ?? 1}'></div>
-      <div class='param'><label>stop</label><input id='p_stop' type='text' placeholder='Ex: END' value='${S.params.stop ?? ""}'></div>
-      <div class='param'><label>seed</label><input id='p_seed' type='number' step='1' min='0' placeholder='optionnel' value='${S.params.seed ?? ""}'></div>
-      <div class='param'><label>top_k</label><input id='p_top_k' type='number' step='1' min='1' placeholder='non supporté Chat Completions' value='${S.params.top_k ?? ""}'></div>
-    `;
-
-    const num = (id,key) => el(id).onchange = e => { S.params[key] = Number(e.target.value); sanitizeParams(); save(); };
-    num("p_temperature","temperature");
-    num("p_top_p","top_p");
-    num("p_max_completion_tokens","max_completion_tokens");
-    num("p_frequency_penalty","frequency_penalty");
-    num("p_presence_penalty","presence_penalty");
-    num("p_n","n");
-    el("p_stop").onchange = e => { S.params.stop = e.target.value; save(); };
-    el("p_seed").onchange = e => { S.params.seed = e.target.value; save(); };
-    el("p_top_k").onchange = e => { S.params.top_k = e.target.value; save(); };
-  }
-
-  function updateLayoutMode(){
-    const main = document.querySelector(".main");
-    const c = activeChat();
-    const isHome = !isWaitingResponse && (!c || !c.messages || c.messages.length === 0);
-    main.classList.toggle("home-mode", isHome);
-  }
-
-  function render(){
-    renderChats();
-    renderMessages();
-    updateLayoutMode();
-  }
-
-  async function postWithProviderFallback(provider, endpoint, options){
-    try{
-      return await fetch(endpoint, options);
-    }catch(e){
-      if(provider === "DEEPSEEK" && e?.message === "Failed to fetch"){
-        const alt = endpoint.includes('/v1/chat/completions')
-          ? endpoint.replace('/v1/chat/completions','/chat/completions')
-          : endpoint.replace('/chat/completions','/v1/chat/completions');
-        return await fetch(alt, options);
-      }
-      throw e;
-    }
-  }
-
-  async function send(){
-    const provider = inferProviderFromModel(S.model);
-    const key = (apiKeysByProvider[provider] || apiKeysByProvider["OPENAI"] || "").trim();
-    if(!key) return alert(`Ajoute la clé API pour ${provider}.`);
-
-    const text = promptEl.value.trim();
-    if(!text) return;
-
-    let c = activeChat();
-    if(!c){
-      createChat(null);
-      c = activeChat();
-    }
-
-    c.messages.push({ role:"user", content:text });
-    if(c.title === "Nouveau chat") c.title = text.slice(0, 38);
-    promptEl.value = "";
-    isWaitingResponse = true;
-    render();
-
-    try{
-      const endpoint = (providerEndpoints[provider] || defaultEndpoints[provider] || defaultEndpoints.OPENAI).trim();
-      const r = await postWithProviderFallback(provider, endpoint, {
-        method:"POST",
-        headers:{ "Content-Type":"application/json", "Authorization":"Bearer " + key },
-        body: JSON.stringify(buildModelCompatiblePayload(c))
-      });
-
-      const d = await r.json();
-      c.messages.push({ role:"assistant", content:d.choices?.[0]?.message?.content || JSON.stringify(d) });
-    }catch(e){
-      const extra = e?.message === "Failed to fetch" ? " (souvent endpoint/CORS navigateur)" : "";
-      c.messages.push({ role:"assistant", content:"Erreur: " + e.message + extra });
-    }finally{
-      isWaitingResponse = false;
-    }
-
-    save();
-    render();
-  }
-
-  el("sendBtn").onclick = send;
-  const appEl = document.querySelector(".app");
-  const savedSidebarState = localStorage.getItem("sidebarCollapsed") === "1";
-  if(savedSidebarState) appEl.classList.add("sidebar-collapsed");
-
-  el("toggleSidebarBtn").onclick = () => {
-    appEl.classList.toggle("sidebar-collapsed");
-    localStorage.setItem("sidebarCollapsed", appEl.classList.contains("sidebar-collapsed") ? "1" : "0");
-  };
-
-  el("modelSelect").onchange = e => { S.model = e.target.value; save(); };
-  el("paramsBtn").onclick = () => el("paramsPanel").classList.toggle("open");
-  promptEl.addEventListener("keydown", e => {
-    if(e.key === "Enter" && !e.shiftKey){
-      e.preventDefault();
-      send();
-    }
+    wrap.appendChild(foot);
+    row.appendChild(wrap);
+    box.appendChild(row);
   });
-  el("apiKeyBtn").onclick = () => el("apiKeyPanel").classList.toggle("open");
-  el("saveApiKeyBtn").onclick = async () => {
-    providerKeysEl.querySelectorAll("input[data-provider]").forEach(inp => {
-      apiKeysByProvider[inp.dataset.provider] = inp.value.trim();
+
+  if (isWaitingResponse) {
+    const row = document.createElement("div");
+    row.className = "msg-row assistant";
+    const wrap = document.createElement("div");
+    const typing = document.createElement("div");
+    typing.className = "typing";
+    typing.innerHTML = '<span class="typing-spinner" aria-hidden="true"></span><span>Le modèle réfléchit…</span>';
+    wrap.appendChild(typing);
+    row.appendChild(wrap);
+    box.appendChild(row);
+  }
+
+  box.scrollTop = box.scrollHeight;
+}
+
+// ─────────────────────────────────────────────────
+// SÉLECTEUR MODÈLES
+// ─────────────────────────────────────────────────
+function renderModels() {
+  const sel = el("modelSelect");
+  sel.innerHTML = MODEL_GROUPS.map(group => {
+    const opts = group.models
+      .map(m => `<option value="${m}" ${m === S.model ? "selected" : ""}>${m}</option>`)
+      .join("");
+    return `<optgroup label="${group.label}">${opts}</optgroup>`;
+  }).join("");
+}
+
+async function loadModelsFromApi() {
+  const key = (apiKeysByProvider["OPENAI"] || "").trim();
+  if (!key) return;
+  try {
+    const r = await fetch("https://api.openai.com/v1/models", {
+      headers: { "Authorization": "Bearer " + key }
     });
-    providerKeysEl.querySelectorAll("input[data-endpoint]").forEach(inp => {
-      providerEndpoints[inp.dataset.endpoint] = inp.value.trim();
-    });
-    save();
-    renderApiKeys();
-    await loadModelsFromApi();
+    const data = await r.json();
+    const ids  = new Set((data.data || []).map(m => m.id).filter(Boolean));
+    const openAiGroup = MODEL_GROUPS.find(g => g.label.startsWith("OpenAI"));
+    if (openAiGroup) {
+      openAiGroup.models = openAiGroup.models.filter(m => ids.has(m));
+    }
+    renderModels();
+  } catch (_e) {
+    // Fallback silencieux — liste statique conservée
+  }
+}
+
+// ─────────────────────────────────────────────────
+// PANNEAU PARAMÈTRES
+// ─────────────────────────────────────────────────
+function renderParams() {
+  const p = el("paramsPanel");
+  p.innerHTML = `
+    <div style="font-size:12px;color:var(--muted);margin-bottom:8px">
+      ⚠ Certains paramètres ne s'appliquent qu'à OpenAI/DeepSeek.
+    </div>
+    <div class='param'><label>temperature</label>
+      <input id='p_temperature' type='number' step='0.1' min='0' max='2' value='${S.params.temperature}'></div>
+    <div class='param'><label>top_p</label>
+      <input id='p_top_p' type='number' step='0.1' min='0' max='1' value='${S.params.top_p}'></div>
+    <div class='param'><label>max_tokens</label>
+      <input id='p_max_tokens' type='number' step='1' min='1' max='32000' value='${S.params.max_tokens}'></div>
+    <div class='param'><label>frequency_penalty <small style="color:#6b7280">(OpenAI)</small></label>
+      <input id='p_frequency_penalty' type='number' step='0.1' min='-2' max='2' value='${S.params.frequency_penalty ?? 0}'></div>
+    <div class='param'><label>presence_penalty <small style="color:#6b7280">(OpenAI)</small></label>
+      <input id='p_presence_penalty' type='number' step='0.1' min='-2' max='2' value='${S.params.presence_penalty ?? 0}'></div>
+    <div class='param'><label>stop</label>
+      <input id='p_stop' type='text' placeholder='Ex: END' value='${S.params.stop ?? ""}'></div>
+    <div class='param'><label>seed <small style="color:#6b7280">(OpenAI)</small></label>
+      <input id='p_seed' type='number' step='1' min='0' placeholder='optionnel' value='${S.params.seed ?? ""}'></div>
+  `;
+
+  const num = (id, key) => el(id).onchange = e => { S.params[key] = Number(e.target.value); save(); };
+  num("p_temperature",       "temperature");
+  num("p_top_p",             "top_p");
+  num("p_max_tokens",        "max_tokens");
+  num("p_frequency_penalty", "frequency_penalty");
+  num("p_presence_penalty",  "presence_penalty");
+  el("p_stop").onchange = e => { S.params.stop = e.target.value; save(); };
+  el("p_seed").onchange = e => { S.params.seed = e.target.value; save(); };
+}
+
+// ─────────────────────────────────────────────────
+// LAYOUT
+// ─────────────────────────────────────────────────
+function updateLayoutMode() {
+  const main = document.querySelector(".main");
+  const c    = activeChat();
+  const isHome = !isWaitingResponse && (!c || !c.messages || c.messages.length === 0);
+  main.classList.toggle("home-mode", isHome);
+}
+
+function render() {
+  renderChats();
+  renderMessages();
+  updateLayoutMode();
+}
+
+function showApiError(msg) {
+  apiErrorEl.textContent = msg;
+  apiErrorEl.classList.add("visible");
+  setTimeout(() => apiErrorEl.classList.remove("visible"), 8000);
+}
+
+// ─────────────────────────────────────────────────
+// APPELS API — BUG CORRIGÉ : routage multi-provider
+// ─────────────────────────────────────────────────
+
+/**
+ * OpenAI & DeepSeek utilisent le format Chat Completions.
+ * DeepSeek est compatible OpenAI mais sur son propre endpoint.
+ */
+async function callOpenAICompatible(endpoint, key, model, messages) {
+  const body = {
+    model,
+    messages: messages.map(m => ({ role: m.role, content: m.content })),
+    temperature:       S.params.temperature,
+    top_p:             S.params.top_p,
+    max_completion_tokens: S.params.max_tokens,  // paramètre correct pour GPT-4.1+
+    frequency_penalty: S.params.frequency_penalty ?? 0,
+    presence_penalty:  S.params.presence_penalty  ?? 0,
+    ...(S.params.stop ? { stop: S.params.stop } : {}),
+    ...(S.params.seed !== "" && S.params.seed != null ? { seed: Number(S.params.seed) } : {})
   };
 
-  sanitizeParams();
-  if(!S.chats.length) createChat(null);
-  ensureLandingBlankChat();
-  renderApiKeys();
-  renderModels();
-  renderParams();
+  const r = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + key
+    },
+    body: JSON.stringify(body)
+  });
+
+  const d = await r.json();
+
+  // Gestion d'erreur structurée
+  if (d.error) throw new Error(`[${d.error.code || "API"}] ${d.error.message}`);
+
+  return d.choices?.[0]?.message?.content || JSON.stringify(d);
+}
+
+/**
+ * Anthropic Claude — format totalement différent :
+ *  - Header : x-api-key (pas Authorization: Bearer)
+ *  - Endpoint : /v1/messages
+ *  - Réponse : data.content[0].text
+ *  - Paramètre : max_tokens (pas max_completion_tokens)
+ *  - Pas de frequency_penalty / presence_penalty / n / seed
+ */
+async function callAnthropic(key, model, messages) {
+  const body = {
+    model,
+    max_tokens: S.params.max_tokens || 1200,
+    messages: messages
+      .filter(m => m.role === "user" || m.role === "assistant")
+      .map(m => ({ role: m.role, content: m.content })),
+    temperature: Math.min(S.params.temperature, 1),  // Anthropic max = 1
+    top_p:       S.params.top_p
+  };
+
+  const r = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type":      "application/json",
+      "x-api-key":         key,                    // ← Header Anthropic (pas Bearer)
+      "anthropic-version": "2023-06-01"
+    },
+    body: JSON.stringify(body)
+  });
+
+  const d = await r.json();
+
+  if (d.error) throw new Error(`[Anthropic ${d.error.type}] ${d.error.message}`);
+
+  return d.content?.[0]?.text || JSON.stringify(d);
+}
+
+/**
+ * Google Gemini — endpoint compatible OpenAI disponible
+ * via l'API generativelanguage.googleapis.com
+ */
+async function callGemini(key, model, messages) {
+  const r = await fetch(
+    "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type":  "application/json",
+        "Authorization": "Bearer " + key
+      },
+      body: JSON.stringify({
+        model,
+        messages: messages
+          .filter(m => m.role === "user" || m.role === "assistant")
+          .map(m => ({ role: m.role, content: m.content })),
+        temperature: S.params.temperature,
+        max_tokens:  S.params.max_tokens
+      })
+    }
+  );
+
+  const d = await r.json();
+
+  if (d.error) throw new Error(`[Gemini ${d.error.code || ""}] ${d.error.message}`);
+
+  return d.choices?.[0]?.message?.content || JSON.stringify(d);
+}
+
+// ─────────────────────────────────────────────────
+// ENVOI — aiguillage selon le provider
+// ─────────────────────────────────────────────────
+async function send() {
+  const provider = inferProviderFromModel(S.model);
+  const key      = (apiKeysByProvider[provider] || "").trim();
+
+  if (!key) {
+    showApiError(`⚠ Aucune clé API configurée pour ${provider}. Cliquez sur 🔑 pour l'ajouter.`);
+    return;
+  }
+
+  const text = promptEl.value.trim();
+  if (!text) return;
+
+  let c = activeChat();
+  if (!c) { createChat(null); c = activeChat(); }
+
+  c.messages.push({ role: "user", content: text });
+
+  // BUG CORRIGÉ : titre cohérent ("Nouveau chat" dans les deux endroits)
+  if (c.title === "Nouveau chat") c.title = text.slice(0, 38);
+
+  promptEl.value      = "";
+  isWaitingResponse   = true;
   render();
-  loadModelsFromApi();
+
+  try {
+    let responseContent;
+
+    if (provider === "ANTHROPIC") {
+      responseContent = await callAnthropic(key, S.model, c.messages);
+
+    } else if (provider === "GOOGLE GEMINI") {
+      responseContent = await callGemini(key, S.model, c.messages);
+
+    } else if (provider === "DEEPSEEK") {
+      // BUG CORRIGÉ : endpoint DeepSeek propre (pas OpenAI)
+      responseContent = await callOpenAICompatible(
+        "https://api.deepseek.com/chat/completions",
+        key, S.model, c.messages
+      );
+
+    } else {
+      // OpenAI par défaut
+      responseContent = await callOpenAICompatible(
+        "https://api.openai.com/v1/chat/completions",
+        key, S.model, c.messages
+      );
+    }
+
+    // On stocke aussi le provider pour afficher le badge
+    c.messages.push({ role: "assistant", content: responseContent, provider });
+
+  } catch (e) {
+    c.messages.push({ role: "assistant", content: "❌ Erreur : " + e.message, provider });
+    showApiError(e.message);
+  } finally {
+    isWaitingResponse = false;
+  }
+
+  save();
+  render();
+}
+
+// ─────────────────────────────────────────────────
+// ÉVÉNEMENTS
+// ─────────────────────────────────────────────────
+el("sendBtn").onclick = send;
+
+const appEl = document.querySelector(".app");
+if (localStorage.getItem("sidebarCollapsed") === "1") appEl.classList.add("sidebar-collapsed");
+
+el("toggleSidebarBtn").onclick = () => {
+  appEl.classList.toggle("sidebar-collapsed");
+  localStorage.setItem("sidebarCollapsed",
+    appEl.classList.contains("sidebar-collapsed") ? "1" : "0");
+};
+
+el("modelSelect").onchange = e => { S.model = e.target.value; save(); };
+el("paramsBtn").onclick    = () => el("paramsPanel").classList.toggle("open");
+
+promptEl.addEventListener("keydown", e => {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
+});
+
+// Clés API
+el("apiKeyBtn").onclick   = () => el("apiKeyPanel").classList.toggle("open");
+el("saveApiKeyBtn").onclick = async () => {
+  providerKeysEl.querySelectorAll("input[data-provider]").forEach(inp => {
+    apiKeysByProvider[inp.dataset.provider] = inp.value.trim();
+  });
+  save();
+  renderApiKeys();
+  await loadModelsFromApi();
+};
+
+// Fermeture des panneaux si clic ailleurs
+document.addEventListener("click", e => {
+  const panel   = el("paramsPanel");
+  const apiPanel = el("apiKeyPanel");
+  if (!el("paramsBtn").contains(e.target) && !panel.contains(e.target))
+    panel.classList.remove("open");
+  if (!el("apiKeyBtn").contains(e.target) && !apiPanel.contains(e.target))
+    apiPanel.classList.remove("open");
+});
+
+// ─────────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────────
+if (!S.chats.length) createChat(null);
+ensureLandingBlankChat();
+renderApiKeys();
+renderModels();
+renderParams();
+render();
+loadModelsFromApi();
 </script>
 </body>
 </html>
