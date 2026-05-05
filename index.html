@@ -58,7 +58,7 @@
 
     .composer{padding:12px;background:var(--top);border-top:1px solid var(--line)}
     .composer-wrap{max-width:900px;margin:0 auto;display:flex;gap:10px}
-    textarea{flex:1;resize:none;height:90px;border-radius:12px;background:#222;color:var(--text);border:1px solid var(--line);padding:12px 72px 12px 14px;font-family:inherit;font-size:17px;line-height:1.5;width:100%}
+    textarea{flex:1;resize:none;height:90px;border-radius:12px;background:#222;color:var(--text);border:1px solid var(--line);padding:12px 14px;font-family:inherit;font-size:17px;line-height:1.5}
 
 
     .main.home-mode .top{border-bottom:none}
@@ -67,18 +67,14 @@
     .home-hero{display:none;text-align:center;color:#f3f4f6;font-size:42px;line-height:1.2;font-weight:500;margin-top:18vh}
     .main.home-mode .home-hero{display:block}
     .composer-wrap{transition:max-width .2s ease}
-    .main.home-mode .composer-wrap{max-width:920px;width:min(92vw,920px);display:block}
-    .main.home-mode textarea{height:56px;min-height:56px;border-radius:28px;padding:16px 72px 16px 20px;overflow:hidden}
-    .composer-box .send-circle{position:absolute;right:10px;bottom:10px}
-    .main.home-mode .send-circle{top:9px;bottom:auto}
+    .main.home-mode .composer-wrap{max-width:980px;width:min(94vw,980px);display:block}
+    .main.home-mode textarea{height:64px;border-radius:28px;padding:18px 120px 18px 20px;overflow:hidden}
+    .main.home-mode .send-circle{position:absolute;right:10px;top:9px}
     .composer-box{position:relative;width:100%}
 
     .params{display:none;position:absolute;right:14px;top:58px;background:#1f1f1f;border:1px solid var(--line);padding:10px;border-radius:10px;width:300px}
     .params.open{display:block}
     .param{display:grid;grid-template-columns:1fr 95px;gap:8px;margin-bottom:8px;align-items:center}
-    .diag{margin:8px auto 0;max-width:900px;background:#171717;border:1px solid #343a46;border-radius:10px;padding:10px 12px;font-size:12px;color:#cfd5df;white-space:pre-wrap;display:none}
-    .diag.open{display:block}
-    .diag-title{font-weight:600;color:#e5e7eb;margin-bottom:6px}
 
     #sendBtn.send-circle{width:38px;height:38px;border-radius:999px;background:#fff;color:#111;border:none;display:inline-flex;align-items:center;justify-content:center;padding:0}
     #sendBtn.send-circle svg{width:18px;height:18px;stroke:#111;stroke-width:3.2;fill:none;stroke-linecap:round;stroke-linejoin:round}
@@ -98,15 +94,9 @@
         <button class="btn" id="toggleSidebarBtn" title="Ouvrir/Fermer la barre latérale">☰</button>
         <select id="modelSelect"></select>
       </div>
-      <div style="display:flex;gap:8px;align-items:center;position:relative">
-        <button class="btn" id="apiKeyBtn" title="Gérer les clés API">🔑</button>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input id="apiKey" type="password" placeholder="Clé API OpenAI" />
         <button class="btn" id="paramsBtn">Paramètres</button>
-        <div id="apiKeyPanel" class="params" style="right:90px;top:46px;width:360px">
-          <div id="providerKeys" style="display:flex;flex-direction:column;gap:10px"></div>
-          <div style="display:flex;gap:8px;margin-top:8px">
-            <button class="btn" id="saveApiKeyBtn">Enregistrer</button>
-          </div>
-        </div>
       </div>
       <div id="paramsPanel" class="params"></div>
     </div>
@@ -120,26 +110,19 @@
         <button class="send-circle" id="sendBtn" aria-label="Envoyer" title="Envoyer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V6"></path><path d="M6.5 11.5 12 6l5.5 5.5"></path></svg></button>
       </div></div>
     </div>
-    <div id="diagPanel" class="diag"></div>
   </section>
 </div>
 
 <script>
   const MODEL_GROUPS = [
-    { label: "— Claude 4.7 —", models: ["opus-4.7"] },
-    { label: "— Claude 4.6 —", models: ["opus-4.6", "sonnet-4.6"] },
-    { label: "— Claude 4.5 —", models: ["sonnet-4.5", "haiku-4.5"] },
-    { label: "— Claude 4 (Legacy) —", models: ["opus-4.1"] },
-    { label: "— OpenAI GPT-5.5 —", models: ["gpt-5.5", "gpt-5.5-pro"] },
-    { label: "— Google Gemini 3 —", models: ["gemini-3.1-pro-preview", "gemini-3-flash-preview", "gemini-3.1-flash-lite-preview", "gemini-3.1-image-preview"] },
-    { label: "— Google Gemini 2.5 —", models: ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-flash-lite"] },
-    { label: "— DeepSeek V4 (Nouveau) —", models: ["deepseek-v4-pro", "deepseek-v4-flash"] },
-    { label: "— DeepSeek Legacy —", models: ["deepseek-chat", "deepseek-reasoner"] },
+    { label: "OpenAI GPT-5.5", models: ["gpt-5.5", "gpt-5.5-pro"] },
+    { label: "OpenAI GPT-5.4", models: ["gpt-5.4", "gpt-5.4-mini", "gpt-5.4-nano"] },
     { label: "OpenAI GPT-5 / 5.2", models: ["gpt-5", "gpt-5-mini", "gpt-5-nano", "gpt-5.2"] },
     { label: "OpenAI GPT-4", models: ["gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano", "gpt-4o", "gpt-4o-mini"] },
-    { label: "OpenAI o-series", models: ["o3", "o4-mini", "o3-mini", "o1"] }
+    { label: "OpenAI o-series", models: ["o3", "o4-mini", "o3-mini", "o1"] },
+    { label: "DeepSeek", models: ["deepseek-r1"] }
   ];
-    const CURATED_MODELS = MODEL_GROUPS.flatMap(g => g.models);
+  const CURATED_MODELS = MODEL_GROUPS.flatMap(g => g.models);
   const DEF = {
     temperature:0.7,
     top_p:1,
@@ -167,22 +150,10 @@
 
   const el = id => document.getElementById(id);
   let isWaitingResponse = false;
-  let diagnosticMode = localStorage.getItem("diagnosticMode") === "1";
-  let lastDiagnostic = null;
   if(!CURATED_MODELS.includes(S.model)) S.model = CURATED_MODELS[0];
   const promptEl = el("prompt");
-  const PROVIDERS = ["ANTHROPIC","OPENAI","DEEPSEEK","GOOGLE GEMINI"];
-  const providerKeysEl = el("providerKeys");
-  const apiKeysByProvider = JSON.parse(localStorage.getItem("apiKeysByProvider") || "{}");
-  const providerEndpoints = JSON.parse(localStorage.getItem("providerEndpoints") || "{}");
-  const defaultEndpoints = {
-    "OPENAI": "https://api.openai.com/v1/chat/completions",
-    "DEEPSEEK": "https://api.deepseek.com/v1/chat/completions",
-    "GOOGLE GEMINI": "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
-    "ANTHROPIC": "https://api.anthropic.com/v1/messages"
-  };
-  PROVIDERS.forEach(p => { if(!(p in apiKeysByProvider)) apiKeysByProvider[p] = ""; if(!(p in providerEndpoints)) providerEndpoints[p] = defaultEndpoints[p] || ""; });
-  let activeApiKey = localStorage.getItem("apiKey") || apiKeysByProvider["OPENAI"] || "";
+  const apiKeyEl = el("apiKey");
+  apiKeyEl.value = localStorage.getItem("apiKey") || "";
 
   function save(){
     localStorage.setItem("projects", JSON.stringify(S.projects));
@@ -191,34 +162,7 @@
     localStorage.setItem("activeProject", S.activeProject || "");
     localStorage.setItem("model", S.model);
     localStorage.setItem("params", JSON.stringify(S.params));
-    localStorage.setItem("apiKey", activeApiKey || "");
-    localStorage.setItem("apiKeysByProvider", JSON.stringify(apiKeysByProvider));
-    localStorage.setItem("providerEndpoints", JSON.stringify(providerEndpoints));
-    localStorage.setItem("diagnosticMode", diagnosticMode ? "1" : "0");
-  }
-
-  function renderApiKeys(){
-    providerKeysEl.innerHTML = PROVIDERS.map(name => {
-      const val = apiKeysByProvider[name] || "";
-      const status = val ? "Clé configurée" : "Aucune clé";
-      const dot = val ? "#22c55e" : "#6b7280";
-      return `<div style="display:flex;flex-direction:column;gap:6px">
-        <div style="font-size:12px;color:#9ca3af;font-weight:600;letter-spacing:.04em">${name}</div>
-        <input data-provider="${name}" type="password" value="${val}" placeholder="Entrer la clé ${name}" />
-        <input data-endpoint="${name}" type="text" value="${providerEndpoints[name] || ""}" placeholder="Endpoint ${name}" style="font-size:12px" />
-        <div data-status="${name}" style="font-size:12px;color:#9ca3af"><span data-dot="${name}" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${dot};margin-right:6px"></span>${status}</div>
-      </div>`;
-    }).join("");
-
-    providerKeysEl.querySelectorAll("input[data-provider]").forEach(inp => {
-      inp.addEventListener("input", () => {
-        const hasKey = inp.value.trim().length > 0;
-        const statusEl = providerKeysEl.querySelector(`[data-status="${inp.dataset.provider}"]`);
-        const dotEl = providerKeysEl.querySelector(`[data-dot="${inp.dataset.provider}"]`);
-        if(statusEl) statusEl.lastChild.textContent = hasKey ? "Clé configurée" : "Aucune clé";
-        if(dotEl) dotEl.style.background = hasKey ? "#22c55e" : "#6b7280";
-      });
-    });
+    localStorage.setItem("apiKey", apiKeyEl.value.trim());
   }
 
   const activeChat = () => S.chats.find(c => c.id === S.activeChat);
@@ -491,7 +435,7 @@
 
 
   async function loadModelsFromApi(){
-    const key = ((apiKeysByProvider["OPENAI"] || activeApiKey || "")).trim();
+    const key = apiKeyEl.value.trim();
     if(!key) return;
     try{
       const r = await fetch("https://api.openai.com/v1/models", {
@@ -500,9 +444,11 @@
       const data = await r.json();
       const ids = new Set((data.data || []).map(m => m.id).filter(Boolean));
       const available = CURATED_MODELS.filter(m => ids.has(m));
-      // Ne pas forcer le changement de modèle: certains modèles sont multi-fournisseurs.
-      renderApiKeys();
-  renderModels();
+      if(available.length && !available.includes(S.model)){
+        S.model = available[0];
+        save();
+      }
+      renderModels();
     }catch(_e){
       // fallback silencieux: on garde la liste curatée
     }
@@ -522,12 +468,7 @@
       <div class='param'><label>top_k</label><input id='p_top_k' type='number' step='1' min='1' placeholder='non supporté Chat Completions' value='${S.params.top_k ?? ""}'></div>
     `;
 
-    const num = (id,key) => el(id).onchange = e => {
-      const raw = Number(e.target.value);
-      if(Number.isNaN(raw)) return;
-      S.params[key] = key === "n" ? Math.max(1, Math.floor(raw)) : raw;
-      save();
-    };
+    const num = (id,key) => el(id).onchange = e => { S.params[key] = Number(e.target.value); save(); };
     num("p_temperature","temperature");
     num("p_top_p","top_p");
     num("p_max_completion_tokens","max_completion_tokens");
@@ -537,7 +478,6 @@
     el("p_stop").onchange = e => { S.params.stop = e.target.value; save(); };
     el("p_seed").onchange = e => { S.params.seed = e.target.value; save(); };
     el("p_top_k").onchange = e => { S.params.top_k = e.target.value; save(); };
-    el("p_diag").onchange = e => { diagnosticMode = !!e.target.checked; save(); renderDiagnosticPanel(); };
   }
 
   function updateLayoutMode(){
@@ -547,152 +487,15 @@
     main.classList.toggle("home-mode", isHome);
   }
 
-
-  function renderDiagnosticPanel(){
-    const panel = el("diagPanel");
-    if(!diagnosticMode || !lastDiagnostic){
-      panel.classList.remove("open");
-      panel.textContent = "";
-      return;
-    }
-    panel.classList.add("open");
-    panel.innerHTML = `<div class="diag-title">Diagnostic requête</div>${lastDiagnostic}`;
-  }
-
   function render(){
     renderChats();
     renderMessages();
     updateLayoutMode();
-    renderDiagnosticPanel();
-  }
-
-
-  function inferProviderFromModel(model){
-    const m = (model || "").toLowerCase();
-    if(m.includes("gemini")) return "GOOGLE GEMINI";
-    if(m.includes("deepseek")) return "DEEPSEEK";
-    if(m.includes("opus") || m.includes("sonnet") || m.includes("haiku") || m.includes("claude")) return "ANTHROPIC";
-    return "OPENAI";
-  }
-
-
-
-  function normalizeModelId(provider, model){
-    if(provider !== "ANTHROPIC") return model;
-    const map = {
-      "haiku-4.5": "claude-haiku-4-5",
-      "sonnet-4.5": "claude-sonnet-4-5",
-      "sonnet-4.6": "claude-sonnet-4-6",
-      "opus-4.6": "claude-opus-4-6",
-      "opus-4.7": "claude-opus-4-7",
-      "opus-4.1": "claude-opus-4-1"
-    };
-    return map[model] || model;
-  }
-
-  function supportsTopP(model){
-    return !/^gpt-5/.test((model || "").toLowerCase());
-  }
-
-
-  function buildSamplingParams(provider, model){
-    const temp = Number(S.params.temperature);
-    const topP = Number(S.params.top_p);
-    const hasTemp = Number.isFinite(temp);
-    const hasTopP = Number.isFinite(topP) && topP > 0;
-    const m = (model || "").toLowerCase();
-
-    if(m.startsWith("gpt-5")){
-      return hasTemp ? { temperature: temp } : {};
-    }
-
-    // Pour éviter les erreurs "temperature and top_p cannot both be specified"
-    if(provider === "ANTHROPIC" || provider === "GOOGLE GEMINI"){
-      if(hasTemp) return { temperature: temp };
-      if(hasTopP) return { top_p: topP };
-      return {};
-    }
-
-    if(hasTemp) return { temperature: temp };
-    if(hasTopP) return { top_p: topP };
-    return {};
-  }
-
-  function buildOpenAICompatBody(provider, c){
-    const modelId = normalizeModelId(provider, S.model);
-    const base = {
-      model:modelId,
-      messages:c.messages.map(m => ({ role:m.role === "assistant" ? "assistant" : "user", content:m.content })),
-      ...buildSamplingParams(provider, modelId)
-    };
-
-    if(provider === "GOOGLE GEMINI"){
-      return {
-        ...base,
-        max_tokens: Number(S.params.max_completion_tokens || 1200)
-      };
-    }
-
-    if(provider === "DEEPSEEK"){
-      return {
-        ...base,
-        max_tokens: Number(S.params.max_completion_tokens || 1200),
-        ...(S.params.stop ? { stop:S.params.stop } : {})
-      };
-    }
-
-    return {
-      ...base,
-      max_completion_tokens:S.params.max_completion_tokens,
-      frequency_penalty:S.params.frequency_penalty ?? 0,
-      presence_penalty:S.params.presence_penalty ?? 0,
-      n: Math.max(1, Number(S.params.n) || 1),
-      ...(S.params.stop ? { stop:S.params.stop } : {}),
-      ...(S.params.seed !== "" ? { seed:Number(S.params.seed) } : {})
-    };
-  }
-
-  function buildAnthropicBody(c){
-    return {
-      model: normalizeModelId("ANTHROPIC", S.model),
-      max_tokens: Number(S.params.max_completion_tokens || 1200),
-      ...buildSamplingParams("ANTHROPIC", S.model),
-      messages: c.messages
-        .filter(m => m.role === "user" || m.role === "assistant")
-        .map(m => ({ role: m.role, content: [{ type:"text", text: m.content }] }))
-    };
-  }
-
-  function extractAssistantText(provider, data){
-    if(provider === "ANTHROPIC"){
-      const chunks = Array.isArray(data?.content) ? data.content : [];
-      const txt = chunks.filter(x => x?.type === "text").map(x => x.text).join("\n").trim();
-      return txt || JSON.stringify(data);
-    }
-    return data?.choices?.[0]?.message?.content || JSON.stringify(data);
-  }
-
-
-  async function postWithProviderFallback(provider, endpoint, options){
-    try{
-      return await fetch(endpoint, options);
-    }catch(e){
-      if(provider === "DEEPSEEK" && e?.message === "Failed to fetch"){
-        const alt = endpoint.includes('/v1/chat/completions')
-          ? endpoint.replace('/v1/chat/completions','/chat/completions')
-          : endpoint.replace('/chat/completions','/v1/chat/completions');
-        return await fetch(alt, options);
-      }
-      throw e;
-    }
   }
 
   async function send(){
-    const provider = inferProviderFromModel(S.model);
-    const key = ((provider === "OPENAI" ? activeApiKey : apiKeysByProvider[provider]) || "").trim();
-    if(!key) return alert(`Ajoute la clé API pour ${provider}.`);
-    const endpoint = (providerEndpoints[provider] || "").trim();
-    if(!endpoint) return alert(`Ajoute un endpoint API pour ${provider}.`);
+    const key = apiKeyEl.value.trim();
+    if(!key) return alert("Ajoute la clé API");
 
     const text = promptEl.value.trim();
     if(!text) return;
@@ -710,47 +513,27 @@
     render();
 
     try{
-      const headers = { "Content-Type":"application/json" };
-      let body;
-
-      if(provider === "ANTHROPIC"){
-        headers["x-api-key"] = key;
-        headers["anthropic-version"] = "2023-06-01";
-        headers["anthropic-dangerous-direct-browser-access"] = "true";
-        body = buildAnthropicBody(c);
-      } else {
-        headers["Authorization"] = "Bearer " + key;
-        body = buildOpenAICompatBody(provider, c);
-      }
-
-      const requestPayload = body;
-      const r = await postWithProviderFallback(provider, endpoint, {
+      const r = await fetch("https://api.openai.com/v1/chat/completions", {
         method:"POST",
-        headers,
-        body: JSON.stringify(body)
+        headers:{ "Content-Type":"application/json", "Authorization":"Bearer " + key },
+        body: JSON.stringify({
+          model:S.model,
+          messages:c.messages.map(m => ({ role:m.role === "assistant" ? "assistant" : "user", content:m.content })),
+          temperature:S.params.temperature,
+          top_p:S.params.top_p,
+          max_completion_tokens:S.params.max_completion_tokens,
+          frequency_penalty:S.params.frequency_penalty ?? 0,
+          presence_penalty:S.params.presence_penalty ?? 0,
+          n:S.params.n ?? 1,
+          ...(S.params.stop ? { stop:S.params.stop } : {}),
+          ...(S.params.seed !== "" ? { seed:Number(S.params.seed) } : {})
+        })
       });
 
       const d = await r.json();
-      lastDiagnostic = [
-        `Provider: ${provider}`,
-        `Endpoint: ${endpoint}`,
-        `HTTP: ${r.status} ${r.statusText}`,
-        `Payload: ${JSON.stringify(requestPayload, null, 2)}`
-      ].join("\n");
-      if(!r.ok){
-        throw new Error(d?.error?.message || d?.message || `HTTP ${r.status}`);
-      }
-
-      c.messages.push({ role:"assistant", content:extractAssistantText(provider, d) });
+      c.messages.push({ role:"assistant", content:d.choices?.[0]?.message?.content || JSON.stringify(d) });
     }catch(e){
-      const extra = e?.message === "Failed to fetch" ? " (souvent CORS/endpoint invalide ou clé refusée côté navigateur)" : "";
-      lastDiagnostic = [
-        `Provider: ${provider}`,
-        `Endpoint: ${endpoint}`,
-        `HTTP: échec réseau`,
-        `Erreur: ${e.message}`
-      ].join("\n");
-      c.messages.push({ role:"assistant", content:"Erreur: " + e.message + extra });
+      c.messages.push({ role:"assistant", content:"Erreur: " + e.message });
     }finally{
       isWaitingResponse = false;
     }
@@ -777,22 +560,9 @@
       send();
     }
   });
-  el("apiKeyBtn").onclick = () => el("apiKeyPanel").classList.toggle("open");
-  el("saveApiKeyBtn").onclick = async () => {
-    providerKeysEl.querySelectorAll("input[data-provider]").forEach(inp => {
-      apiKeysByProvider[inp.dataset.provider] = inp.value.trim();
-    });
-    providerKeysEl.querySelectorAll("input[data-endpoint]").forEach(inp => {
-      providerEndpoints[inp.dataset.endpoint] = inp.value.trim();
-    });
-    activeApiKey = apiKeysByProvider["OPENAI"] || "";
-    save();
-    renderApiKeys();
-    await loadModelsFromApi();
-  };
+  apiKeyEl.onchange = async () => { save(); await loadModelsFromApi(); };
 
   if(!S.chats.length) createChat(null);
-  renderApiKeys();
   renderModels();
   renderParams();
   render();
