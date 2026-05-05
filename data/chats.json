@@ -1,0 +1,137 @@
+{
+  "chats": [
+    {
+      "id": "529f6541-d1b1-4be4-81cd-99b91a38a215",
+      "title": "Nouveau chat",
+      "projectId": null,
+      "messages": []
+    },
+    {
+      "id": "e054135e-9493-4f0c-a3f0-c6372a5a8764",
+      "title": "Nouvelle recherche",
+      "projectId": null,
+      "messages": [
+        {
+          "role": "user",
+          "content": "décrire la réaction SN2 en chimie organique"
+        },
+        {
+          "role": "assistant",
+          "content": "{\"error\":{\"message\":\"The model `deepseek-r1` does not exist or you do not have access to it.\",\"type\":\"invalid_request_error\",\"param\":null,\"code\":\"model_not_found\"}}"
+        }
+      ]
+    },
+    {
+      "id": "614c1db0-5382-4724-99d2-e5b76e84e938",
+      "title": "Chat du projet",
+      "projectId": "c6c3ae2b-d23b-467e-a008-db53e6fe4f25",
+      "messages": []
+    },
+    {
+      "id": "9ab51da4-06d2-4f0f-8f96-e3fe97cc6906",
+      "title": "Nouveau chat",
+      "projectId": null,
+      "messages": []
+    },
+    {
+      "id": "607239e6-9bf7-484f-b85b-2ec05b002566",
+      "title": "c'est quoi le SN2 en chimie organique",
+      "projectId": null,
+      "messages": [
+        {
+          "role": "user",
+          "content": "c'est quoi le SN2 en chimie organique"
+        },
+        {
+          "role": "assistant",
+          "content": "Le SN2, ou substitution nucléophile bimoléculaire, est un mécanisme de réaction en chimie organique par lequel un nucléophile attaque un atome de carbone d'un substrat, généralement un halogénure d'alkyle, entraînant le remplacement d'un groupe partant (souvent un halogène). Voici quelques caractéristiques clés du mécanisme SN2 :\n\n1. **Mécanisme bimoléculaire** : Le terme \"bimoléculaire\" indique que la vitesse de la réaction dépend à la fois de la concentration du nucléophile et de celle du substrat. La réaction se produit en une seule étape, où le nucléophile attaque le carbone et le groupe partant se détache simultanément.\n\n2. **Stéréochimie** : Le mécanisme SN2 entraîne une inversion de la configuration stéréochimique au niveau du carbone attaqué. Cela signifie que si le carbone est chiral, le produit final aura une configuration opposée à celle du substrat.\n\n3. **Conditions favorables** : Les réactions SN2 sont favorisées par des substrats primaires ou secondaires, car les substrats tertiaires sont généralement trop encombrés pour permettre une attaque efficace du nucléophile. De plus, un bon nucléophile et un bon groupe partant sont essentiels pour que la réaction se produise.\n\n4. **Solvants** : Les solvants polaires aprotiques (comme l'acétone ou le DMSO) favorisent les réactions SN2, car ils ne solvatent pas le nucléophile de manière à le rendre moins réactif.\n\nEn résumé, le SN2 est un mécanisme de substitution qui joue un rôle crucial dans la chimie organique, permettant la formation de nouvelles liaisons carbone-nucléophile."
+        },
+        {
+          "role": "user",
+          "content": "refaire"
+        },
+        {
+          "role": "assistant",
+          "content": "Le SN2, ou substitution nucléophile bimoléculaire, est un mécanisme de réaction en chimie organique qui implique le remplacement d'un groupe partant par un nucléophile. Voici les points essentiels à retenir :\n\n1. **Mécanisme bimoléculaire** : Dans une réaction SN2, la vitesse dépend de la concentration à la fois du nucléophile et du substrat. Cela signifie que deux espèces (le nucléophile et le substrat) sont impliquées dans l'étape déterminante de la vitesse de réaction.\n\n2. **Étape unique** : La réaction se déroule en une seule étape, où le nucléophile attaque le carbone du substrat pendant que le groupe partant se détache. Cela crée un état de transition où les liaisons sont partiellement formées et rompues.\n\n3. **Inversion de configuration** : Si le carbone attaqué est chiral, la réaction entraîne une inversion de la configuration stéréochimique. Cela signifie que le produit final aura une configuration opposée à celle du substrat.\n\n4. **Substrats favorables** : Les réactions SN2 se produisent plus facilement avec des substrats primaires et secondaires, car les substrats tertiaires sont souvent trop encombrés pour permettre une attaque efficace du nucléophile.\n\n5. **Bon nucléophile et bon groupe partant** : Un bon nucléophile (qui a une forte densité électronique) et un bon groupe partant (qui peut se détacher facilement) sont essentiels pour que la réaction se produise efficacement.\n\n6. **Solvants** : Les solvants polaires aprotiques, comme l'acétone ou le DMSO, sont souvent utilisés pour favoriser les réactions SN2, car ils ne solvatent pas le nucléophile de manière à le rendre moins réactif.\n\nEn résumé, le mécanisme SN2 est un processus clé en chimie organique pour la formation de nouvelles liaisons, avec des implications importantes pour la synthèse de composés organiques."
+        }
+      ]
+    },
+    {
+      "id": "cd55a1a4-f371-406c-9409-4ea8ef19ab62",
+      "title": "quel jour",
+      "projectId": null,
+      "messages": [
+        {
+          "role": "user",
+          "content": "quel jour"
+        },
+        {
+          "role": "assistant",
+          "content": "Aujourd'hui, c'est le 27 octobre 2023. Comment puis-je vous aider ?"
+        },
+        {
+          "role": "user",
+          "content": "refaire"
+        },
+        {
+          "role": "assistant",
+          "content": "Bien sûr ! Que souhaitez-vous que je refasse ? Avez-vous besoin d'informations spécifiques ou d'une reformulation ? N'hésitez pas à préciser !"
+        },
+        {
+          "role": "user",
+          "content": "refaire"
+        },
+        {
+          "role": "assistant",
+          "content": "Il semble que vous souhaitiez que je reformule ou que je fasse quelque chose de spécifique, mais je ne suis pas sûr de ce que vous voulez exactement. Pourriez-vous préciser ce que vous aimeriez que je refasse ? Merci !"
+        }
+      ]
+    }
+  ],
+  "projects": [
+    {
+      "id": "c6c3ae2b-d23b-467e-a008-db53e6fe4f25",
+      "name": "my first project"
+    }
+  ],
+  "profiles": [
+    {
+      "id": "chemistry",
+      "name": "Chimie & Sciences",
+      "icon": "⚗️",
+      "prompt": "Tu es un expert en chimie et sciences. Règles strictes :\n- JAMAIS de balises HTML dans ta réponse\n- Équations chimiques en LaTeX : $$CH_3Br + OH^- \\rightarrow CH_3OH + Br^-$$\n- Formules inline : $H_2O$, $v = k[A][B]$\n- Indices : _{} → $H_{2}O$, Exposants : ^{} → $OH^{-}$\n- Flèches : → ou \\rightarrow dans LaTeX, ⇌ pour équilibre\n- Structure : titres ##, listes -, termes clés en **gras**\n- Jamais de balises <span>, <sup>, <sub>, <div>"
+    },
+    {
+      "id": "coding",
+      "name": "Programmation",
+      "icon": "💻",
+      "prompt": "Tu es un expert développeur. Règles :\n- Code dans des blocs ```langage\n- Explications concises et précises\n- Propose des optimisations quand pertinent\n- Signale les problèmes de sécurité\n- Pas de HTML dans le texte, uniquement Markdown"
+    },
+    {
+      "id": "redaction",
+      "name": "Rédaction & Analyse",
+      "icon": "📝",
+      "prompt": "Tu es un assistant expert en rédaction et analyse. Règles :\n- Réponses structurées avec titres ## et sous-titres ###\n- Arguments clairs et sourcés\n- Vocabulaire précis et professionnel\n- Pas de HTML, uniquement du texte et Markdown\n- Conclusions synthétiques en fin de réponse"
+    },
+    {
+      "id": "general",
+      "name": "Général (sans profil)",
+      "icon": "🌐",
+      "prompt": "Tu es un assistant IA expert et polyvalent. Réponds de manière précise, structurée et professionnelle. N'utilise jamais de balises HTML dans tes réponses. Utilise Markdown pour la mise en forme."
+    }
+  ],
+  "activeProfile": "chemistry",
+  "params": {
+    "temperature": 0.2,
+    "top_p": 0,
+    "max_tokens": 15000,
+    "frequency_penalty": 0,
+    "presence_penalty": 0,
+    "stop": "",
+    "seed": "",
+    "max_completion_tokens": 15000
+  },
+  "model": "gpt-5.5",
+  "savedAt": "2026-05-05T19:56:18.469Z",
+  "version": 2
+}
