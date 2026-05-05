@@ -419,7 +419,8 @@
             <label for="ghAutoSync">Synchronisation automatique après chaque message</label>
           </div>
           <div class="gh-btn-row">
-            <button class="gh-btn primary" id="ghSaveConfig">💾 Enregistrer config</button>
+            <button class="gh-btn primary" id="ghSaveConfig">💾 Enregistrer</button>
+            <button class="gh-btn" id="ghTest">🔌 Tester</button>
             <button class="gh-btn" id="ghPush">⬆ Push</button>
             <button class="gh-btn" id="ghPull">⬇ Pull</button>
           </div>
@@ -2005,103 +2006,169 @@ function ghStatus(msg, type="") {
   s.className    = "gh-status " + type;
 }
 
-// Construit les headers GitHub
+// ─────────────────────────────────────────────────────────────
+// GITHUB SYNC — version corrigée
+// Encodage : TextEncoder/TextDecoder (remplace btoa/atob dépréciés)
+// ─────────────────────────────────────────────────────────────
+
+/** Encode un objet JS → base64 UTF-8 (supporte accents, emojis, formules) */
+function ghEncode(obj) {
+  const json  = JSON.stringify(obj, null, 2);
+  const bytes = new TextEncoder().encode(json);
+  let bin = "";
+  bytes.forEach(b => bin += String.fromCharCode(b));
+  return btoa(bin);
+}
+
+/** Décode une chaîne base64 GitHub → objet JS */
+function ghDecode(b64) {
+  const bin   = atob(b64.replace(/\s/g, ""));
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return JSON.parse(new TextDecoder().decode(bytes));
+}
+
+/** Headers GitHub API */
 function ghHeaders() {
   return {
-    "Authorization": "Bearer " + GH.token,
-    "Accept": "application/vnd.github+json",
-    "X-GitHub-Api-Version": "2022-11-28",
-    "Content-Type": "application/json"
+    "Authorization":       "Bearer " + GH.token,
+    "Accept":              "application/vnd.github+json",
+    "X-GitHub-Api-Version":"2022-11-28",
+    "Content-Type":        "application/json"
   };
 }
 
-// Récupère le SHA du fichier actuel (nécessaire pour PUT)
+/** Récupère le SHA du fichier (requis pour la mise à jour) */
 async function ghGetFileSha() {
   const url = `https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${GH.path}`;
   const r = await fetch(url, { headers: ghHeaders() });
-  if (r.status === 404) return null;      // fichier inexistant → création
-  if (!r.ok) throw new Error(`GitHub GET ${r.status}: ${(await r.json()).message}`);
+  if (r.status === 404) return null;
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}));
+    throw new Error(`GET ${r.status}: ${err.message || r.statusText}`);
+  }
   const d = await r.json();
   return d.sha || null;
 }
 
-// ── PUSH : envoie les données locales vers GitHub ──
+/** Teste la connexion sans écrire */
+async function ghTest() {
+  if (!GH.token || !GH.owner || !GH.repo) {
+    ghStatus("⚠ Remplissez token, owner et repo puis cliquez Enregistrer.", "warn");
+    return;
+  }
+  ghStatus("⏳ Test de connexion…", "warn");
+  try {
+    const r = await fetch(`https://api.github.com/repos/${GH.owner}/${GH.repo}`, {
+      headers: ghHeaders()
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(`${r.status}: ${d.message}`);
+    ghStatus(`✅ Repo "${d.full_name}" accessible (${d.private ? "privé" : "public"})`, "ok");
+  } catch(e) {
+    ghStatus("❌ Connexion échouée : " + e.message, "err");
+  }
+}
+
+/** PUSH — envoie toutes les données vers GitHub */
 async function ghPush() {
   if (!GH.token || !GH.owner || !GH.repo) {
-    ghStatus("⚠ Configurez d'abord le token, owner et repo.", "warn"); return;
+    ghStatus("⚠ Configurez et enregistrez d'abord la config.", "warn"); return;
   }
   ghStatus("⏳ Push en cours…", "warn");
   el("ghPush").disabled = true;
   try {
-    const sha = await ghGetFileSha();
+    const sha  = await ghGetFileSha();
     const data = {
-      chats:    S.chats,
-      projects: S.projects,
-      params:   S.params,
-      model:    S.model,
-      savedAt:  new Date().toISOString()
+      chats:         S.chats,
+      projects:      S.projects,
+      profiles:      S.profiles,
+      activeProfile: S.activeProfile,
+      params:        S.params,
+      model:         S.model,
+      savedAt:       new Date().toISOString(),
+      version:       2
     };
-    const content = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))));
+    const content = ghEncode(data);
     const body = {
-      message: "IAteam: sync " + new Date().toLocaleString("fr-FR"),
+      message: "BrAInShift sync — " + new Date().toLocaleString("fr-FR"),
       content,
       ...(sha ? { sha } : {})
     };
     const url = `https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${GH.path}`;
     const r = await fetch(url, { method:"PUT", headers: ghHeaders(), body: JSON.stringify(body) });
-    if (!r.ok) throw new Error(`GitHub PUT ${r.status}: ${(await r.json()).message}`);
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      throw new Error(`PUT ${r.status}: ${err.message || r.statusText}`);
+    }
     ghStatus("✅ Push réussi — " + new Date().toLocaleTimeString("fr-FR"), "ok");
   } catch(e) {
     ghStatus("❌ " + e.message, "err");
+    console.error("[ghPush]", e);
   } finally {
     el("ghPush").disabled = false;
   }
 }
 
-// ── PULL : charge les données depuis GitHub ──
+/** PULL — charge les données depuis GitHub */
 async function ghPull() {
   if (!GH.token || !GH.owner || !GH.repo) {
-    ghStatus("⚠ Configurez d'abord le token, owner et repo.", "warn"); return;
+    ghStatus("⚠ Configurez et enregistrez d'abord la config.", "warn"); return;
   }
   ghStatus("⏳ Pull en cours…", "warn");
   el("ghPull").disabled = true;
   try {
     const url = `https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${GH.path}`;
     const r = await fetch(url, { headers: ghHeaders() });
-    if (r.status === 404) { ghStatus("⚠ Fichier introuvable. Faites un Push d'abord.", "warn"); return; }
-    if (!r.ok) throw new Error(`GitHub GET ${r.status}: ${(await r.json()).message}`);
-    const d = await r.json();
-    const raw = JSON.parse(decodeURIComponent(escape(atob(d.content.replace(/\n/g,"")))));
-    if (raw.chats)    S.chats    = raw.chats;
-    if (raw.projects) S.projects = raw.projects;
-    if (raw.params)   S.params   = raw.params;
-    if (raw.model)    S.model    = raw.model;
-    // Reconstruire activeChat si nécessaire
-    if (!S.chats.find(c => c.id === S.activeChat)) S.activeChat = S.chats[0]?.id || null;
+    if (r.status === 404) {
+      ghStatus("⚠ Aucun fichier trouvé. Faites d'abord un Push depuis cet ordinateur.", "warn");
+      return;
+    }
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      throw new Error(`GET ${r.status}: ${err.message || r.statusText}`);
+    }
+    const d   = await r.json();
+    const raw = ghDecode(d.content);
+
+    if (raw.chats)         S.chats         = raw.chats;
+    if (raw.projects)      S.projects      = raw.projects;
+    if (raw.profiles)      S.profiles      = raw.profiles;
+    if (raw.activeProfile !== undefined) S.activeProfile = raw.activeProfile;
+    if (raw.params)        S.params        = raw.params;
+    if (raw.model)         S.model         = raw.model;
+
+    if (!S.chats.find(c => c.id === S.activeChat))
+      S.activeChat = S.chats[0]?.id || null;
+
     save();
+    renderModels();
+    renderProfiles();
+    updateProfileChip();
     render();
-    ghStatus("✅ Pull réussi — " + new Date().toLocaleTimeString("fr-FR"), "ok");
+    ghStatus("✅ Pull réussi — " + new Date().toLocaleTimeString("fr-FR") +
+             ` (${S.chats.length} conversations, ${S.projects.length} projets)`, "ok");
   } catch(e) {
     ghStatus("❌ " + e.message, "err");
+    console.error("[ghPull]", e);
   } finally {
     el("ghPull").disabled = false;
   }
 }
 
-// ── Initialisation du panneau GitHub ──
 function initGithubPanel() {
-  el("ghToken").value    = GH.token;
-  el("ghOwner").value    = GH.owner;
-  el("ghRepo").value     = GH.repo;
-  el("ghPath").value     = GH.path;
+  el("ghToken").value      = GH.token;
+  el("ghOwner").value      = GH.owner;
+  el("ghRepo").value       = GH.repo;
+  el("ghPath").value       = GH.path;
   el("ghAutoSync").checked = GH.autoSync;
 
-  el("ghSaveConfig").onclick = () => { ghSaveConfig(); };
-  el("ghPush").onclick       = () => ghPush();
-  el("ghPull").onclick       = () => ghPull();
+  el("ghSaveConfig").onclick = ghSaveConfig;
+  el("ghTest").onclick       = ghTest;
+  el("ghPush").onclick       = ghPush;
+  el("ghPull").onclick       = ghPull;
   el("githubBtn").onclick    = () => el("githubPanel").classList.toggle("open");
 
-  // Fermer au clic extérieur
   document.addEventListener("click", e => {
     const panel = el("githubPanel");
     if (!el("githubBtn").contains(e.target) && !panel.contains(e.target))
