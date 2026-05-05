@@ -425,6 +425,7 @@
             <button class="gh-btn" id="ghPull">⬇ Pull</button>
           </div>
           <div class="gh-status" id="ghStatus"></div>
+          <div id="ghRepoLink" style="font-size:11px;margin-top:6px;display:none"><a id="ghRepoAnchor" href="#" target="_blank" style="color:#7baaf7;text-decoration:none">🔗 Ouvrir le repo sur GitHub</a></div>
           <div style="font-size:11px;color:#6b7280;margin-top:10px;line-height:1.5;border-top:1px solid #2c2c2c;padding-top:8px">
             ℹ️ Le token doit avoir le scope <code style="background:#2a2a2a;padding:1px 4px;border-radius:3px">repo</code> (ou <code style="background:#2a2a2a;padding:1px 4px;border-radius:3px">contents:write</code> pour un token fin-grained).
           </div>
@@ -2052,28 +2053,72 @@ async function ghGetFileSha() {
 }
 
 /** Teste la connexion sans écrire */
+/** Sauvegarde silencieusement les champs avant toute opération */
+function ghAutoSave() {
+  const t = el("ghToken").value.trim();
+  const o = el("ghOwner").value.trim();
+  const r = el("ghRepo").value.trim();
+  const p = el("ghPath").value.trim() || "data/chats.json";
+  if (t) { GH.token = t; localStorage.setItem("ghToken", t); }
+  if (o) { GH.owner = o; localStorage.setItem("ghOwner", o); }
+  if (r) { GH.repo  = r; localStorage.setItem("ghRepo",  r); }
+  GH.path     = p;       localStorage.setItem("ghPath", p);
+  GH.autoSync = el("ghAutoSync").checked;
+  localStorage.setItem("ghAutoSync", GH.autoSync ? "1" : "0");
+  // Mettre à jour le lien repo
+  const linkDiv = el("ghRepoLink");
+  const anchor  = el("ghRepoAnchor");
+  if (linkDiv && anchor && o && r) {
+    anchor.href = `https://github.com/${o}/${r}`;
+    linkDiv.style.display = "block";
+  }
+}
+
 async function ghTest() {
+  ghAutoSave();
   if (!GH.token || !GH.owner || !GH.repo) {
-    ghStatus("⚠ Remplissez token, owner et repo puis cliquez Enregistrer.", "warn");
+    ghStatus("⚠ Remplissez les champs Token, Owner et Repository.", "warn");
     return;
   }
-  ghStatus("⏳ Test de connexion…", "warn");
+
+  // Étape 1 — Vérifier le token (endpoint /user)
+  ghStatus("⏳ Vérification du token…", "warn");
   try {
-    const r = await fetch(`https://api.github.com/repos/${GH.owner}/${GH.repo}`, {
-      headers: ghHeaders()
-    });
-    const d = await r.json();
-    if (!r.ok) throw new Error(`${r.status}: ${d.message}`);
-    ghStatus(`✅ Repo "${d.full_name}" accessible (${d.private ? "privé" : "public"})`, "ok");
+    const ru = await fetch("https://api.github.com/user", { headers: ghHeaders() });
+    const du = await ru.json();
+    if (!ru.ok) {
+      if (ru.status === 401) throw new Error("401 — Token invalide ou expiré. Régénérez-le sur github.com/settings/tokens");
+      throw new Error(`Token : ${ru.status} ${du.message}`);
+    }
+    // Étape 2 — Vérifier le repo
+    ghStatus(`⏳ Token OK (${du.login}) — Vérification du repo…`, "warn");
+    const rr = await fetch(`https://api.github.com/repos/${GH.owner}/${GH.repo}`, { headers: ghHeaders() });
+    const dr = await rr.json();
+    if (!rr.ok) {
+      if (rr.status === 404) {
+        // Le token est bon mais le repo n'existe pas ou n'est pas accessible
+        throw new Error(
+          `404 — Repo "${GH.owner}/${GH.repo}" introuvable.
+` +
+          `Votre username GitHub réel : "${du.login}"
+` +
+          (du.login !== GH.owner ? `⚠ DIFFÉRENT de ce que vous avez saisi ("${GH.owner}") !` : "Le repo n'existe pas ou le token n'y a pas accès.")
+        );
+      }
+      throw new Error(`Repo : ${rr.status} ${dr.message}`);
+    }
+    ghStatus(`✅ Connexion OK — Repo "${dr.full_name}" (${dr.private ? "privé" : "public"}) — Prêt pour Push/Pull !`, "ok");
   } catch(e) {
-    ghStatus("❌ Connexion échouée : " + e.message, "err");
+    ghStatus("❌ " + e.message, "err");
+    console.error("[ghTest]", e);
   }
 }
 
 /** PUSH — envoie toutes les données vers GitHub */
 async function ghPush() {
+  ghAutoSave();
   if (!GH.token || !GH.owner || !GH.repo) {
-    ghStatus("⚠ Configurez et enregistrez d'abord la config.", "warn"); return;
+    ghStatus("⚠ Remplissez les champs Token, Owner et Repository.", "warn"); return;
   }
   ghStatus("⏳ Push en cours…", "warn");
   el("ghPush").disabled = true;
@@ -2112,8 +2157,9 @@ async function ghPush() {
 
 /** PULL — charge les données depuis GitHub */
 async function ghPull() {
+  ghAutoSave();
   if (!GH.token || !GH.owner || !GH.repo) {
-    ghStatus("⚠ Configurez et enregistrez d'abord la config.", "warn"); return;
+    ghStatus("⚠ Remplissez les champs Token, Owner et Repository.", "warn"); return;
   }
   ghStatus("⏳ Pull en cours…", "warn");
   el("ghPull").disabled = true;
