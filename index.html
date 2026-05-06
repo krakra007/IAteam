@@ -405,6 +405,12 @@
     }
     .save-keys-btn:hover{background:#2d7ef7}
     .save-keys-btn.saved{background:#22c55e}
+
+    /* ── Markdown headings dans les réponses ── */
+    .md-heading{margin:14px 0 8px;line-height:1.35;color:#e8eaee}
+    .assistant-body h3.md-heading{font-size:17px;font-weight:700;border-bottom:1px solid #3f3f4660;padding-bottom:4px}
+    .assistant-body h4.md-heading{font-size:15px;font-weight:600;color:#b0c4d8}
+    .assistant-body hr{border:none;border-top:1px solid #3f3f46;margin:12px 0}
   </style>
 </head>
 <body>
@@ -1410,44 +1416,177 @@ function convertLatex(text) {
   return text;
 }
 
-function formatAssistantContent(text) {
-  // Sanitiser d'abord le HTML brut éventuel, puis convertir LaTeX
-  text = sanitizeModelResponse(text || "");
-  text = convertLatex(text);
-  const lines  = text.split("\n");
+function formatAssistantContent(raw) {
+  if (!raw) return "";
+
+  // ── Étape 0 : nettoyer le HTML brut éventuel du modèle ──────
+  raw = sanitizeModelResponse(raw);
+
+  // ── Étape 1 : extraire blocs LaTeX → placeholders ────────────
+  // On protège les blocs rendus AVANT tout traitement Markdown
+  // pour qu'escapeHtml() ne les touche pas.
+  const BLOCKS   = [];   // blocs display  $$...$$
+  const INLINES  = [];   // inline          $...$
+
+  // Blocs display (priorité absolue, avant inline)
+  raw = raw.replace(/\$\$([\s\S]+?)\$\$/g, (_, inner) => {
+    const html = renderLatexBlock(inner.trim());
+    const id   = `\x00BLOCK${BLOCKS.length}\x00`;
+    BLOCKS.push(html);
+    return id;
+  });
+  // Alternatif \[...\]
+  raw = raw.replace(/\\\[([\s\S]+?)\\\]/g, (_, inner) => {
+    const html = renderLatexBlock(inner.trim());
+    const id   = `\x00BLOCK${BLOCKS.length}\x00`;
+    BLOCKS.push(html);
+    return id;
+  });
+  // Inline $...$  (pas de $ seul, pas de $$ déjà traité)
+  raw = raw.replace(/\$([^\$\n]{1,120}?)\$/g, (_, inner) => {
+    const html = `<span class="chem-inline">${applyLatexSymbols(inner)}</span>`;
+    const id   = `\x00INLINE${INLINES.length}\x00`;
+    INLINES.push(html);
+    return id;
+  });
+
+  // ── Étape 2 : traitement Markdown ligne par ligne ─────────────
+  const lines  = raw.split("\n");
   const blocks = [];
   let list = [];
 
   const flushList = () => {
     if (!list.length) return;
-    blocks.push(`<ul>${list.map(i => `<li>${formatInline(i)}</li>`).join("")}</ul>`);
+    blocks.push(`<ul>${list.map(i => `<li>${mdInline(i)}</li>`).join("")}</ul>`);
     list = [];
   };
 
-  for (const raw of lines) {
-    const line = raw.trim();
+  for (const raw_line of lines) {
+    const line = raw_line.trim();
     if (!line) { flushList(); continue; }
 
+    // Heading ## ou ###
     if (/^#{1,6}\s+/.test(line)) {
       flushList();
-      blocks.push(`<p><strong>${formatInline(line.replace(/^#{1,6}\s+/, ""))}</strong></p>`);
+      const lvl  = line.match(/^(#{1,6})\s+/)[1].length;
+      const text = line.replace(/^#{1,6}\s+/, "");
+      const tag  = lvl <= 2 ? "h3" : "h4";
+      blocks.push(`<${tag} class="md-heading">${mdInline(text)}</${tag}>`);
       continue;
     }
+    // Bloc placeholder (ligne contenant uniquement un placeholder)
+    if (/^\x00BLOCK\d+\x00$/.test(line)) {
+      flushList();
+      blocks.push(line); // sera remplacé après
+      continue;
+    }
+    // Ligne contenant un placeholder de bloc (entouré de texte)
+    if (line.includes("\x00BLOCK")) {
+      flushList();
+      blocks.push(`<p>${mdInline(line)}</p>`);
+      continue;
+    }
+    // Séparateur ---
+    if (/^---+$/.test(line)) {
+      flushList();
+      blocks.push('<hr style="border:none;border-top:1px solid #3f3f46;margin:12px 0">');
+      continue;
+    }
+    // Blockquote
     if (/^>\s+/.test(line)) {
       flushList();
-      blocks.push(`<blockquote>${formatInline(line.replace(/^>\s+/, ""))}</blockquote>`);
+      blocks.push(`<blockquote>${mdInline(line.replace(/^>\s+/,""))}</blockquote>`);
       continue;
     }
+    // Liste
     if (/^[-•*]\s+/.test(line) || /^\d+[\.)]\s+/.test(line)) {
       list.push(line.replace(/^([-•*]|\d+[\.)])\s+/, ""));
-    } else {
-      flushList();
-      blocks.push(`<p>${formatInline(line)}</p>`);
+      continue;
     }
+    // Paragraphe
+    flushList();
+    blocks.push(`<p>${mdInline(line)}</p>`);
   }
   flushList();
-  return blocks.join("") || `<p>${formatInline(text || "")}</p>`;
+
+  // ── Étape 3 : restaurer les placeholders ─────────────────────
+  let html = blocks.join("");
+  BLOCKS.forEach((b, i)  => { html = html.replaceAll(`\x00BLOCK${i}\x00`,  b); });
+  INLINES.forEach((b, i) => { html = html.replaceAll(`\x00INLINE${i}\x00`, b); });
+
+  return html || `<p>${escapeHtml(raw)}</p>`;
 }
+
+/** Formatage inline Markdown (bold, code, inline) — sans escaper les placeholders */
+function mdInline(text) {
+  // Protéger les placeholders avant escapeHtml
+  const saved = [];
+  text = text.replace(/\x00(BLOCK|INLINE)\d+\x00/g, m => {
+    const id = `\x01PH${saved.length}\x01`;
+    saved.push(m);
+    return id;
+  });
+
+  let s = escapeHtml(text);
+  s = s.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+  s = s.replace(/\*(.+?)\*/g,     "<em>$1</em>");
+  s = s.replace(/`([^`]+)`/g,     "<code style='background:#2a2a2a;padding:1px 5px;border-radius:4px;font-size:.88em;font-family:monospace'>$1</code>");
+
+  // Restaurer les placeholders
+  saved.forEach((ph, i) => { s = s.replaceAll(`\x01PH${i}\x01`, ph); });
+  return s;
+}
+
+/** Rend un bloc LaTeX display en HTML */
+function renderLatexBlock(inner) {
+  const rendered = applyLatexSymbols(inner);
+  return `<span class="chem-eq">${rendered}</span>`;
+}
+
+/** Applique les substitutions LaTeX → Unicode/HTML */
+function applyLatexSymbols(s) {
+  const SYM = [
+    [/\\rightarrow/g,"→"],[/\\leftarrow/g,"←"],[/\\leftrightarrow/g,"⇌"],
+    [/\\Rightarrow/g,"⟹"],[/\\longrightarrow/g,"⟶"],[/\\longleftarrow/g,"⟵"],
+    [/\\cdot/g,"·"],[/\\times/g,"×"],[/\\div/g,"÷"],[/\\pm/g,"±"],
+    [/\\leq/g,"≤"],[/\\geq/g,"≥"],[/\\neq/g,"≠"],[/\\approx/g,"≈"],
+    [/\\equiv/g,"≡"],[/\\propto/g,"∝"],[/\\infty/g,"∞"],[/\\partial/g,"∂"],
+    [/\\Delta/g,"Δ"],[/\\nabla/g,"∇"],[/\\sum/g,"∑"],[/\\prod/g,"∏"],[/\\int/g,"∫"],
+    [/\\alpha/g,"α"],[/\\beta/g,"β"],[/\\gamma/g,"γ"],[/\\delta/g,"δ"],
+    [/\\epsilon/g,"ε"],[/\\zeta/g,"ζ"],[/\\eta/g,"η"],[/\\theta/g,"θ"],
+    [/\\kappa/g,"κ"],[/\\lambda/g,"λ"],[/\\mu/g,"μ"],[/\\nu/g,"ν"],
+    [/\\xi/g,"ξ"],[/\\pi/g,"π"],[/\\rho/g,"ρ"],[/\\sigma/g,"σ"],
+    [/\\tau/g,"τ"],[/\\phi/g,"φ"],[/\\chi/g,"χ"],[/\\psi/g,"ψ"],[/\\omega/g,"ω"],
+    [/\\Gamma/g,"Γ"],[/\\Sigma/g,"Σ"],[/\\Omega/g,"Ω"],[/\\Phi/g,"Φ"],
+    [/\\ddagger/g,"‡"],[/\\dagger/g,"†"],[/\\circ/g,"∘"],[/\\bullet/g,"•"],
+    [/\\text\{([^}]+)\}/g,"$1"],[/\\mathrm\{([^}]+)\}/g,"$1"],
+    [/\\mathbf\{([^}]+)\}/g,"<strong>$1</strong>"],
+    [/\\ce\{([^}]+)\}/g,"$1"],
+    [/\\\s/g," "],[/\\,/g," "],[/\\!/g,""],
+    [/\\left[\(\[]/g,"("],[/\\right[\)\]]/g,")"],
+  ];
+  for (const [re,rep] of SYM) s = s.replace(re,rep);
+  // Fractions
+  s = s.replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g,
+    (_,n,d)=>`<span style="display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;font-size:.82em;line-height:1.2"><span style="border-bottom:1px solid currentColor;padding:0 3px">${n}</span><span style="padding:0 3px">${d}</span></span>`);
+  // Racines
+  s = s.replace(/\\sqrt\{([^}]+)\}/g,(_,c)=>`√(${c})`);
+  // Exposants ^{...} ou ^X
+  s = s.replace(/\^\{([^}]+)\}/g,(_,c)=>`<sup>${c}</sup>`);
+  s = s.replace(/\^([-+A-Za-z0-9])/g,(_,c)=>`<sup>${c}</sup>`);
+  // Indices _{...} ou _X
+  s = s.replace(/_\{([^}]+)\}/g,(_,c)=>`<sub>${c}</sub>`);
+  s = s.replace(/_([A-Za-z0-9])/g,(_,c)=>`<sub>${c}</sub>`);
+  // Accolades résiduelles
+  s = s.replace(/\{([^{}]*)\}/g,"$1");
+  return s.trim();
+}
+
+// ─────────────────────────────────────────────────
+// convertLatex gardé pour compatibilité
+// (maintenant formatAssistantContent gère tout)
+function convertLatex(text){ return text; }
+
 
 // ─────────────────────────────────────────────────
 // AFFICHAGE MESSAGES
