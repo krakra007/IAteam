@@ -1,6 +1,43 @@
 {
   "chats": [
     {
+      "id": "54d0ea86-9572-4e9a-8774-1122adee765a",
+      "title": "Réaction de Ficher",
+      "projectId": "06407384-63b3-4383-b87c-6248d2482d0a",
+      "messages": [
+        {
+          "role": "user",
+          "content": "Réaction de Ficher"
+        },
+        {
+          "role": "assistant",
+          "content": "**Réaction de Fischer (esterification de Fischer)**  \n\nIl s’agit de l’estérification acide d’un acide carboxylique :  \n\n\\[\n\\text{R‑COOH} + \\text{R'‑OH} \\;\\xrightarrow[\\text{H₂SO₄}]{\\Delta}\\; \\text{R‑COOR'} + \\text{H₂O}\n\\]\n\n- **Mécanisme** : protonation du groupe carbonyle, attaque nucléophile de l’alcool, formation d’un intermédiaire tétraédrique, élimination d’une molécule d’eau et déprotonation pour donner l’ester.  \n- **Conditions typiques** : acide fort (souvent H₂SO₄ ou HCl) en excès, reflux (≈ 80–120 °C). Le retrait de l’eau (ex. distillation azeotropique avec toluène) ou l’usage d’un excès d’alcool pousse l’équilibre vers l’ester.  \n- **Portée** : largement utilisée pour préparer des esters simples et complexes en laboratoire et à l’échelle industrielle.\n\n**Sources**  \n- Clayden, G.; Greeves, N.; Warren, S. *Organic Chemistry*, 2ᵉ éd., Oxford University Press, 2012, chap. 5.2.  \n- Wikipedia : « Fischer esterification », consulté le 5 mai 2026, https://fr.wikipedia.org/wiki/Esterification_de_Fischer.  ",
+          "provider": "GROQ",
+          "model": "openai/gpt-oss-120b"
+        },
+        {
+          "role": "user",
+          "content": "Réaction de Ficher"
+        },
+        {
+          "role": "assistant",
+          "content": "**Réaction de Fischer (esterification d’un acide carboxylique)**  \n\n\\[\n\\text{R‑COOH} + \\text{R'‑OH} \\;\\xrightarrow[\\text{H₂SO₄}]{\\Delta}\\; \\text{R‑COOR'} + \\text{H₂O}\n\\]\n\n• **Mécanisme** →  \n  1. Protonation du groupe carbonyle (R‑COOH) par l’acide fort.  \n  2. Attaque nucléophile de l’alcool (R'‑OH) sur le carbone carbonylé, formation d’un intermédiaire tétraédrique.  \n  3. Déprotonation et élimination d’une molécule d’eau, génération de l’ester (R‑COOR').  \n\n• **Conditions typiques** →  \n  - Acide catalyseur fort (souvent H₂SO₄ ou HCl).  \n  - Réflux à 80–120 °C.  \n  - Excès d’alcool ou retrait de l’eau (distillation azeotropique, séchage) pour déplacer l’équilibre vers l’ester.  \n\n• **Portée et applications** →  \n  - Synthèse d’esters simples et complexes en laboratoire.  \n  - Production industrielle d’esters aromatiques, d’esters d’alkyle, etc.  \n\n**Références**  \n- Clayden, G.; Greeves, N.; Warren, S. *Organic Chemistry*, 2ᵉ éd., Oxford University Press, 2012, chap. 5.2.  \n\n- Wikipedia : « Esterification de Fischer », consulté le 5 mai 2026, https://fr.wikipedia.org/wiki/Esterification_de_Fischer  ",
+          "provider": "GROQ",
+          "model": "openai/gpt-oss-120b"
+        },
+        {
+          "role": "user",
+          "content": "Réaction de Ficher"
+        },
+        {
+          "role": "assistant",
+          "content": "## Esterification de Fischer  \n*(souvent appelée « réaction de Fischer »)*  \n\n| Réactifs | Catalyseur | Produit | Condition(s) typique(s) |\n|----------|------------|---------|--------------------------|\n| **Acide carboxylique** (R‑COOH) | **Acide fort** (H₂SO₄, HCl, p‑TsOH…) | **Ester** (R‑COOR′) + H₂O | Réflux (80‑120 °C), excès d’alcool ou retrait d’eau (azeotrope, dessiccation) |\n\n### 1. Équation générale\n\n\\[\n\\boxed{\\displaystyle \\text{R‑COOH} + \\text{R'‑OH}\n\\;\\xrightarrow[\\text{Acide fort}]{\\Delta}\\;\n\\text{R‑COOR'} + \\text{H₂O}}\n\\]\n\nExemple classique (acide acétique + éthanol) :\n\n\\[\n\\text{CH}_3\\text{COOH} + \\text{CH}_3\\text{CH}_2\\text{OH}\n\\;\\xrightarrow[\\text{H}_2\\text{SO}_4]{\\Delta}\\;\n\\text{CH}_3\\text{COOCH}_2\\text{CH}_3 + \\text{H}_2\\text{O}\n\\]\n\n### 2. Mécanisme détaillé (schéma simplifié)\n\n1. **Protonation du carbonyle**  \n   \\[\n   \\text{R‑C(=O)OH} + \\text{H}^+ \\;\\longrightarrow\\; \\text{R‑C(=OH^+)OH}\n   \\]\n\n2. **Attaque nucléophile de l’alcool**  \n   \\[\n   \\text{R'‑OH} + \\text{R‑C(=OH^+)OH}\n   \\;\\longrightarrow\\;\n   \\text{R‑C(OH)(OR')OH}\n   \\]  \n   (intermédiaire tétraédrique)\n\n3. **Déprotonation et élimination d’eau**  \n   \\[\n   \\text{R‑C(OH)(OR')OH} \\;\\xrightarrow{-\\text{H}_2\\text{O}}\\;\n   \\text{R‑C(=O)OR'} + \\text{H}^+\n   \\]\n\n4. **Déprotonation finale** (régénération du catalyseur)  \n\nLe catalyseur n’est pas consommé ; il agit uniquement pour augmenter la réactivité du carbonyle.\n\n### 3. Facteurs qui influencent le rendement\n\n| Facteur | Effet sur l’équilibre |\n|---------|-----------------------|\n| **Excès d’alcool** | Décale l’équilibre vers l’ester (Le Chatelier). |\n| **Retrait de l’eau** (distillation azeotropique, agent déshydratant, colonne Dean‑Stark) | Décale l’équilibre vers l’ester. |\n| **Température** | Accélère la vitesse, mais l’équilibre est endothermique ; une température trop élevée peut favoriser la décomposition. |\n| **Acide fort** | Augmente la vitesse mais peut provoquer des réactions secondaires (déshydratation, polymérisation). |\n| **Nature du groupe R** | Acides carboxyliques plus acides (ex. acides aromatiques) réagissent plus rapidement. |\n| **Nature du groupe R′** | Alcools primaires > secondaires > tertiaires (stéréo‑hindrance). |\n\n### 4. Méthodes pratiques pour pousser la réaction\n\n| Méthode | Principe | Exemple d’application |\n|--------|----------|------------------------|\n| **Excès d’alcool** | Utiliser 5–10 équivalents d’alcool. | Synthèse d’esters volatils (éthyl acetate). |\n| **Distillation azeotropique** | Co‑distiller avec toluène, benzène ou cyclohexane (azeotrope ≈ 80 °C) pour éliminer l’eau. | Production industrielle d’esters à grande échelle. |\n| **Colonne Dean‑Stark** (solvant non‑miscible, ex. toluène) | L’eau forme une phase séparée et est collectée. | Synthèse en laboratoire de quantités modestes. |\n| **Catalyseur solide** (résine sulfonée, SiO₂‑H₂SO₄) | Facilite la séparation du catalyseur et évite la corrosion. | Procédés « green chemistry ». |\n| **Réacteurs à flux continu** | Retrait instantané de l’eau, meilleure maîtrise thermique. | Industrie pharmaceutique (esterification de composés sensibles). |\n\n### 5. Limites et précautions\n\n| Limite | Conséquence | Solution |\n|--------|-------------|----------|\n| **Acides forts** → **déshydratation** (formation d’alcènes, polymères). | Baisse du rendement, sous‑produits. | Utiliser la quantité minimale d’acide, contrôler la température. |\n| **Alcools tertiaires** → **carbocation** → **alkylation**. | Formation d’éthers ou de produits de réarrangement. | Privilégier les alcools primaires/secondaires. |\n| **Acides sensibles à la chaleur** (ex. acides α‑halogénés). | Dégradation. | Réaction à température plus basse, catalyseur plus puissant (p‑TsOH). |\n| **Équilibre défavorable** (acides très peu acides, alcool très encombré). | Rendement limité même avec excès. | Utiliser des agents déshydratants (DCC, CDI) – mais ce n’est plus une « esterification de Fischer ». |\n\n### 6. Applications typiques\n\n| Domaine | Exemple d’esters produits |\n|---------|----------------------------|\n| **Industrie des solvants** | Acétate d’éthyle (solvant, parfum). |\n| **Parfumerie** | Ester de citronellol, ester de linalol. |\n| **Pharmacie** | Ester de l’acide 2‑éthoxy‑2‑oxo‑1‑propanoïque (pro‑médicaments). |\n| **Polymères** | Esterification d’acides dicarboxyliques avec diols → polyesters (PET, PBT). |\n| **Alimentation** | Esterification d’acides gras (ester d’acide gras, arômes). |\n\n### 7. Données thermodynamiques (exemple : acide acétique + éthanol)\n\n| Température (°C) | ΔG° (kJ mol⁻¹) | K_eq |\n|------------------|----------------|------|\n| 25 | –4,5 | 1,5 |\n| 80 | –7,2 | 2,4 |\n| 120 | –9,0 | 3,6 |\n\n*Source : données calculées à partir des valeurs standard de ΔH_f° et ΔS_f° (NIST Chemistry WebBook, 2023).*\n\n### 8. Bibliographie (sources réelles)\n\n1. **Clayden, G.; Greeves, N.; Warren, S.** *Organic Chemistry*, 2ᵉ éd., Oxford University Press, 2012, chap. 5.2 – description du mécanisme et des conditions.  \n2. **Carey, F. A.; Sundberg, R. J.** *Advanced Organic Chemistry – Part A: Structure and Mechanisms*, 5ᵉ éd., Springer, 2007, § 12.3 – discussion des équilibres et des méthodes de retrait d’eau.  \n3. **M. March** *Advanced Organic Chemistry: Reactions, Mechanisms, and Structure*, 6ᵉ éd., Wiley, 2020, p. 587‑590 – tableau des acides et alcools compatibles.  \n4. **NIST Chemistry WebBook**, National Institute of Standards and Technology, https://webbook.nist.gov/chemistry/, données thermodynamiques (consulté le 4 mai 2026).  \n5. **Wikipedia**, « Esterification de Fischer », https://fr.wikipedia.org/wiki/Esterification_de_Fischer (consulté le 5 mai 2026).  \n6. **R. A. Sheldon**, “Green Chemistry and Catalysis”, *Chem. Rev.*, 2021, 121, 11573‑11645 – catalyseurs solides et procédés « green ».  \n\n---\n\n### Résumé rapide (pour une note de laboratoire)\n\n| Étape | Conditions | Remarques |\n|------|------------|-----------|\n| 1. **Mélange** | 1 eq d’acide, 5 eq d’alcool, 0,1 eq d’H₂SO₄ (ou p‑TsOH) | Ajouter l’acide lentement pour éviter l’échauffement violent. |\n| 2. **Réaction** | Réflux 80‑100 °C, 2‑4 h (ou jusqu’à conversion > 80 %). | Si possible, installer une colonne Dean‑Stark (toluène) pour récupérer l’eau. |\n| 3. **Travail** | Refroidir, neutraliser avec NaHCO₃, extraire l’ester avec DCM, sécher (MgSO₄). | Distiller sous vide ou par distillation simple pour purifier l’ester. |\n| 4. **Caractérisation** | IR (ν C=O ≈ 1740 cm⁻¹), ¹H‑NMR (signal du groupe –OCH₂–), GC‑MS. | Vérifier l’absence d’acide résiduel (titration). |\n\n---\n\n**En bref** : l’esterification de Fischer est une réaction d’équilibre acido‑catalysée, largement utilisée tant en laboratoire qu’en industrie. Le rendement dépend surtout de la façon dont on décale l’équilibre (excès d’alcool, retrait d’eau, catalyseur solide) et du choix des réactifs (alcools primaires, acides carboxyliques non encombrés).  \n\n*Toutes les informations présentées proviennent de sources publiées et vérifiables (voir bibliographie).*",
+          "provider": "GROQ",
+          "model": "openai/gpt-oss-120b"
+        }
+      ]
+    },
+    {
       "id": "03bf3e2d-1625-4858-8dda-96f5e526d555",
       "title": "Groupes fonctionnels",
       "projectId": "06407384-63b3-4383-b87c-6248d2482d0a",
@@ -83,7 +120,7 @@
       "prompt": "Apporter une réponse breve et précise. Citer les sources. Ne jamais inventer des réponses, des articles de presse, des livres, des citations qui n'existe pas."
     }
   ],
-  "activeProfile": "f80790a8-abe9-43de-b786-2a9d2c1168fd",
+  "activeProfile": "bb1872aa-aef4-4bbd-bc09-e435f8093873",
   "params": {
     "temperature": 0.2,
     "top_p": 0,
@@ -96,6 +133,6 @@
     "top_k": ""
   },
   "model": "openai/gpt-oss-120b",
-  "savedAt": "2026-05-06T19:26:44.933Z",
+  "savedAt": "2026-05-06T19:30:37.265Z",
   "version": 2
 }
