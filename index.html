@@ -448,7 +448,47 @@
       display:block;
       margin:10px 0;
     }
+
+    /* ── Rendu Markdown professionnel (marked.js) ── */
+    .assistant-body h1,.assistant-body h2{
+      font-size:19px;font-weight:700;color:#e8eaee;
+      border-bottom:1px solid #3f3f46;padding-bottom:6px;margin:18px 0 10px;
+    }
+    .assistant-body h3{font-size:16px;font-weight:600;color:#c8d8f0;margin:14px 0 8px}
+    .assistant-body h4{font-size:14px;font-weight:600;color:#9db8d0;margin:10px 0 6px}
+    .assistant-body ul,.assistant-body ol{margin:8px 0 12px 22px;padding:0}
+    .assistant-body li{margin:5px 0;line-height:1.65;font-size:15px}
+    .assistant-body li p{margin:0}
+    .assistant-body code{
+      background:#2a2a2a;padding:2px 6px;border-radius:4px;
+      font-family:"SFMono-Regular",Consolas,monospace;font-size:.87em;color:#c9d1d9;
+    }
+    .assistant-body pre{
+      background:#161b22;border:1px solid #30363d;border-radius:8px;
+      padding:14px 16px;overflow-x:auto;margin:12px 0;
+    }
+    .assistant-body pre code{background:none;padding:0;font-size:13px;color:#c9d1d9}
+    .assistant-body blockquote{
+      margin:10px 0;padding:8px 14px;
+      border-left:3px solid #4b5563;background:#1e2330;
+      border-radius:0 6px 6px 0;color:#9ca3af;font-style:italic;
+    }
+    .assistant-body table{border-collapse:collapse;width:100%;margin:12px 0;font-size:14px}
+    .assistant-body th{
+      background:#1e2a3a;color:#7baaf7;padding:8px 12px;
+      border:1px solid #3f3f46;text-align:left;font-weight:600;
+    }
+    .assistant-body td{padding:7px 12px;border:1px solid #2d3748;vertical-align:top}
+    .assistant-body tr:nth-child(even){background:#1a1f2e}
+    .assistant-body hr{border:none;border-top:1px solid #3f3f46;margin:14px 0}
+    .assistant-body a{color:#7baaf7;text-decoration:none}
+    .assistant-body a:hover{text-decoration:underline}
+    .assistant-body strong{font-weight:700;color:#e8eaee}
+    .assistant-body em{font-style:italic;color:#d0d8e8}
+    .assistant-body p{margin:0 0 10px;line-height:1.7}
   </style>
+  <!-- marked.js — parser Markdown standard industriel -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.0/marked.min.js"></script>
   <!-- KaTeX — rendu LaTeX professionnel (compilation réelle) -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.css">
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.js"></script>
@@ -1459,103 +1499,64 @@ function convertLatex(text) {
 function formatAssistantContent(raw) {
   if (!raw) return "";
 
-  // ── Étape 0 : nettoyer le HTML brut éventuel du modèle ──────
+  // ── 1. Nettoyer le HTML brut éventuel du modèle ─────────────
   raw = sanitizeModelResponse(raw);
 
-  // ── Étape 1 : extraire blocs LaTeX → placeholders ────────────
-  // On protège les blocs rendus AVANT tout traitement Markdown
-  // pour qu'escapeHtml() ne les touche pas.
-  const BLOCKS   = [];   // blocs display  $$...$$
-  const INLINES  = [];   // inline          $...$
+  // ── 2. Extraire les blocs math avant marked (qui échappe $) ──
+  const mathBlocks  = [];
+  const mathInlines = [];
+  const BSEP = "XXMATHBLOCKXX";
+  const ISEP = "XXMATHINLINEXX";
 
-  // Blocs display (priorité absolue, avant inline)
+  // Blocs $$ ... $$ (multi-ligne supporté)
   raw = raw.replace(/\$\$([\s\S]+?)\$\$/g, (_, inner) => {
-    const html = renderLatexBlock(inner.trim());
-    const id   = `\x00BLOCK${BLOCKS.length}\x00`;
-    BLOCKS.push(html);
-    return id;
+    mathBlocks.push(inner.trim());
+    return BSEP + (mathBlocks.length - 1) + BSEP;
   });
-  // Alternatif \[...\]
+  // Alternatif \[ ... \]
   raw = raw.replace(/\\\[([\s\S]+?)\\\]/g, (_, inner) => {
-    const html = renderLatexBlock(inner.trim());
-    const id   = `\x00BLOCK${BLOCKS.length}\x00`;
-    BLOCKS.push(html);
-    return id;
+    mathBlocks.push(inner.trim());
+    return BSEP + (mathBlocks.length - 1) + BSEP;
   });
-  // Inline $...$  (pas de $ seul, pas de $$ déjà traité)
-  raw = raw.replace(/\$([^\$\n]{1,120}?)\$/g, (_, inner) => {
-    const html = renderLatexInline(inner);
-    const id   = `\x00INLINE${INLINES.length}\x00`;
-    INLINES.push(html);
-    return id;
+  // Inline $ ... $
+  raw = raw.replace(/\$([^\$\n]{1,200}?)\$/g, (_, inner) => {
+    mathInlines.push(inner.trim());
+    return ISEP + (mathInlines.length - 1) + ISEP;
   });
 
-  // ── Étape 2 : traitement Markdown ligne par ligne ─────────────
-  const lines  = raw.split("\n");
-  const blocks = [];
-  let list = [];
-
-  const flushList = () => {
-    if (!list.length) return;
-    blocks.push(`<ul>${list.map(i => `<li>${mdInline(i)}</li>`).join("")}</ul>`);
-    list = [];
-  };
-
-  for (const raw_line of lines) {
-    const line = raw_line.trim();
-    if (!line) { flushList(); continue; }
-
-    // Heading ## ou ###
-    if (/^#{1,6}\s+/.test(line)) {
-      flushList();
-      const lvl  = line.match(/^(#{1,6})\s+/)[1].length;
-      const text = line.replace(/^#{1,6}\s+/, "");
-      const tag  = lvl <= 2 ? "h3" : "h4";
-      blocks.push(`<${tag} class="md-heading">${mdInline(text)}</${tag}>`);
-      continue;
-    }
-    // Bloc placeholder (ligne contenant uniquement un placeholder)
-    if (/^\x00BLOCK\d+\x00$/.test(line)) {
-      flushList();
-      blocks.push(line); // sera remplacé après
-      continue;
-    }
-    // Ligne contenant un placeholder de bloc (entouré de texte)
-    if (line.includes("\x00BLOCK")) {
-      flushList();
-      blocks.push(`<p>${mdInline(line)}</p>`);
-      continue;
-    }
-    // Séparateur ---
-    if (/^---+$/.test(line)) {
-      flushList();
-      blocks.push('<hr style="border:none;border-top:1px solid #3f3f46;margin:12px 0">');
-      continue;
-    }
-    // Blockquote
-    if (/^>\s+/.test(line)) {
-      flushList();
-      blocks.push(`<blockquote>${mdInline(line.replace(/^>\s+/,""))}</blockquote>`);
-      continue;
-    }
-    // Liste
-    if (/^[-•*]\s+/.test(line) || /^\d+[\.)]\s+/.test(line)) {
-      list.push(line.replace(/^([-•*]|\d+[\.)])\s+/, ""));
-      continue;
-    }
-    // Paragraphe
-    flushList();
-    blocks.push(`<p>${mdInline(line)}</p>`);
+  // ── 3. Convertir Markdown → HTML avec marked.js ──────────────
+  let html;
+  if (typeof marked !== "undefined") {
+    marked.setOptions({
+      breaks: true,        // \n → <br> dans les paragraphes
+      gfm:    true,        // GitHub Flavored Markdown
+      pedantic: false
+    });
+    html = marked.parse(raw);
+  } else {
+    // Fallback minimal si marked n'est pas chargé
+    html = "<p>" + raw.replace(/\n\n/g,"</p><p>").replace(/\n/g,"<br>") + "</p>";
   }
-  flushList();
 
-  // ── Étape 3 : restaurer les placeholders ─────────────────────
-  let html = blocks.join("");
-  BLOCKS.forEach((b, i)  => { html = html.replaceAll(`\x00BLOCK${i}\x00`,  b); });
-  INLINES.forEach((b, i) => { html = html.replaceAll(`\x00INLINE${i}\x00`, b); });
+  // ── 4. Restaurer les formules mathématiques via KaTeX ─────────
+  // Blocs display
+  mathBlocks.forEach((latex, i) => {
+    const rendered = renderLatexBlock(latex);
+    html = html.replaceAll(BSEP + i + BSEP, rendered);
+    // marked peut avoir échappé le placeholder dans un <p>
+    html = html.replaceAll(
+      "<p>" + BSEP + i + BSEP + "</p>",
+      rendered
+    );
+  });
+  // Inline
+  mathInlines.forEach((latex, i) => {
+    html = html.replaceAll(ISEP + i + ISEP, renderLatexInline(latex));
+  });
 
-  return html || `<p>${escapeHtml(raw)}</p>`;
+  return html;
 }
+
 
 /** Formatage inline Markdown (bold, code, inline) — sans escaper les placeholders */
 function mdInline(text) {
@@ -2716,6 +2717,10 @@ document.addEventListener("click", e => {
 // ─────────────────────────────────────────────────
 // INIT
 // ─────────────────────────────────────────────────
+// Configurer marked.js
+if (typeof marked !== "undefined") {
+  marked.setOptions({ breaks: true, gfm: true });
+}
 buildColorPicker();
 initGithubPanel();
 
