@@ -910,6 +910,8 @@ const SYSTEM_PROMPT = `Tu es un assistant IA expert. RÈGLES ABSOLUES — tu doi
    - Inline : la constante $k$ dépend de $T$
    - Indices : $H_{2}O$, $CH_{3}$
    - Exposants : $OH^{-}$, $Fe^{3+}$
+   - Plusieurs lignes dans un même bloc : OBLIGATOIREMENT $$\\begin{aligned} ... \\\\ ... \\end{aligned}$$ (ne JAMAIS écrire \\\\ ou & en dehors d'un environnement aligned/array/cases)
+   - À l'intérieur de $...$ et $$...$$ : toujours le trait d'union ASCII "-" (jamais "–" ni "—")
 4. Structure : titres ##, listes avec -, termes importants en **gras**
 5. Sois précis, structuré et professionnel`;
 
@@ -925,7 +927,7 @@ const S = {
       id: "chemistry",
       name: "Chimie & Sciences",
       icon: "⚗️",
-      prompt: "RÈGLES ABSOLUES — respecte-les sans exception :\n1. INTERDIT : balises HTML (<span>, <sup>, <sub>, <div>...)\n2. INTERDIT : classes CSS\n3. Équations en LaTeX UNIQUEMENT :\n   - Bloc display : $$CH_{3}Br + OH^{-} \\rightarrow CH_{3}OH + Br^{-}$$\n   - Inline : $v = k[A][B]$, $H_{2}O$, $OH^{-}$\n4. Structure Markdown : ## titres, - listes, **gras**\n5. Tu es expert en chimie organique, inorganique et physique. Tes réponses sont précises et bien structurées."
+      prompt: "RÈGLES ABSOLUES — respecte-les sans exception :\n1. INTERDIT : balises HTML (<span>, <sup>, <sub>, <div>...)\n2. INTERDIT : classes CSS\n3. Équations en LaTeX UNIQUEMENT :\n   - Bloc display : $$CH_{3}Br + OH^{-} \\rightarrow CH_{3}OH + Br^{-}$$\n   - Inline : $v = k[A][B]$, $H_{2}O$, $OH^{-}$\n   - Pour PLUSIEURS lignes alignées dans un seul bloc, utiliser OBLIGATOIREMENT $$\\begin{aligned} ligne1 \\\\ ligne2 \\end{aligned}$$ (jamais \\\\ ou & isolés)\n   - Toujours utiliser le trait d'union ASCII '-' (jamais les tirets typographiques – ou —) à l'intérieur des $...$ et $$...$$\n4. Structure Markdown : ## titres, - listes, **gras**\n5. Tu es expert en chimie organique, inorganique et physique. Tes réponses sont précises et bien structurées."
     },
     {
       id: "coding",
@@ -1565,6 +1567,34 @@ function formatAssistantContent(raw) {
   raw = raw.replace(/([^\n])\$\$([\s\S]+?)\$\$(\n|$)/g,
     (_, before, math, post) => `${before}\n\n$$${math}$$${post}`);
 
+  // ── Sanitiseur du CONTENU math (corrige les erreurs LLM les plus courantes) ──
+  // Normalise les caractères qui font planter KaTeX et auto-enveloppe les
+  // équations multi-lignes ( \\ et & ) dans \begin{aligned}...\end{aligned}.
+  function sanitizeMath(inner) {
+    // 1) Tirets Unicode → ASCII (les LLM mettent souvent – ou — au lieu de -)
+    let t = inner
+      .replace(/[\u2010\u2011\u2012\u2013\u2014\u2015\u2212]/g, '-')
+      // espaces insécables typographiques
+      .replace(/[\u00A0\u202F\u2009]/g, ' ');
+    // 2) Si on a des \\ ou & et qu'on n'est PAS déjà dans un environnement,
+    //    on enveloppe dans \begin{aligned}...\end{aligned}.
+    const hasAlignTokens = /\\\\|(?:^|[^\\])&/.test(t);
+    const alreadyInEnv  = /\\begin\{(aligned|align\*?|array|matrix|cases|gather\*?|equation\*?)\}/.test(t);
+    if (hasAlignTokens && !alreadyInEnv) {
+      // Nettoyer un éventuel & en tout début (artefact LLM type "&(R)-...")
+      t = t.replace(/^\s*&/, '');
+      t = '\\begin{aligned} ' + t + ' \\end{aligned}';
+    }
+    return t;
+  }
+  // Appliquer aux blocs $$...$$
+  raw = raw.replace(/\$\$([\s\S]+?)\$\$/g, (_, m) => '$$' + sanitizeMath(m) + '$$');
+  // Et aux blocs \[ ... \]
+  raw = raw.replace(/\\\[([\s\S]+?)\\\]/g, (_, m) => '\\[' + sanitizeMath(m) + '\\]');
+  // Pour l'inline $...$, juste les tirets Unicode (pas d'aligned)
+  raw = raw.replace(/(^|[^\$])\$([^\$\n]{1,200}?)\$(?!\$)/g,
+    (_, pre, m) => pre + '$' + m.replace(/[\u2010\u2011\u2012\u2013\u2014\u2015\u2212]/g, '-') + '$');
+
   // ── Enregistrer les extensions KaTeX avec marked (une seule fois) ──
   // Technique : extensions natives au niveau du tokenizer,
   // comme dans IA-Genius — plus robuste que les placeholders.
@@ -1574,6 +1604,10 @@ function formatAssistantContent(raw) {
     // Convertisseur Unicode de secours quand KaTeX n'est pas dispo
     function latexFallback(tex) {
       var t = tex;
+      // Espaces LaTeX → espace normal
+      t = t.replace(/\\[,;:!]/g, ' ').replace(/\\quad|\\qquad/g, '  ');
+      // Sauts de ligne et alignement (utilisés dans aligned/array)
+      t = t.replace(/\\\\/g, '\n').replace(/&/g, ' ');
       var syms = {
         '\\\\rightarrow':'→','\\\\leftarrow':'←','\\\\leftrightarrow':'↔',
         '\\\\Rightarrow':'⇒','\\\\longrightarrow':'⟶','\\\\rightleftharpoons':'⇌',
@@ -1594,6 +1628,8 @@ function formatAssistantContent(raw) {
       t = t.replace(/_\{([^}]+)\}/g, function(_,c){ return c.split('').map(function(x){return {'0':'₀','1':'₁','2':'₂','3':'₃','4':'₄','5':'₅','6':'₆','7':'₇','8':'₈','9':'₉','+':'₊','-':'₋'}[x]||x;}).join(''); });
       t = t.replace(/_([0-9+\-])/g, function(_,c){ return {'0':'₀','1':'₁','2':'₂','3':'₃','4':'₄','5':'₅','6':'₆','7':'₇','8':'₈','9':'₉','+':'₊','-':'₋'}[c]||c; });
       t = t.replace(/\\text\{([^}]+)\}/g,'$1').replace(/\\mathrm\{([^}]+)\}/g,'$1');
+      // Retirer les \begin{xxx} et \end{xxx}
+      t = t.replace(/\\begin\{[a-zA-Z*]+\}/g, '').replace(/\\end\{[a-zA-Z*]+\}/g, '');
       t = t.replace(/\{([^{}]*)\}/g,'$1').replace(/\\[a-zA-Z]+/g,'');
       return t.trim();
     }
@@ -1602,7 +1638,7 @@ function formatAssistantContent(raw) {
       try {
         if (typeof katex !== "undefined") {
           return '<div class="katex-block-wrap">' +
-            katex.renderToString(tex.trim(), {displayMode:true,throwOnError:true,strict:"ignore"}) +
+            katex.renderToString(tex.trim(), {displayMode:true,throwOnError:false,strict:"ignore",errorColor:"#f87171"}) +
             '</div>';
         }
       } catch(e) {}
@@ -1612,7 +1648,7 @@ function formatAssistantContent(raw) {
     function renderKatexInline(tex) {
       try {
         if (typeof katex !== "undefined") {
-          return katex.renderToString(tex.trim(), {displayMode:false,throwOnError:true,strict:"ignore"});
+          return katex.renderToString(tex.trim(), {displayMode:false,throwOnError:false,strict:"ignore",errorColor:"#f87171"});
         }
       } catch(e) {}
       return '<span class="katex-fallback-inline">' + latexFallback(tex) + '</span>';
