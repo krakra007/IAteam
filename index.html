@@ -542,6 +542,8 @@
   <!-- KaTeX — rendu LaTeX professionnel (compilation réelle) -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.js"></script>
+  <!-- mhchem : extension chimie pour KaTeX (\ce{...}) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/contrib/mhchem.min.js"></script>
   <!-- Favicon — cerveau numérique BrAInShift -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+CiAgPGRlZnM+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjNGE5ZmQ0Ii8+CiAgICAgIDxzdG9wIG9mZnNldD0iNTAlIiBzdG9wLWNvbG9yPSIjN2I2OGQ0Ii8+CiAgICAgIDxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iI2Q0NmFiZiIvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICA8L2RlZnM+CiAgPCEtLSBGb25kIGFycm9uZGkgc29tYnJlIC0tPgogIDxyZWN0IHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgcng9IjgiIGZpbGw9IiMxYTFhMmUiLz4KICA8IS0tIEjDqW1pc3Bow6hyZSBnYXVjaGUgLS0+CiAgPHBhdGggZD0iTTE2IDUgQzEwIDUgNiA4IDUgMTMgQzQgMTcgNSAyMSA4IDI0IEMxMCAyNiAxMyAyNyAxNSAyNiBMMTUuNSAyNiBMMTUuNSA2IFoiCiAgICAgICAgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ1cmwoI2cpIiBzdHJva2Utd2lkdGg9IjEuNSIgb3BhY2l0eT0iMC45Ii8+CiAgPCEtLSBIw6ltaXNwaMOocmUgZHJvaXQgLS0+CiAgPHBhdGggZD0iTTE2IDUgQzIyIDUgMjYgOCAyNyAxMyBDMjggMTcgMjcgMjEgMjQgMjQgQzIyIDI2IDE5IDI3IDE3IDI2IEwxNi41IDI2IEwxNi41IDYgWiIKICAgICAgICBmaWxsPSJub25lIiBzdHJva2U9InVybCgjZykiIHN0cm9rZS13aWR0aD0iMS41IiBvcGFjaXR5PSIwLjkiLz4KICA8IS0tIFNpbGxvbiBjZW50cmFsIC0tPgogIDxsaW5lIHgxPSIxNiIgeTE9IjUiIHgyPSIxNiIgeTI9IjI2IiBzdHJva2U9InVybCgjZykiIHN0cm9rZS13aWR0aD0iMC44IiBvcGFjaXR5PSIwLjQiLz4KICA8IS0tIENpcmNvbnZvbHV0aW9ucyBnYXVjaGUgLS0+CiAgPHBhdGggZD0iTTggMTIgQzEwIDEwIDEzIDEwIDE0IDEyIiBmaWxsPSJub25lIiBzdHJva2U9InVybCgjZykiIHN0cm9rZS13aWR0aD0iMS4yIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KICA8cGF0aCBkPSJNNiAxNyBDOCAxNSAxMiAxNSAxMyAxNyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ1cmwoI2cpIiBzdHJva2Utd2lkdGg9IjEuMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CiAgPHBhdGggZD0iTTcgMjIgQzkgMjAgMTIgMjAgMTQgMjEiIGZpbGw9Im5vbmUiIHN0cm9rZT0idXJsKCNnKSIgc3Ryb2tlLXdpZHRoPSIxLjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgogIDwhLS0gQ2lyY29udm9sdXRpb25zIGRyb2l0ZSAtLT4KICA8cGF0aCBkPSJNMjQgMTIgQzIyIDEwIDE5IDEwIDE4IDEyIiBmaWxsPSJub25lIiBzdHJva2U9InVybCgjZykiIHN0cm9rZS13aWR0aD0iMS4yIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KICA8cGF0aCBkPSJNMjYgMTcgQzI0IDE1IDIwIDE1IDE5IDE3IiBmaWxsPSJub25lIiBzdHJva2U9InVybCgjZykiIHN0cm9rZS13aWR0aD0iMS4yIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KICA8cGF0aCBkPSJNMjUgMjIgQzIzIDIwIDIwIDIwIDE4IDIxIiBmaWxsPSJub25lIiBzdHJva2U9InVybCgjZykiIHN0cm9rZS13aWR0aD0iMS4yIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KICA8IS0tIE5vZXVkcyBzeW5hcHRpcXVlcyAtLT4KICA8Y2lyY2xlIGN4PSI4IiAgY3k9IjExIiByPSIxLjgiIGZpbGw9IiM0YTlmZDQiIG9wYWNpdHk9IjAuOTUiLz4KICA8Y2lyY2xlIGN4PSI2IiAgY3k9IjE3IiByPSIxLjgiIGZpbGw9IiM3YjY4ZDQiIG9wYWNpdHk9IjAuOTUiLz4KICA8Y2lyY2xlIGN4PSI4IiAgY3k9IjIyIiByPSIxLjgiIGZpbGw9IiNkNDZhYmYiIG9wYWNpdHk9IjAuOTUiLz4KICA8Y2lyY2xlIGN4PSIyNCIgY3k9IjExIiByPSIxLjgiIGZpbGw9IiM0YTlmZDQiIG9wYWNpdHk9IjAuOTUiLz4KICA8Y2lyY2xlIGN4PSIyNiIgY3k9IjE3IiByPSIxLjgiIGZpbGw9IiM3YjY4ZDQiIG9wYWNpdHk9IjAuOTUiLz4KICA8Y2lyY2xlIGN4PSIyNCIgY3k9IjIyIiByPSIxLjgiIGZpbGw9IiNkNDZhYmYiIG9wYWNpdHk9IjAuOTUiLz4KICA8Y2lyY2xlIGN4PSIxNiIgY3k9IjUiICByPSIxLjgiIGZpbGw9IiM0YWJmYmYiIG9wYWNpdHk9IjAuOTUiLz4KPC9zdmc+">
   <link rel="shortcut icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+CiAgPGRlZnM+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjNGE5ZmQ0Ii8+CiAgICAgIDxzdG9wIG9mZnNldD0iNTAlIiBzdG9wLWNvbG9yPSIjN2I2OGQ0Ii8+CiAgICAgIDxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iI2Q0NmFiZiIvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICA8L2RlZnM+CiAgPCEtLSBGb25kIGFycm9uZGkgc29tYnJlIC0tPgogIDxyZWN0IHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgcng9IjgiIGZpbGw9IiMxYTFhMmUiLz4KICA8IS0tIEjDqW1pc3Bow6hyZSBnYXVjaGUgLS0+CiAgPHBhdGggZD0iTTE2IDUgQzEwIDUgNiA4IDUgMTMgQzQgMTcgNSAyMSA4IDI0IEMxMCAyNiAxMyAyNyAxNSAyNiBMMTUuNSAyNiBMMTUuNSA2IFoiCiAgICAgICAgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ1cmwoI2cpIiBzdHJva2Utd2lkdGg9IjEuNSIgb3BhY2l0eT0iMC45Ii8+CiAgPCEtLSBIw6ltaXNwaMOocmUgZHJvaXQgLS0+CiAgPHBhdGggZD0iTTE2IDUgQzIyIDUgMjYgOCAyNyAxMyBDMjggMTcgMjcgMjEgMjQgMjQgQzIyIDI2IDE5IDI3IDE3IDI2IEwxNi41IDI2IEwxNi41IDYgWiIKICAgICAgICBmaWxsPSJub25lIiBzdHJva2U9InVybCgjZykiIHN0cm9rZS13aWR0aD0iMS41IiBvcGFjaXR5PSIwLjkiLz4KICA8IS0tIFNpbGxvbiBjZW50cmFsIC0tPgogIDxsaW5lIHgxPSIxNiIgeTE9IjUiIHgyPSIxNiIgeTI9IjI2IiBzdHJva2U9InVybCgjZykiIHN0cm9rZS13aWR0aD0iMC44IiBvcGFjaXR5PSIwLjQiLz4KICA8IS0tIENpcmNvbnZvbHV0aW9ucyBnYXVjaGUgLS0+CiAgPHBhdGggZD0iTTggMTIgQzEwIDEwIDEzIDEwIDE0IDEyIiBmaWxsPSJub25lIiBzdHJva2U9InVybCgjZykiIHN0cm9rZS13aWR0aD0iMS4yIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KICA8cGF0aCBkPSJNNiAxNyBDOCAxNSAxMiAxNSAxMyAxNyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ1cmwoI2cpIiBzdHJva2Utd2lkdGg9IjEuMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CiAgPHBhdGggZD0iTTcgMjIgQzkgMjAgMTIgMjAgMTQgMjEiIGZpbGw9Im5vbmUiIHN0cm9rZT0idXJsKCNnKSIgc3Ryb2tlLXdpZHRoPSIxLjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgogIDwhLS0gQ2lyY29udm9sdXRpb25zIGRyb2l0ZSAtLT4KICA8cGF0aCBkPSJNMjQgMTIgQzIyIDEwIDE5IDEwIDE4IDEyIiBmaWxsPSJub25lIiBzdHJva2U9InVybCgjZykiIHN0cm9rZS13aWR0aD0iMS4yIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KICA8cGF0aCBkPSJNMjYgMTcgQzI0IDE1IDIwIDE1IDE5IDE3IiBmaWxsPSJub25lIiBzdHJva2U9InVybCgjZykiIHN0cm9rZS13aWR0aD0iMS4yIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KICA8cGF0aCBkPSJNMjUgMjIgQzIzIDIwIDIwIDIwIDE4IDIxIiBmaWxsPSJub25lIiBzdHJva2U9InVybCgjZykiIHN0cm9rZS13aWR0aD0iMS4yIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KICA8IS0tIE5vZXVkcyBzeW5hcHRpcXVlcyAtLT4KICA8Y2lyY2xlIGN4PSI4IiAgY3k9IjExIiByPSIxLjgiIGZpbGw9IiM0YTlmZDQiIG9wYWNpdHk9IjAuOTUiLz4KICA8Y2lyY2xlIGN4PSI2IiAgY3k9IjE3IiByPSIxLjgiIGZpbGw9IiM3YjY4ZDQiIG9wYWNpdHk9IjAuOTUiLz4KICA8Y2lyY2xlIGN4PSI4IiAgY3k9IjIyIiByPSIxLjgiIGZpbGw9IiNkNDZhYmYiIG9wYWNpdHk9IjAuOTUiLz4KICA8Y2lyY2xlIGN4PSIyNCIgY3k9IjExIiByPSIxLjgiIGZpbGw9IiM0YTlmZDQiIG9wYWNpdHk9IjAuOTUiLz4KICA8Y2lyY2xlIGN4PSIyNiIgY3k9IjE3IiByPSIxLjgiIGZpbGw9IiM3YjY4ZDQiIG9wYWNpdHk9IjAuOTUiLz4KICA8Y2lyY2xlIGN4PSIyNCIgY3k9IjIyIiByPSIxLjgiIGZpbGw9IiNkNDZhYmYiIG9wYWNpdHk9IjAuOTUiLz4KICA8Y2lyY2xlIGN4PSIxNiIgY3k9IjUiICByPSIxLjgiIGZpbGw9IiM0YWJmYmYiIG9wYWNpdHk9IjAuOTUiLz4KPC9zdmc+">
@@ -930,7 +932,7 @@ const S = {
       id: "chemistry",
       name: "Chimie & Sciences",
       icon: "⚗️",
-      prompt: "RÈGLES ABSOLUES — respecte-les sans exception :\n1. INTERDIT : balises HTML (<span>, <sup>, <sub>, <div>...)\n2. INTERDIT : classes CSS\n3. INTERDIT : backticks autour des formules — JAMAIS `-COOH`, `H2O`, `RCOO-`. Utilise toujours la notation math $...$ pour les formules en cours de phrase.\n4. Équations en LaTeX UNIQUEMENT :\n   - Inline (au fil du texte) : $-COOH$, $H_{2}O$, $RCOO^{-}$, $pK_{a}$, $\\beta$-keto-ester\n   - Bloc display : $$CH_{3}Br + OH^{-} \\rightarrow CH_{3}OH + Br^{-}$$\n   - Pour PLUSIEURS lignes alignées dans un seul bloc, utiliser OBLIGATOIREMENT $$\\begin{aligned} ligne1 \\\\ ligne2 \\end{aligned}$$ (jamais \\\\ ou & isolés)\n   - Toujours utiliser le trait d'union ASCII '-' (jamais les tirets typographiques – ou —) à l'intérieur des $...$ et $$...$$\n5. Les backticks `...` sont RÉSERVÉS au code informatique uniquement (noms de variables, mots-clés, etc.)\n6. Structure Markdown : ## titres, - listes, **gras**, tableaux GFM\n7. Tu es expert en chimie organique, inorganique et physique. Tes réponses sont précises et bien structurées."
+      prompt: "Tu es expert en chimie organique, inorganique, physique et analytique.\n\nRÈGLES DE FORMATAGE — sans exception :\n\n1. INTERDIT : balises HTML (<span>, <sup>, <sub>, <div>...), classes CSS, backticks `...` autour des formules.\n\n2. CHIMIE — utilise la syntaxe \\ce{} (mhchem) qui est SIMPLE et ROBUSTE :\n   - Inline : $\\ce{H2O}$, $\\ce{OH-}$, $\\ce{Fe^3+}$, $\\ce{CH3-COOH}$\n   - Réaction inline : $\\ce{H+ + OH- -> H2O}$\n   - Bloc display : $$\\ce{CH3Br + OH- -> CH3OH + Br-}$$\n   - Équilibre : $\\ce{N2 + 3H2 <=> 2NH3}$\n   - États : $\\ce{H2O(l) + Na(s) -> NaOH(aq) + 1/2 H2(g)}$\n\n3. MATH (hors chimie) :\n   - Inline : $v = k[A][B]$, $pK_a = 4.76$\n   - Bloc display : $$\\Delta G = -RT \\ln K$$\n   - Plusieurs lignes : $$\\begin{aligned} v_1 &= k_1[A] \\\\ v_2 &= k_2[B] \\end{aligned}$$\n\n4. Trait d'union ASCII '-' uniquement à l'intérieur des $...$ (jamais '–' ni '—').\n\n5. Structure Markdown : ## titres, - listes, **gras**, tableaux GFM standards.\n\nTes réponses sont précises, rigoureuses sur la nomenclature IUPAC et les mécanismes."
     },
     {
       id: "coding",
@@ -1605,51 +1607,94 @@ function formatAssistantContent(raw) {
     formatAssistantContent._ext = true;
 
     // Convertisseur Unicode de secours quand KaTeX n'est pas dispo
+    // Inspiré de la version « latexToUnicode » d'IA-Genius : gère \ce, \frac, \sqrt,
+    // indices/exposants alphabétiques, dizaines de symboles math.
     function latexFallback(tex) {
       var t = tex;
-      // Espaces LaTeX → espace normal
-      t = t.replace(/\\[,;:!]/g, ' ').replace(/\\quad|\\qquad/g, '  ');
-      // Sauts de ligne et alignement (utilisés dans aligned/array)
-      t = t.replace(/\\\\/g, '\n').replace(/&/g, ' ');
-      // Symboles LaTeX → Unicode (clés = 1 seul backslash en chaîne réelle)
-      var syms = {
-        '\\rightarrow':'→','\\leftarrow':'←','\\leftrightarrow':'↔',
-        '\\Rightarrow':'⇒','\\longrightarrow':'⟶','\\rightleftharpoons':'⇌',
-        '\\to':'→','\\gets':'←',
-        '\\cdot':'·','\\times':'×','\\div':'÷','\\pm':'±','\\mp':'∓',
-        '\\leq':'≤','\\geq':'≥','\\neq':'≠','\\approx':'≈','\\equiv':'≡',
-        '\\infty':'∞','\\partial':'∂','\\Delta':'Δ','\\nabla':'∇',
-        '\\sum':'∑','\\prod':'∏','\\int':'∫','\\propto':'∝',
-        '\\alpha':'α','\\beta':'β','\\gamma':'γ','\\delta':'δ',
-        '\\epsilon':'ε','\\varepsilon':'ε','\\zeta':'ζ','\\eta':'η','\\theta':'θ',
-        '\\iota':'ι','\\kappa':'κ','\\lambda':'λ','\\mu':'μ','\\nu':'ν',
-        '\\xi':'ξ','\\pi':'π','\\rho':'ρ','\\sigma':'σ','\\tau':'τ',
-        '\\upsilon':'υ','\\phi':'φ','\\varphi':'φ','\\chi':'χ',
-        '\\psi':'ψ','\\omega':'ω',
-        '\\Gamma':'Γ','\\Lambda':'Λ','\\Sigma':'Σ','\\Phi':'Φ',
-        '\\Psi':'Ψ','\\Omega':'Ω','\\Theta':'Θ','\\Xi':'Ξ','\\Pi':'Π',
-      };
-      // Trier par longueur décroissante pour que \longrightarrow matche avant \to
-      var keys = Object.keys(syms).sort(function(a,b){ return b.length - a.length; });
-      keys.forEach(function(k){
-        // Échapper le backslash + ajouter une borne de mot pour éviter \alpha → α + bha
-        var escaped = k.replace(/\\/g,'\\\\');
-        t = t.replace(new RegExp(escaped + '(?![a-zA-Z])', 'g'), syms[k]);
+      var LB = String.fromCharCode(123), RB = String.fromCharCode(125);
+      // Environnements (aligned, array, matrix, cases...)
+      t = t.replace(new RegExp('\\\\begin' + LB + '[^' + RB + ']*' + RB, 'g'), '');
+      t = t.replace(new RegExp('\\\\end'   + LB + '[^' + RB + ']*' + RB, 'g'), '');
+      // \ce{...} (mhchem) — traitement spécial : transformer les chiffres
+      // qui suivent une lettre en indices Unicode (CH3 → CH₃, H2O → H₂O)
+      var subDigits = {'0':'₀','1':'₁','2':'₂','3':'₃','4':'₄','5':'₅','6':'₆','7':'₇','8':'₈','9':'₉'};
+      var supDigits = {'0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹','+':'⁺','-':'⁻'};
+      t = t.replace(new RegExp('\\\\ce' + LB + '([^' + RB + ']*)' + RB, 'g'), function(_, inner) {
+        var out = inner;
+        // Charges : ^2+, ^3-, ^- en exposants
+        out = out.replace(/\^(\{[^}]+\}|[+\-0-9]+)/g, function(_, s) {
+          s = s.replace(/[{}]/g, '');
+          return s.split('').map(function(c){return supDigits[c]||c;}).join('');
+        });
+        // Indices explicites _3, _{12}
+        out = out.replace(/_(\{[^}]+\}|[0-9]+)/g, function(_, s) {
+          s = s.replace(/[{}]/g, '');
+          return s.split('').map(function(c){return subDigits[c]||c;}).join('');
+        });
+        // Chiffres post-lettre (CH3, H2O, Na2Cr2O7) → indices
+        out = out.replace(/([A-Za-z\)\]])([0-9]+)/g, function(_, ch, dig) {
+          return ch + dig.split('').map(function(c){return subDigits[c]||c;}).join('');
+        });
+        // Charges écrites en suffixe (Fe3+, Cu2+, OH-) → exposants
+        out = out.replace(/([A-Za-z\)\]\u2080-\u2089])([0-9]*)([+\-])(?![a-zA-Z0-9])/g, function(_, ch, dig, sign) {
+          return ch + (dig + sign).split('').map(function(c){return supDigits[c]||c;}).join('');
+        });
+        // Flèches mhchem
+        out = out.replace(/<=>/g,'⇌').replace(/<->/g,'↔').replace(/->/g,'→');
+        return out;
       });
+      // \text{}, \mathrm/bf/it/sf/bb/cal{}, \operatorname{}
+      t = t.replace(new RegExp('\\\\text(?:rm|bf|it|sf)?' + LB + '([^' + RB + ']*)' + RB, 'g'), '$1');
+      t = t.replace(new RegExp('\\\\math(?:rm|bf|it|sf|bb|cal)?' + LB + '([^' + RB + ']*)' + RB, 'g'), '$1');
+      t = t.replace(new RegExp('\\\\operatorname' + LB + '([^' + RB + ']*)' + RB, 'g'), '$1');
+      // \frac{a}{b} → a/b
+      t = t.replace(new RegExp('\\\\(?:d|t)?frac' + LB + '([^' + RB + ']*)' + RB + LB + '([^' + RB + ']*)' + RB, 'g'), '$1/$2');
+      // \sqrt{x} → √x
+      t = t.replace(new RegExp('\\\\sqrt' + LB + '([^' + RB + ']*)' + RB, 'g'), '√$1');
+      // Indices (incluant lettres usuelles : Hₐ, Vₑ, kₙ...)
+      var subMap = {'0':'₀','1':'₁','2':'₂','3':'₃','4':'₄','5':'₅','6':'₆','7':'₇','8':'₈','9':'₉','a':'ₐ','e':'ₑ','i':'ᵢ','n':'ₙ','o':'ₒ','r':'ᵣ','x':'ₓ','+':'₊','-':'₋','=':'₌','(':'₍',')':'₎'};
+      t = t.replace(new RegExp('_' + LB + '([^' + RB + ']*)' + RB, 'g'),
+        function(_,s){ return s.split('').map(function(c){return subMap[c]||c;}).join(''); });
+      t = t.replace(/_([0-9a-z+\-])/gi, function(_,c){ return subMap[c.toLowerCase()] || c; });
       // Exposants
-      t = t.replace(/\^\{([^}]+)\}/g, function(_,c){ return c.split('').map(function(x){return {'0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹','+':'⁺','-':'⁻','n':'ⁿ'}[x]||x;}).join(''); });
-      t = t.replace(/\^([0-9+\-n])/g, function(_,c){ return {'0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹','+':'⁺','-':'⁻','n':'ⁿ'}[c]||c; });
-      // Indices
-      t = t.replace(/_\{([^}]+)\}/g, function(_,c){ return c.split('').map(function(x){return {'0':'₀','1':'₁','2':'₂','3':'₃','4':'₄','5':'₅','6':'₆','7':'₇','8':'₈','9':'₉','+':'₊','-':'₋'}[x]||x;}).join(''); });
-      t = t.replace(/_([0-9+\-])/g, function(_,c){ return {'0':'₀','1':'₁','2':'₂','3':'₃','4':'₄','5':'₅','6':'₆','7':'₇','8':'₈','9':'₉','+':'₊','-':'₋'}[c]||c; });
-      // Texte/mathrm
-      t = t.replace(/\\text\{([^}]+)\}/g,'$1').replace(/\\mathrm\{([^}]+)\}/g,'$1');
-      t = t.replace(/\\mathbf\{([^}]+)\}/g,'$1').replace(/\\mathit\{([^}]+)\}/g,'$1');
-      // Environnements
-      t = t.replace(/\\begin\{[a-zA-Z*]+\}/g, '').replace(/\\end\{[a-zA-Z*]+\}/g, '');
-      // Nettoyage final : accolades restantes et commandes inconnues
-      t = t.replace(/\{([^{}]*)\}/g,'$1').replace(/\\[a-zA-Z]+/g,'');
+      var supMap = {'0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹','+':'⁺','-':'⁻','=':'⁼','(':'⁽',')':'⁾','n':'ⁿ','i':'ⁱ'};
+      t = t.replace(new RegExp('\\^' + LB + '([^' + RB + ']*)' + RB, 'g'),
+        function(_,s){ return s.split('').map(function(c){return supMap[c]||c;}).join(''); });
+      t = t.replace(/\^([0-9+\-ni])/gi, function(_,c){ return supMap[c.toLowerCase()] || c; });
+      // Lettres grecques
+      var gr = {alpha:'α',beta:'β',gamma:'γ',delta:'δ',epsilon:'ε',varepsilon:'ε',zeta:'ζ',eta:'η',theta:'θ',iota:'ι',kappa:'κ',lambda:'λ',mu:'μ',nu:'ν',xi:'ξ',pi:'π',rho:'ρ',sigma:'σ',tau:'τ',upsilon:'υ',phi:'φ',varphi:'φ',chi:'χ',psi:'ψ',omega:'ω',Delta:'Δ',Gamma:'Γ',Lambda:'Λ',Sigma:'Σ',Omega:'Ω',Pi:'Π',Phi:'Φ',Psi:'Ψ',Theta:'Θ',Xi:'Ξ'};
+      for (var g in gr) t = t.replace(new RegExp('\\\\' + g + '(?![a-zA-Z])', 'g'), gr[g]);
+      // Symboles math
+      t=t.replace(/\\times/g,'×').replace(/\\div/g,'÷').replace(/\\pm/g,'±').replace(/\\mp/g,'∓');
+      t=t.replace(/\\neq/g,'≠').replace(/\\leq/g,'≤').replace(/\\geq/g,'≥').replace(/\\approx/g,'≈').replace(/\\equiv/g,'≡');
+      t=t.replace(/\\infty/g,'∞').replace(/\\circ/g,'°').replace(/\\degree/g,'°').replace(/\\propto/g,'∝');
+      t=t.replace(/\\rightarrow/g,'→').replace(/\\leftarrow/g,'←').replace(/\\leftrightarrow/g,'↔');
+      t=t.replace(/\\Rightarrow/g,'⇒').replace(/\\Leftarrow/g,'⇐').replace(/\\rightleftharpoons/g,'⇌');
+      t=t.replace(/\\longrightarrow/g,'⟶').replace(/\\to(?![a-zA-Z])/g,'→').replace(/\\gets(?![a-zA-Z])/g,'←');
+      t=t.replace(/\\cdot/g,'·').replace(/\\bullet/g,'•').replace(/\\sum/g,'Σ').replace(/\\prod/g,'Π').replace(/\\int/g,'∫');
+      t=t.replace(/\\partial/g,'∂').replace(/\\nabla/g,'∇').replace(/\\forall/g,'∀').replace(/\\exists/g,'∃');
+      t=t.replace(/\\in\b/g,'∈').replace(/\\notin/g,'∉').replace(/\\subset/g,'⊂').replace(/\\cup/g,'∪').replace(/\\cap/g,'∩');
+      t=t.replace(/\\emptyset/g,'∅').replace(/\\neg/g,'¬').replace(/\\angle/g,'∠').replace(/\\perp/g,'⊥');
+      // Flèches courtes (chimie mhchem-like)
+      t=t.replace(/<=>/g,'⇌').replace(/<->/g,'↔').replace(/->/g,'→');
+      // Fractions usuelles
+      t=t.replace(/\b1\/2\b/g,'½').replace(/\b1\/4\b/g,'¼').replace(/\b3\/4\b/g,'¾');
+      // Espaces et alignement
+      t=t.replace(/\\[;:!,]/g,' ').replace(/\\\\/g,'\n').replace(/&/g,'  ');
+      t=t.replace(/\\quad/g,'  ').replace(/\\qquad/g,'    ');
+      t=t.replace(/\\left/g,'').replace(/\\right/g,'').replace(/\\big/gi,'');
+      t = t.replace(new RegExp('\\\\hspace' + LB + '[^' + RB + ']*' + RB, 'g'), ' ');
+      // Nettoyage final
+      t=t.replace(/\\[a-zA-Z]+/g,'');
+      t=t.replace(new RegExp('[' + LB + RB + ']', 'g'), '');
+      t=t.replace(/[ \t]{2,}/g,' ').replace(/\n{3,}/g,'\n\n');
       return t.trim();
+    }
+    // Version qui échappe le HTML (pour usage en innerHTML direct)
+    function latexFallbackHtml(tex) {
+      return latexFallback(tex)
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+        .replace(/\n/g,'<br>');
     }
 
     function renderKatexBlock(tex) {
@@ -2362,6 +2407,12 @@ async function send() {
   const _sp = getActiveSystemPrompt();
   console.log('[BrAInShift] Profil actif:', S.activeProfile || 'AUCUN');
   console.log('[BrAInShift] System prompt (100 premiers chars):', _sp.slice(0,100));
+  console.log('[BrAInShift] KaTeX:', typeof katex !== 'undefined' ? '✅ chargé' : '❌ BLOQUÉ (vérifier Tracking Prevention / pare-feu)');
+  if (typeof katex !== 'undefined') {
+    var _mhchemOk = false;
+    try { katex.renderToString('\\ce{H2O}', {throwOnError:true}); _mhchemOk = true; } catch(e){}
+    console.log('[BrAInShift] mhchem (\\ce{}):', _mhchemOk ? '✅ chargé' : '❌ non chargé (chimie utilisera LaTeX manuel)');
+  }
 
   try {
     let responseContent;
