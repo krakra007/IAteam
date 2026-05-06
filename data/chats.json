@@ -1,36 +1,19 @@
 {
   "chats": [
     {
-      "id": "1437a9e4-afa4-4ef1-9497-222db7ef7589",
-      "title": "décrire la réacgion SN2 en chimie orga",
-      "projectId": null,
-      "messages": [
-        {
-          "role": "user",
-          "content": "décrire la réacgion SN2 en chimie organique"
-        },
-        {
-          "role": "assistant",
-          "content": "## Réaction $S_N2$ en chimie organique\n\nLa réaction **$S_N2$** signifie **substitution nucléophile bimoléculaire**. C’est une réaction où un **nucléophile** remplace un **groupe partant** sur un carbone, en une seule étape.\n\n## Équation générale\n\n$$\nR-LG + Nu^{-} \\rightarrow R-Nu + LG^{-}\n$$\n\n- $R-LG$ : substrat organique avec un **groupe partant**\n- $Nu^{-}$ : **nucléophile**\n- $LG^{-}$ : **groupe partant** qui quitte la molécule\n\nExemple classique :\n\n$$\nCH_3Br + OH^{-} \\rightarrow CH_3OH + Br^{-}\n$$\n\nIci :\n- $OH^{-}$ est le nucléophile\n- $Br^{-}$ est le groupe partant\n- $CH_3OH$ est le produit formé\n\n## Mécanisme de la réaction $S_N2$\n\nLa réaction $S_N2$ se fait en **une seule étape concertée** :\n\n- Le nucléophile attaque le carbone lié au groupe partant.\n- En même temps, la liaison entre le carbone et le groupe partant se rompt.\n- Il n’y a pas de carbocation intermédiaire.\n\nSchéma général :\n\n$$\nNu^{-} + R-LG \\rightarrow [Nu \\cdots R \\cdots LG]^{\\ddagger} \\rightarrow R-Nu + LG^{-}\n$$\n\nL’espèce au milieu est appelée **état de transition**.\n\n## Attaque par l’arrière\n\nDans une réaction $S_N2$, le nucléophile attaque le carbone **du côté opposé** au groupe partant. On parle d’**attaque arrière**.\n\nCela est dû au fait que le nucléophile attaque l’orbitale antibondante de la liaison $C-LG$.\n\n## Conséquence stéréochimique\n\nLa réaction $S_N2$ provoque une **inversion de configuration** si le carbone attaqué est chiral.\n\nOn appelle cela une **inversion de Walden**.\n\nExemple :\n\n$$\n(R)-R-CH(LG)-R' + Nu^{-} \\rightarrow (S)-R-CH(Nu)-R' + LG^{-}\n$$\n\nAttention : la notation $R$ ou $S$ peut parfois ne pas s’inverser si les priorités CIP changent, mais géométriquement il y a bien inversion.\n\n## Cinétique de la réaction\n\nLa réaction $S_N2$ est dite **bimoléculaire** car la vitesse dépend de deux espèces :\n\n- le substrat\n- le nucléophile\n\nLa loi de vitesse est :\n\n$$\nv = k[R-LG][Nu^{-}]\n$$\n\nCela signifie que si on augmente la concentration du nucléophile ou du substrat, la réaction devient plus rapide.\n\n## Influence du substrat\n\nLa réaction $S_N2$ est favorisée avec les substrats peu encombrés.\n\nOrdre de réactivité :\n\n$$\nCH_3-LG > RCH_2-LG > R_2CH-LG \\gg R_3C-LG\n$$\n\nDonc :\n\n- **halogénure de méthyle** : très réactif\n- **halogénure primaire** : favorable\n- **halogénure secondaire** : possible mais plus lent\n- **halogénure tertiaire** : pratiquement impossible en $S_N2$\n\nL’encombrement stérique bloque l’attaque arrière du nucléophile.\n\n## Influence du nucléophile\n\nUn bon nucléophile favorise la réaction $S_N2$.\n\nExemples de bons nucléophiles :\n\n- $OH^{-}$\n- $RO^{-}$\n- $CN^{-}$\n- $I^{-}$\n- $RS^{-}$\n- $NH_3$\n\nUn nucléophile fort et peu encombré augmente la vitesse de réaction.\n\n## Influence du groupe partant\n\nUn bon groupe partant doit être capable de quitter facilement la molécule.\n\nOrdre approximatif pour les halogénures :\n\n$$\nI^{-} > Br^{-} > Cl^{-} \\gg F^{-}\n$$\n\nDonc les substrats iodés et bromés réagissent mieux que les substrats fluorés.\n\n## Influence du solvant\n\nLa réaction $S_N2$ est favorisée par les solvants **polaires aprotiques**.\n\nExemples :\n\n- DMSO\n- DMF\n- acétone\n- acétonitrile\n\nCes solvants stabilisent les ions sans trop bloquer le nucléophile. Le nucléophile reste donc très réactif.\n\nLes solvants **protiques**, comme l’eau ou les alcools, peuvent ralentir la réaction car ils solvatent fortement le nucléophile.\n\n## Exemple détaillé\n\nRéaction entre le bromométhane et l’ion hydroxyde :\n\n$$\nCH_3Br + OH^{-} \\rightarrow CH_3OH + Br^{-}\n$$\n\nDescription :\n\n- $OH^{-}$ attaque le carbone du $CH_3Br$.\n- La liaison $C-Br$ se rompt en même temps.\n- Le produit formé est le méthanol, $CH_3OH$.\n- L’ion bromure $Br^{-}$ est libéré.\n\n## Résumé\n\nLa réaction $S_N2$ est une **substitution nucléophile en une seule étape**.\n\nCaractéristiques principales :\n\n- mécanisme **concerté**\n- attaque **par l’arrière**\n- vitesse : $v = k[R-LG][Nu^{-}]$\n- inversion de configuration\n- favorisée par les substrats peu encombrés\n- favorisée par les nucléophiles forts\n- favorisée par les solvants polaires aprotiques\n- pas de carbocation intermédiaire",
-          "provider": "OPENAI",
-          "model": "gpt-5.5"
-        }
-      ]
-    },
-    {
-      "id": "475e622d-8929-4e97-a1f7-84527a79ce82",
+      "id": "5f68aa80-85a5-4712-8bbc-fef40a5d237f",
       "title": "Nouveau chat",
       "projectId": null,
       "messages": []
     },
     {
-      "id": "691c9f3c-bcc7-4b2d-ac14-3761792653cc",
+      "id": "4cb92684-bab5-4f50-9303-778acd9d9c46",
       "title": "Nouveau chat",
       "projectId": null,
       "messages": []
     },
     {
-      "id": "529f6541-d1b1-4be4-81cd-99b91a38a215",
+      "id": "197ec61b-f140-459f-836f-ce1dfe4945a9",
       "title": "décrire la réaction SN2 en chimie orga",
       "projectId": null,
       "messages": [
@@ -40,9 +23,9 @@
         },
         {
           "role": "assistant",
-          "content": "## Réaction $S_N2$ en chimie organique\n\nLa réaction **$S_N2$** signifie **substitution nucléophile bimoléculaire**. C’est une réaction dans laquelle un **nucléophile** remplace un **groupe partant** sur un carbone électrophile, en une seule étape.\n\n## Équation générale\n\n$$\nR-LG + Nu^{-} \\rightarrow R-Nu + LG^{-}\n$$\n\n- $R$ : chaîne carbonée\n- $LG$ : groupe partant, par exemple $Br^{-}$, $Cl^{-}$, $I^{-}$\n- $Nu^{-}$ : nucléophile, par exemple $OH^{-}$, $CN^{-}$, $I^{-}$\n\nExemple :\n\n$$\nCH_3Br + OH^{-} \\rightarrow CH_3OH + Br^{-}\n$$\n\nIci, l’ion hydroxyde $OH^{-}$ attaque le bromométhane $CH_3Br$ et remplace l’ion bromure $Br^{-}$.\n\n## Mécanisme de la réaction\n\nLa réaction $S_N2$ se fait en **une seule étape concertée** :\n\n- Le **nucléophile** attaque le carbone portant le groupe partant.\n- L’attaque se fait par l’arrière, c’est-à-dire du côté opposé au groupe partant.\n- En même temps, la liaison entre le carbone et le groupe partant se rompt.\n- Il n’y a **pas d’intermédiaire carbocation**.\n\nSchéma général :\n\n$$\nNu^{-} + R-LG \\rightarrow [Nu \\cdots R \\cdots LG]^{\\ddagger} \\rightarrow R-Nu + LG^{-}\n$$\n\nLe symbole $^{\\ddagger}$ représente l’**état de transition**.\n\n## Cinétique\n\nLa réaction $S_N2$ est dite **bimoléculaire**, car sa vitesse dépend de deux espèces chimiques :\n\n- le substrat organique\n- le nucléophile\n\nLa loi de vitesse est :\n\n$$\nv = k[R-LG][Nu^{-}]\n$$\n\nCela signifie que si la concentration du nucléophile ou du substrat augmente, la vitesse de réaction augmente aussi.\n\n## Stéréochimie\n\nUne caractéristique importante de la réaction $S_N2$ est l’**inversion de configuration**.\n\nComme le nucléophile attaque par l’arrière, la configuration autour du carbone asymétrique est inversée. Ce phénomène est appelé **inversion de Walden**.\n\nExemple simplifié :\n\n- Si le substrat est de configuration $R$, le produit peut devenir $S$.\n- Si le substrat est de configuration $S$, le produit peut devenir $R$.\n\nCela dépend toutefois des priorités selon les règles de Cahn-Ingold-Prelog.\n\n## Influence du substrat\n\nLa réaction $S_N2$ est favorisée avec des substrats peu encombrés.\n\nOrdre de réactivité général :\n\n$$\nCH_3-LG > RCH_2-LG > R_2CH-LG \\gg R_3C-LG\n$$\n\nDonc :\n\n- **halogénure de méthyle** : très réactif\n- **substrat primaire** : réactif\n- **substrat secondaire** : moins réactif\n- **substrat tertiaire** : pratiquement non réactif en $S_N2$\n\nLa raison est l’**encombrement stérique** : plus le carbone est entouré de groupes volumineux, plus l’attaque arrière du nucléophile est difficile.\n\n## Nucléophile\n\nUn bon nucléophile favorise la réaction $S_N2$.\n\nExemples de bons nucléophiles :\n\n- $OH^{-}$\n- $RO^{-}$\n- $CN^{-}$\n- $I^{-}$\n- $Br^{-}$\n- $RS^{-}$\n\nUn nucléophile fort attaque plus facilement le carbone électrophile.\n\n## Groupe partant\n\nUn bon groupe partant facilite la réaction.\n\nOrdre général pour les halogénures :\n\n$$\nI^{-} > Br^{-} > Cl^{-} \\gg F^{-}\n$$\n\nL’iodure $I^{-}$ est un très bon groupe partant car il forme une liaison faible avec le carbone et se stabilise bien après son départ.\n\n## Solvant\n\nLes réactions $S_N2$ sont favorisées par les **solvants polaires aprotiques**.\n\nExemples :\n\n- acétone\n- DMSO\n- DMF\n- acétonitrile\n\nCes solvants stabilisent les ions sans trop entourer le nucléophile, ce qui le rend plus réactif.\n\n## Résumé\n\nLa réaction $S_N2$ est une **substitution nucléophile en une seule étape**. Elle est caractérisée par :\n\n- une **attaque arrière** du nucléophile\n- une **inversion de configuration**\n- une **cinétique d’ordre 2**\n- une vitesse dépendant de $[R-LG]$ et $[Nu^{-}]$\n- une préférence pour les substrats peu encombrés\n- une absence de carbocation intermédiaire\n\nC’est une réaction fondamentale en chimie organique pour transformer des halogénoalcanes en alcools, nitriles, éthers ou autres dérivés fonctionnels.",
-          "provider": "OPENAI",
-          "model": "gpt-5.5"
+          "content": "La réaction SN2 est un type de **réaction de substitution nucléophile** en chimie organique. Le \"2\" dans SN2 fait référence à la **cinétique bimoléculaire** de la réaction, ce qui signifie que la vitesse de la réaction dépend de la concentration de deux espèces : le **substrat** (la molécule qui subit la substitution) et le **nucléophile** (l'espèce qui attaque le substrat et remplace un groupe partant).\n\n## Mécanisme de la Réaction SN2\n\nLa réaction SN2 se déroule en une seule étape concertée, c'est-à-dire que la rupture de la liaison entre le carbone et le groupe partant et la formation de la nouvelle liaison entre le carbone et le nucléophile se produisent simultanément.\n\n1.  **Attaque du Nucléophile :** Le nucléophile, qui est une espèce riche en électrons (souvent une charge négative ou une paire d'électrons libres), attaque le carbone électrophile du substrat par l'arrière, c'est-à-dire du côté opposé au groupe partant. Cette attaque par l'arrière est cruciale car elle minimise la répulsion stérique entre le nucléophile et le groupe partant.\n\n2.  **État de Transition :** Pendant l'attaque, une structure transitoire appelée **état de transition** est formée. Dans cet état, le nucléophile commence à former une liaison avec le carbone, tandis que la liaison entre le carbone et le groupe partant commence à se rompre. Les quatre groupes attachés au carbone sont approximativement coplananaires dans l'état de transition, formant une géométrie trigonale bipyramidale.\n\n3.  **Départ du Groupe Partant :** Simultanément à la formation de la nouvelle liaison, le groupe partant, qui est une espèce capable de stabiliser une charge négative, se détache du carbone, emportant avec lui la paire d'électrons de la liaison rompue.\n\n4.  **Inversion de Configuration :** L'une des caractéristiques les plus importantes de la réaction SN2 est l'**inversion de configuration** au niveau du carbone électrophile. Si le carbone est un centre chiral, la réaction se déroule avec une inversion complète de la stéréochimie, un peu comme un parapluie qui se retourne sous l'effet du vent.\n\nL'équation générale d'une réaction SN2 est la suivante :\n\n$$Nu^- + R-X \\rightarrow Nu-R + X^-$$\n\nOù :\n*   $Nu^-$ représente le **nucléophile**.\n*   $R-X$ représente le **substrat**, où $R$ est un groupe alkyle et $X$ est le **groupe partant**.\n*   $Nu-R$ est le produit de substitution.\n*   $X^-$ est le **groupe partant** sous forme d'anion.\n\n## Facteurs Influant sur la Réaction SN2\n\nPlusieurs facteurs influencent la vitesse et le succès d'une réaction SN2 :\n\n*   **Structure du Substrat :** Les substrats les moins encombrés stériquement réagissent le plus rapidement par SN2. L'ordre de réactivité est généralement :\n    *   **Halogénures de méthyle** (le plus réactif)\n    *   **Halogénures primaires**\n    *   **Halogénures secondaires**\n    *   **Halogénures tertiaires** (ne réagissent pratiquement pas par SN2 en raison de l'encombrement stérique).\n\n*   **Force du Nucléophile :** Les nucléophiles forts, qui sont des bases fortes et ont une charge négative, réagissent plus rapidement que les nucléophiles faibles. Les nucléophiles oxygénés et soufrés sont généralement de bons nucléophiles.\n\n*   **Nature du Groupe Partant :** Les bons groupes partants sont ceux qui sont des bases faibles et peuvent stabiliser une charge négative. Les halogénures (I > Br > Cl > F) sont de bons groupes partants, tout comme les tosylates et mésylates.\n\n*   **Solvant :** Les **solvants protiques polaires** (comme l'eau ou les alcools) ont tendance à solvater fortement le nucléophile, ce qui diminue sa réactivité. Les **solvants aprotiques polaires** (comme l'acétone, le DMSO, le DMF) sont préférés pour les réactions SN2 car ils solvatent moins le nucléophile, le rendant plus réactif.\n\nEn résumé, la réaction SN2 est un mécanisme de substitution nucléophile concerté, bimoléculaire, caractérisé par une attaque par l'arrière du nucléophile et une inversion de configuration au niveau du centre réactionnel. Sa cinétique et son succès dépendent de la structure du substrat, de la force du nucléophile, de la qualité du groupe partant et du type de solvant utilisé.",
+          "provider": "GOOGLE GEMINI",
+          "model": "gemini-2.5-flash-lite"
         },
         {
           "role": "user",
@@ -50,24 +33,19 @@
         },
         {
           "role": "assistant",
-          "content": "## Réaction $S_N2$ en chimie organique\n\nLa réaction **$S_N2$** signifie **substitution nucléophile bimoléculaire**. C’est une réaction où un **nucléophile** remplace un **groupe partant** sur un carbone saturé, généralement un carbone $sp^3$.\n\n## Équation générale\n\n$$\nR-LG + Nu^{-} \\rightarrow R-Nu + LG^{-}\n$$\n\n- $Nu^{-}$ : **nucléophile**\n- $R-LG$ : **substrat**\n- $LG$ : **groupe partant**\n- $R-Nu$ : **produit de substitution**\n\nExemple :\n\n$$\nCH_3Br + OH^{-} \\rightarrow CH_3OH + Br^{-}\n$$\n\nIci, $OH^{-}$ attaque le carbone du $CH_3Br$ et remplace $Br^{-}$.\n\n## Mécanisme\n\nLa réaction $S_N2$ se déroule en **une seule étape concertée** :\n\n- Le **nucléophile** attaque le carbone électrophile.\n- L’attaque se fait par l’arrière, du côté opposé au groupe partant.\n- La liaison $C-Nu$ se forme pendant que la liaison $C-LG$ se rompt.\n- Il n’y a **pas de carbocation intermédiaire**.\n\nOn peut représenter l’état de transition ainsi :\n\n$$\nNu^{-} + R-LG \\rightarrow [Nu \\cdots R \\cdots LG]^{\\ddagger} \\rightarrow R-Nu + LG^{-}\n$$\n\n## Cinétique\n\nLa réaction est dite **bimoléculaire** car sa vitesse dépend de deux espèces :\n\n- le substrat $R-LG$\n- le nucléophile $Nu^{-}$\n\nLa loi de vitesse est :\n\n$$\nv = k[R-LG][Nu^{-}]\n$$\n\nC’est donc une réaction d’**ordre 2 global**.\n\n## Stéréochimie\n\nLa réaction $S_N2$ provoque une **inversion de configuration** au niveau du carbone attaqué.\n\nCette inversion est appelée **inversion de Walden**.\n\nSi le carbone est asymétrique, l’attaque arrière entraîne souvent le passage d’une configuration $R$ à $S$, ou inversement, selon les priorités des substituants.\n\n## Facteurs favorisant la réaction $S_N2$\n\n### Substrat peu encombré\n\nLa réaction est plus rapide si le carbone attaqué est peu encombré.\n\nOrdre général de réactivité :\n\n$$\nCH_3-LG > RCH_2-LG > R_2CH-LG \\gg R_3C-LG\n$$\n\nDonc :\n\n- **méthyle** : très réactif\n- **primaire** : favorable\n- **secondaire** : possible mais plus lent\n- **tertiaire** : défavorable à cause de l’encombrement stérique\n\n### Bon nucléophile\n\nUn **nucléophile fort** favorise la réaction.\n\nExemples :\n\n- $OH^{-}$\n- $RO^{-}$\n- $CN^{-}$\n- $RS^{-}$\n- $I^{-}$\n\n### Bon groupe partant\n\nUn bon groupe partant stabilise bien la charge négative après son départ.\n\nOrdre courant pour les halogénures :\n\n$$\nI^{-} > Br^{-} > Cl^{-} \\gg F^{-}\n$$\n\n### Solvant adapté\n\nLes réactions $S_N2$ sont favorisées par des **solvants polaires aprotiques**, comme :\n\n- DMSO\n- DMF\n- acétone\n- acétonitrile\n\nCes solvants augmentent la réactivité du nucléophile.\n\n## Exemple classique\n\nHydrolyse du bromométhane :\n\n$$\nCH_3Br + OH^{-} \\rightarrow CH_3OH + Br^{-}\n$$\n\n- $CH_3Br$ est le substrat.\n- $OH^{-}$ est le nucléophile.\n- $Br^{-}$ est le groupe partant.\n- $CH_3OH$ est le produit formé.\n\n## Résumé\n\nLa réaction $S_N2$ est une **substitution nucléophile bimoléculaire** caractérisée par :\n\n- une réaction en **une seule étape**\n- une **attaque arrière**\n- une **inversion de configuration**\n- une vitesse $v = k[R-LG][Nu^{-}]$\n- une préférence pour les substrats peu encombrés\n- l’absence de carbocation intermédiaire",
-          "provider": "OPENAI",
-          "model": "gpt-5.5"
-        }
-      ]
-    },
-    {
-      "id": "e054135e-9493-4f0c-a3f0-c6372a5a8764",
-      "title": "Nouvelle recherche",
-      "projectId": null,
-      "messages": [
+          "content": "## Réaction SN2 (Substitution Nucléophile Bimoléculaire)\n\nLa **SN2** est une substitution nucléophile où la vitesse dépend de deux réactifs : le **nucléophile** et le **substrat**. La cinétique est donc **bimoléculaire** :\n\n$$v = k[\\text{Nu}^-][\\text{R–X}]$$\n\n### Mécanisme en une étape concertée\n\n1. **Attaque du nucléophile** par l’arrière du carbone lié au groupe partant $X$ (halogène, tosylate, etc.).  \n2. **Formation d’un état de transition** trigonal bipyramidal où le carbone est partiellement lié au nucléophile et au groupe partant.  \n3. **Départ du groupe partant** $X^-$ simultanément à la formation de la nouvelle liaison $C–\\text{Nu}$.  \n4. **Inversion de configuration** (stéréochimie « Walden inversion ») si le carbone est chiral.\n\n### Équation générale\n\n$$\\text{Nu}^- + \\text{R–X} \\;\\longrightarrow\\; \\text{Nu–R} + X^-$$\n\n#### Exemple typique\n\n$$\\text{CH}_3\\text{Br} + \\text{OH}^- \\;\\longrightarrow\\; \\text{CH}_3\\text{OH} + \\text{Br}^-$$\n\n### Facteurs qui influencent la vitesse\n\n- **Structure du substrat** (encombrement stérique)  \n  - Méthyle > primaire > secondaire > tertiaire (ce dernier ne réagit pratiquement pas).  \n\n- **Force du nucléophile**  \n  - Nucléophiles forts (charges négatives, bases fortes) → vitesse élevée.  \n\n- **Qualité du groupe partant**  \n  - Plus le groupe partant est une base faible, plus il quitte facilement : $I^- > Br^- > Cl^- > F^-$.  \n\n- **Solvant**  \n  - **Solvants aprotiques polaires** (acétone, DMSO, DMF) favorisent SN2 en n’interférençant pas avec le nucléophile.  \n  - **Solvants protiques** (eau, alcools) solvatent fortement le nucléophile et ralentissent la réaction.  \n\n### Caractéristiques clés\n\n- **Cinétique** : $\\,\\text{ordre global}=2$ (bimoléculaire).  \n- **Stéréochimie** : inversion totale de la configuration (si le centre est chiral).  \n- **Régime de concentration** : la réaction est sensible aux concentrations de *both* réactifs.  \n\nEn résumé, la SN2 est une substitution rapide, concertée et stéréospécifique qui se produit préférentiellement sur des carbones peu encombrés, avec un bon nucléophile, un bon groupe partant et dans un solvant aprotique.",
+          "provider": "GROQ",
+          "model": "openai/gpt-oss-120b"
+        },
         {
           "role": "user",
           "content": "décrire la réaction SN2 en chimie organique"
         },
         {
           "role": "assistant",
-          "content": "{\"error\":{\"message\":\"The model `deepseek-r1` does not exist or you do not have access to it.\",\"type\":\"invalid_request_error\",\"param\":null,\"code\":\"model_not_found\"}}"
+          "content": "## Réaction SN2 (Substitution Nucléophile Bimoléculaire)\n\n### 1. Principe général  \nLa **SN2** est une substitution où le **nucléophile** attaque le carbone électrophile en même temps que le **groupe partant** quitte la molécule. La vitesse dépend de la concentration du nucléophile et du substrat :\n\n$$v = k[\\text{Nu}^-][\\text{R–X}]$$  \n\nC’est pourquoi on parle de **cinétique bimoléculaire**.\n\n### 2. Mécanisme détaillé (une seule étape concertée)\n\n| Étape | Description | Illustration LaTeX |\n|------|-------------|--------------------|\n| **Attaque du nucléophile** | Le nucléophile, riche en électrons, s’approche du carbone lié au groupe partant $X$ par l’arrière (angle ≈ 180°). | $$\\text{Nu}^- \\;\\xrightarrow{\\text{attaque arrière}}\\; \\text{R–X}$$ |\n| **État de transition** | Un complexe trigonal bipyramidal se forme : le carbone est partiellement lié au nucléophile et au groupe partant. Les quatre substituants sont approximativement coplanaires. | $$\\underset{\\text{TS}}{\\overset{\\displaystyle\\begin{array}{c}\\text{C}\\\\\\uparrow\\end{array}}{\\displaystyle\\begin{array}{c}\\text{Nu}\\\\\\downarrow\\end{array}}}$$ |\n| **Départ du groupe partant** | Simultanément, la liaison $C–X$ se rompt, le groupe partant s’échappe avec la paire d’électrons. | $$\\text{R–X} \\;\\longrightarrow\\; X^-$$ |\n| **Produit final** | Le nouveau lien $C–\\text{Nu}$ est complet, le groupe partant est libéré. | $$\\text{Nu–R} + X^-$$ |\n| **Inversion de configuration** | Si le carbone est un centre chiral, la configuration s’inverse (stéréochimie de type « Walden inversion »). | $$\\text{R-configuration} \\;\\xrightarrow{\\text{SN2}}\\; \\text{S-configuration}$$ |\n\n### 3. Équation générale\n\n$$\\text{Nu}^- + \\text{R–X} \\;\\longrightarrow\\; \\text{Nu–R} + X^-$$  \n\n**Exemple classique** (hydrolyse d’un bromure d’alkyle) :\n\n$$\\text{CH}_3\\text{Br} + \\text{OH}^- \\;\\longrightarrow\\; \\text{CH}_3\\text{OH} + \\text{Br}^-$$\n\n### 4. Facteurs qui contrôlent la vitesse et le succès de la SN2  \n\n- **Structure du substrat** (encombrement stérique)  \n  - Ordre de réactivité : **méthyle** > **halogénure primaire** > **halogénure secondaire** ≫ **halogénure tertiaire** (pratiquement inactif).  \n\n- **Force du nucléophile**  \n  - Nucléophiles forts (charges négatives, bases fortes) → vitesse élevée.  \n  - Exemples : $OH^-$, $CN^-$, $I^-$, $RS^-$, $N_3^-$.  \n\n- **Qualité du groupe partant**  \n  - Doit être une base faible capable de stabiliser la charge négative.  \n  - Classement typique : $I^- > Br^- > Cl^- > F^-$, puis tosylate (TsO⁻), mésylate (MsO⁻).  \n\n- **Solvant**  \n  - **Solvants aprotiques polaires** (acétone, DMSO, DMF) solvatent peu le nucléophile → réactivité accrue.  \n  - **Solvants protiques** (eau, alcools) solvatent fortement le nucléophile → vitesse réduite.  \n\n- **Effet de polarisation**  \n  - Un carbone partiellement positif (induit par un groupe électronégatif $X$) facilite l’attaque.  \n\n### 5. Comparaison rapide SN2 vs SN1  \n\n| Caractéristique | **SN2** | **SN1** |\n|-----------------|----------|----------|\n| **Ordre cinétique** | Bimoléculaire ($2^{\\text{ème}}$) | Unimoléculaire ($1^{\\text{er}}$) |\n| **Étape** | Concertée (une seule) | Deux étapes (formation d’un carbocation) |\n| **Stéréochimie** | Inversion totale (Walden) | Racémisation possible (planar carbocation) |\n| **Substrat préféré** | Méthyle → primaire → secondaire (tertiaire très lent) | Secondaire → tertiaire (primaire rarement) |\n| **Solvant** | Aprotiques polaires | Protiques (stabilisent le carbocation) |\n| **Groupe partant** | Doit être bon (faible basicité) | Même exigence, mais la formation du carbocation peut compenser un groupe partant moins bon |\n\n### 6. Diagramme d’énergie (schématique)\n\n```\n   Energie\n      ^\n      |          TS\n      |         /\\\n      |        /  \\\n      |       /    \\\n      |------/------\\-------\n      |   Réactifs   Produits\n```\n\n- Le **pic** correspond à l’état de transition trigonal bipyramidal.  \n- L’énergie d’activation est généralement plus basse que pour une SN1, surtout avec un bon nucléophile et un solvant aprotique.\n\n### 7. Points clés à retenir  \n\n- **Bimoléculaire** : la vitesse dépend de $[\\text{Nu}^-]$ **et** $[\\text{R–X}]$.  \n- **Attaque par l’arrière** → **inversion** de configuration.  \n- **Encombrement** : plus le carbone est encombré, plus la SN2 est ralentie.  \n- **Solvant aprotique** favorise la réaction en laissant le nucléophile « libre ».  \n- **Bon groupe partant** et **nucléophile fort** sont indispensables pour une SN2 efficace.  \n\nEn maîtrisant ces paramètres, on peut prévoir et contrôler la substitution SN2 dans la synthèse organique, que ce soit pour préparer des alcools, des amines, des éthers ou d’autres fonctions dérivées.",
+          "provider": "GROQ",
+          "model": "openai/gpt-oss-120b"
         }
       ]
     },
@@ -76,66 +54,6 @@
       "title": "Chat du projet",
       "projectId": "c6c3ae2b-d23b-467e-a008-db53e6fe4f25",
       "messages": []
-    },
-    {
-      "id": "9ab51da4-06d2-4f0f-8f96-e3fe97cc6906",
-      "title": "Nouveau chat",
-      "projectId": null,
-      "messages": []
-    },
-    {
-      "id": "607239e6-9bf7-484f-b85b-2ec05b002566",
-      "title": "c'est quoi le SN2 en chimie organique",
-      "projectId": null,
-      "messages": [
-        {
-          "role": "user",
-          "content": "c'est quoi le SN2 en chimie organique"
-        },
-        {
-          "role": "assistant",
-          "content": "Le SN2, ou substitution nucléophile bimoléculaire, est un mécanisme de réaction en chimie organique par lequel un nucléophile attaque un atome de carbone d'un substrat, généralement un halogénure d'alkyle, entraînant le remplacement d'un groupe partant (souvent un halogène). Voici quelques caractéristiques clés du mécanisme SN2 :\n\n1. **Mécanisme bimoléculaire** : Le terme \"bimoléculaire\" indique que la vitesse de la réaction dépend à la fois de la concentration du nucléophile et de celle du substrat. La réaction se produit en une seule étape, où le nucléophile attaque le carbone et le groupe partant se détache simultanément.\n\n2. **Stéréochimie** : Le mécanisme SN2 entraîne une inversion de la configuration stéréochimique au niveau du carbone attaqué. Cela signifie que si le carbone est chiral, le produit final aura une configuration opposée à celle du substrat.\n\n3. **Conditions favorables** : Les réactions SN2 sont favorisées par des substrats primaires ou secondaires, car les substrats tertiaires sont généralement trop encombrés pour permettre une attaque efficace du nucléophile. De plus, un bon nucléophile et un bon groupe partant sont essentiels pour que la réaction se produise.\n\n4. **Solvants** : Les solvants polaires aprotiques (comme l'acétone ou le DMSO) favorisent les réactions SN2, car ils ne solvatent pas le nucléophile de manière à le rendre moins réactif.\n\nEn résumé, le SN2 est un mécanisme de substitution qui joue un rôle crucial dans la chimie organique, permettant la formation de nouvelles liaisons carbone-nucléophile."
-        },
-        {
-          "role": "user",
-          "content": "refaire"
-        },
-        {
-          "role": "assistant",
-          "content": "Le SN2, ou substitution nucléophile bimoléculaire, est un mécanisme de réaction en chimie organique qui implique le remplacement d'un groupe partant par un nucléophile. Voici les points essentiels à retenir :\n\n1. **Mécanisme bimoléculaire** : Dans une réaction SN2, la vitesse dépend de la concentration à la fois du nucléophile et du substrat. Cela signifie que deux espèces (le nucléophile et le substrat) sont impliquées dans l'étape déterminante de la vitesse de réaction.\n\n2. **Étape unique** : La réaction se déroule en une seule étape, où le nucléophile attaque le carbone du substrat pendant que le groupe partant se détache. Cela crée un état de transition où les liaisons sont partiellement formées et rompues.\n\n3. **Inversion de configuration** : Si le carbone attaqué est chiral, la réaction entraîne une inversion de la configuration stéréochimique. Cela signifie que le produit final aura une configuration opposée à celle du substrat.\n\n4. **Substrats favorables** : Les réactions SN2 se produisent plus facilement avec des substrats primaires et secondaires, car les substrats tertiaires sont souvent trop encombrés pour permettre une attaque efficace du nucléophile.\n\n5. **Bon nucléophile et bon groupe partant** : Un bon nucléophile (qui a une forte densité électronique) et un bon groupe partant (qui peut se détacher facilement) sont essentiels pour que la réaction se produise efficacement.\n\n6. **Solvants** : Les solvants polaires aprotiques, comme l'acétone ou le DMSO, sont souvent utilisés pour favoriser les réactions SN2, car ils ne solvatent pas le nucléophile de manière à le rendre moins réactif.\n\nEn résumé, le mécanisme SN2 est un processus clé en chimie organique pour la formation de nouvelles liaisons, avec des implications importantes pour la synthèse de composés organiques."
-        }
-      ]
-    },
-    {
-      "id": "cd55a1a4-f371-406c-9409-4ea8ef19ab62",
-      "title": "quel jour",
-      "projectId": null,
-      "messages": [
-        {
-          "role": "user",
-          "content": "quel jour"
-        },
-        {
-          "role": "assistant",
-          "content": "Aujourd'hui, c'est le 27 octobre 2023. Comment puis-je vous aider ?"
-        },
-        {
-          "role": "user",
-          "content": "refaire"
-        },
-        {
-          "role": "assistant",
-          "content": "Bien sûr ! Que souhaitez-vous que je refasse ? Avez-vous besoin d'informations spécifiques ou d'une reformulation ? N'hésitez pas à préciser !"
-        },
-        {
-          "role": "user",
-          "content": "refaire"
-        },
-        {
-          "role": "assistant",
-          "content": "Il semble que vous souhaitiez que je reformule ou que je fasse quelque chose de spécifique, mais je ne suis pas sûr de ce que vous voulez exactement. Pourriez-vous préciser ce que vous aimeriez que je refasse ? Merci !"
-        }
-      ]
     }
   ],
   "projects": [
@@ -181,7 +99,7 @@
     "seed": "",
     "max_completion_tokens": 15000
   },
-  "model": "gpt-5.5",
-  "savedAt": "2026-05-06T04:42:48.964Z",
+  "model": "openai/gpt-oss-120b",
+  "savedAt": "2026-05-06T04:59:58.605Z",
   "version": 2
 }
