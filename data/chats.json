@@ -1,10 +1,60 @@
 {
   "chats": [
     {
-      "id": "529f6541-d1b1-4be4-81cd-99b91a38a215",
+      "id": "1437a9e4-afa4-4ef1-9497-222db7ef7589",
+      "title": "décrire la réacgion SN2 en chimie orga",
+      "projectId": null,
+      "messages": [
+        {
+          "role": "user",
+          "content": "décrire la réacgion SN2 en chimie organique"
+        },
+        {
+          "role": "assistant",
+          "content": "## Réaction $S_N2$ en chimie organique\n\nLa réaction **$S_N2$** signifie **substitution nucléophile bimoléculaire**. C’est une réaction où un **nucléophile** remplace un **groupe partant** sur un carbone, en une seule étape.\n\n## Équation générale\n\n$$\nR-LG + Nu^{-} \\rightarrow R-Nu + LG^{-}\n$$\n\n- $R-LG$ : substrat organique avec un **groupe partant**\n- $Nu^{-}$ : **nucléophile**\n- $LG^{-}$ : **groupe partant** qui quitte la molécule\n\nExemple classique :\n\n$$\nCH_3Br + OH^{-} \\rightarrow CH_3OH + Br^{-}\n$$\n\nIci :\n- $OH^{-}$ est le nucléophile\n- $Br^{-}$ est le groupe partant\n- $CH_3OH$ est le produit formé\n\n## Mécanisme de la réaction $S_N2$\n\nLa réaction $S_N2$ se fait en **une seule étape concertée** :\n\n- Le nucléophile attaque le carbone lié au groupe partant.\n- En même temps, la liaison entre le carbone et le groupe partant se rompt.\n- Il n’y a pas de carbocation intermédiaire.\n\nSchéma général :\n\n$$\nNu^{-} + R-LG \\rightarrow [Nu \\cdots R \\cdots LG]^{\\ddagger} \\rightarrow R-Nu + LG^{-}\n$$\n\nL’espèce au milieu est appelée **état de transition**.\n\n## Attaque par l’arrière\n\nDans une réaction $S_N2$, le nucléophile attaque le carbone **du côté opposé** au groupe partant. On parle d’**attaque arrière**.\n\nCela est dû au fait que le nucléophile attaque l’orbitale antibondante de la liaison $C-LG$.\n\n## Conséquence stéréochimique\n\nLa réaction $S_N2$ provoque une **inversion de configuration** si le carbone attaqué est chiral.\n\nOn appelle cela une **inversion de Walden**.\n\nExemple :\n\n$$\n(R)-R-CH(LG)-R' + Nu^{-} \\rightarrow (S)-R-CH(Nu)-R' + LG^{-}\n$$\n\nAttention : la notation $R$ ou $S$ peut parfois ne pas s’inverser si les priorités CIP changent, mais géométriquement il y a bien inversion.\n\n## Cinétique de la réaction\n\nLa réaction $S_N2$ est dite **bimoléculaire** car la vitesse dépend de deux espèces :\n\n- le substrat\n- le nucléophile\n\nLa loi de vitesse est :\n\n$$\nv = k[R-LG][Nu^{-}]\n$$\n\nCela signifie que si on augmente la concentration du nucléophile ou du substrat, la réaction devient plus rapide.\n\n## Influence du substrat\n\nLa réaction $S_N2$ est favorisée avec les substrats peu encombrés.\n\nOrdre de réactivité :\n\n$$\nCH_3-LG > RCH_2-LG > R_2CH-LG \\gg R_3C-LG\n$$\n\nDonc :\n\n- **halogénure de méthyle** : très réactif\n- **halogénure primaire** : favorable\n- **halogénure secondaire** : possible mais plus lent\n- **halogénure tertiaire** : pratiquement impossible en $S_N2$\n\nL’encombrement stérique bloque l’attaque arrière du nucléophile.\n\n## Influence du nucléophile\n\nUn bon nucléophile favorise la réaction $S_N2$.\n\nExemples de bons nucléophiles :\n\n- $OH^{-}$\n- $RO^{-}$\n- $CN^{-}$\n- $I^{-}$\n- $RS^{-}$\n- $NH_3$\n\nUn nucléophile fort et peu encombré augmente la vitesse de réaction.\n\n## Influence du groupe partant\n\nUn bon groupe partant doit être capable de quitter facilement la molécule.\n\nOrdre approximatif pour les halogénures :\n\n$$\nI^{-} > Br^{-} > Cl^{-} \\gg F^{-}\n$$\n\nDonc les substrats iodés et bromés réagissent mieux que les substrats fluorés.\n\n## Influence du solvant\n\nLa réaction $S_N2$ est favorisée par les solvants **polaires aprotiques**.\n\nExemples :\n\n- DMSO\n- DMF\n- acétone\n- acétonitrile\n\nCes solvants stabilisent les ions sans trop bloquer le nucléophile. Le nucléophile reste donc très réactif.\n\nLes solvants **protiques**, comme l’eau ou les alcools, peuvent ralentir la réaction car ils solvatent fortement le nucléophile.\n\n## Exemple détaillé\n\nRéaction entre le bromométhane et l’ion hydroxyde :\n\n$$\nCH_3Br + OH^{-} \\rightarrow CH_3OH + Br^{-}\n$$\n\nDescription :\n\n- $OH^{-}$ attaque le carbone du $CH_3Br$.\n- La liaison $C-Br$ se rompt en même temps.\n- Le produit formé est le méthanol, $CH_3OH$.\n- L’ion bromure $Br^{-}$ est libéré.\n\n## Résumé\n\nLa réaction $S_N2$ est une **substitution nucléophile en une seule étape**.\n\nCaractéristiques principales :\n\n- mécanisme **concerté**\n- attaque **par l’arrière**\n- vitesse : $v = k[R-LG][Nu^{-}]$\n- inversion de configuration\n- favorisée par les substrats peu encombrés\n- favorisée par les nucléophiles forts\n- favorisée par les solvants polaires aprotiques\n- pas de carbocation intermédiaire",
+          "provider": "OPENAI",
+          "model": "gpt-5.5"
+        }
+      ]
+    },
+    {
+      "id": "475e622d-8929-4e97-a1f7-84527a79ce82",
       "title": "Nouveau chat",
       "projectId": null,
       "messages": []
+    },
+    {
+      "id": "691c9f3c-bcc7-4b2d-ac14-3761792653cc",
+      "title": "Nouveau chat",
+      "projectId": null,
+      "messages": []
+    },
+    {
+      "id": "529f6541-d1b1-4be4-81cd-99b91a38a215",
+      "title": "décrire la réaction SN2 en chimie orga",
+      "projectId": null,
+      "messages": [
+        {
+          "role": "user",
+          "content": "décrire la réaction SN2 en chimie organique"
+        },
+        {
+          "role": "assistant",
+          "content": "## Réaction $S_N2$ en chimie organique\n\nLa réaction **$S_N2$** signifie **substitution nucléophile bimoléculaire**. C’est une réaction dans laquelle un **nucléophile** remplace un **groupe partant** sur un carbone électrophile, en une seule étape.\n\n## Équation générale\n\n$$\nR-LG + Nu^{-} \\rightarrow R-Nu + LG^{-}\n$$\n\n- $R$ : chaîne carbonée\n- $LG$ : groupe partant, par exemple $Br^{-}$, $Cl^{-}$, $I^{-}$\n- $Nu^{-}$ : nucléophile, par exemple $OH^{-}$, $CN^{-}$, $I^{-}$\n\nExemple :\n\n$$\nCH_3Br + OH^{-} \\rightarrow CH_3OH + Br^{-}\n$$\n\nIci, l’ion hydroxyde $OH^{-}$ attaque le bromométhane $CH_3Br$ et remplace l’ion bromure $Br^{-}$.\n\n## Mécanisme de la réaction\n\nLa réaction $S_N2$ se fait en **une seule étape concertée** :\n\n- Le **nucléophile** attaque le carbone portant le groupe partant.\n- L’attaque se fait par l’arrière, c’est-à-dire du côté opposé au groupe partant.\n- En même temps, la liaison entre le carbone et le groupe partant se rompt.\n- Il n’y a **pas d’intermédiaire carbocation**.\n\nSchéma général :\n\n$$\nNu^{-} + R-LG \\rightarrow [Nu \\cdots R \\cdots LG]^{\\ddagger} \\rightarrow R-Nu + LG^{-}\n$$\n\nLe symbole $^{\\ddagger}$ représente l’**état de transition**.\n\n## Cinétique\n\nLa réaction $S_N2$ est dite **bimoléculaire**, car sa vitesse dépend de deux espèces chimiques :\n\n- le substrat organique\n- le nucléophile\n\nLa loi de vitesse est :\n\n$$\nv = k[R-LG][Nu^{-}]\n$$\n\nCela signifie que si la concentration du nucléophile ou du substrat augmente, la vitesse de réaction augmente aussi.\n\n## Stéréochimie\n\nUne caractéristique importante de la réaction $S_N2$ est l’**inversion de configuration**.\n\nComme le nucléophile attaque par l’arrière, la configuration autour du carbone asymétrique est inversée. Ce phénomène est appelé **inversion de Walden**.\n\nExemple simplifié :\n\n- Si le substrat est de configuration $R$, le produit peut devenir $S$.\n- Si le substrat est de configuration $S$, le produit peut devenir $R$.\n\nCela dépend toutefois des priorités selon les règles de Cahn-Ingold-Prelog.\n\n## Influence du substrat\n\nLa réaction $S_N2$ est favorisée avec des substrats peu encombrés.\n\nOrdre de réactivité général :\n\n$$\nCH_3-LG > RCH_2-LG > R_2CH-LG \\gg R_3C-LG\n$$\n\nDonc :\n\n- **halogénure de méthyle** : très réactif\n- **substrat primaire** : réactif\n- **substrat secondaire** : moins réactif\n- **substrat tertiaire** : pratiquement non réactif en $S_N2$\n\nLa raison est l’**encombrement stérique** : plus le carbone est entouré de groupes volumineux, plus l’attaque arrière du nucléophile est difficile.\n\n## Nucléophile\n\nUn bon nucléophile favorise la réaction $S_N2$.\n\nExemples de bons nucléophiles :\n\n- $OH^{-}$\n- $RO^{-}$\n- $CN^{-}$\n- $I^{-}$\n- $Br^{-}$\n- $RS^{-}$\n\nUn nucléophile fort attaque plus facilement le carbone électrophile.\n\n## Groupe partant\n\nUn bon groupe partant facilite la réaction.\n\nOrdre général pour les halogénures :\n\n$$\nI^{-} > Br^{-} > Cl^{-} \\gg F^{-}\n$$\n\nL’iodure $I^{-}$ est un très bon groupe partant car il forme une liaison faible avec le carbone et se stabilise bien après son départ.\n\n## Solvant\n\nLes réactions $S_N2$ sont favorisées par les **solvants polaires aprotiques**.\n\nExemples :\n\n- acétone\n- DMSO\n- DMF\n- acétonitrile\n\nCes solvants stabilisent les ions sans trop entourer le nucléophile, ce qui le rend plus réactif.\n\n## Résumé\n\nLa réaction $S_N2$ est une **substitution nucléophile en une seule étape**. Elle est caractérisée par :\n\n- une **attaque arrière** du nucléophile\n- une **inversion de configuration**\n- une **cinétique d’ordre 2**\n- une vitesse dépendant de $[R-LG]$ et $[Nu^{-}]$\n- une préférence pour les substrats peu encombrés\n- une absence de carbocation intermédiaire\n\nC’est une réaction fondamentale en chimie organique pour transformer des halogénoalcanes en alcools, nitriles, éthers ou autres dérivés fonctionnels.",
+          "provider": "OPENAI",
+          "model": "gpt-5.5"
+        },
+        {
+          "role": "user",
+          "content": "décrire la réaction SN2 en chimie organique"
+        },
+        {
+          "role": "assistant",
+          "content": "## Réaction $S_N2$ en chimie organique\n\nLa réaction **$S_N2$** signifie **substitution nucléophile bimoléculaire**. C’est une réaction où un **nucléophile** remplace un **groupe partant** sur un carbone saturé, généralement un carbone $sp^3$.\n\n## Équation générale\n\n$$\nR-LG + Nu^{-} \\rightarrow R-Nu + LG^{-}\n$$\n\n- $Nu^{-}$ : **nucléophile**\n- $R-LG$ : **substrat**\n- $LG$ : **groupe partant**\n- $R-Nu$ : **produit de substitution**\n\nExemple :\n\n$$\nCH_3Br + OH^{-} \\rightarrow CH_3OH + Br^{-}\n$$\n\nIci, $OH^{-}$ attaque le carbone du $CH_3Br$ et remplace $Br^{-}$.\n\n## Mécanisme\n\nLa réaction $S_N2$ se déroule en **une seule étape concertée** :\n\n- Le **nucléophile** attaque le carbone électrophile.\n- L’attaque se fait par l’arrière, du côté opposé au groupe partant.\n- La liaison $C-Nu$ se forme pendant que la liaison $C-LG$ se rompt.\n- Il n’y a **pas de carbocation intermédiaire**.\n\nOn peut représenter l’état de transition ainsi :\n\n$$\nNu^{-} + R-LG \\rightarrow [Nu \\cdots R \\cdots LG]^{\\ddagger} \\rightarrow R-Nu + LG^{-}\n$$\n\n## Cinétique\n\nLa réaction est dite **bimoléculaire** car sa vitesse dépend de deux espèces :\n\n- le substrat $R-LG$\n- le nucléophile $Nu^{-}$\n\nLa loi de vitesse est :\n\n$$\nv = k[R-LG][Nu^{-}]\n$$\n\nC’est donc une réaction d’**ordre 2 global**.\n\n## Stéréochimie\n\nLa réaction $S_N2$ provoque une **inversion de configuration** au niveau du carbone attaqué.\n\nCette inversion est appelée **inversion de Walden**.\n\nSi le carbone est asymétrique, l’attaque arrière entraîne souvent le passage d’une configuration $R$ à $S$, ou inversement, selon les priorités des substituants.\n\n## Facteurs favorisant la réaction $S_N2$\n\n### Substrat peu encombré\n\nLa réaction est plus rapide si le carbone attaqué est peu encombré.\n\nOrdre général de réactivité :\n\n$$\nCH_3-LG > RCH_2-LG > R_2CH-LG \\gg R_3C-LG\n$$\n\nDonc :\n\n- **méthyle** : très réactif\n- **primaire** : favorable\n- **secondaire** : possible mais plus lent\n- **tertiaire** : défavorable à cause de l’encombrement stérique\n\n### Bon nucléophile\n\nUn **nucléophile fort** favorise la réaction.\n\nExemples :\n\n- $OH^{-}$\n- $RO^{-}$\n- $CN^{-}$\n- $RS^{-}$\n- $I^{-}$\n\n### Bon groupe partant\n\nUn bon groupe partant stabilise bien la charge négative après son départ.\n\nOrdre courant pour les halogénures :\n\n$$\nI^{-} > Br^{-} > Cl^{-} \\gg F^{-}\n$$\n\n### Solvant adapté\n\nLes réactions $S_N2$ sont favorisées par des **solvants polaires aprotiques**, comme :\n\n- DMSO\n- DMF\n- acétone\n- acétonitrile\n\nCes solvants augmentent la réactivité du nucléophile.\n\n## Exemple classique\n\nHydrolyse du bromométhane :\n\n$$\nCH_3Br + OH^{-} \\rightarrow CH_3OH + Br^{-}\n$$\n\n- $CH_3Br$ est le substrat.\n- $OH^{-}$ est le nucléophile.\n- $Br^{-}$ est le groupe partant.\n- $CH_3OH$ est le produit formé.\n\n## Résumé\n\nLa réaction $S_N2$ est une **substitution nucléophile bimoléculaire** caractérisée par :\n\n- une réaction en **une seule étape**\n- une **attaque arrière**\n- une **inversion de configuration**\n- une vitesse $v = k[R-LG][Nu^{-}]$\n- une préférence pour les substrats peu encombrés\n- l’absence de carbocation intermédiaire",
+          "provider": "OPENAI",
+          "model": "gpt-5.5"
+        }
+      ]
     },
     {
       "id": "e054135e-9493-4f0c-a3f0-c6372a5a8764",
@@ -132,6 +182,6 @@
     "max_completion_tokens": 15000
   },
   "model": "gpt-5.5",
-  "savedAt": "2026-05-06T04:27:01.771Z",
+  "savedAt": "2026-05-06T04:42:48.964Z",
   "version": 2
 }
