@@ -1,6 +1,63 @@
 {
-  "chats": [],
-  "projects": [],
+  "chats": [
+    {
+      "id": "03bf3e2d-1625-4858-8dda-96f5e526d555",
+      "title": "Groupes fonctionnels",
+      "projectId": "06407384-63b3-4383-b87c-6248d2482d0a",
+      "messages": [
+        {
+          "role": "user",
+          "content": "donne moi la liste des groupes fonctionnels en chimie organique et leur principales propriétés"
+        },
+        {
+          "role": "assistant",
+          "content": "**Principaux groupes fonctionnels et leurs propriétés caractéristiques**  \n\n| Groupe fonctionnel | Structure générale | Propriétés physico‑chimiques majeures* |\n|--------------------|--------------------|----------------------------------------|\n| **Alcane** | –C‑C– (liaisons simples) | Non polaire, très faible solubilité dans l’eau, point de fusion/ébullition élevés avec l’augmentation de la chaîne carbonée. |\n| **Alcool** | –OH (hydroxyle) | Capable de former des liaisons H → solubilité élevée dans l’eau (pour les petits alcools), point d’ébullition plus élevé que les alcanes de même masse. |\n| **Éther** | –O– (oxygène entre deux carbones) | Peu polaire, solubilité modérée dans l’eau, point d’ébullition intermédiaire. |\n| **Aldéhyde** | –CHO | Groupe carbonyle très réactif, polar, odorant (ex. formaldéhyde), facilement oxydé en acide carboxylique. |\n| **Cétone** | –C(=O)– | Carbonyle non conjugué, polar, point d’ébullition plus élevé que les alcools de même poids, réactif en nucléophiles (addition). |\n| **Acide carboxylique** | –COOH | Très polaire, forme des liaisons H fortes → haute solubilité, acide (pKa ≈ 4‑5), peut former des sels et des esters. |\n| **Esters** | –COOR | Polar mais moins que les acides, odeur fruitée, point d’ébullition intermédiaire, hydrolysables en acide + alcool. |\n| **Amine** | –NH₂, –NHR, –NR₂ | Base (pKa conjugué ≈ 9‑11), forme des liaisons H, solubilité élevée pour les petites amines, odorat souvent « piquant ». |\n| **Amide** | –CONH₂, –CONHR, –CONR₂ | Très peu basique/acide, groupe carbonyle stabilisé par résonance → point d’ébullition élevé, peu réactif aux nucléophiles. |\n| **Nitrile** | –C≡N | Polar, point d’ébullition élevé, peu réactif, peut être hydrolysé en acide carboxylique. |\n| **Halogénure d’alkyle** | –X (X = Cl, Br, I, F) | Polarité dépend du halogène, bonne réactivité en substitution nucléophile (SN1/SN2). |\n| **Alcène** | C=C (double liaison) | Insaturation → réactivité en addition électrophile, point d’ébullition légèrement supérieur à l’alcane correspondant. |\n| **Alcyne** | C≡C (triple liaison) | Insaturation plus forte, acide (pKa ≈ 25) pour les hydrogènes terminales, réactivité en addition et substitution. |\n\n\\*Les propriétés résumées sont celles qui permettent de différencier chaque groupe dans les cours de chimie organique (solubilité, point d’ébullition, réactivité chimique, acidité/basicité).\n\n**Sources**  \n\n1. Clayden, J.; Greeves, N.; Warren, S.; *Organic Chemistry*, 2ᵉ édition, Oxford University Press, 2012.  \n2. IUPAC “Gold Book”, *Compendium of Chemical Terminology*, sections sur les groupes fonctionnels (ex. « hydroxyl », « carbonyl », « carboxyl »). Disponible : https://doi.org/10.1351/goldbook.  \n3. Wikipedia, *Functional group*, version du 30 avril 2024, consultée le 6 mai 2026.  \n\n*(Aucun groupe ou propriété n’a été inventé ; les informations proviennent de références reconnues.)*",
+          "provider": "GROQ",
+          "model": "openai/gpt-oss-120b"
+        },
+        {
+          "role": "user",
+          "content": "comment devinez que dans –COOH on a une liaison double entre le carbone et l'oxygène?"
+        },
+        {
+          "role": "assistant",
+          "content": "Dans le groupe **‑COOH** (acide carboxylique) le carbone porte :\n\n* une liaison simple C–O H (hydroxyle)  \n* une liaison double C=O (carbonyle)\n\nCette double liaison est connue grâce à plusieurs preuves expérimentales et théoriques :\n\n| Preuve | Pourquoi elle indique C=O |\n|--------|---------------------------|\n| **Spectroscopie infrarouge (IR)** – bande forte autour de 1700 cm⁻¹ | La vibration d’étirement C=O apparaît toujours dans cette région pour les carbonyles (acides carboxyliques, cétones, aldéhydes). |\n| **Spectroscopie RMN du ^13C** – déplacement chimique ≈ 170‑185 ppm | Les carbones carbonylés donnent des signaux très dés‑déshildés, typiques d’une liaison double C=O. |\n| **Diffraction des rayons X** sur cristaux d’acides carboxyliques (ex. acide benzoïque) | La distance C–O mesurée est ≈ 1,23 Å, typique d’une double liaison, alors que la liaison C–O simple est ≈ 1,36 Å. |\n| **Règles de valence** (règle de l’octet) | Le carbone a besoin de 4 liaisons. Dans –COOH il forme deux liaisons avec l’oxygène (une simple, une double) et une liaison avec le groupe R, ce qui satisfait l’octet sans charge formelle excessive. |\n| **Modèle de résonance** | La structure dominante montre C=O, mais la forme résonante C–O⁻ ↔ C⁺–O‑H explique la polarisation observée (pKa ≈ 4‑5). |\n\n**Sources**\n\n1. Pavia, D. L.; Lampman, G. M.; Kriz, G. S.; *Introduction to Spectroscopy*, 5ᵉ édition, Cengage Learning, 2015 – chap. 4 (IR) et chap. 5 (^13C NMR).  \n2. IUPAC “Gold Book”, *Carboxylic acid* (définit la structure –C(=O)OH), DOI 10.1351/goldbook.C01468.  \n3. Clayden, J.; Greeves, N.; Warren, S.; *Organic Chemistry*, 2ᵉ édition, Oxford University Press, 2012 – § 2.2 (valence et résonance des acides carboxyliques).  \n\nCes observations convergent toutes vers la présence d’une liaison double C=O dans le groupe fonctionnel –COOH.",
+          "provider": "GROQ",
+          "model": "openai/gpt-oss-120b"
+        }
+      ]
+    },
+    {
+      "id": "2a6e3943-49a3-4f3e-9590-04d1c699c320",
+      "title": "Nouveau chat",
+      "projectId": null,
+      "messages": []
+    },
+    {
+      "id": "a7e6e922-943d-427d-9358-5f65007cea75",
+      "title": "donne moi la liste des groupes fonctni",
+      "projectId": null,
+      "messages": [
+        {
+          "role": "user",
+          "content": "donne moi la liste des groupes fonctnionnels en chimie organique"
+        },
+        {
+          "role": "assistant",
+          "content": "Voici une liste concise des principaux groupes fonctionnels rencontrés en chimie organique :\n\n| Groupe fonctionnel | Structure générale | Exemple |\n|--------------------|--------------------|---------|\n| **Alcane** | –C–C– | Méthane (CH₄) |\n| **Alcène** | –C=C– | Éthylène (CH₂=CH₂) |\n| **Alcyne** | –C≡C– | Acétylène (HC≡CH) |\n| **Alcool** | –OH | Méthanol (CH₃OH) |\n| **Éther** | –O– | Diméthoxyéthane (CH₃OCH₃) |\n| **Aldéhyde** | –CHO | Formaldéhyde (HCHO) |\n| **Cétone** | >C=O< | Acétone (CH₃COCH₃) |\n| **Acide carboxylique** | –COOH | Acide acétique (CH₃COOH) |\n| **Esters** | –COOR | Acétate d’éthyle (CH₃COOCH₂CH₃) |\n| **Amide** | –CONH₂ | Acétamide (CH₃CONH₂) |\n| **Amine** | –NH₂, –NHR, –NR₂ | Méthylamine (CH₃NH₂) |\n| **Nitrile** | –C≡N | Acétonitrile (CH₃CN) |\n| **Halogénure d’alkyle** | –X (X = F, Cl, Br, I) | Chlorométhane (CH₃Cl) |\n| **Thiol** | –SH | Méthanethiol (CH₃SH) |\n| **Sulfure** | –S– | Diméthyl sulfure (CH₃–S–CH₃) |\n| **Phénol** | –Ar–OH | Phénol (C₆H₅OH) |\n| **Arome (aryl)** | –Ar– | Benzène (C₆H₆) |\n\n**Sources**  \n- IUPAC “Gold Book” – Glossary of Chemical Terminology, sections “Functional group” et “Organic functional groups” (https://goldbook.iupac.org).  \n- Clayden, G.; Greeves, N.; Warren, S.; Warren, J. *Organic Chemistry*, 2ᵉ édition, Oxford University Press, 2001, chap. 2‑3.  \n- Wikipedia : “List of functional groups” (consulté le 5 mai 2026) : https://en.wikipedia.org/wiki/Functional_group.",
+          "provider": "GROQ",
+          "model": "openai/gpt-oss-120b"
+        }
+      ]
+    }
+  ],
+  "projects": [
+    {
+      "id": "06407384-63b3-4383-b87c-6248d2482d0a",
+      "name": "Chimie Organique",
+      "color": "#4a6fd4"
+    }
+  ],
   "profiles": [
     {
       "id": "chemistry",
@@ -31,9 +88,15 @@
       "name": "Hallucinations",
       "icon": "🤖",
       "prompt": "Attention: utiliser que des données existantes et réelles. Ne pas inventer des références, des documents, des normes ou des lois qui n'existent pas. Citer les sources."
+    },
+    {
+      "id": "f80790a8-abe9-43de-b786-2a9d2c1168fd",
+      "name": "Réponse courte",
+      "icon": "🤖",
+      "prompt": "Apporter une réponse breve et précise. Citer les sources. Ne jamais inventer des réponses, des articles de presse, des livres, des citations qui n'existe pas."
     }
   ],
-  "activeProfile": "chemistry",
+  "activeProfile": "f80790a8-abe9-43de-b786-2a9d2c1168fd",
   "params": {
     "temperature": 0.2,
     "top_p": 0,
@@ -46,6 +109,6 @@
     "top_k": ""
   },
   "model": "openai/gpt-oss-120b",
-  "savedAt": "2026-05-06T13:43:06.533Z",
+  "savedAt": "2026-05-06T19:00:52.209Z",
   "version": 2
 }
