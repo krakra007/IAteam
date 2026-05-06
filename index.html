@@ -411,7 +411,47 @@
     .assistant-body h3.md-heading{font-size:17px;font-weight:700;border-bottom:1px solid #3f3f4660;padding-bottom:4px}
     .assistant-body h4.md-heading{font-size:15px;font-weight:600;color:#b0c4d8}
     .assistant-body hr{border:none;border-top:1px solid #3f3f46;margin:12px 0}
+
+    /* ── KaTeX rendu LaTeX ── */
+    .katex-display{
+      background:#141a26;
+      border-left:3px solid #4a80c4;
+      border-radius:8px;
+      padding:12px 20px;
+      margin:14px 0;
+      overflow-x:auto;
+    }
+    .katex-display > .katex{
+      font-size:1.15em;
+    }
+    /* Inline KaTeX */
+    .katex{
+      font-size:1em;
+      color:#c8deff;
+    }
+    /* Fond léger pour inline */
+    .katex-inline-wrap{
+      background:#1a2235;
+      border-radius:4px;
+      padding:1px 4px;
+      display:inline;
+    }
+    /* Erreur KaTeX → fallback texte */
+    .katex-error-fallback{
+      font-family:monospace;
+      font-size:.9em;
+      color:#a8d4ff;
+      background:#1a2030;
+      border-left:3px solid #4a80c4;
+      border-radius:4px;
+      padding:6px 12px;
+      display:block;
+      margin:10px 0;
+    }
   </style>
+  <!-- KaTeX — rendu LaTeX professionnel (compilation réelle) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.css">
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.js"></script>
 </head>
 <body>
 <!-- VERSION_FIXED_V8 -->
@@ -1444,7 +1484,7 @@ function formatAssistantContent(raw) {
   });
   // Inline $...$  (pas de $ seul, pas de $$ déjà traité)
   raw = raw.replace(/\$([^\$\n]{1,120}?)\$/g, (_, inner) => {
-    const html = `<span class="chem-inline">${applyLatexSymbols(inner)}</span>`;
+    const html = renderLatexInline(inner);
     const id   = `\x00INLINE${INLINES.length}\x00`;
     INLINES.push(html);
     return id;
@@ -1538,46 +1578,57 @@ function mdInline(text) {
 }
 
 /** Rend un bloc LaTeX display en HTML */
-function renderLatexBlock(inner) {
-  const rendered = applyLatexSymbols(inner);
-  return `<span class="chem-eq">${rendered}</span>`;
+function renderLatexBlock(latex) {
+  latex = latex.trim();
+  if (typeof katex !== "undefined") {
+    try {
+      return katex.renderToString(latex, {
+        displayMode: true,
+        throwOnError: false,
+        errorColor: "#f87171",
+        strict: "ignore"
+      });
+    } catch(e) {
+      return '<span class="katex-error-fallback">' + escapeHtml(latex) + '</span>';
+    }
+  }
+  return '<span class="chem-eq">' + applyLatexSymbols(latex) + '</span>';
 }
 
-/** Applique les substitutions LaTeX → Unicode/HTML */
+function renderLatexInline(latex) {
+  latex = latex.trim();
+  if (typeof katex !== "undefined") {
+    try {
+      return '<span class="katex-inline-wrap">' + katex.renderToString(latex, {
+        displayMode: false,
+        throwOnError: false,
+        errorColor: "#f87171",
+        strict: "ignore"
+      }) + '</span>';
+    } catch(e) {
+      return '<code style="color:#a8d4ff">' + escapeHtml(latex) + '</code>';
+    }
+  }
+  return '<span class="chem-inline">' + applyLatexSymbols(latex) + '</span>';
+}
+
 function applyLatexSymbols(s) {
   const SYM = [
     [/\\rightarrow/g,"→"],[/\\leftarrow/g,"←"],[/\\leftrightarrow/g,"⇌"],
-    [/\\Rightarrow/g,"⟹"],[/\\longrightarrow/g,"⟶"],[/\\longleftarrow/g,"⟵"],
-    [/\\cdot/g,"·"],[/\\times/g,"×"],[/\\div/g,"÷"],[/\\pm/g,"±"],
+    [/\\longrightarrow/g,"⟶"],[/\\Rightarrow/g,"⟹"],
+    [/\\cdot/g,"·"],[/\\times/g,"×"],[/\\pm/g,"±"],
     [/\\leq/g,"≤"],[/\\geq/g,"≥"],[/\\neq/g,"≠"],[/\\approx/g,"≈"],
-    [/\\equiv/g,"≡"],[/\\propto/g,"∝"],[/\\infty/g,"∞"],[/\\partial/g,"∂"],
-    [/\\Delta/g,"Δ"],[/\\nabla/g,"∇"],[/\\sum/g,"∑"],[/\\prod/g,"∏"],[/\\int/g,"∫"],
-    [/\\alpha/g,"α"],[/\\beta/g,"β"],[/\\gamma/g,"γ"],[/\\delta/g,"δ"],
-    [/\\epsilon/g,"ε"],[/\\zeta/g,"ζ"],[/\\eta/g,"η"],[/\\theta/g,"θ"],
-    [/\\kappa/g,"κ"],[/\\lambda/g,"λ"],[/\\mu/g,"μ"],[/\\nu/g,"ν"],
-    [/\\xi/g,"ξ"],[/\\pi/g,"π"],[/\\rho/g,"ρ"],[/\\sigma/g,"σ"],
-    [/\\tau/g,"τ"],[/\\phi/g,"φ"],[/\\chi/g,"χ"],[/\\psi/g,"ψ"],[/\\omega/g,"ω"],
-    [/\\Gamma/g,"Γ"],[/\\Sigma/g,"Σ"],[/\\Omega/g,"Ω"],[/\\Phi/g,"Φ"],
-    [/\\ddagger/g,"‡"],[/\\dagger/g,"†"],[/\\circ/g,"∘"],[/\\bullet/g,"•"],
+    [/\\infty/g,"∞"],[/\\partial/g,"∂"],[/\\Delta/g,"Δ"],[/\\sum/g,"∑"],
+    [/\\int/g,"∫"],[/\\alpha/g,"α"],[/\\beta/g,"β"],[/\\gamma/g,"γ"],
+    [/\\delta/g,"δ"],[/\\lambda/g,"λ"],[/\\mu/g,"μ"],[/\\pi/g,"π"],
+    [/\\sigma/g,"σ"],[/\\theta/g,"θ"],[/\\phi/g,"φ"],[/\\omega/g,"ω"],
     [/\\text\{([^}]+)\}/g,"$1"],[/\\mathrm\{([^}]+)\}/g,"$1"],
-    [/\\mathbf\{([^}]+)\}/g,"<strong>$1</strong>"],
-    [/\\ce\{([^}]+)\}/g,"$1"],
-    [/\\\s/g," "],[/\\,/g," "],[/\\!/g,""],
-    [/\\left[\(\[]/g,"("],[/\\right[\)\]]/g,")"],
   ];
   for (const [re,rep] of SYM) s = s.replace(re,rep);
-  // Fractions
-  s = s.replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g,
-    (_,n,d)=>`<span style="display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;font-size:.82em;line-height:1.2"><span style="border-bottom:1px solid currentColor;padding:0 3px">${n}</span><span style="padding:0 3px">${d}</span></span>`);
-  // Racines
-  s = s.replace(/\\sqrt\{([^}]+)\}/g,(_,c)=>`√(${c})`);
-  // Exposants ^{...} ou ^X
-  s = s.replace(/\^\{([^}]+)\}/g,(_,c)=>`<sup>${c}</sup>`);
-  s = s.replace(/\^([-+A-Za-z0-9])/g,(_,c)=>`<sup>${c}</sup>`);
-  // Indices _{...} ou _X
-  s = s.replace(/_\{([^}]+)\}/g,(_,c)=>`<sub>${c}</sub>`);
-  s = s.replace(/_([A-Za-z0-9])/g,(_,c)=>`<sub>${c}</sub>`);
-  // Accolades résiduelles
+  s = s.replace(/\^\{([^}]+)\}/g,(_,c)=>"<sup>"+c+"</sup>");
+  s = s.replace(/\^([-+A-Za-z0-9])/g,(_,c)=>"<sup>"+c+"</sup>");
+  s = s.replace(/_\{([^}]+)\}/g,(_,c)=>"<sub>"+c+"</sub>");
+  s = s.replace(/_([A-Za-z0-9])/g,(_,c)=>"<sub>"+c+"</sub>");
   s = s.replace(/\{([^{}]*)\}/g,"$1");
   return s.trim();
 }
