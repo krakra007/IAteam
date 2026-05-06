@@ -449,59 +449,92 @@
       margin:10px 0;
     }
 
-    /* ── Rendu Markdown professionnel ── */
-    .assistant-body{font-size:16px;line-height:1.65;color:#e0e4ec}
-    .assistant-body h1,.assistant-body h2{
-      font-size:18px;font-weight:700;color:#e8eaee;
-      border-bottom:1px solid #3f3f46;padding-bottom:5px;margin:16px 0 8px;
+    /* ════ Rendu Markdown professionnel (inspiré IA-Genius) ════ */
+    .assistant-body{font-size:17px;line-height:1.75;color:var(--text);word-wrap:break-word;overflow-wrap:break-word}
+    .assistant-body p{margin:0 0 10px}
+    .assistant-body p:last-child{margin-bottom:0}
+    .assistant-body strong{font-weight:700;color:#f0eeeb}
+    .assistant-body em{font-style:italic;color:#d0cec8}
+    .assistant-body h1,.assistant-body h2,.assistant-body h3,.assistant-body h4{
+      font-weight:700;letter-spacing:-.02em;color:#f5f3f0;margin:20px 0 10px;line-height:1.3
     }
-    .assistant-body h3{font-size:16px;font-weight:600;color:#c8d8f0;margin:12px 0 6px}
-    .assistant-body h4{font-size:15px;font-weight:600;color:#9db8d0;margin:10px 0 4px}
-    .assistant-body p{margin:0 0 8px;line-height:1.65}
-    .assistant-body ul,.assistant-body ol{margin:4px 0 8px 20px;padding:0}
-    .assistant-body li{margin:2px 0;line-height:1.6;font-size:15px}
-    .assistant-body li p{margin:0}
-    .assistant-body li+li{margin-top:3px}
+    .assistant-body h1{font-size:22px;padding-bottom:6px;border-bottom:2px solid #3f3f46}
+    .assistant-body h2{font-size:18px;padding-bottom:5px;border-bottom:1px solid #3f3f46}
+    .assistant-body h3{font-size:16px}
+    .assistant-body h4{font-size:15px;color:var(--muted)}
+    .assistant-body h1:first-child,.assistant-body h2:first-child,.assistant-body h3:first-child{margin-top:4px}
+    .assistant-body ul,.assistant-body ol{margin:6px 0 12px 24px;padding:0}
+    .assistant-body li{margin-bottom:5px;line-height:1.65}
+    .assistant-body li>p{margin-bottom:4px}
+    .assistant-body li>ul,.assistant-body li>ol{margin-top:4px;margin-bottom:4px}
+    .assistant-body ul li::marker{color:#4a9fd4}
+    .assistant-body ol li::marker{color:#4a9fd4;font-weight:600}
+    .assistant-body blockquote{
+      border-left:3px solid #4b5563;padding:8px 14px;margin:12px 0;
+      background:#1e2330;border-radius:0 6px 6px 0;color:#9ca3af;font-style:italic
+    }
+    .assistant-body blockquote p:last-child{margin-bottom:0}
     .assistant-body code{
-      background:#2a2a2a;padding:1px 5px;border-radius:4px;
-      font-family:"SFMono-Regular",Consolas,monospace;font-size:.87em;color:#c9d1d9;
+      font-family:"JetBrains Mono","SFMono-Regular",Consolas,monospace;font-size:.87em;
+      background:rgba(110,118,129,.15);padding:2px 6px;border-radius:5px;color:#e8c9b8
     }
     .assistant-body pre{
-      background:#161b22;border:1px solid #30363d;border-radius:8px;
-      padding:12px 16px;overflow-x:auto;margin:8px 0;
+      margin:14px 0;border-radius:10px;overflow:hidden;
+      border:1px solid var(--line);box-shadow:0 2px 8px rgba(0,0,0,.2)
     }
-    .assistant-body pre code{background:none;padding:0;font-size:13px}
-    .assistant-body blockquote{
-      margin:8px 0;padding:6px 12px;
-      border-left:3px solid #4b5563;background:#1e2330;
-      border-radius:0 6px 6px 0;color:#9ca3af;
+    .assistant-body pre code{
+      display:block;padding:14px 16px;background:#0d1117;
+      overflow-x:auto;line-height:1.6;font-size:13px;color:#e6edf3;border-radius:0
     }
-    .assistant-body blockquote p{margin:0}
-    .assistant-body table{border-collapse:collapse;width:100%;margin:10px 0;font-size:14px}
+    .assistant-body .code-block-header{
+      display:flex;justify-content:space-between;align-items:center;
+      padding:7px 12px;background:#161b22;font-size:11px;color:#6b7280;
+      font-family:"JetBrains Mono",monospace;border-bottom:1px solid #21262d
+    }
+    .assistant-body .copy-code-btn{
+      background:none;border:1px solid #30363d;color:#6b7280;
+      padding:2px 8px;border-radius:5px;font-size:11px;cursor:pointer;font-family:inherit
+    }
+    .assistant-body .copy-code-btn:hover{color:#e6edf3;border-color:#484f58}
+    .assistant-body table{
+      width:100%;border-collapse:separate;border-spacing:0;
+      margin:14px 0;font-size:15px;border-radius:8px;border:1px solid var(--line);overflow:hidden
+    }
+    .assistant-body thead{background:var(--panel)}
     .assistant-body th{
-      background:#1e2a3a;color:#7baaf7;padding:7px 11px;
-      border:1px solid #3f3f46;text-align:left;font-weight:600;
+      padding:9px 13px;font-weight:700;text-align:left;
+      color:var(--text);font-size:13px;text-transform:uppercase;
+      letter-spacing:.04em;border-bottom:2px solid var(--line)
     }
-    .assistant-body td{padding:6px 11px;border:1px solid #2d3748}
-    .assistant-body tr:nth-child(even){background:#1a1f2e}
-    .assistant-body hr{border:none;border-top:1px solid #3f3f46;margin:10px 0}
-    .assistant-body strong{font-weight:700;color:#e8eaee}
-    .assistant-body em{font-style:italic}
-    /* KaTeX */
-    .katex-display{
+    .assistant-body td{padding:8px 13px;border-bottom:1px solid var(--line);color:var(--text)}
+    .assistant-body tbody tr:last-child td{border-bottom:none}
+    .assistant-body tbody tr:nth-child(even){background:rgba(255,255,255,.02)}
+    .assistant-body hr{border:none;height:1px;background:var(--line);margin:18px 0}
+    .assistant-body a{color:#7baaf7;text-decoration:none;border-bottom:1px solid transparent;transition:border-color .15s}
+    .assistant-body a:hover{border-bottom-color:#7baaf7}
+    /* ── KaTeX dans les réponses ── */
+    .assistant-body .katex-display{overflow-x:auto;padding:6px 0;text-align:center}
+    .assistant-body .katex{font-size:1em}
+    .assistant-body .katex-block-wrap{
       background:#141a26;border-left:3px solid #4a80c4;border-radius:8px;
-      padding:10px 18px;margin:10px 0;overflow-x:auto;text-align:center;
+      padding:10px 18px;margin:12px 0;overflow-x:auto;text-align:center
     }
-    .katex-inline-wrap{display:inline}
-    .katex{font-size:1em !important;color:#c8deff}
-    .katex-error-fallback{
-      font-family:monospace;font-size:.88em;color:#a8d4ff;
-      background:#1a2030;border-left:3px solid #4a80c4;
-      border-radius:4px;padding:4px 10px;display:inline-block;
+    .assistant-body .katex-inline-wrap{display:inline}
+    .katex-fallback-block{
+      font-family:"JetBrains Mono",monospace;font-size:.92em;color:#a8d4ff;
+      background:#141a26;border-left:3px solid #4a80c4;border-radius:8px;
+      padding:8px 16px;margin:10px 0;display:block;overflow-x:auto
     }
+    .katex-fallback-inline{
+      font-family:"JetBrains Mono",monospace;font-size:.9em;color:#a8d4ff;
+      background:#1a2235;border-radius:4px;padding:1px 5px
+    }
+
   </style>
-  <!-- marked.js — parser Markdown standard industriel -->
+  <!-- marked.js + highlight.js + KaTeX — stack pro comme IA-Genius -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.0/marked.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
   <!-- KaTeX — rendu LaTeX professionnel (compilation réelle) -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.js"></script>
@@ -1516,51 +1549,139 @@ function convertLatex(text) {
 function formatAssistantContent(raw) {
   if (!raw) return "";
 
-  // ── 1. Nettoyer HTML brut du modèle ─────────────────────────
+  // Nettoyer le HTML brut éventuel du modèle
   raw = sanitizeModelResponse(raw);
 
-  // ── 2. Extraire maths → placeholders HTML comments ───────────
-  // Les commentaires HTML sont passés intacts par marked.js
-  const mathBlocks  = [];
-  const mathInlines = [];
+  // ── Enregistrer les extensions KaTeX avec marked (une seule fois) ──
+  // Technique : extensions natives au niveau du tokenizer,
+  // comme dans IA-Genius — plus robuste que les placeholders.
+  if (!formatAssistantContent._ext) {
+    formatAssistantContent._ext = true;
 
-  // $$ ... $$ display (multi-ligne)
-  raw = raw.replace(/\$\$([\s\S]+?)\$\$/g, (_, inner) => {
-    mathBlocks.push(inner.trim());
-    return "<!--MBLOCK" + (mathBlocks.length-1) + "-->";
-  });
-  // \[ ... \] alternatif display
-  raw = raw.replace(/\\\[([\s\S]+?)\\\]/g, (_, inner) => {
-    mathBlocks.push(inner.trim());
-    return "<!--MBLOCK" + (mathBlocks.length-1) + "-->";
-  });
-  // $ ... $ inline (pas les déjà traités)
-  raw = raw.replace(/\$([^\$\n\r]{1,200}?)\$/g, (_, inner) => {
-    mathInlines.push(inner.trim());
-    return "<!--MINLINE" + (mathInlines.length-1) + "-->";
-  });
+    // Convertisseur Unicode de secours quand KaTeX n'est pas dispo
+    function latexFallback(tex) {
+      var t = tex;
+      var syms = {
+        '\\\\rightarrow':'→','\\\\leftarrow':'←','\\\\leftrightarrow':'↔',
+        '\\\\Rightarrow':'⇒','\\\\longrightarrow':'⟶','\\\\rightleftharpoons':'⇌',
+        '\\\\cdot':'·','\\\\times':'×','\\\\div':'÷','\\\\pm':'±','\\\\mp':'∓',
+        '\\\\leq':'≤','\\\\geq':'≥','\\\\neq':'≠','\\\\approx':'≈','\\\\equiv':'≡',
+        '\\\\infty':'∞','\\\\partial':'∂','\\\\Delta':'Δ','\\\\nabla':'∇',
+        '\\\\sum':'∑','\\\\prod':'∏','\\\\int':'∫',
+        '\\\\alpha':'α','\\\\beta':'β','\\\\gamma':'γ','\\\\delta':'δ',
+        '\\\\epsilon':'ε','\\\\zeta':'ζ','\\\\eta':'η','\\\\theta':'θ',
+        '\\\\lambda':'λ','\\\\mu':'μ','\\\\nu':'ν','\\\\pi':'π',
+        '\\\\rho':'ρ','\\\\sigma':'σ','\\\\tau':'τ','\\\\phi':'φ',
+        '\\\\chi':'χ','\\\\psi':'ψ','\\\\omega':'ω',
+        '\\\\Gamma':'Γ','\\\\Sigma':'Σ','\\\\Omega':'Ω','\\\\Phi':'Φ',
+      };
+      for (var s in syms) t = t.replace(new RegExp(s.replace(/\\/g,'\\\\'), 'g'), syms[s]);
+      t = t.replace(/\^\{([^}]+)\}/g, function(_,c){ return c.split('').map(function(x){return {'0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹','+':'⁺','-':'⁻','n':'ⁿ'}[x]||x;}).join(''); });
+      t = t.replace(/\^([0-9+\-n])/g, function(_,c){ return {'0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹','+':'⁺','-':'⁻','n':'ⁿ'}[c]||c; });
+      t = t.replace(/_\{([^}]+)\}/g, function(_,c){ return c.split('').map(function(x){return {'0':'₀','1':'₁','2':'₂','3':'₃','4':'₄','5':'₅','6':'₆','7':'₇','8':'₈','9':'₉','+':'₊','-':'₋'}[x]||x;}).join(''); });
+      t = t.replace(/_([0-9+\-])/g, function(_,c){ return {'0':'₀','1':'₁','2':'₂','3':'₃','4':'₄','5':'₅','6':'₆','7':'₇','8':'₈','9':'₉','+':'₊','-':'₋'}[c]||c; });
+      t = t.replace(/\\text\{([^}]+)\}/g,'$1').replace(/\\mathrm\{([^}]+)\}/g,'$1');
+      t = t.replace(/\{([^{}]*)\}/g,'$1').replace(/\\[a-zA-Z]+/g,'');
+      return t.trim();
+    }
 
-  // ── 3. Markdown → HTML via marked.js ────────────────────────
-  let html = "";
-  if (typeof marked !== "undefined") {
-    html = marked.parse(raw, { breaks: false, gfm: true });
-  } else {
-    // Fallback basique
-    html = "<p>" + escapeHtml(raw).replace(/\n\n/g,"</p><p>").replace(/\n/g," ") + "</p>";
+    function renderKatexBlock(tex) {
+      try {
+        if (typeof katex !== "undefined") {
+          return '<div class="katex-block-wrap">' +
+            katex.renderToString(tex.trim(), {displayMode:true,throwOnError:true,strict:"ignore"}) +
+            '</div>';
+        }
+      } catch(e) {}
+      return '<div class="katex-fallback-block">' + latexFallback(tex) + '</div>';
+    }
+
+    function renderKatexInline(tex) {
+      try {
+        if (typeof katex !== "undefined") {
+          return katex.renderToString(tex.trim(), {displayMode:false,throwOnError:true,strict:"ignore"});
+        }
+      } catch(e) {}
+      return '<span class="katex-fallback-inline">' + latexFallback(tex) + '</span>';
+    }
+
+    try {
+      marked.use({
+        extensions: [
+          // ── $$ ... $$ display math (block) ──
+          {
+            name: 'blockMath',
+            level: 'block',
+            start(src) { return src.indexOf('$$'); },
+            tokenizer(src) {
+              const m = src.match(/^\$\$([\s\S]+?)\$\$/);
+              if (m) return { type:'blockMath', raw:m[0], text:m[1] };
+            },
+            renderer(token) { return renderKatexBlock(token.text); }
+          },
+          // ── $ ... $ inline math ──
+          {
+            name: 'inlineMath',
+            level: 'inline',
+            start(src) { return src.indexOf('$'); },
+            tokenizer(src) {
+              if (src.startsWith('$$')) return;
+              const m = src.match(/^\$([^\$\n]{1,200}?)\$/);
+              if (m) return { type:'inlineMath', raw:m[0], text:m[1] };
+            },
+            renderer(token) { return renderKatexInline(token.text); }
+          },
+          // ── \[ ... \] display math ──
+          {
+            name: 'displayMathBracket',
+            level: 'block',
+            start(src) { return src.indexOf('\\['); },
+            tokenizer(src) {
+              const m = src.match(/^\\\[([\s\S]+?)\\\]/);
+              if (m) return { type:'displayMathBracket', raw:m[0], text:m[1] };
+            },
+            renderer(token) { return renderKatexBlock(token.text); }
+          },
+          // ── \( ... \) inline math ──
+          {
+            name: 'inlineMathParen',
+            level: 'inline',
+            start(src) { return src.indexOf('\\('); },
+            tokenizer(src) {
+              const m = src.match(/^\\\((.+?)\\\)/);
+              if (m) return { type:'inlineMathParen', raw:m[0], text:m[1] };
+            },
+            renderer(token) { return renderKatexInline(token.text); }
+          }
+        ]
+      });
+    } catch(e) {
+      console.warn('[BrAInShift] marked extensions failed:', e);
+    }
+
+    // Configurer marked
+    marked.setOptions({ gfm: true, breaks: false });
   }
 
-  // ── 4. Restaurer les formules avec KaTeX ─────────────────────
-  mathBlocks.forEach((latex, i) => {
-    const ph  = "<!--MBLOCK" + i + "-->";
-    html = html.split(ph).join(renderLatexBlock(latex));
+  // ── Parser le Markdown avec marked (math géré nativement) ──
+  let html = marked.parse(raw);
+
+  // ── Ajouter les headers de code avec bouton Copier ──
+  html = html.replace(/<pre><code class="language-(\w+)">/g, function(_, lang) {
+    return '<div class="code-block-header"><span>' + lang + '</span>' +
+      '<button class="copy-code-btn" onclick="this.closest(\'pre\').previousElementSibling,' +
+      'navigator.clipboard.writeText(this.closest(\'pre\').querySelector(\'code\').textContent)' +
+      '.then(()=>{this.textContent=\'✓\';setTimeout(()=>this.textContent=\'Copier\',2000)})">Copier</button>' +
+      '</div><pre><code class="language-' + lang + '">';
   });
-  mathInlines.forEach((latex, i) => {
-    const ph  = "<!--MINLINE" + i + "-->";
-    html = html.split(ph).join(renderLatexInline(latex));
-  });
+  html = html.replace(/<pre><code(?!.*language-)>/g,
+    '<div class="code-block-header"><span>code</span>' +
+    '<button class="copy-code-btn" onclick="navigator.clipboard.writeText(this.closest(\'pre\').querySelector(\'code\').textContent).then(()=>{this.textContent=\'✓\';setTimeout(()=>this.textContent=\'Copier\',2000)})">Copier</button>' +
+    '</div><pre><code>');
 
   return html;
 }
+
 
 
 
@@ -1724,6 +1845,7 @@ function renderMessages() {
   }
 
   box.scrollTop = box.scrollHeight;
+  if (typeof hljs !== 'undefined') hljs.highlightAll();
 }
 
 // ─────────────────────────────────────────────────
@@ -2730,13 +2852,16 @@ if (typeof marked !== "undefined") {
 buildColorPicker();
 initGithubPanel();
 
-  // Re-render messages une fois KaTeX chargé (il peut arriver après le premier render)
-  (function waitForKatex() {
-    if (typeof katex !== "undefined" && typeof marked !== "undefined") {
-      renderMessages(); // Re-render avec KaTeX dispo
-    } else {
-      setTimeout(waitForKatex, 80);
-    }
+  // KaTeX + marked : extensions enregistrées lors du 1er appel de formatAssistantContent
+  // Si KaTeX n'est pas encore chargé, on attend puis on re-render une seule fois
+  (function waitKatex() {
+    if (typeof katex !== "undefined" && typeof marked !== "undefined") return;
+    setTimeout(function() {
+      if (typeof katex !== "undefined" && typeof marked !== "undefined") {
+        formatAssistantContent._ext = false; // forcer re-registration avec KaTeX dispo
+        renderMessages();
+      }
+    }, 500);
   })();
 
 
