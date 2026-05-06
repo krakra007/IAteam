@@ -1608,28 +1608,43 @@ function formatAssistantContent(raw) {
       t = t.replace(/\\[,;:!]/g, ' ').replace(/\\quad|\\qquad/g, '  ');
       // Sauts de ligne et alignement (utilisés dans aligned/array)
       t = t.replace(/\\\\/g, '\n').replace(/&/g, ' ');
+      // Symboles LaTeX → Unicode (clés = 1 seul backslash en chaîne réelle)
       var syms = {
-        '\\\\rightarrow':'→','\\\\leftarrow':'←','\\\\leftrightarrow':'↔',
-        '\\\\Rightarrow':'⇒','\\\\longrightarrow':'⟶','\\\\rightleftharpoons':'⇌',
-        '\\\\cdot':'·','\\\\times':'×','\\\\div':'÷','\\\\pm':'±','\\\\mp':'∓',
-        '\\\\leq':'≤','\\\\geq':'≥','\\\\neq':'≠','\\\\approx':'≈','\\\\equiv':'≡',
-        '\\\\infty':'∞','\\\\partial':'∂','\\\\Delta':'Δ','\\\\nabla':'∇',
-        '\\\\sum':'∑','\\\\prod':'∏','\\\\int':'∫',
-        '\\\\alpha':'α','\\\\beta':'β','\\\\gamma':'γ','\\\\delta':'δ',
-        '\\\\epsilon':'ε','\\\\zeta':'ζ','\\\\eta':'η','\\\\theta':'θ',
-        '\\\\lambda':'λ','\\\\mu':'μ','\\\\nu':'ν','\\\\pi':'π',
-        '\\\\rho':'ρ','\\\\sigma':'σ','\\\\tau':'τ','\\\\phi':'φ',
-        '\\\\chi':'χ','\\\\psi':'ψ','\\\\omega':'ω',
-        '\\\\Gamma':'Γ','\\\\Sigma':'Σ','\\\\Omega':'Ω','\\\\Phi':'Φ',
+        '\\rightarrow':'→','\\leftarrow':'←','\\leftrightarrow':'↔',
+        '\\Rightarrow':'⇒','\\longrightarrow':'⟶','\\rightleftharpoons':'⇌',
+        '\\to':'→','\\gets':'←',
+        '\\cdot':'·','\\times':'×','\\div':'÷','\\pm':'±','\\mp':'∓',
+        '\\leq':'≤','\\geq':'≥','\\neq':'≠','\\approx':'≈','\\equiv':'≡',
+        '\\infty':'∞','\\partial':'∂','\\Delta':'Δ','\\nabla':'∇',
+        '\\sum':'∑','\\prod':'∏','\\int':'∫','\\propto':'∝',
+        '\\alpha':'α','\\beta':'β','\\gamma':'γ','\\delta':'δ',
+        '\\epsilon':'ε','\\varepsilon':'ε','\\zeta':'ζ','\\eta':'η','\\theta':'θ',
+        '\\iota':'ι','\\kappa':'κ','\\lambda':'λ','\\mu':'μ','\\nu':'ν',
+        '\\xi':'ξ','\\pi':'π','\\rho':'ρ','\\sigma':'σ','\\tau':'τ',
+        '\\upsilon':'υ','\\phi':'φ','\\varphi':'φ','\\chi':'χ',
+        '\\psi':'ψ','\\omega':'ω',
+        '\\Gamma':'Γ','\\Lambda':'Λ','\\Sigma':'Σ','\\Phi':'Φ',
+        '\\Psi':'Ψ','\\Omega':'Ω','\\Theta':'Θ','\\Xi':'Ξ','\\Pi':'Π',
       };
-      for (var s in syms) t = t.replace(new RegExp(s.replace(/\\/g,'\\\\'), 'g'), syms[s]);
+      // Trier par longueur décroissante pour que \longrightarrow matche avant \to
+      var keys = Object.keys(syms).sort(function(a,b){ return b.length - a.length; });
+      keys.forEach(function(k){
+        // Échapper le backslash + ajouter une borne de mot pour éviter \alpha → α + bha
+        var escaped = k.replace(/\\/g,'\\\\');
+        t = t.replace(new RegExp(escaped + '(?![a-zA-Z])', 'g'), syms[k]);
+      });
+      // Exposants
       t = t.replace(/\^\{([^}]+)\}/g, function(_,c){ return c.split('').map(function(x){return {'0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹','+':'⁺','-':'⁻','n':'ⁿ'}[x]||x;}).join(''); });
       t = t.replace(/\^([0-9+\-n])/g, function(_,c){ return {'0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹','+':'⁺','-':'⁻','n':'ⁿ'}[c]||c; });
+      // Indices
       t = t.replace(/_\{([^}]+)\}/g, function(_,c){ return c.split('').map(function(x){return {'0':'₀','1':'₁','2':'₂','3':'₃','4':'₄','5':'₅','6':'₆','7':'₇','8':'₈','9':'₉','+':'₊','-':'₋'}[x]||x;}).join(''); });
       t = t.replace(/_([0-9+\-])/g, function(_,c){ return {'0':'₀','1':'₁','2':'₂','3':'₃','4':'₄','5':'₅','6':'₆','7':'₇','8':'₈','9':'₉','+':'₊','-':'₋'}[c]||c; });
+      // Texte/mathrm
       t = t.replace(/\\text\{([^}]+)\}/g,'$1').replace(/\\mathrm\{([^}]+)\}/g,'$1');
-      // Retirer les \begin{xxx} et \end{xxx}
+      t = t.replace(/\\mathbf\{([^}]+)\}/g,'$1').replace(/\\mathit\{([^}]+)\}/g,'$1');
+      // Environnements
       t = t.replace(/\\begin\{[a-zA-Z*]+\}/g, '').replace(/\\end\{[a-zA-Z*]+\}/g, '');
+      // Nettoyage final : accolades restantes et commandes inconnues
       t = t.replace(/\{([^{}]*)\}/g,'$1').replace(/\\[a-zA-Z]+/g,'');
       return t.trim();
     }
