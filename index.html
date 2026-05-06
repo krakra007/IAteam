@@ -521,6 +521,9 @@
       padding:10px 18px;margin:10px 0;overflow-x:auto;text-align:center
     }
     .assistant-body .katex-inline-wrap{display:inline}
+    /* Formules chimiques inline auto-converties depuis <code> */
+    .assistant-body .chem-inline{display:inline-baseline;background:transparent;padding:0;border:0;font-family:inherit}
+    .assistant-body .chem-inline .katex{font-size:1.05em}
     .katex-fallback-block{
       font-family:"JetBrains Mono",monospace;font-size:.92em;color:#a8d4ff;
       background:#141a26;border-left:3px solid #4a80c4;border-radius:8px;
@@ -922,12 +925,12 @@ const SYSTEM_PROMPT = `Tu es un assistant IA expert. RÈGLES ABSOLUES — tu doi
 const S = {
   projects: JSON.parse(localStorage.getItem("projects") || "[]"),
   chats:    JSON.parse(localStorage.getItem("chats")    || "[]"),
-  profiles: JSON.parse(localStorage.getItem("profiles") || "null") || [,
+  profiles: JSON.parse(localStorage.getItem("profiles") || "null") || [
     {
       id: "chemistry",
       name: "Chimie & Sciences",
       icon: "⚗️",
-      prompt: "RÈGLES ABSOLUES — respecte-les sans exception :\n1. INTERDIT : balises HTML (<span>, <sup>, <sub>, <div>...)\n2. INTERDIT : classes CSS\n3. Équations en LaTeX UNIQUEMENT :\n   - Bloc display : $$CH_{3}Br + OH^{-} \\rightarrow CH_{3}OH + Br^{-}$$\n   - Inline : $v = k[A][B]$, $H_{2}O$, $OH^{-}$\n   - Pour PLUSIEURS lignes alignées dans un seul bloc, utiliser OBLIGATOIREMENT $$\\begin{aligned} ligne1 \\\\ ligne2 \\end{aligned}$$ (jamais \\\\ ou & isolés)\n   - Toujours utiliser le trait d'union ASCII '-' (jamais les tirets typographiques – ou —) à l'intérieur des $...$ et $$...$$\n4. Structure Markdown : ## titres, - listes, **gras**\n5. Tu es expert en chimie organique, inorganique et physique. Tes réponses sont précises et bien structurées."
+      prompt: "RÈGLES ABSOLUES — respecte-les sans exception :\n1. INTERDIT : balises HTML (<span>, <sup>, <sub>, <div>...)\n2. INTERDIT : classes CSS\n3. INTERDIT : backticks autour des formules — JAMAIS `-COOH`, `H2O`, `RCOO-`. Utilise toujours la notation math $...$ pour les formules en cours de phrase.\n4. Équations en LaTeX UNIQUEMENT :\n   - Inline (au fil du texte) : $-COOH$, $H_{2}O$, $RCOO^{-}$, $pK_{a}$, $\\beta$-keto-ester\n   - Bloc display : $$CH_{3}Br + OH^{-} \\rightarrow CH_{3}OH + Br^{-}$$\n   - Pour PLUSIEURS lignes alignées dans un seul bloc, utiliser OBLIGATOIREMENT $$\\begin{aligned} ligne1 \\\\ ligne2 \\end{aligned}$$ (jamais \\\\ ou & isolés)\n   - Toujours utiliser le trait d'union ASCII '-' (jamais les tirets typographiques – ou —) à l'intérieur des $...$ et $$...$$\n5. Les backticks `...` sont RÉSERVÉS au code informatique uniquement (noms de variables, mots-clés, etc.)\n6. Structure Markdown : ## titres, - listes, **gras**, tableaux GFM\n7. Tu es expert en chimie organique, inorganique et physique. Tes réponses sont précises et bien structurées."
     },
     {
       id: "coding",
@@ -1742,6 +1745,47 @@ function formatAssistantContent(raw) {
     '<div class="code-block-header"><span>code</span>' +
     '<button class="copy-code-btn" onclick="navigator.clipboard.writeText(this.closest(\'pre\').querySelector(\'code\').textContent).then(()=>{this.textContent=\'✓\';setTimeout(()=>this.textContent=\'Copier\',2000)})">Copier</button>' +
     '</div><pre><code>');
+
+  // ── Auto-conversion des <code> "chimiques" en math inline ──
+  // Quand le LLM met `-COOH` ou `RCOO-` au lieu de $-COOH$ ou $RCOO^-$, marked
+  // produit du <code> avec rendu monospace. Si le contenu RESSEMBLE à une
+  // formule (lettres + chiffres + +-, sans espaces ni ponctuation de code),
+  // on le rend via KaTeX inline pour avoir l'aspect "chimie pro".
+  html = html.replace(/<code(?:\s[^>]*)?>([^<]+)<\/code>/g, function(full, inner) {
+    // Décoder les entités HTML que marked a échappées
+    var decoded = inner
+      .replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>')
+      .replace(/&quot;/g,'"').replace(/&#39;/g,"'");
+    // Heuristiques d'exclusion : si ça ressemble à du code, on laisse
+    if (decoded.length > 30) return full;
+    if (/[\s;{}()=]|==|=>|->|\.\w/.test(decoded)) return full;
+    // Heuristiques d'inclusion : formule chimique probable
+    var looksChemical =
+      // contient un - ou + en signe de charge avec lettres/chiffres : -COOH, RCOO-, Fe3+
+      /^[A-Za-z0-9_^{}\\]*[+\-][A-Za-z0-9_^{}\\+\-]*$/.test(decoded) ||
+      // commence par un -CH3, -OH, -NH2, -COOH typique
+      /^-(COOH|OH|NH[23]?|CH[23]?|CHO|COO[\-]?|NO[23]|SO[34]|PO[34]|R'?|X)$/.test(decoded) ||
+      // se termine par -OH, -COOH... (R-OH, CH3-COOH)
+      /^[A-Z][A-Za-z0-9]*-(COOH|OH|NH[23]?|CH[23]?|CHO|COO[\-]?|NO[23])$/.test(decoded) ||
+      // formule moléculaire pure : H2O, CH4, NaCl, Na2Cr2O7, H2SO4
+      /^[A-Z][a-z]?[0-9]*([A-Z][a-z]?[0-9]*)+$/.test(decoded) ||
+      // notation LaTeX-like : X_2, X^-, X_{2}, X^{-}
+      /[_^]/.test(decoded);
+    if (!looksChemical) return full;
+    // Convertir en LaTeX : ajouter des accolades aux indices/exposants nus
+    var tex = decoded
+      .replace(/([A-Za-z\)\]])([0-9]+)/g, '$1_{$2}')   // H2O → H_{2}O
+      .replace(/\^([+\-])(?![{a-zA-Z0-9])/g, '^{$1}'); // X^- → X^{-}
+    try {
+      if (typeof katex !== 'undefined') {
+        return '<span class="chem-inline">' +
+               katex.renderToString(tex, {displayMode:false, throwOnError:false, strict:'ignore'}) +
+               '</span>';
+      }
+    } catch(e) {}
+    // Fallback : convertir en Unicode propre (sans box bleue)
+    return '<span class="chem-inline">' + latexFallback(tex) + '</span>';
+  });
 
   return html;
 }
