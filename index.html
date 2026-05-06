@@ -449,49 +449,62 @@
       margin:10px 0;
     }
 
-    /* ── Rendu Markdown professionnel (marked.js) ── */
+    /* ── Rendu Markdown professionnel ── */
+    .assistant-body{font-size:16px;line-height:1.65;color:#e0e4ec}
     .assistant-body h1,.assistant-body h2{
-      font-size:19px;font-weight:700;color:#e8eaee;
-      border-bottom:1px solid #3f3f46;padding-bottom:6px;margin:18px 0 10px;
+      font-size:18px;font-weight:700;color:#e8eaee;
+      border-bottom:1px solid #3f3f46;padding-bottom:5px;margin:16px 0 8px;
     }
-    .assistant-body h3{font-size:16px;font-weight:600;color:#c8d8f0;margin:14px 0 8px}
-    .assistant-body h4{font-size:14px;font-weight:600;color:#9db8d0;margin:10px 0 6px}
-    .assistant-body ul,.assistant-body ol{margin:8px 0 12px 22px;padding:0}
-    .assistant-body li{margin:5px 0;line-height:1.65;font-size:15px}
+    .assistant-body h3{font-size:16px;font-weight:600;color:#c8d8f0;margin:12px 0 6px}
+    .assistant-body h4{font-size:15px;font-weight:600;color:#9db8d0;margin:10px 0 4px}
+    .assistant-body p{margin:0 0 8px;line-height:1.65}
+    .assistant-body ul,.assistant-body ol{margin:4px 0 8px 20px;padding:0}
+    .assistant-body li{margin:2px 0;line-height:1.6;font-size:15px}
     .assistant-body li p{margin:0}
+    .assistant-body li+li{margin-top:3px}
     .assistant-body code{
-      background:#2a2a2a;padding:2px 6px;border-radius:4px;
+      background:#2a2a2a;padding:1px 5px;border-radius:4px;
       font-family:"SFMono-Regular",Consolas,monospace;font-size:.87em;color:#c9d1d9;
     }
     .assistant-body pre{
       background:#161b22;border:1px solid #30363d;border-radius:8px;
-      padding:14px 16px;overflow-x:auto;margin:12px 0;
+      padding:12px 16px;overflow-x:auto;margin:8px 0;
     }
-    .assistant-body pre code{background:none;padding:0;font-size:13px;color:#c9d1d9}
+    .assistant-body pre code{background:none;padding:0;font-size:13px}
     .assistant-body blockquote{
-      margin:10px 0;padding:8px 14px;
+      margin:8px 0;padding:6px 12px;
       border-left:3px solid #4b5563;background:#1e2330;
-      border-radius:0 6px 6px 0;color:#9ca3af;font-style:italic;
+      border-radius:0 6px 6px 0;color:#9ca3af;
     }
-    .assistant-body table{border-collapse:collapse;width:100%;margin:12px 0;font-size:14px}
+    .assistant-body blockquote p{margin:0}
+    .assistant-body table{border-collapse:collapse;width:100%;margin:10px 0;font-size:14px}
     .assistant-body th{
-      background:#1e2a3a;color:#7baaf7;padding:8px 12px;
+      background:#1e2a3a;color:#7baaf7;padding:7px 11px;
       border:1px solid #3f3f46;text-align:left;font-weight:600;
     }
-    .assistant-body td{padding:7px 12px;border:1px solid #2d3748;vertical-align:top}
+    .assistant-body td{padding:6px 11px;border:1px solid #2d3748}
     .assistant-body tr:nth-child(even){background:#1a1f2e}
-    .assistant-body hr{border:none;border-top:1px solid #3f3f46;margin:14px 0}
-    .assistant-body a{color:#7baaf7;text-decoration:none}
-    .assistant-body a:hover{text-decoration:underline}
+    .assistant-body hr{border:none;border-top:1px solid #3f3f46;margin:10px 0}
     .assistant-body strong{font-weight:700;color:#e8eaee}
-    .assistant-body em{font-style:italic;color:#d0d8e8}
-    .assistant-body p{margin:0 0 10px;line-height:1.7}
+    .assistant-body em{font-style:italic}
+    /* KaTeX */
+    .katex-display{
+      background:#141a26;border-left:3px solid #4a80c4;border-radius:8px;
+      padding:10px 18px;margin:10px 0;overflow-x:auto;text-align:center;
+    }
+    .katex-inline-wrap{display:inline}
+    .katex{font-size:1em !important;color:#c8deff}
+    .katex-error-fallback{
+      font-family:monospace;font-size:.88em;color:#a8d4ff;
+      background:#1a2030;border-left:3px solid #4a80c4;
+      border-radius:4px;padding:4px 10px;display:inline-block;
+    }
   </style>
   <!-- marked.js — parser Markdown standard industriel -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.0/marked.min.js"></script>
   <!-- KaTeX — rendu LaTeX professionnel (compilation réelle) -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.css">
-  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.js"></script>
 </head>
 <body>
 <!-- VERSION_FIXED_V8 -->
@@ -1499,63 +1512,52 @@ function convertLatex(text) {
 function formatAssistantContent(raw) {
   if (!raw) return "";
 
-  // ── 1. Nettoyer le HTML brut éventuel du modèle ─────────────
+  // ── 1. Nettoyer HTML brut du modèle ─────────────────────────
   raw = sanitizeModelResponse(raw);
 
-  // ── 2. Extraire les blocs math avant marked (qui échappe $) ──
+  // ── 2. Extraire maths → placeholders HTML comments ───────────
+  // Les commentaires HTML sont passés intacts par marked.js
   const mathBlocks  = [];
   const mathInlines = [];
-  const BSEP = "XXMATHBLOCKXX";
-  const ISEP = "XXMATHINLINEXX";
 
-  // Blocs $$ ... $$ (multi-ligne supporté)
+  // $$ ... $$ display (multi-ligne)
   raw = raw.replace(/\$\$([\s\S]+?)\$\$/g, (_, inner) => {
     mathBlocks.push(inner.trim());
-    return BSEP + (mathBlocks.length - 1) + BSEP;
+    return "<!--MBLOCK" + (mathBlocks.length-1) + "-->";
   });
-  // Alternatif \[ ... \]
+  // \[ ... \] alternatif display
   raw = raw.replace(/\\\[([\s\S]+?)\\\]/g, (_, inner) => {
     mathBlocks.push(inner.trim());
-    return BSEP + (mathBlocks.length - 1) + BSEP;
+    return "<!--MBLOCK" + (mathBlocks.length-1) + "-->";
   });
-  // Inline $ ... $
-  raw = raw.replace(/\$([^\$\n]{1,200}?)\$/g, (_, inner) => {
+  // $ ... $ inline (pas les déjà traités)
+  raw = raw.replace(/\$([^\$\n\r]{1,200}?)\$/g, (_, inner) => {
     mathInlines.push(inner.trim());
-    return ISEP + (mathInlines.length - 1) + ISEP;
+    return "<!--MINLINE" + (mathInlines.length-1) + "-->";
   });
 
-  // ── 3. Convertir Markdown → HTML avec marked.js ──────────────
-  let html;
+  // ── 3. Markdown → HTML via marked.js ────────────────────────
+  let html = "";
   if (typeof marked !== "undefined") {
-    marked.setOptions({
-      breaks: true,        // \n → <br> dans les paragraphes
-      gfm:    true,        // GitHub Flavored Markdown
-      pedantic: false
-    });
-    html = marked.parse(raw);
+    html = marked.parse(raw, { breaks: false, gfm: true });
   } else {
-    // Fallback minimal si marked n'est pas chargé
-    html = "<p>" + raw.replace(/\n\n/g,"</p><p>").replace(/\n/g,"<br>") + "</p>";
+    // Fallback basique
+    html = "<p>" + escapeHtml(raw).replace(/\n\n/g,"</p><p>").replace(/\n/g," ") + "</p>";
   }
 
-  // ── 4. Restaurer les formules mathématiques via KaTeX ─────────
-  // Blocs display
+  // ── 4. Restaurer les formules avec KaTeX ─────────────────────
   mathBlocks.forEach((latex, i) => {
-    const rendered = renderLatexBlock(latex);
-    html = html.replaceAll(BSEP + i + BSEP, rendered);
-    // marked peut avoir échappé le placeholder dans un <p>
-    html = html.replaceAll(
-      "<p>" + BSEP + i + BSEP + "</p>",
-      rendered
-    );
+    const ph  = "<!--MBLOCK" + i + "-->";
+    html = html.split(ph).join(renderLatexBlock(latex));
   });
-  // Inline
   mathInlines.forEach((latex, i) => {
-    html = html.replaceAll(ISEP + i + ISEP, renderLatexInline(latex));
+    const ph  = "<!--MINLINE" + i + "-->";
+    html = html.split(ph).join(renderLatexInline(latex));
   });
 
   return html;
 }
+
 
 
 /** Formatage inline Markdown (bold, code, inline) — sans escaper les placeholders */
@@ -2723,6 +2725,16 @@ if (typeof marked !== "undefined") {
 }
 buildColorPicker();
 initGithubPanel();
+
+  // Re-render messages une fois KaTeX chargé (il peut arriver après le premier render)
+  (function waitForKatex() {
+    if (typeof katex !== "undefined" && typeof marked !== "undefined") {
+      renderMessages(); // Re-render avec KaTeX dispo
+    } else {
+      setTimeout(waitForKatex, 80);
+    }
+  })();
+
 
 // ── Panneau Profils droit ──
 el("toggleRightPanelBtn").onclick = () => {
