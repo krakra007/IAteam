@@ -367,6 +367,44 @@
     }
     .active-profile-chip:hover{background:#1f6feb28}
     .active-profile-chip span{font-size:14px}
+
+    /* ── Panneau clés API redessiné ── */
+    #apiKeyPanel{
+      right:0 !important;
+      top:46px !important;
+      width:380px !important;
+      max-height:85vh;
+      overflow-y:auto;
+    }
+    .key-row{display:flex;flex-direction:column;gap:5px;padding:8px 0;border-bottom:1px solid #2c2c2c}
+    .key-row:last-child{border-bottom:none}
+    .key-header{display:flex;align-items:center;justify-content:space-between}
+    .key-label{font-size:11px;font-weight:700;color:#9ca3af;letter-spacing:.06em;text-transform:uppercase}
+    .key-status{font-size:11px;display:flex;align-items:center;gap:5px}
+    .key-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+    .key-input-row{display:flex;gap:6px}
+    .key-input{
+      flex:1;background:#161616;border:1px solid var(--line);
+      color:var(--text);border-radius:7px;padding:7px 10px;
+      font-size:12px;font-family:monospace;
+      transition:border-color .15s;
+    }
+    .key-input:focus{outline:none;border-color:#4a9fd4}
+    .key-input.has-key{border-color:#22c55e44}
+    .key-test-btn{
+      padding:0 10px;border:1px solid var(--line);background:#ffffff0d;
+      color:var(--muted);border-radius:7px;cursor:pointer;font-size:11px;
+      white-space:nowrap;transition:background .12s;
+    }
+    .key-test-btn:hover{background:#ffffff1a;color:#e2e8f0}
+    .key-test-result{font-size:11px;min-height:14px;padding:2px 0}
+    .save-keys-btn{
+      width:100%;padding:9px;border-radius:8px;background:#1f6feb;
+      border:none;color:#fff;font-size:13px;font-weight:600;cursor:pointer;
+      margin-top:8px;transition:background .15s;
+    }
+    .save-keys-btn:hover{background:#2d7ef7}
+    .save-keys-btn.saved{background:#22c55e}
   </style>
 </head>
 <body>
@@ -434,16 +472,15 @@
             ℹ️ Le token doit avoir le scope <code style="background:#2a2a2a;padding:1px 4px;border-radius:3px">repo</code> (ou <code style="background:#2a2a2a;padding:1px 4px;border-radius:3px">contents:write</code> pour un token fin-grained).
           </div>
         </div>
-        <div id="apiKeyPanel" class="params" style="right:90px;top:46px;width:360px">
-          <!-- Chip modèle actif (caché dans le panneau clés) -->
+        <div id="apiKeyPanel" class="params">
+          <!-- Chip modèle actif -->
           <div id="activeModelChip" class="active-model-chip" style="margin-bottom:10px;width:100%">
             <span class="dot" id="chipDot"></span>
             <span id="chipLabel" class="label-txt">…</span>
           </div>
-          <div id="providerKeys" style="display:flex;flex-direction:column;gap:10px"></div>
-          <div style="display:flex;gap:8px;margin-top:8px">
-            <button class="btn" id="saveApiKeyBtn">Enregistrer</button>
-          </div>
+          <div style="font-size:13px;font-weight:600;color:#e2e8f0;margin-bottom:8px">🔑 Clés API</div>
+          <div id="providerKeys"></div>
+          <button class="save-keys-btn" id="saveApiKeyBtn">💾 Enregistrer toutes les clés</button>
         </div>
       </div>
       <div id="paramsPanel" class="params"></div>
@@ -538,6 +575,15 @@
     <div class="right-panel-head">
       <span class="right-panel-title">⚙ Profils système</span>
       <button class="icon-btn" id="newProfileBtn" title="Nouveau profil" style="font-size:18px;color:#7baaf7">＋</button>
+    </div>
+    <div id="activePromptBanner" style="display:none;margin:6px 8px;padding:6px 10px;background:#1e2a3a;border:1px solid #1f6feb44;border-radius:8px;font-size:11px;color:#7baaf7;line-height:1.4">
+      <div style="font-weight:600;margin-bottom:3px">✅ Profil actif :</div>
+      <div id="activePromptName" style="color:#e2e8f0"></div>
+      <button onclick="togglePromptPreview()" style="margin-top:4px;border:none;background:#ffffff12;color:#9ca3af;border-radius:4px;padding:2px 8px;font-size:10px;cursor:pointer">Voir le prompt</button>
+      <pre id="promptPreview" style="display:none;margin:6px 0 0;padding:8px;background:#111;border-radius:6px;font-size:10px;color:#9ca3af;white-space:pre-wrap;max-height:200px;overflow-y:auto;border:1px solid #333"></pre>
+    </div>
+    <div id="noProfileBanner" style="margin:6px 8px;padding:6px 10px;background:#2a1a0a;border:1px solid #d4b44a44;border-radius:8px;font-size:11px;color:#d4b44a;line-height:1.4">
+      ⚠ Aucun profil actif — cliquez sur un profil ci-dessous pour l'activer
     </div>
     <div class="profile-list" id="profileList"></div>
     <!-- Éditeur -->
@@ -718,29 +764,18 @@ function nextProjectColor(){
 // Injecté dans chaque appel API pour interdire le HTML
 // et imposer des conventions de formatage professionnel.
 // ─────────────────────────────────────────────────────────────
-const SYSTEM_PROMPT = `Tu es un assistant expert. Règles de formatage STRICTES :
+const SYSTEM_PROMPT = `Tu es un assistant IA expert. RÈGLES ABSOLUES — tu dois les respecter sans exception :
 
-INTERDIT :
-- N'utilise JAMAIS de balises HTML (<span>, <sup>, <sub>, <div>, <p>, etc.)
-- N'utilise JAMAIS de classes CSS comme chem-eq, math-block, etc.
-- N'utilise JAMAIS de syntaxe markdown avec des astérisques excessifs
+1. JAMAIS de balises HTML dans tes réponses (<span>, <sup>, <sub>, <div>, <p>, <br>, etc.)
+2. JAMAIS de classes CSS (chem-eq, math-block, etc.)
+3. Pour les équations chimiques et mathématiques : utilise EXCLUSIVEMENT la notation LaTeX
+   - Bloc display : $$CH_3Br + OH^- \rightarrow CH_3OH + Br^-$$
+   - Inline : la constante $k$ dépend de $T$
+   - Indices : $H_{2}O$, $CH_{3}$
+   - Exposants : $OH^{-}$, $Fe^{3+}$
+4. Structure : titres ##, listes avec -, termes importants en **gras**
+5. Sois précis, structuré et professionnel`;
 
-CHIMIE & MATHÉMATIQUES :
-- Pour les équations affichées seules : utilise $$...$$  
-  Exemple : $$CH_3Br + OH^- \\rightarrow CH_3OH + Br^-$$
-- Pour les formules dans une phrase : utilise $...$  
-  Exemple : la vitesse suit $v = k[A][B]$
-- Exposants : ^{} → $CH_3^{+}$ ou écriture Unicode : CH₃⁺
-- Indices : _{} → $H_{2}O$ ou écriture Unicode : H₂O
-- Flèche réaction : → ou \\rightarrow dans LaTeX
-- Équilibre : ⇌ ou \\leftrightarrow dans LaTeX
-
-STRUCTURE DES RÉPONSES :
-- Titres avec ## ou ###
-- Listes avec - ou 1.
-- Termes importants en **gras**
-- Formules de code avec \`backticks\`
-- Séparateurs avec ---`;
 
 // ─────────────────────────────────────────────────
 // ÉTAT
@@ -748,12 +783,12 @@ STRUCTURE DES RÉPONSES :
 const S = {
   projects: JSON.parse(localStorage.getItem("projects") || "[]"),
   chats:    JSON.parse(localStorage.getItem("chats")    || "[]"),
-  profiles: JSON.parse(localStorage.getItem("profiles") || "null") || [
+  profiles: JSON.parse(localStorage.getItem("profiles") || "null") || [,
     {
       id: "chemistry",
       name: "Chimie & Sciences",
       icon: "⚗️",
-      prompt: "Tu es un expert en chimie et sciences. Règles strictes :\n- JAMAIS de balises HTML dans ta réponse\n- Équations chimiques en LaTeX : $$CH_3Br + OH^- \\rightarrow CH_3OH + Br^-$$\n- Formules inline : $H_2O$, $v = k[A][B]$\n- Indices : _{} → $H_{2}O$, Exposants : ^{} → $OH^{-}$\n- Flèches : → ou \\rightarrow dans LaTeX, ⇌ pour équilibre\n- Structure : titres ##, listes -, termes clés en **gras**\n- Jamais de balises <span>, <sup>, <sub>, <div>"
+      prompt: "RÈGLES ABSOLUES — respecte-les sans exception :\n1. INTERDIT : balises HTML (<span>, <sup>, <sub>, <div>...)\n2. INTERDIT : classes CSS\n3. Équations en LaTeX UNIQUEMENT :\n   - Bloc display : $$CH_{3}Br + OH^{-} \\rightarrow CH_{3}OH + Br^{-}$$\n   - Inline : $v = k[A][B]$, $H_{2}O$, $OH^{-}$\n4. Structure Markdown : ## titres, - listes, **gras**\n5. Tu es expert en chimie organique, inorganique et physique. Tes réponses sont précises et bien structurées."
     },
     {
       id: "coding",
@@ -852,18 +887,114 @@ function providerBadgeHtml(provider) {
 // AFFICHAGE CLÉS API
 // ─────────────────────────────────────────────────
 function renderApiKeys() {
-  providerKeysEl.innerHTML = PROVIDERS.map(name => {
-    const val = apiKeysByProvider[name] || "";
-    const status = val ? "✓ Clé configurée" : "Aucune clé";
-    const dot    = val ? "#22c55e" : "#6b7280";
-    return `<div style="display:flex;flex-direction:column;gap:6px">
-      <div style="font-size:12px;color:#9ca3af;font-weight:600;letter-spacing:.04em">${name}</div>
-      <input data-provider="${name}" type="password" value="${val}" placeholder="Entrer la clé ${name}" />
-      <div style="font-size:12px;color:#9ca3af">
-        <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${dot};margin-right:6px"></span>${status}
+  const container = el("providerKeys");
+  if (!container) return;
+
+  const providerMeta = {
+    "ANTHROPIC":    { color:"#c8621a", icon:"🟠", placeholder:"sk-ant-api03-..." },
+    "OPENAI":       { color:"#10a37f", icon:"🟢", placeholder:"sk-proj-..." },
+    "DEEPSEEK":     { color:"#7b9cf7", icon:"🔵", placeholder:"sk-..." },
+    "GOOGLE GEMINI":{ color:"#7baaf7", icon:"🔷", placeholder:"AIza..." },
+    "GROQ":         { color:"#f55016", icon:"🔴", placeholder:"gsk_..." }
+  };
+
+  container.innerHTML = "";
+
+  PROVIDERS.forEach(name => {
+    const val  = apiKeysByProvider[name] || "";
+    const meta = providerMeta[name] || { color:"#9ca3af", icon:"⚪", placeholder:"Clé API..." };
+    const hasKey = !!val;
+
+    const row = document.createElement("div");
+    row.className = "key-row";
+    row.innerHTML = `
+      <div class="key-header">
+        <div class="key-label">${meta.icon} ${name}</div>
+        <div class="key-status" id="keyStatus_${name.replace(/\s/g,'_')}">
+          <span class="key-dot" style="background:${hasKey ? '#22c55e' : '#6b7280'}"></span>
+          <span style="color:${hasKey ? '#22c55e' : '#6b7280'}">${hasKey ? "✓ Configurée" : "Non configurée"}</span>
+        </div>
       </div>
-    </div>`;
-  }).join("");
+      <div class="key-input-row">
+        <input class="key-input ${hasKey ? 'has-key' : ''}"
+               data-provider="${name}"
+               type="password"
+               value="${val}"
+               placeholder="${meta.placeholder}"
+               autocomplete="off" />
+        <button class="key-test-btn" data-test="${name}">Tester</button>
+      </div>
+      <div class="key-test-result" id="keyResult_${name.replace(/\s/g,'_')}"></div>
+    `;
+
+    // Mise à jour status en temps réel
+    const input = row.querySelector("input");
+    input.addEventListener("input", () => {
+      const v = input.value.trim();
+      const statusEl = row.querySelector(".key-status");
+      const dotEl    = row.querySelector(".key-dot");
+      const textEl   = statusEl.querySelector("span:last-child");
+      if (v) {
+        dotEl.style.background  = "#d4b44a";
+        textEl.style.color      = "#d4b44a";
+        textEl.textContent      = "⏳ Non enregistrée";
+        input.classList.add("has-key");
+      } else {
+        dotEl.style.background  = "#6b7280";
+        textEl.style.color      = "#6b7280";
+        textEl.textContent      = "Non configurée";
+        input.classList.remove("has-key");
+      }
+    });
+
+    // Bouton Tester
+    const testBtn = row.querySelector("[data-test]");
+    testBtn.onclick = () => testApiKey(name, input.value.trim());
+
+    container.appendChild(row);
+  });
+}
+
+/** Teste une clé API individuellement */
+async function testApiKey(provider, key) {
+  const resId = "keyResult_" + provider.replace(/\s/g,"_");
+  const resEl = el(resId);
+  if (!resEl) return;
+  if (!key) { resEl.innerHTML = '<span style="color:#f87171">Entrez une clé d\'abord</span>'; return; }
+  resEl.innerHTML = '<span style="color:#d4b44a">⏳ Test…</span>';
+  try {
+    let ok = false, msg = "";
+    if (provider === "ANTHROPIC") {
+      const r = await fetch("https://api.anthropic.com/v1/models", {
+        headers: { "x-api-key": key, "anthropic-version": "2023-06-01",
+                   "anthropic-dangerous-direct-browser-access": "true" }
+      });
+      ok = r.status === 200 || r.status === 404; // 404 = endpoint ok, clé ok
+      msg = ok ? "Clé valide ✓" : `Erreur ${r.status}`;
+    } else if (provider === "OPENAI" || provider === "DEEPSEEK") {
+      const endpoint = provider === "DEEPSEEK"
+        ? "https://api.deepseek.com/models"
+        : "https://api.openai.com/v1/models";
+      const r = await fetch(endpoint, { headers: { "Authorization": "Bearer " + key } });
+      ok = r.status === 200;
+      msg = ok ? "Clé valide ✓" : `Erreur ${r.status}`;
+    } else if (provider === "GOOGLE GEMINI") {
+      const r = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models?key=${key}`
+      );
+      ok = r.status === 200;
+      msg = ok ? "Clé valide ✓" : `Erreur ${r.status}`;
+    } else if (provider === "GROQ") {
+      const r = await fetch("https://api.groq.com/openai/v1/models", {
+        headers: { "Authorization": "Bearer " + key }
+      });
+      ok = r.status === 200;
+      msg = ok ? "Clé valide ✓" : `Erreur ${r.status}`;
+    }
+    resEl.innerHTML = `<span style="color:${ok?'#22c55e':'#f87171'}">${ok?'✅':'❌'} ${msg}</span>`;
+  } catch(e) {
+    resEl.innerHTML = `<span style="color:#f87171">❌ ${e.message}</span>`;
+  }
 }
 
 // ─────────────────────────────────────────────────
@@ -1800,6 +1931,10 @@ async function send() {
   promptEl.value      = "";
   isWaitingResponse   = true;
   render();
+  // DEBUG — visible dans F12 → Console
+  const _sp = getActiveSystemPrompt();
+  console.log('[BrAInShift] Profil actif:', S.activeProfile || 'AUCUN');
+  console.log('[BrAInShift] System prompt (100 premiers chars):', _sp.slice(0,100));
 
   try {
     let responseContent;
@@ -1855,6 +1990,11 @@ async function send() {
 // ═════════════════════════════════════════════════════════════
 
 /** Retourne le prompt système actif (profil sélectionné ou défaut) */
+function togglePromptPreview() {
+  const prev = el("promptPreview");
+  if (prev) prev.style.display = prev.style.display === "none" ? "block" : "none";
+}
+
 function getActiveSystemPrompt() {
   if (!S.activeProfile) return SYSTEM_PROMPT;
   const p = S.profiles.find(p => p.id === S.activeProfile);
@@ -1888,6 +2028,21 @@ function renderProfiles() {
   if (!S.profiles.length) {
     list.innerHTML = '<div style="padding:16px;color:var(--muted);font-size:13px;text-align:center">Aucun profil.<br>Cliquez sur ＋ pour en créer un.</div>';
     return;
+  }
+
+  // Mettre à jour les bannières
+  const banner   = el("activePromptBanner");
+  const noBanner = el("noProfileBanner");
+  const activePr = S.profiles.find(p => p.id === S.activeProfile);
+  if (activePr && banner && noBanner) {
+    banner.style.display   = "block";
+    noBanner.style.display = "none";
+    el("activePromptName").textContent = activePr.icon + " " + activePr.name;
+    const prev = el("promptPreview");
+    if (prev) prev.textContent = activePr.prompt;
+  } else if (banner && noBanner) {
+    banner.style.display   = "none";
+    noBanner.style.display = "block";
   }
 
   S.profiles.forEach(p => {
@@ -2282,11 +2437,33 @@ promptEl.addEventListener("keydown", e => {
 // Clés API
 el("apiKeyBtn").onclick   = () => el("apiKeyPanel").classList.toggle("open");
 el("saveApiKeyBtn").onclick = async () => {
-  providerKeysEl.querySelectorAll("input[data-provider]").forEach(inp => {
+  // Lire toutes les valeurs depuis les inputs actuels
+  el("providerKeys").querySelectorAll("input[data-provider]").forEach(inp => {
     apiKeysByProvider[inp.dataset.provider] = inp.value.trim();
   });
   save();
-  renderApiKeys();
+  // Feedback visuel bouton vert
+  const btn = el("saveApiKeyBtn");
+  btn.textContent = "✅ Clés enregistrées !";
+  btn.classList.add("saved");
+  setTimeout(() => {
+    btn.textContent = "💾 Enregistrer toutes les clés";
+    btn.classList.remove("saved");
+  }, 2000);
+  // Mettre à jour le statut de chaque ligne sans refermer le panneau
+  el("providerKeys").querySelectorAll("input[data-provider]").forEach(inp => {
+    const name   = inp.dataset.provider;
+    const val    = inp.value.trim();
+    const statusEl = el("keyStatus_" + name.replace(/\s/g,"_"));
+    if (statusEl) {
+      const dot  = statusEl.querySelector(".key-dot");
+      const text = statusEl.querySelector("span:last-child");
+      dot.style.background  = val ? "#22c55e" : "#6b7280";
+      text.style.color      = val ? "#22c55e" : "#6b7280";
+      text.textContent      = val ? "✓ Configurée" : "Non configurée";
+      inp.classList.toggle("has-key", !!val);
+    }
+  });
   await loadModelsFromApi();
 };
 
