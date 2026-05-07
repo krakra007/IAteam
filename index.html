@@ -151,7 +151,7 @@
     .composer-wrap{transition:max-width .2s ease}
     .main.home-mode .composer-wrap{max-width:980px;width:min(94vw,980px);display:block}
     .main.home-mode textarea{width:100%;height:64px;border-radius:28px;padding:18px 64px 18px 20px;overflow:hidden}
-    .main.home-mode .send-circle{position:absolute;right:12px;top:50%;transform:translateY(-50%)}
+    .main.home-mode .send-circle{position:absolute;right:12px;bottom:13px;top:auto;transform:none}
     .composer-box{position:relative;width:100%}
     .composer-box .send-circle{position:absolute;right:10px;bottom:10px}
 
@@ -351,7 +351,7 @@
     .attach-btn:hover{color:#7baaf7;background:#7baaf720}
     .file-preview-area{
       display:flex;flex-wrap:wrap;gap:6px;
-      padding:6px 10px 0;
+      padding:8px 52px 0 12px; /* padding-right pour éviter chevauchement avec les boutons */
     }
     .file-preview-area:empty{display:none}
     .file-chip{
@@ -2148,31 +2148,43 @@ function renderMessages() {
     if (m.role === "assistant") {
       d.innerHTML = `<div class="assistant-body">${formatAssistantContent(m.content)}</div>`;
     } else {
-      // Contenu multimodal (avec fichiers) : afficher texte + icônes fichiers
+      // Afficher : texte tapé par l'utilisateur + badges compacts pour les fichiers
+      // On n'affiche JAMAIS le contenu extrait (trop long et destiné au modèle, pas à l'UI)
       const displayText = m._text || (typeof m.content === 'string' ? m.content : '');
+
       if (Array.isArray(m.content)) {
-        const imgs = m.content.filter(b => b.type === 'image');
-        const docs = m.content.filter(b => b.type === 'document');
-        const texts = m.content.filter(b => b.type === 'text');
-        if (imgs.length) {
-          const wrap2 = document.createElement('div');
-          wrap2.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;justify-content:flex-end';
-          imgs.forEach(b => {
-            const img = document.createElement('img');
-            img.src = `data:${b.source.media_type};base64,${b.source.data}`;
-            img.style.cssText = 'max-width:200px;max-height:140px;border-radius:8px;object-fit:cover';
-            wrap2.appendChild(img);
+        // Badge compact pour chaque bloc fichier (image, document, texte extrait)
+        const fileBlocks = m.content.filter(b => b.type !== 'text' ||
+          (b.text && b.text.startsWith('[')));  // blocs qui sont des fichiers
+
+        const badges = m.content
+          .filter(b => b.type === 'image' || b.type === 'document' ||
+            (b.type === 'text' && b.text && b.text.match(/^\[.+\]/)))
+          .map(b => {
+            if (b.type === 'image') {
+              const img = document.createElement('img');
+              img.src = `data:${b.source.media_type};base64,${b.source.data}`;
+              img.style.cssText = 'max-width:200px;max-height:140px;border-radius:8px;object-fit:cover;display:block;margin-bottom:4px';
+              return img;
+            }
+            // PDF ou fichier Office → badge texte compact
+            const badge = document.createElement('div');
+            badge.style.cssText = 'display:inline-flex;align-items:center;gap:4px;background:#ffffff22;border:1px solid #ffffff33;border-radius:6px;padding:2px 8px;font-size:12px;color:#c9d0db;margin-bottom:4px';
+            if (b.type === 'document') {
+              badge.textContent = `📄 ${b.title || 'document.pdf'}`;
+            } else {
+              // Fichier Office : extraire le nom depuis le header "[icon Contenu du fichier "nom" :]"
+              const match = b.text.match(/^.*?"([^"]+)"/);
+              badge.textContent = match ? `📎 ${match[1]}` : '📎 fichier joint';
+            }
+            return badge;
           });
-          d.appendChild(wrap2);
-        }
-        docs.forEach(b => {
-          const p2 = document.createElement('div');
-          p2.style.cssText = 'font-size:12px;color:#9ca3af;margin-bottom:4px';
-          p2.textContent = `📄 ${b.title || 'Document PDF joint'}`;
-          d.appendChild(p2);
-        });
-        if (texts.length || displayText) {
-          const t = document.createTextNode(texts.map(b=>b.text).join('') || displayText);
+
+        badges.forEach(el => d.appendChild(el));
+
+        // Texte tapé par l'utilisateur (uniquement)
+        if (displayText) {
+          const t = document.createTextNode(displayText);
           d.appendChild(t);
         }
       } else {
