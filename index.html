@@ -1868,6 +1868,33 @@ function formatAssistantContent(raw) {
   // Nettoyer le HTML brut éventuel du modèle
   raw = sanitizeModelResponse(raw);
 
+  // ── FIX IAgenius : Pré-validation de chaque \ce{...} ──────────────────────
+  // Même logique que IAgenius renderMarkdown() : tester si KaTeX + mhchem peut
+  // rendre la formule. Si non (mhchem absent, formule invalide, subscripts Unicode
+  // à l'intérieur…), convertir directement en Unicode lisible au lieu d'afficher
+  // une erreur KaTeX rouge inline.
+  raw = raw.replace(/\\ce\s*\{([^}]*)\}/g, function(_, inner) {
+    try {
+      if (typeof katex !== 'undefined') {
+        katex.renderToString('\\ce{' + inner + '}', {throwOnError: true});
+        return '\\ce{' + inner + '}'; // KaTeX peut le rendre → on garde
+      }
+    } catch(e) {}
+    // mhchem absent ou formule invalide → convertir en Unicode propre
+    return inner
+      .replace(/->/g, '→').replace(/<->/g, '↔').replace(/<=>/g, '⇌')
+      .replace(/\^{([^}]*)}/g, function(_, s) {
+        var m = {'0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹','+':'⁺','-':'⁻'};
+        return s.split('').map(function(c){return m[c]||c;}).join('');
+      })
+      .replace(/_{([^}]*)}/g, function(_, s) {
+        var m = {'0':'₀','1':'₁','2':'₂','3':'₃','4':'₄','5':'₅','6':'₆','7':'₇','8':'₈','9':'₉','+':'₊','-':'₋'};
+        return s.split('').map(function(c){return m[c]||c;}).join('');
+      })
+      .replace(/_([0-9])/g, function(_,c){ return '₀₁₂₃₄₅₆₇₈₉'[+c]; })
+      .replace(/\^([0-9])/g, function(_,c){ return '⁰¹²³⁴⁵⁶⁷⁸⁹'[+c]; });
+  });
+
   // Convertir les lignes de formules Unicode en LaTeX propre
   // (Gère le cas où le LLM écrit `Wc,is` = Cp × T₂ × (γ⁻¹/γ − 1) sans $...$)
   raw = preprocessUnicodeMath(raw);
@@ -2010,10 +2037,12 @@ function formatAssistantContent(raw) {
     }
 
     function renderKatexBlock(tex) {
+      // throwOnError:true → l'exception est attrapée et on bascule sur le fallback Unicode
+      // (comme IAgenius — évite les messages d'erreur KaTeX rouges inline)
       try {
         if (typeof katex !== "undefined") {
           return '<div class="katex-block-wrap">' +
-            katex.renderToString(tex.trim(), {displayMode:true,throwOnError:false,strict:"ignore",errorColor:"#f87171"}) +
+            katex.renderToString(tex.trim(), {displayMode:true,throwOnError:true,strict:"ignore"}) +
             '</div>';
         }
       } catch(e) {}
@@ -2021,9 +2050,10 @@ function formatAssistantContent(raw) {
     }
 
     function renderKatexInline(tex) {
+      // throwOnError:true → fallback Unicode propre en cas d'échec KaTeX
       try {
         if (typeof katex !== "undefined") {
-          return katex.renderToString(tex.trim(), {displayMode:false,throwOnError:false,strict:"ignore",errorColor:"#f87171"});
+          return katex.renderToString(tex.trim(), {displayMode:false,throwOnError:true,strict:"ignore"});
         }
       } catch(e) {}
       return '<span class="katex-fallback-inline">' + latexFallback(tex) + '</span>';
@@ -2141,8 +2171,9 @@ function formatAssistantContent(raw) {
       .replace(/\^([+\-])(?![{a-zA-Z0-9])/g, '^{$1}'); // X^- → X^{-}
     try {
       if (typeof katex !== 'undefined') {
+        // throwOnError:true → si KaTeX échoue (formule invalide), on bascule sur Unicode
         return '<span class="chem-inline">' +
-               katex.renderToString(tex, {displayMode:false, throwOnError:false, strict:'ignore'}) +
+               katex.renderToString(tex, {displayMode:false, throwOnError:true, strict:'ignore'}) +
                '</span>';
       }
     } catch(e) {}
@@ -2183,12 +2214,12 @@ function renderLatexBlock(latex) {
     try {
       return katex.renderToString(latex, {
         displayMode: true,
-        throwOnError: false,
-        errorColor: "#f87171",
+        throwOnError: true,   // ← true : l'exception déclenche le fallback Unicode
         strict: "ignore"
       });
     } catch(e) {
-      return '<span class="katex-error-fallback">' + escapeHtml(latex) + '</span>';
+      // Fallback Unicode lisible via applyLatexSymbols (globale)
+      return '<div class="katex-fallback-block">' + applyLatexSymbols(latex) + '</div>';
     }
   }
   return '<span class="chem-eq">' + applyLatexSymbols(latex) + '</span>';
@@ -2200,12 +2231,12 @@ function renderLatexInline(latex) {
     try {
       return '<span class="katex-inline-wrap">' + katex.renderToString(latex, {
         displayMode: false,
-        throwOnError: false,
-        errorColor: "#f87171",
+        throwOnError: true,   // ← true : l'exception déclenche le fallback Unicode
         strict: "ignore"
       }) + '</span>';
     } catch(e) {
-      return '<code style="color:#a8d4ff">' + escapeHtml(latex) + '</code>';
+      // Fallback Unicode lisible via applyLatexSymbols (globale)
+      return '<span class="katex-fallback-inline">' + applyLatexSymbols(latex) + '</span>';
     }
   }
   return '<span class="chem-inline">' + applyLatexSymbols(latex) + '</span>';
