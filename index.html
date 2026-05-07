@@ -573,6 +573,9 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.js"></script>
   <!-- mhchem : extension chimie pour KaTeX (\ce{...}) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/contrib/mhchem.min.js"></script>
+  <!-- Extraction texte Office côté navigateur -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <!-- Favicon — cerveau numérique BrAInShift -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+CiAgPGRlZnM+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjNGE5ZmQ0Ii8+CiAgICAgIDxzdG9wIG9mZnNldD0iNTAlIiBzdG9wLWNvbG9yPSIjN2I2OGQ0Ii8+CiAgICAgIDxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iI2Q0NmFiZiIvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICA8L2RlZnM+CiAgPCEtLSBGb25kIGFycm9uZGkgc29tYnJlIC0tPgogIDxyZWN0IHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgcng9IjgiIGZpbGw9IiMxYTFhMmUiLz4KICA8IS0tIEjDqW1pc3Bow6hyZSBnYXVjaGUgLS0+CiAgPHBhdGggZD0iTTE2IDUgQzEwIDUgNiA4IDUgMTMgQzQgMTcgNSAyMSA4IDI0IEMxMCAyNiAxMyAyNyAxNSAyNiBMMTUuNSAyNiBMMTUuNSA2IFoiCiAgICAgICAgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ1cmwoI2cpIiBzdHJva2Utd2lkdGg9IjEuNSIgb3BhY2l0eT0iMC45Ii8+CiAgPCEtLSBIw6ltaXNwaMOocmUgZHJvaXQgLS0+CiAgPHBhdGggZD0iTTE2IDUgQzIyIDUgMjYgOCAyNyAxMyBDMjggMTcgMjcgMjEgMjQgMjQgQzIyIDI2IDE5IDI3IDE3IDI2IEwxNi41IDI2IEwxNi41IDYgWiIKICAgICAgICBmaWxsPSJub25lIiBzdHJva2U9InVybCgjZykiIHN0cm9rZS13aWR0aD0iMS41IiBvcGFjaXR5PSIwLjkiLz4KICA8IS0tIFNpbGxvbiBjZW50cmFsIC0tPgogIDxsaW5lIHgxPSIxNiIgeTE9IjUiIHgyPSIxNiIgeTI9IjI2IiBzdHJva2U9InVybCgjZykiIHN0cm9rZS13aWR0aD0iMC44IiBvcGFjaXR5PSIwLjQiLz4KICA8IS0tIENpcmNvbnZvbHV0aW9ucyBnYXVjaGUgLS0+CiAgPHBhdGggZD0iTTggMTIgQzEwIDEwIDEzIDEwIDE0IDEyIiBmaWxsPSJub25lIiBzdHJva2U9InVybCgjZykiIHN0cm9rZS13aWR0aD0iMS4yIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KICA8cGF0aCBkPSJNNiAxNyBDOCAxNSAxMiAxNSAxMyAxNyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ1cmwoI2cpIiBzdHJva2Utd2lkdGg9IjEuMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CiAgPHBhdGggZD0iTTcgMjIgQzkgMjAgMTIgMjAgMTQgMjEiIGZpbGw9Im5vbmUiIHN0cm9rZT0idXJsKCNnKSIgc3Ryb2tlLXdpZHRoPSIxLjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgogIDwhLS0gQ2lyY29udm9sdXRpb25zIGRyb2l0ZSAtLT4KICA8cGF0aCBkPSJNMjQgMTIgQzIyIDEwIDE5IDEwIDE4IDEyIiBmaWxsPSJub25lIiBzdHJva2U9InVybCgjZykiIHN0cm9rZS13aWR0aD0iMS4yIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KICA8cGF0aCBkPSJNMjYgMTcgQzI0IDE1IDIwIDE1IDE5IDE3IiBmaWxsPSJub25lIiBzdHJva2U9InVybCgjZykiIHN0cm9rZS13aWR0aD0iMS4yIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KICA8cGF0aCBkPSJNMjUgMjIgQzIzIDIwIDIwIDIwIDE4IDIxIiBmaWxsPSJub25lIiBzdHJva2U9InVybCgjZykiIHN0cm9rZS13aWR0aD0iMS4yIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KICA8IS0tIE5vZXVkcyBzeW5hcHRpcXVlcyAtLT4KICA8Y2lyY2xlIGN4PSI4IiAgY3k9IjExIiByPSIxLjgiIGZpbGw9IiM0YTlmZDQiIG9wYWNpdHk9IjAuOTUiLz4KICA8Y2lyY2xlIGN4PSI2IiAgY3k9IjE3IiByPSIxLjgiIGZpbGw9IiM3YjY4ZDQiIG9wYWNpdHk9IjAuOTUiLz4KICA8Y2lyY2xlIGN4PSI4IiAgY3k9IjIyIiByPSIxLjgiIGZpbGw9IiNkNDZhYmYiIG9wYWNpdHk9IjAuOTUiLz4KICA8Y2lyY2xlIGN4PSIyNCIgY3k9IjExIiByPSIxLjgiIGZpbGw9IiM0YTlmZDQiIG9wYWNpdHk9IjAuOTUiLz4KICA8Y2lyY2xlIGN4PSIyNiIgY3k9IjE3IiByPSIxLjgiIGZpbGw9IiM3YjY4ZDQiIG9wYWNpdHk9IjAuOTUiLz4KICA8Y2lyY2xlIGN4PSIyNCIgY3k9IjIyIiByPSIxLjgiIGZpbGw9IiNkNDZhYmYiIG9wYWNpdHk9IjAuOTUiLz4KICA8Y2lyY2xlIGN4PSIxNiIgY3k9IjUiICByPSIxLjgiIGZpbGw9IiM0YWJmYmYiIG9wYWNpdHk9IjAuOTUiLz4KPC9zdmc+">
   <link rel="shortcut icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+CiAgPGRlZnM+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjNGE5ZmQ0Ii8+CiAgICAgIDxzdG9wIG9mZnNldD0iNTAlIiBzdG9wLWNvbG9yPSIjN2I2OGQ0Ii8+CiAgICAgIDxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iI2Q0NmFiZiIvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICA8L2RlZnM+CiAgPCEtLSBGb25kIGFycm9uZGkgc29tYnJlIC0tPgogIDxyZWN0IHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgcng9IjgiIGZpbGw9IiMxYTFhMmUiLz4KICA8IS0tIEjDqW1pc3Bow6hyZSBnYXVjaGUgLS0+CiAgPHBhdGggZD0iTTE2IDUgQzEwIDUgNiA4IDUgMTMgQzQgMTcgNSAyMSA4IDI0IEMxMCAyNiAxMyAyNyAxNSAyNiBMMTUuNSAyNiBMMTUuNSA2IFoiCiAgICAgICAgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ1cmwoI2cpIiBzdHJva2Utd2lkdGg9IjEuNSIgb3BhY2l0eT0iMC45Ii8+CiAgPCEtLSBIw6ltaXNwaMOocmUgZHJvaXQgLS0+CiAgPHBhdGggZD0iTTE2IDUgQzIyIDUgMjYgOCAyNyAxMyBDMjggMTcgMjcgMjEgMjQgMjQgQzIyIDI2IDE5IDI3IDE3IDI2IEwxNi41IDI2IEwxNi41IDYgWiIKICAgICAgICBmaWxsPSJub25lIiBzdHJva2U9InVybCgjZykiIHN0cm9rZS13aWR0aD0iMS41IiBvcGFjaXR5PSIwLjkiLz4KICA8IS0tIFNpbGxvbiBjZW50cmFsIC0tPgogIDxsaW5lIHgxPSIxNiIgeTE9IjUiIHgyPSIxNiIgeTI9IjI2IiBzdHJva2U9InVybCgjZykiIHN0cm9rZS13aWR0aD0iMC44IiBvcGFjaXR5PSIwLjQiLz4KICA8IS0tIENpcmNvbnZvbHV0aW9ucyBnYXVjaGUgLS0+CiAgPHBhdGggZD0iTTggMTIgQzEwIDEwIDEzIDEwIDE0IDEyIiBmaWxsPSJub25lIiBzdHJva2U9InVybCgjZykiIHN0cm9rZS13aWR0aD0iMS4yIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KICA8cGF0aCBkPSJNNiAxNyBDOCAxNSAxMiAxNSAxMyAxNyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ1cmwoI2cpIiBzdHJva2Utd2lkdGg9IjEuMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CiAgPHBhdGggZD0iTTcgMjIgQzkgMjAgMTIgMjAgMTQgMjEiIGZpbGw9Im5vbmUiIHN0cm9rZT0idXJsKCNnKSIgc3Ryb2tlLXdpZHRoPSIxLjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgogIDwhLS0gQ2lyY29udm9sdXRpb25zIGRyb2l0ZSAtLT4KICA8cGF0aCBkPSJNMjQgMTIgQzIyIDEwIDE5IDEwIDE4IDEyIiBmaWxsPSJub25lIiBzdHJva2U9InVybCgjZykiIHN0cm9rZS13aWR0aD0iMS4yIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KICA8cGF0aCBkPSJNMjYgMTcgQzI0IDE1IDIwIDE1IDE5IDE3IiBmaWxsPSJub25lIiBzdHJva2U9InVybCgjZykiIHN0cm9rZS13aWR0aD0iMS4yIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KICA8cGF0aCBkPSJNMjUgMjIgQzIzIDIwIDIwIDIwIDE4IDIxIiBmaWxsPSJub25lIiBzdHJva2U9InVybCgjZykiIHN0cm9rZS13aWR0aD0iMS4yIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KICA8IS0tIE5vZXVkcyBzeW5hcHRpcXVlcyAtLT4KICA8Y2lyY2xlIGN4PSI4IiAgY3k9IjExIiByPSIxLjgiIGZpbGw9IiM0YTlmZDQiIG9wYWNpdHk9IjAuOTUiLz4KICA8Y2lyY2xlIGN4PSI2IiAgY3k9IjE3IiByPSIxLjgiIGZpbGw9IiM3YjY4ZDQiIG9wYWNpdHk9IjAuOTUiLz4KICA8Y2lyY2xlIGN4PSI4IiAgY3k9IjIyIiByPSIxLjgiIGZpbGw9IiNkNDZhYmYiIG9wYWNpdHk9IjAuOTUiLz4KICA8Y2lyY2xlIGN4PSIyNCIgY3k9IjExIiByPSIxLjgiIGZpbGw9IiM0YTlmZDQiIG9wYWNpdHk9IjAuOTUiLz4KICA8Y2lyY2xlIGN4PSIyNiIgY3k9IjE3IiByPSIxLjgiIGZpbGw9IiM3YjY4ZDQiIG9wYWNpdHk9IjAuOTUiLz4KICA8Y2lyY2xlIGN4PSIyNCIgY3k9IjIyIiByPSIxLjgiIGZpbGw9IiNkNDZhYmYiIG9wYWNpdHk9IjAuOTUiLz4KICA8Y2lyY2xlIGN4PSIxNiIgY3k9IjUiICByPSIxLjgiIGZpbGw9IiM0YWJmYmYiIG9wYWNpdHk9IjAuOTUiLz4KPC9zdmc+">
@@ -1027,23 +1030,85 @@ const SUPPORTED_TYPES = {
 
 el('attachBtn').onclick = () => el('fileInput').click();
 
+/** Extrait le texte d'un fichier Office côté navigateur */
+async function extractOfficeText(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  const ab  = await file.arrayBuffer();
+
+  // .docx → mammoth
+  if ((ext === 'docx' || ext === 'doc') && typeof mammoth !== 'undefined') {
+    const res = await mammoth.extractRawText({ arrayBuffer: ab });
+    return res.value?.trim() || null;
+  }
+
+  // .xlsx / .xls → SheetJS
+  if ((ext === 'xlsx' || ext === 'xls') && typeof XLSX !== 'undefined') {
+    const wb  = XLSX.read(ab, { type: 'array' });
+    const lines = [];
+    wb.SheetNames.forEach(name => {
+      lines.push(`=== Feuille : ${name} ===`);
+      lines.push(XLSX.utils.sheet_to_csv(wb.Sheets[name]));
+    });
+    return lines.join('\n').trim() || null;
+  }
+
+  // .pptx → extraction XML brute des diapositives
+  if (ext === 'pptx' && typeof XLSX !== 'undefined') {
+    // SheetJS peut lire le ZIP, on extrait les fichiers slide*.xml
+    const zip = XLSX.zip.inflate ? null : null; // SheetJS expose CFB/ZIP
+    // Fallback : utiliser l'API native pour lire le ZIP pptx comme texte
+    try {
+      const text = await new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onload = () => {
+          // PPTX = ZIP, on cherche le XML dans les slides
+          const bytes = new Uint8Array(r.result);
+          const str   = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+          const texts = [];
+          // Regex pour extraire les balises <a:t> des slides PowerPoint
+          const re = /<a:t[^>]*>([^<]+)<\/a:t>/g;
+          let m;
+          while ((m = re.exec(str)) !== null) texts.push(m[1]);
+          res(texts.join(' ').trim() || null);
+        };
+        r.onerror = rej;
+        r.readAsArrayBuffer(file);
+      });
+      return text;
+    } catch(e) { return null; }
+  }
+
+  return null; // non extractible
+}
+
 el('fileInput').onchange = async e => {
   const files = [...e.target.files];
   for (const file of files) {
     const meta = SUPPORTED_TYPES[file.type] || { icon: '📎', label: file.type || 'Fichier', supported: false };
+    const isImage = file.type.startsWith('image/');
+    const isPdf   = file.type === 'application/pdf';
+
+    // Lire en base64 (pour images et PDF)
     const data = await new Promise((res, rej) => {
       const r = new FileReader();
       r.onload = () => res(r.result.split(',')[1]);
       r.onerror = rej;
       r.readAsDataURL(file);
     });
+
+    // Tentative d'extraction texte pour Office
+    let extractedText = null;
+    if (!isImage && !isPdf) {
+      try { extractedText = await extractOfficeText(file); } catch(e) {}
+    }
+
     pendingFiles.push({
       name: file.name, type: file.type, data,
-      isImage: file.type.startsWith('image/'),
-      isPdf: file.type === 'application/pdf',
-      supported: meta.supported,
+      isImage, isPdf,
+      extractedText,   // texte extrait (null si non dispo)
+      supported: isImage || isPdf || extractedText !== null,
       icon: meta.icon, label: meta.label,
-      objectUrl: file.type.startsWith('image/') ? URL.createObjectURL(file) : null
+      objectUrl: isImage ? URL.createObjectURL(file) : null
     });
   }
   e.target.value = '';
@@ -1063,8 +1128,10 @@ function renderFilePreview() {
       chip.innerHTML = `<span class="file-icon" title="${f.label}">${f.icon}</span>`;
     }
     chip.innerHTML += `<span class="file-name" title="${f.name}">${f.name}</span>`;
-    if (!f.supported) {
-      chip.innerHTML += `<span style="font-size:10px;color:#f87171;margin-left:3px" title="Ce format sera envoyé en texte uniquement">⚠</span>`;
+    if (f.extractedText) {
+      chip.innerHTML += `<span style="font-size:10px;color:#4ade80;margin-left:3px" title="Texte extrait (${f.extractedText.length} caractères)">✓</span>`;
+    } else if (!f.supported) {
+      chip.innerHTML += `<span style="font-size:10px;color:#f87171;margin-left:3px" title="Ce format n'est pas extractible directement">⚠</span>`;
     }
     chip.innerHTML += `<button class="file-remove" data-i="${i}" title="Supprimer">✕</button>`;
     chip.querySelector('.file-remove').onclick = ev => {
@@ -1087,13 +1154,16 @@ function buildUserContent(text, files) {
     } else if (f.isPdf) {
       parts.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: f.data },
         title: f.name });
+    } else if (f.extractedText) {
+      // Fichier Office : texte extrait côté navigateur
+      parts.push({ type: 'text', text: `[${f.icon} Contenu du fichier "${f.name}" :]\n\n${f.extractedText}` });
     } else {
-      // Office et autres : mention textuelle (non supporté nativement)
-      parts.push({ type: 'text', text: `[Fichier joint : ${f.icon} ${f.name} — contenu non extractible directement]` });
+      // Fichier non extractible
+      parts.push({ type: 'text', text: `[Fichier joint : ${f.icon} ${f.name} — contenu non extractible. Veuillez copier-coller le texte.]` });
     }
   }
   if (text) parts.push({ type: 'text', text });
-  return parts;
+  return parts.length === 1 && parts[0].type === 'text' ? parts[0].text : parts;
 }
 
 /** Pour les API OpenAI (vision) — format image_url */
