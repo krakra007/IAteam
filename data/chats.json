@@ -1,6 +1,12 @@
 {
   "chats": [
     {
+      "id": "c0c5d7a1-2f7d-4211-80b6-470d15ff6584",
+      "title": "Nouveau chat",
+      "projectId": null,
+      "messages": []
+    },
+    {
       "id": "54d0ea86-9572-4e9a-8774-1122adee765a",
       "title": "Réaction de Ficher",
       "projectId": "06407384-63b3-4383-b87c-6248d2482d0a",
@@ -120,7 +126,7 @@
       "prompt": "Apporter une réponse breve et précise. Citer les sources. Ne jamais inventer des réponses, des articles de presse, des livres, des citations qui n'existe pas."
     }
   ],
-  "activeProfile": "bb1872aa-aef4-4bbd-bc09-e435f8093873",
+  "activeProfiles": [],
   "params": {
     "temperature": 0.2,
     "top_p": 0,
@@ -133,6 +139,6 @@
     "top_k": ""
   },
   "model": "openai/gpt-oss-120b",
-  "savedAt": "2026-05-06T19:30:37.265Z",
+  "savedAt": "2026-05-07T04:36:04.715Z",
   "version": 2
 }
