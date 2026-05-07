@@ -2205,7 +2205,7 @@ function renderParams() {
     <div class='param'><label>temperature</label>
       <input id='p_temperature' type='number' step='0.1' min='0' max='2' value='${S.params.temperature}'></div>
     <div class='param'><label>top_p</label>
-      <input id='p_top_p' type='number' step='0.1' min='0' max='1' value='${S.params.top_p}'></div>
+      <input id='p_top_p' type='number' step='0.1' min='0.1' max='1' value='${S.params.top_p}'></div>
     <div class='param'><label>max_tokens</label>
       <input id='p_max_tokens' type='number' step='1' min='1' max='32000' value='${S.params.max_tokens}'></div>
     <div class='param'><label>frequency_penalty <small style="color:#6b7280">(OpenAI)</small></label>
@@ -2295,65 +2295,69 @@ function showApiError(msg) {
  * @param {string} apiType — "chat" | "responses" | "anthropic" | "groq" | "gemini"
  */
 function buildRequestParams(model, apiType) {
-  const p   = S.params;
-  const m   = (model || "").toLowerCase();
+  const p    = S.params;
+  const temp = Number(p.temperature);
+  const topP = Number(p.top_p);
+  const maxT = Number(p.max_tokens) || 1200;
+  const freqP = Number(p.frequency_penalty) || 0;
+  const presP = Number(p.presence_penalty)  || 0;
+
+  // Helpers de validation par plage
+  const valid = (v, lo, hi) => Number.isFinite(v) && v >= lo && v <= hi;
+  const stop  = p.stop ? { stop: p.stop } : {};
 
   // ── o-series OpenAI (o1, o3, o4…) ────────────────────────────
-  // Aucun paramètre de sampling (pas de temperature, top_p, etc.)
-  // Seul max_completion_tokens est supporté.
+  // Aucun paramètre de sampling : uniquement max_completion_tokens.
   if (isOSeriesModel(model)) {
-    return { max_completion_tokens: p.max_tokens || 1200 };
+    return { max_completion_tokens: maxT };
   }
 
   // ── GPT-5.x via Responses API ────────────────────────────────
-  // temperature / top_p non supportés sur certains modèles GPT-5.
-  // max_output_tokens remplace max_completion_tokens.
   if (apiType === "responses") {
-    return {
-      max_output_tokens: p.max_tokens || 1200,
-      ...(p.stop ? { stop: [p.stop] } : {})
-    };
+    return { max_output_tokens: maxT, ...stop };
   }
 
   // ── Anthropic Claude ─────────────────────────────────────────
-  // temperature max = 1.0, pas de frequency/presence penalty.
+  // • temperature : [0, 1] (pas 2 comme OpenAI)
+  // • top_p       : (0, 1) strictement — NON envoyé si temperature présente
+  //   (Anthropic rejette les deux simultanément)
+  // • Pas de frequency_penalty / presence_penalty
   if (apiType === "anthropic") {
-    return {
-      max_tokens:  p.max_tokens || 1200,
-      temperature: Math.min(Number(p.temperature) || 0.7, 1.0),
-      top_p:       p.top_p
-    };
+    const out = { max_tokens: maxT };
+    const t = valid(temp, 0, 1) ? temp : 0.7;
+    out.temperature = t;
+    // top_p seulement si < 1 ET temperature est à sa valeur max (1)
+    // → en pratique : ne pas envoyer les deux
+    if (valid(topP, 0, 1) && topP < 1 && t === 1) out.top_p = topP;
+    return out;
   }
 
-  // ── Groq (open source LPU) ───────────────────────────────────
-  // frequency_penalty et presence_penalty non supportés sur certains.
+  // ── Groq ─────────────────────────────────────────────────────
+  // frequency/presence_penalty non supportés sur la plupart des modèles Groq.
   if (apiType === "groq") {
-    return {
-      temperature: p.temperature,
-      top_p:       p.top_p,
-      max_tokens:  p.max_tokens || 1200,
-      ...(p.stop ? { stop: p.stop } : {})
-    };
+    const out = { max_tokens: maxT, ...stop };
+    if (valid(temp, 0, 2))           out.temperature = temp;
+    if (valid(topP, 0, 1) && topP > 0) out.top_p    = topP;
+    return out;
   }
 
-  // ── Gemini (OpenAI compat layer) ─────────────────────────────
+  // ── Gemini (couche OpenAI compat) ─────────────────────────────
+  // top_p/penalty pas systématiquement supportés selon le modèle.
   if (apiType === "gemini") {
-    return {
-      temperature: p.temperature,
-      max_tokens:  p.max_tokens || 1200
-    };
+    const out = { max_tokens: maxT };
+    if (valid(temp, 0, 2)) out.temperature = temp;
+    return out;
   }
 
   // ── Chat Completions standard (OpenAI GPT-4.x, DeepSeek…) ───
-  return {
-    temperature:           p.temperature,
-    top_p:                 p.top_p,
-    max_completion_tokens: p.max_tokens || 1200,
-    frequency_penalty:     p.frequency_penalty ?? 0,
-    presence_penalty:      p.presence_penalty  ?? 0,
-    ...(p.stop ? { stop: p.stop } : {}),
-    ...(p.seed !== "" && p.seed != null ? { seed: Number(p.seed) } : {})
-  };
+  const out = { max_completion_tokens: maxT, ...stop };
+  if (valid(temp, 0, 2))     out.temperature        = temp;
+  // top_p : la plupart des APIs exigent (0, 1] — 0 est interdit
+  if (valid(topP, 0, 1) && topP > 0) out.top_p = topP;
+  if (freqP !== 0 && valid(freqP, -2, 2)) out.frequency_penalty = freqP;
+  if (presP !== 0 && valid(presP, -2, 2)) out.presence_penalty  = presP;
+  if (p.seed !== "" && p.seed != null)    out.seed = Number(p.seed);
+  return out;
 }
 
 // ─────────────────────────────────────────────────
