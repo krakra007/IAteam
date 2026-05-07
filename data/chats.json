@@ -1,19 +1,7 @@
 {
   "chats": [
     {
-      "id": "2acef7c2-7d94-4c79-a40c-08fa95af718f",
-      "title": "Nouveau chat",
-      "projectId": null,
-      "messages": []
-    },
-    {
-      "id": "79542e15-7f5e-444c-8472-99a09cbb2418",
-      "title": "Nouveau chat",
-      "projectId": null,
-      "messages": []
-    },
-    {
-      "id": "1c626d49-0432-4439-bae1-bb7e8b410c0a",
+      "id": "1a7387da-9d7d-4d3c-ad61-37605edae8a9",
       "title": "Nouveau chat",
       "projectId": null,
       "messages": []
@@ -337,17 +325,21 @@
   ],
   "activeProfiles": [],
   "params": {
-    "temperature": 0.2,
-    "top_p": 0.1,
-    "max_tokens": 12000,
+    "temperature": 1,
+    "top_p": 1,
+    "top_k": 0,
+    "max_tokens": 16128,
     "frequency_penalty": 0,
     "presence_penalty": 0,
     "stop": "",
     "seed": "",
-    "n": 1,
-    "top_k": ""
+    "streaming": false,
+    "thinking": false,
+    "thinkingBudget": 10240,
+    "showThinking": true,
+    "webSearch": false
   },
-  "model": "gemini-2.5-flash",
-  "savedAt": "2026-05-07T19:17:21.985Z",
+  "model": "openai/gpt-oss-120b",
+  "savedAt": "2026-05-07T19:44:27.488Z",
   "version": 2
 }
