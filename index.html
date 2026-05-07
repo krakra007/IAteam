@@ -341,6 +341,35 @@
       width:42px;height:34px;background:#161616;border:1px solid var(--line);
       color:var(--text);border-radius:8px;text-align:center;font-size:18px;cursor:pointer;
     }
+    /* ── Pièces jointes ── */
+    .attach-btn{
+      position:absolute;left:10px;bottom:10px;
+      background:none;border:none;color:var(--muted2);
+      font-size:20px;cursor:pointer;padding:2px 6px;border-radius:6px;
+      transition:color .15s, background .15s;line-height:1;
+    }
+    .attach-btn:hover{color:#7baaf7;background:#7baaf720}
+    .file-preview-area{
+      display:flex;flex-wrap:wrap;gap:6px;
+      padding:6px 10px 0;
+    }
+    .file-preview-area:empty{display:none}
+    .file-chip{
+      display:flex;align-items:center;gap:5px;
+      background:#2a2a2a;border:1px solid #3f3f46;border-radius:8px;
+      padding:3px 8px 3px 5px;font-size:12px;color:#c9d0db;max-width:200px;
+    }
+    .file-chip img{width:32px;height:32px;object-fit:cover;border-radius:4px;flex-shrink:0}
+    .file-chip .file-icon{font-size:22px;flex-shrink:0;line-height:1}
+    .file-chip .file-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+    .file-chip .file-remove{
+      background:none;border:none;color:var(--muted2);cursor:pointer;
+      font-size:14px;padding:0 0 0 3px;line-height:1;flex-shrink:0;
+    }
+    .file-chip .file-remove:hover{color:#f87171}
+    /* Textarea décalé pour laisser place au bouton 📎 */
+    .composer-box textarea{padding-left:46px}
+
     .pe-textarea{
       width:100%;background:#0f0f0f;border:1px solid var(--line);color:#d4d8e0;
       border-radius:8px;padding:10px 12px;font-size:12.5px;font-family:"SFMono-Regular",monospace;
@@ -702,6 +731,9 @@
 
     <div class="composer">
       <div class="composer-wrap"><div class="composer-box">
+        <div class="file-preview-area" id="filePreviewArea"></div>
+        <input type="file" id="fileInput" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx" style="display:none">
+        <button class="attach-btn" id="attachBtn" title="Joindre un fichier (images, PDF, Office)">📎</button>
         <textarea id="prompt" placeholder="Poser une question"></textarea>
         <button class="send-circle" id="sendBtn" aria-label="Envoyer" title="Envoyer">
           <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -953,7 +985,7 @@ const S = {
       prompt: "Tu es un assistant IA expert et polyvalent. Réponds de manière précise, structurée et professionnelle. N'utilise jamais de balises HTML dans tes réponses. Utilise Markdown pour la mise en forme."
     }
   ],
-  activeProfile: localStorage.getItem("activeProfile") || null,
+  activeProfiles: [],  // multi-sélection — vide au démarrage
   activeChat:    localStorage.getItem("activeChat")    || null,
   activeProject: localStorage.getItem("activeProject") || null,
   model:  localStorage.getItem("model") || CURATED_MODELS[0],
@@ -974,6 +1006,112 @@ let isWaitingResponse = false;
 if (!CURATED_MODELS.includes(S.model)) S.model = CURATED_MODELS[0];
 
 const promptEl   = el("prompt");
+
+// ═════════════════════════════════════════════════════════════
+// PIÈCES JOINTES (images, PDF, Office)
+// ═════════════════════════════════════════════════════════════
+let pendingFiles = []; // [{name, type, data (base64), isImage, isSupported}]
+
+const SUPPORTED_TYPES = {
+  'image/jpeg': { icon: '🖼', label: 'JPEG', supported: true },
+  'image/png':  { icon: '🖼', label: 'PNG',  supported: true },
+  'image/gif':  { icon: '🖼', label: 'GIF',  supported: true },
+  'image/webp': { icon: '🖼', label: 'WebP', supported: true },
+  'application/pdf': { icon: '📄', label: 'PDF', supported: true },
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': { icon: '📝', label: 'Word', supported: false },
+  'application/msword':  { icon: '📝', label: 'Word', supported: false },
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { icon: '📊', label: 'Excel', supported: false },
+  'application/vnd.ms-excel': { icon: '📊', label: 'Excel', supported: false },
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation': { icon: '📑', label: 'PowerPoint', supported: false },
+  'application/vnd.ms-powerpoint': { icon: '📑', label: 'PowerPoint', supported: false },
+};
+
+el('attachBtn').onclick = () => el('fileInput').click();
+
+el('fileInput').onchange = async e => {
+  const files = [...e.target.files];
+  for (const file of files) {
+    const meta = SUPPORTED_TYPES[file.type] || { icon: '📎', label: file.type || 'Fichier', supported: false };
+    const data = await new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(r.result.split(',')[1]);
+      r.onerror = rej;
+      r.readAsDataURL(file);
+    });
+    pendingFiles.push({
+      name: file.name, type: file.type, data,
+      isImage: file.type.startsWith('image/'),
+      isPdf: file.type === 'application/pdf',
+      supported: meta.supported,
+      icon: meta.icon, label: meta.label,
+      objectUrl: file.type.startsWith('image/') ? URL.createObjectURL(file) : null
+    });
+  }
+  e.target.value = '';
+  renderFilePreview();
+};
+
+function renderFilePreview() {
+  const area = el('filePreviewArea');
+  area.innerHTML = '';
+  pendingFiles.forEach((f, i) => {
+    const chip = document.createElement('div');
+    chip.className = 'file-chip';
+    chip.style.border = f.supported ? '1px solid #3f3f46' : '1px solid #f8717144';
+    if (f.objectUrl) {
+      chip.innerHTML = `<img src="${f.objectUrl}" alt="${f.name}">`;
+    } else {
+      chip.innerHTML = `<span class="file-icon" title="${f.label}">${f.icon}</span>`;
+    }
+    chip.innerHTML += `<span class="file-name" title="${f.name}">${f.name}</span>`;
+    if (!f.supported) {
+      chip.innerHTML += `<span style="font-size:10px;color:#f87171;margin-left:3px" title="Ce format sera envoyé en texte uniquement">⚠</span>`;
+    }
+    chip.innerHTML += `<button class="file-remove" data-i="${i}" title="Supprimer">✕</button>`;
+    chip.querySelector('.file-remove').onclick = ev => {
+      ev.stopPropagation();
+      if (pendingFiles[i].objectUrl) URL.revokeObjectURL(pendingFiles[i].objectUrl);
+      pendingFiles.splice(i, 1);
+      renderFilePreview();
+    };
+    area.appendChild(chip);
+  });
+}
+
+/** Construit le contenu multimodal d'un message user avec fichiers */
+function buildUserContent(text, files) {
+  if (!files || !files.length) return text;
+  const parts = [];
+  for (const f of files) {
+    if (f.isImage) {
+      parts.push({ type: 'image', source: { type: 'base64', media_type: f.type, data: f.data } });
+    } else if (f.isPdf) {
+      parts.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: f.data },
+        title: f.name });
+    } else {
+      // Office et autres : mention textuelle (non supporté nativement)
+      parts.push({ type: 'text', text: `[Fichier joint : ${f.icon} ${f.name} — contenu non extractible directement]` });
+    }
+  }
+  if (text) parts.push({ type: 'text', text });
+  return parts;
+}
+
+/** Pour les API OpenAI (vision) — format image_url */
+function buildOpenAIContent(text, files) {
+  if (!files || !files.length) return text;
+  const parts = [];
+  for (const f of files) {
+    if (f.isImage) {
+      parts.push({ type: 'image_url', image_url: { url: `data:${f.type};base64,${f.data}` } });
+    } else if (!f.supported) {
+      parts.push({ type: 'text', text: `[Fichier joint : ${f.icon} ${f.name}]` });
+    }
+  }
+  if (text) parts.push({ type: 'text', text });
+  return parts.length === 1 && parts[0].type === 'text' ? text : parts;
+}
+
 const apiErrorEl = el("apiError");
 
 // ─────────────────────────────────────────────────
@@ -989,8 +1127,8 @@ PROVIDERS.forEach(p => { if (!(p in apiKeysByProvider)) apiKeysByProvider[p] = "
 // ─────────────────────────────────────────────────
 function save() {
   localStorage.setItem("projects",           JSON.stringify(S.projects));
-  localStorage.setItem("profiles",           JSON.stringify(S.profiles));
-  localStorage.setItem("activeProfile",      S.activeProfile || "");
+  localStorage.setItem("profiles",        JSON.stringify(S.profiles));
+  localStorage.setItem("activeProfiles",  JSON.stringify(S.activeProfiles || []));
   localStorage.setItem("chats",              JSON.stringify(S.chats));
   localStorage.setItem("activeChat",         S.activeChat    || "");
   localStorage.setItem("activeProject",      S.activeProject || "");
@@ -1915,12 +2053,6 @@ function applyLatexSymbols(s) {
 }
 
 // ─────────────────────────────────────────────────
-// convertLatex gardé pour compatibilité
-// (maintenant formatAssistantContent gère tout)
-function convertLatex(text){ return text; }
-
-
-// ─────────────────────────────────────────────────
 // AFFICHAGE MESSAGES
 // ─────────────────────────────────────────────────
 function renderMessages() {
@@ -1947,7 +2079,36 @@ function renderMessages() {
     if (m.role === "assistant") {
       d.innerHTML = `<div class="assistant-body">${formatAssistantContent(m.content)}</div>`;
     } else {
-      d.textContent = m.content;
+      // Contenu multimodal (avec fichiers) : afficher texte + icônes fichiers
+      const displayText = m._text || (typeof m.content === 'string' ? m.content : '');
+      if (Array.isArray(m.content)) {
+        const imgs = m.content.filter(b => b.type === 'image');
+        const docs = m.content.filter(b => b.type === 'document');
+        const texts = m.content.filter(b => b.type === 'text');
+        if (imgs.length) {
+          const wrap2 = document.createElement('div');
+          wrap2.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;justify-content:flex-end';
+          imgs.forEach(b => {
+            const img = document.createElement('img');
+            img.src = `data:${b.source.media_type};base64,${b.source.data}`;
+            img.style.cssText = 'max-width:200px;max-height:140px;border-radius:8px;object-fit:cover';
+            wrap2.appendChild(img);
+          });
+          d.appendChild(wrap2);
+        }
+        docs.forEach(b => {
+          const p2 = document.createElement('div');
+          p2.style.cssText = 'font-size:12px;color:#9ca3af;margin-bottom:4px';
+          p2.textContent = `📄 ${b.title || 'Document PDF joint'}`;
+          d.appendChild(p2);
+        });
+        if (texts.length || displayText) {
+          const t = document.createTextNode(texts.map(b=>b.text).join('') || displayText);
+          d.appendChild(t);
+        }
+      } else {
+        d.textContent = displayText;
+      }
     }
     wrap.appendChild(d);
 
@@ -1960,14 +2121,14 @@ function renderMessages() {
 
       const copyBtn = document.createElement("button");
       copyBtn.className = "msg-icon"; copyBtn.textContent = "⧉"; copyBtn.title = "Copier";
-      copyBtn.onclick = () => navigator.clipboard.writeText(m.content);
+      copyBtn.onclick = () => navigator.clipboard.writeText(typeof m.content === 'string' ? m.content : (m._text || ''));
 
       const regenBtn = document.createElement("button");
       regenBtn.className = "msg-icon"; regenBtn.textContent = "↻"; regenBtn.title = "Régénérer";
       regenBtn.onclick = () => {
         const lastUser = [...c.messages].reverse().find(x => x.role === "user");
         if (!lastUser) return;
-        promptEl.value = lastUser.content;
+        promptEl.value = lastUser._text || (typeof lastUser.content === 'string' ? lastUser.content : '');
         send();
       };
 
@@ -1976,7 +2137,7 @@ function renderMessages() {
     } else {
       const b = document.createElement("button");
       b.className = "copy"; b.textContent = "⧉"; b.title = "Copier";
-      b.onclick = () => navigator.clipboard.writeText(m.content);
+      b.onclick = () => navigator.clipboard.writeText(m._text || (typeof m.content === 'string' ? m.content : ''));
       foot.appendChild(b);
     }
 
@@ -2210,7 +2371,18 @@ async function callOpenAICompatible(endpoint, key, model, messages) {
     { role: "system", content: getActiveSystemPrompt() },
     ...messages
       .filter(m => m.role === "user" || m.role === "assistant")
-      .map(m => ({ role: m.role, content: m.content }))
+      .map(m => {
+        // Convertir le format Anthropic → format OpenAI vision si besoin
+        if (Array.isArray(m.content)) {
+          const parts = m.content.map(b => {
+            if (b.type === 'image') return { type: 'image_url', image_url: { url: `data:${b.source.media_type};base64,${b.source.data}` } };
+            if (b.type === 'document') return { type: 'text', text: `[Document PDF joint : ${b.title || 'fichier.pdf'}]` };
+            return { type: 'text', text: b.text || '' };
+          });
+          return { role: m.role, content: parts };
+        }
+        return { role: m.role, content: m.content };
+      })
   ];
   const body = {
     model,
@@ -2244,24 +2416,30 @@ async function callOpenAICompatible(endpoint, key, model, messages) {
  *  - Pas de frequency_penalty / presence_penalty / n / seed
  */
 async function callAnthropic(key, model, messages) {
+  // Vérifier si des fichiers PDF sont présents (nécessite le header beta)
+  const hasPdf = messages.some(m =>
+    Array.isArray(m.content) && m.content.some(b => b.type === 'document')
+  );
   const body = {
     model,
-    system: getActiveSystemPrompt(),                 // ← profil système actif
+    system: getActiveSystemPrompt(),
     messages: messages
       .filter(m => m.role === "user" || m.role === "assistant")
       .map(m => ({ role: m.role, content: m.content })),
     ...buildRequestParams(model, "anthropic")
   };
 
+  const headers = {
+    "Content-Type":      "application/json",
+    "x-api-key":         key,
+    "anthropic-version": "2023-06-01",
+    "anthropic-dangerous-direct-browser-access": "true"
+  };
+  if (hasPdf) headers["anthropic-beta"] = "pdfs-2024-09-25";
+
   const r = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
-    headers: {
-      "Content-Type":      "application/json",
-      "x-api-key":         key,
-      "anthropic-version": "2023-06-01",
-      // REQUIS pour les appels depuis un navigateur (CORS)
-      "anthropic-dangerous-direct-browser-access": "true"
-    },
+    headers,
     body: JSON.stringify(body)
   });
 
@@ -2390,22 +2568,27 @@ async function send() {
   }
 
   const text = promptEl.value.trim();
-  if (!text) return;
+  if (!text && !pendingFiles.length) return;
 
   let c = activeChat();
   if (!c) { createChat(null); c = activeChat(); }
 
-  c.messages.push({ role: "user", content: text });
+  // Construire le contenu multimodal si fichiers présents
+  const filesToSend = [...pendingFiles];
+  const msgContent  = buildUserContent(text, filesToSend);
+  const displayText = text || filesToSend.map(f=>f.name).join(', ');
+  c.messages.push({ role: "user", content: msgContent, _text: displayText });
 
   // BUG CORRIGÉ : titre cohérent ("Nouveau chat" dans les deux endroits)
-  if (c.title === "Nouveau chat") c.title = text.slice(0, 38);
+  if (c.title === "Nouveau chat") c.title = displayText.slice(0, 38);
 
   promptEl.value      = "";
+  pendingFiles = []; renderFilePreview();
   isWaitingResponse   = true;
   render();
   // DEBUG — visible dans F12 → Console
   const _sp = getActiveSystemPrompt();
-  console.log('[BrAInShift] Profil actif:', S.activeProfile || 'AUCUN');
+  console.log('[BrAInShift] Profils actifs:', S.activeProfiles.length ? S.activeProfiles.join(', ') : 'AUCUN');
   console.log('[BrAInShift] System prompt (100 premiers chars):', _sp.slice(0,100));
   console.log('[BrAInShift] KaTeX:', typeof katex !== 'undefined' ? '✅ chargé' : '❌ BLOQUÉ (vérifier Tracking Prevention / pare-feu)');
   if (typeof katex !== 'undefined') {
@@ -2474,25 +2657,31 @@ function togglePromptPreview() {
 }
 
 function getActiveSystemPrompt() {
-  if (!S.activeProfile) return SYSTEM_PROMPT;
-  const p = S.profiles.find(p => p.id === S.activeProfile);
-  return p ? p.prompt : SYSTEM_PROMPT;
+  const ids = S.activeProfiles || [];
+  if (!ids.length) return SYSTEM_PROMPT;
+  const prompts = ids
+    .map(id => S.profiles.find(p => p.id === id))
+    .filter(Boolean)
+    .map(p => `# ${p.icon || ''} ${p.name}\n${p.prompt}`);
+  return prompts.length ? prompts.join('\n\n---\n\n') : SYSTEM_PROMPT;
 }
 
-/** Met à jour le chip profil dans la topbar */
 function updateProfileChip() {
-  const chip   = el("activeProfileChip");
-  const icon   = el("chipProfileIcon");
-  const name   = el("chipProfileName");
+  const chip = el("activeProfileChip");
+  const icon = el("chipProfileIcon");
+  const name = el("chipProfileName");
   if (!chip) return;
-  const p = S.profiles.find(p => p.id === S.activeProfile);
-  if (p) {
-    icon.textContent = p.icon || "🤖";
-    name.textContent = p.name;
-    chip.style.display = "inline-flex";
-  } else {
+  const ids = S.activeProfiles || [];
+  const active = ids.map(id => S.profiles.find(p => p.id === id)).filter(Boolean);
+  if (active.length === 0) {
     icon.textContent = "🔲";
     name.textContent = "Sans profil";
+  } else if (active.length === 1) {
+    icon.textContent = active[0].icon || "🤖";
+    name.textContent = active[0].name;
+  } else {
+    icon.textContent = "🤖";
+    name.textContent = `${active.length} profils actifs`;
   }
 }
 
@@ -2508,28 +2697,31 @@ function renderProfiles() {
     return;
   }
 
+  const ids = S.activeProfiles || [];
+
   // Mettre à jour les bannières
   const banner   = el("activePromptBanner");
   const noBanner = el("noProfileBanner");
-  const activePr = S.profiles.find(p => p.id === S.activeProfile);
-  if (activePr && banner && noBanner) {
+  const actives  = ids.map(id => S.profiles.find(p => p.id === id)).filter(Boolean);
+  if (actives.length && banner && noBanner) {
     banner.style.display   = "block";
     noBanner.style.display = "none";
-    el("activePromptName").textContent = activePr.icon + " " + activePr.name;
+    el("activePromptName").textContent = actives.map(p => (p.icon||"🤖") + " " + p.name).join(", ");
     const prev = el("promptPreview");
-    if (prev) prev.textContent = activePr.prompt;
+    if (prev) prev.textContent = actives.map(p => `# ${p.icon||''} ${p.name}\n${p.prompt}`).join('\n\n---\n\n');
   } else if (banner && noBanner) {
     banner.style.display   = "none";
     noBanner.style.display = "block";
   }
 
   S.profiles.forEach(p => {
+    const isActive = ids.includes(p.id);
     const d = document.createElement("div");
-    d.className = "profile-item" + (p.id === S.activeProfile ? " active" : "");
+    d.className = "profile-item" + (isActive ? " active" : "");
     d.innerHTML = `
       <span class="profile-icon">${p.icon || "🤖"}</span>
       <span class="profile-name" title="${p.name}">${p.name}</span>
-      <span class="profile-active-dot"></span>
+      <span class="profile-active-dot" title="${isActive ? 'Actif (cliquer pour désactiver)' : 'Inactif (cliquer pour activer)'}"></span>
       <div class="profile-btns">
         <button class="profile-btn" data-a="edit"  title="Modifier">✎</button>
         <button class="profile-btn" data-a="clone" title="Dupliquer">⧉</button>
@@ -2539,8 +2731,13 @@ function renderProfiles() {
       const a = e.target.dataset.a;
       if (a === "edit")  { openProfileEditor(p.id); return; }
       if (a === "clone") { cloneProfile(p.id);       return; }
-      // Activer / désactiver le profil
-      S.activeProfile = (S.activeProfile === p.id) ? null : p.id;
+      // Toggle multi-sélection
+      const cur = S.activeProfiles || [];
+      if (cur.includes(p.id)) {
+        S.activeProfiles = cur.filter(id => id !== p.id);
+      } else {
+        S.activeProfiles = [...cur, p.id];
+      }
       save(); renderProfiles(); updateProfileChip();
     };
     list.appendChild(d);
@@ -2593,7 +2790,7 @@ function deleteActiveProfile() {
   if (!_editingProfileId) return;
   if (!confirm("Supprimer ce profil ?")) return;
   S.profiles = S.profiles.filter(p => p.id !== _editingProfileId);
-  if (S.activeProfile === _editingProfileId) S.activeProfile = null;
+  S.activeProfiles = (S.activeProfiles || []).filter(id => id !== _editingProfileId);
   closeProfileEditor();
   save(); renderProfiles(); updateProfileChip();
 }
@@ -2764,8 +2961,8 @@ async function ghPush() {
     const data = {
       chats:         S.chats,
       projects:      S.projects,
-      profiles:      S.profiles,
-      activeProfile: S.activeProfile,
+      profiles:       S.profiles,
+      activeProfiles: S.activeProfiles || [],
       params:        S.params,
       model:         S.model,
       savedAt:       new Date().toISOString(),
@@ -2816,8 +3013,8 @@ async function ghPull() {
 
     if (raw.chats)         S.chats         = raw.chats;
     if (raw.projects)      S.projects      = raw.projects;
-    if (raw.profiles)      S.profiles      = raw.profiles;
-    if (raw.activeProfile !== undefined) S.activeProfile = raw.activeProfile;
+    if (raw.profiles)        S.profiles       = raw.profiles;
+    if (raw.activeProfiles)  S.activeProfiles  = raw.activeProfiles;
     if (raw.params)        S.params        = raw.params;
     if (raw.model)         S.model         = raw.model;
 
