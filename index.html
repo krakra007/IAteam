@@ -1761,11 +1761,116 @@ function convertLatex(text) {
   return text;
 }
 
+// ══════════════════════════════════════════════════════════════════════════
+// CONVERTISSEUR Unicode-math → LaTeX
+// Détecte les lignes contenant des opérateurs/symboles mathématiques Unicode
+// que les LLM écrivent sans délimiteurs $...$, et les convertit proprement.
+// Exemples détectés :
+//   `Wc,is` = Cp × T₂ × (γ⁻¹/γ − 1)    →  $W_{c,is} = Cp \times T_{2} \times ...$
+//   Vj = √2 × Cp × T₅ × ηn × (1 − ...)  →  $V_j = \sqrt{2} \times ...$
+// ══════════════════════════════════════════════════════════════════════════
+function preprocessUnicodeMath(raw) {
+  // Table Unicode → LaTeX
+  const U2L = [
+    // Opérateurs
+    ['×','\\times'],['÷','\\div'],['±','\\pm'],['∓','\\mp'],
+    ['√','\\sqrt'],['∑','\\sum'],['∫','\\int'],['∏','\\prod'],
+    ['∂','\\partial'],['∞','\\infty'],['∇','\\nabla'],
+    // Flèches
+    ['→','\\to'],['←','\\leftarrow'],['↔','\\leftrightarrow'],
+    ['⇌','\\rightleftharpoons'],['⟶','\\longrightarrow'],['⟵','\\longleftarrow'],
+    // Comparateurs
+    ['≤','\\leq'],['≥','\\geq'],['≠','\\neq'],['≈','\\approx'],
+    ['∝','\\propto'],['≡','\\equiv'],['∈','\\in'],['∉','\\notin'],
+    // Tiret moins Unicode → ASCII
+    ['\u2212','-'],['\u2013','-'],['\u2014','-'],
+    // Lettres grecques minuscules
+    ['α','\\alpha'],['β','\\beta'],['γ','\\gamma'],['δ','\\delta'],
+    ['ε','\\varepsilon'],['ζ','\\zeta'],['η','\\eta'],['θ','\\theta'],
+    ['ι','\\iota'],['κ','\\kappa'],['λ','\\lambda'],['μ','\\mu'],
+    ['ν','\\nu'],['ξ','\\xi'],['π','\\pi'],['ρ','\\rho'],
+    ['σ','\\sigma'],['τ','\\tau'],['φ','\\varphi'],['χ','\\chi'],
+    ['ψ','\\psi'],['ω','\\omega'],
+    // Lettres grecques majuscules
+    ['Γ','\\Gamma'],['Δ','\\Delta'],['Θ','\\Theta'],['Λ','\\Lambda'],
+    ['Ξ','\\Xi'],['Π','\\Pi'],['Σ','\\Sigma'],['Υ','\\Upsilon'],
+    ['Φ','\\Phi'],['Ψ','\\Psi'],['Ω','\\Omega'],
+  ];
+  const SUB_D = {'₀':'0','₁':'1','₂':'2','₃':'3','₄':'4','₅':'5','₆':'6','₇':'7','₈':'8','₉':'9'};
+  const SUP_D = {'⁰':'0','¹':'1','²':'2','³':'3','⁴':'4','⁵':'5','⁶':'6','⁷':'7','⁸':'8','⁹':'9','⁺':'+','⁻':'-'};
+
+  // Convertit une portion de texte en LaTeX
+  function toLatex(text) {
+    let t = text;
+    // 1) Retire les backticks des noms de variables, convertit Wc,is → W_{c,is}
+    t = t.replace(/`([^`\n]+)`/g, (_, inner) => {
+      // Comma-subscript : Wc,is → W_{c,is}  /  m,air → m_{air}
+      return inner.replace(/([A-Za-z][A-Za-z0-9]*),([A-Za-z][A-Za-z0-9]{0,6})\b/g, '$1_{$2}');
+    });
+    // 2) Indices Unicode → _{...}    (AVANT conversion grecque pour γ²→\gamma^{2})
+    t = t.replace(/[₀₁₂₃₄₅₆₇₈₉]+/g, m => '_{' + [...m].map(c=>SUB_D[c]||c).join('') + '}');
+    // 3) Exposants Unicode → ^{...}
+    t = t.replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻]+/g, m => '^{' + [...m].map(c=>SUP_D[c]||c).join('') + '}');
+    // 4) Symboles Unicode → LaTeX (ordre important : plus longs en premier)
+    for (const [u,l] of U2L) t = t.split(u).join(l + ' ');
+    // 5) Nettoie les espaces multiples
+    t = t.replace(/  +/g, ' ').trim();
+    return t;
+  }
+
+  // Détecte si une ligne contient des maths Unicode non balisées
+  function isMathLine(line) {
+    if (/\$/.test(line) || /\\\[|\\\(/.test(line)) return false; // déjà balisée
+    if (/^```|^\s{4}/.test(line)) return false;                   // bloc code
+    const hasMathOp  = /[×÷±√∑∫∂]/.test(line);
+    const hasSubSup  = /[₀₁₂₃₄₅₆₇₈₉⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻]/.test(line);
+    const hasGreek   = /[αβγδεηθλμνπρστφχψωΔΣΓΠΩ]/.test(line);
+    const hasEq      = /[A-Za-z₀-₉`\)]\s*=\s*[A-Za-z₀-₉(`√]/.test(line);
+    const hasFrac    = /[A-Za-z₀-₉\)]\s*\/\s*[A-Za-z₀-₉\(η]/.test(line);
+    // Score : ≥2 indicateurs math ET structure d'équation
+    const score = (hasMathOp?2:0) + (hasSubSup?1:0) + (hasGreek?1:0);
+    return score >= 2 && (hasEq || hasFrac);
+  }
+
+  const lines = raw.split('\n');
+  const out   = [];
+  let inCode  = false;
+
+  for (const line of lines) {
+    // Suivi des blocs ``` 
+    if (/^```/.test(line.trim())) { inCode = !inCode; out.push(line); continue; }
+    if (inCode) { out.push(line); continue; }
+
+    if (!isMathLine(line)) { out.push(line); continue; }
+
+    // La ligne est une formule — extraire préfixe textuel éventuel
+    // ex : "■ Compresseur : Wc,is = ..."  →  bullet + "Compresseur : " + formule
+    const m = line.match(/^(\s*(?:[-*•■□◦]\s+)?)((?:[A-ZÀ-Ö][^=×÷±√₀-₉⁰-⁹αβγδεηθλμνπρστφψωΔΣΓΠΩ`]*[:：]\s*)?)(.+)$/);
+    const bullet  = m ? m[1] : '';
+    const label   = m ? m[2] : '';
+    const formula = m ? m[3] : line;
+
+    const latex = toLatex(formula);
+    // Formule inline si préfixe textuel, sinon display block
+    if (label.length > 2) {
+      out.push(bullet + label + '$' + latex + '$');
+    } else {
+      out.push(bullet + '$$' + latex + '$$');
+    }
+  }
+
+  return out.join('\n');
+}
+
 function formatAssistantContent(raw) {
   if (!raw) return "";
 
   // Nettoyer le HTML brut éventuel du modèle
   raw = sanitizeModelResponse(raw);
+
+  // Convertir les lignes de formules Unicode en LaTeX propre
+  // (Gère le cas où le LLM écrit `Wc,is` = Cp × T₂ × (γ⁻¹/γ − 1) sans $...$)
+  raw = preprocessUnicodeMath(raw);
 
   // ── Pré-traitement : isoler les $$...$$ inline pour que l'extension
   //    blockMath de marked les détecte (sinon ils restent en texte brut). ──
@@ -2009,9 +2114,9 @@ function formatAssistantContent(raw) {
       .replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>')
       .replace(/&quot;/g,'"').replace(/&#39;/g,"'");
     // Heuristiques d'exclusion : si ça ressemble à du code, on laisse
-    if (decoded.length > 30) return full;
-    if (/[\s;{}()=]|==|=>|->|\.\w/.test(decoded)) return full;
-    // Heuristiques d'inclusion : formule chimique probable
+    if (decoded.length > 40) return full;
+    if (/[;{}()\[\]=>]|==|=>|->|\.\w{2,}/.test(decoded)) return full;
+    // Heuristiques d'inclusion : formule chimique/physique probable
     var looksChemical =
       // contient un - ou + en signe de charge avec lettres/chiffres : -COOH, RCOO-, Fe3+
       /^[A-Za-z0-9_^{}\\]*[+\-][A-Za-z0-9_^{}\\+\-]*$/.test(decoded) ||
@@ -2022,7 +2127,13 @@ function formatAssistantContent(raw) {
       // formule moléculaire pure : H2O, CH4, NaCl, Na2Cr2O7, H2SO4
       /^[A-Z][a-z]?[0-9]*([A-Z][a-z]?[0-9]*)+$/.test(decoded) ||
       // notation LaTeX-like : X_2, X^-, X_{2}, X^{-}
-      /[_^]/.test(decoded);
+      /[_^]/.test(decoded) ||
+      // Variable physique avec comma-subscript : Wc,is  /  m,fuel  /  T,04
+      /^[A-Za-z][A-Za-z0-9]*,[A-Za-z][A-Za-z0-9]{0,6}$/.test(decoded) ||
+      // Variable courte style ingénierie : PCI, OPR, TIT, mair, mfuel
+      /^[A-Z]{2,4}$/.test(decoded) ||
+      // Identificateur alphanumérique court sans espace (pas de mot naturel)
+      (/^[A-Za-z][A-Za-z0-9_,]{1,12}$/.test(decoded) && !/[aeiou]{3,}/i.test(decoded));
     if (!looksChemical) return full;
     // Convertir en LaTeX : ajouter des accolades aux indices/exposants nus
     var tex = decoded
