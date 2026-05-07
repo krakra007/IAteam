@@ -2261,7 +2261,7 @@ function renderParams() {
         <label><span class="p-toggle-icon">🌐</span> Activer la recherche web</label>
         <label class="toggle-switch"><input type="checkbox" id="t_websearch" ${P.webSearch?'checked':''}><span class="toggle-slider"></span></label>
       </div>
-      <div class="p-hint" style="margin-top:-8px;margin-bottom:4px">Claude cherchera sur internet quand c'est pertinent.<br>Facturé ~$10/1000 recherches + tokens.</div>
+      <div class="p-hint" style="margin-top:-8px;margin-bottom:4px">Le modèle cherchera sur internet quand c'est pertinent.<br>Supporté : Claude, GPT-4/5, Gemini, DeepSeek.</div>
     </div>
   `;
 
@@ -2465,6 +2465,11 @@ async function callOpenAICompatible(endpoint, key, model, messages) {
     ...buildRequestParams(model, "chat")
   };
 
+  // Recherche web (OpenAI GPT-4o+, DeepSeek)
+  if (S.params.webSearch && /gpt-4|gpt-3|deepseek/i.test(model)) {
+    body.tools = [{ type: "web_search_preview" }];
+  }
+
   const r = await fetch(endpoint, {
     method: "POST",
     headers: {
@@ -2556,6 +2561,22 @@ async function callAnthropic(key, model, messages) {
  * via l'API generativelanguage.googleapis.com
  */
 async function callGemini(key, model, messages) {
+  const geminiBody = {
+    model,
+    messages: [
+      { role: "system", content: getActiveSystemPrompt() },
+      ...messages
+        .filter(m => m.role === "user" || m.role === "assistant")
+        .map(m => ({ role: m.role, content: m.content }))
+    ],
+    ...buildRequestParams(model, "gemini")
+  };
+
+  // Recherche web Gemini (Google Search grounding)
+  if (S.params.webSearch) {
+    geminiBody.tools = [{ "google_search": {} }];
+  }
+
   const r = await fetch(
     "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
     {
@@ -2564,16 +2585,7 @@ async function callGemini(key, model, messages) {
         "Content-Type":  "application/json",
         "Authorization": "Bearer " + key
       },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: "system", content: getActiveSystemPrompt() },
-          ...messages
-            .filter(m => m.role === "user" || m.role === "assistant")
-            .map(m => ({ role: m.role, content: m.content }))
-        ],
-        ...buildRequestParams(model, "gemini")
-      })
+      body: JSON.stringify(geminiBody)
     }
   );
 
