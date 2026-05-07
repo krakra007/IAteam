@@ -2168,6 +2168,26 @@ function renderParams() {
   const fmt = (v,d=1) => Number(v).toFixed(d);
   const fmtInt = v => Number(v).toLocaleString('fr-FR');
 
+  // ── Détection des capacités du modèle actif ──
+  const provider = inferProviderFromModel(S.model);
+  const m = (S.model || '').toLowerCase();
+
+  const supportsThinking = provider === 'ANTHROPIC' && /sonnet|opus/i.test(m);
+  const supportsWebSearch = ['ANTHROPIC','OPENAI','GOOGLE GEMINI','DEEPSEEK'].includes(provider);
+  const supportsPenalties = ['OPENAI','DEEPSEEK'].includes(provider);
+
+  const disabledAttr = 'disabled style="opacity:0.35;pointer-events:none"';
+  const thinkDis = supportsThinking ? '' : disabledAttr;
+  const searchDis = supportsWebSearch ? '' : disabledAttr;
+  const penaltyDis = supportsPenalties ? '' : 'style="opacity:0.5"';
+
+  const thinkHint = supportsThinking
+    ? 'Claude montre son raisonnement. Sonnet 4.5+.'
+    : `Non supporté par ${provider === 'ANTHROPIC' ? 'ce modèle Claude (Haiku)' : provider}.`;
+  const searchHint = supportsWebSearch
+    ? 'Le modèle cherchera sur internet quand c\'est pertinent.<br>Supporté : Claude, GPT-4/5, Gemini, DeepSeek.'
+    : `Non supporté par ${provider}. Disponible sur Claude, GPT-4/5, Gemini, DeepSeek.`;
+
   p.innerHTML = `
     <div class="params-header">
       <h3>⚙ Paramètres LLM</h3>
@@ -2198,19 +2218,19 @@ function renderParams() {
     </div>
 
     <!-- PÉNALITÉS -->
-    <div class="params-section">
+    <div class="params-section" ${penaltyDis}>
       <div class="params-section-title">Pénalités</div>
 
       <div class="p-row">
         <div class="p-row-head"><label>Presence Penalty</label><span class="p-val" id="v_presence">${fmt(P.presence_penalty)}</span></div>
         <input type="range" id="r_presence" min="-2" max="2" step="0.1" value="${P.presence_penalty}">
-        <div class="p-hint">Encourage les nouveaux sujets. −2 à 2. Non supporté par Anthropic.</div>
+        <div class="p-hint">Encourage les nouveaux sujets. −2 à 2.${supportsPenalties ? '' : ' Non supporté par ' + provider + '.'}</div>
       </div>
 
       <div class="p-row">
         <div class="p-row-head"><label>Frequency Penalty</label><span class="p-val" id="v_freq">${fmt(P.frequency_penalty)}</span></div>
         <input type="range" id="r_freq" min="-2" max="2" step="0.1" value="${P.frequency_penalty}">
-        <div class="p-hint">Réduit les répétitions. −2 à 2. Non supporté par Anthropic.</div>
+        <div class="p-hint">Réduit les répétitions. −2 à 2.${supportsPenalties ? '' : ' Non supporté par ' + provider + '.'}</div>
       </div>
     </div>
 
@@ -2232,36 +2252,36 @@ function renderParams() {
     </div>
 
     <!-- RÉFLEXION ÉTENDUE -->
-    <div class="params-section">
+    <div class="params-section" ${thinkDis}>
       <div class="params-section-title">Réflexion étendue (Thinking)</div>
 
       <div class="p-toggle">
         <label>Activer le thinking</label>
-        <label class="toggle-switch"><input type="checkbox" id="t_think" ${P.thinking?'checked':''}><span class="toggle-slider"></span></label>
+        <label class="toggle-switch"><input type="checkbox" id="t_think" ${supportsThinking && P.thinking?'checked':''} ${supportsThinking?'':'disabled'}><span class="toggle-slider"></span></label>
       </div>
-      <div class="p-hint" style="margin-top:-8px;margin-bottom:10px">Claude montre son raisonnement. Sonnet 4.5+.</div>
+      <div class="p-hint" style="margin-top:-8px;margin-bottom:10px">${thinkHint}</div>
 
-      <div class="p-row" id="thinkingBudgetRow" style="display:${P.thinking?'block':'none'}">
+      <div class="p-row" id="thinkingBudgetRow" style="display:${supportsThinking && P.thinking?'block':'none'}">
         <div class="p-row-head"><label>Budget tokens (thinking)</label><span class="p-val" id="v_thinkbudget">${fmtInt(P.thinkingBudget)}</span></div>
         <input type="range" id="r_thinkbudget" min="1024" max="65536" step="1024" value="${P.thinkingBudget}">
         <div class="p-hint">Min 1 024. Déduit du max tokens.</div>
       </div>
 
-      <div class="p-toggle" id="showThinkingRow" style="display:${P.thinking?'flex':'none'}">
+      <div class="p-toggle" id="showThinkingRow" style="display:${supportsThinking && P.thinking?'flex':'none'}">
         <label>Afficher le thinking</label>
-        <label class="toggle-switch"><input type="checkbox" id="t_showthink" ${P.showThinking?'checked':''}><span class="toggle-slider"></span></label>
+        <label class="toggle-switch"><input type="checkbox" id="t_showthink" ${P.showThinking?'checked':''} ${supportsThinking?'':'disabled'}><span class="toggle-slider"></span></label>
       </div>
     </div>
 
     <!-- RECHERCHE WEB -->
-    <div class="params-section">
+    <div class="params-section" ${searchDis}>
       <div class="params-section-title">Recherche Web (Web Search)</div>
 
       <div class="p-toggle">
         <label><span class="p-toggle-icon">🌐</span> Activer la recherche web</label>
-        <label class="toggle-switch"><input type="checkbox" id="t_websearch" ${P.webSearch?'checked':''}><span class="toggle-slider"></span></label>
+        <label class="toggle-switch"><input type="checkbox" id="t_websearch" ${supportsWebSearch && P.webSearch?'checked':''} ${supportsWebSearch?'':'disabled'}><span class="toggle-slider"></span></label>
       </div>
-      <div class="p-hint" style="margin-top:-8px;margin-bottom:4px">Le modèle cherchera sur internet quand c'est pertinent.<br>Supporté : Claude, GPT-4/5, Gemini, DeepSeek.</div>
+      <div class="p-hint" style="margin-top:-8px;margin-bottom:4px">${searchHint}</div>
     </div>
   `;
 
@@ -3220,7 +3240,7 @@ el("toggleSidebarBtn").onclick = () => {
     appEl.classList.contains("sidebar-collapsed") ? "1" : "0");
 };
 
-el("modelSelect").onchange = e => { S.model = e.target.value; save(); };
+el("modelSelect").onchange = e => { S.model = e.target.value; save(); renderParams(); };
 el("paramsBtn").onclick    = () => el("paramsPanel").classList.toggle("open");
 
 promptEl.addEventListener("keydown", e => {
