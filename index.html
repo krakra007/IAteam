@@ -105,25 +105,26 @@
     .msg-icon:hover{color:#ffffff}
 
     /* ── Équations chimiques/math (rendu sans LaTeX) ── */
-    .chem-eq{
-      display:block;
-      background:#1a2030;
-      border-left:3px solid #4a80c4;
-      border-radius:6px;
-      padding:10px 16px;
-      margin:10px 0;
-      font-family:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
-      font-size:15px;
-      color:#a8d4ff;
-      letter-spacing:.02em;
-      overflow-x:auto;
-      white-space:pre;
+    /* ── Rendu Math KaTeX / Unicode fallback ── */
+    .katex-block {
+      text-align: center;
+      overflow-x: auto;
+      padding: 10px 0;
+      margin: 6px 0;
     }
-    .chem-inline{
-      font-family:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
-      font-size:.93em;color:#a8d4ff;background:#1e2840;
-      padding:1px 5px;border-radius:4px;
+    .katex-unicode {
+      font-family: 'Georgia', 'Times New Roman', serif;
+      font-size: 1.05em;
     }
+    .katex-block.katex-unicode {
+      display: block;
+      font-size: 1.1em;
+      padding: 8px 4px;
+    }
+    /* Compatibilité anciens styles (neutralisés) */
+    .chem-eq, .chem-inline, .katex-fallback-block,
+    .katex-fallback-inline, .katex-error-fallback,
+    .katex-inline-wrap { all: unset; display: inline; }
 
     /* ── Badge provider ── */
     .provider-badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;margin-bottom:4px;font-weight:600;letter-spacing:.04em}
@@ -1762,505 +1763,198 @@ function convertLatex(text) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════
-// CONVERTISSEUR Unicode-math → LaTeX
-// Détecte les lignes contenant des opérateurs/symboles mathématiques Unicode
-// que les LLM écrivent sans délimiteurs $...$, et les convertit proprement.
-// Exemples détectés :
-//   `Wc,is` = Cp × T₂ × (γ⁻¹/γ − 1)    →  $W_{c,is} = Cp \times T_{2} \times ...$
-//   Vj = √2 × Cp × T₅ × ηn × (1 − ...)  →  $V_j = \sqrt{2} \times ...$
+// RENDU MARKDOWN + MATH  (approche IAgenius : throwOnError:true + fallback Unicode)
 // ══════════════════════════════════════════════════════════════════════════
-function preprocessUnicodeMath(raw) {
-  // Table Unicode → LaTeX
-  const U2L = [
-    // Opérateurs
-    ['×','\\times'],['÷','\\div'],['±','\\pm'],['∓','\\mp'],
-    ['√','\\sqrt'],['∑','\\sum'],['∫','\\int'],['∏','\\prod'],
-    ['∂','\\partial'],['∞','\\infty'],['∇','\\nabla'],
-    // Flèches
-    ['→','\\to'],['←','\\leftarrow'],['↔','\\leftrightarrow'],
-    ['⇌','\\rightleftharpoons'],['⟶','\\longrightarrow'],['⟵','\\longleftarrow'],
-    // Comparateurs
-    ['≤','\\leq'],['≥','\\geq'],['≠','\\neq'],['≈','\\approx'],
-    ['∝','\\propto'],['≡','\\equiv'],['∈','\\in'],['∉','\\notin'],
-    // Tiret moins Unicode → ASCII
-    ['\u2212','-'],['\u2013','-'],['\u2014','-'],
-    // Lettres grecques minuscules
-    ['α','\\alpha'],['β','\\beta'],['γ','\\gamma'],['δ','\\delta'],
-    ['ε','\\varepsilon'],['ζ','\\zeta'],['η','\\eta'],['θ','\\theta'],
-    ['ι','\\iota'],['κ','\\kappa'],['λ','\\lambda'],['μ','\\mu'],
-    ['ν','\\nu'],['ξ','\\xi'],['π','\\pi'],['ρ','\\rho'],
-    ['σ','\\sigma'],['τ','\\tau'],['φ','\\varphi'],['χ','\\chi'],
-    ['ψ','\\psi'],['ω','\\omega'],
-    // Lettres grecques majuscules
-    ['Γ','\\Gamma'],['Δ','\\Delta'],['Θ','\\Theta'],['Λ','\\Lambda'],
-    ['Ξ','\\Xi'],['Π','\\Pi'],['Σ','\\Sigma'],['Υ','\\Upsilon'],
-    ['Φ','\\Phi'],['Ψ','\\Psi'],['Ω','\\Omega'],
-  ];
-  const SUB_D = {'₀':'0','₁':'1','₂':'2','₃':'3','₄':'4','₅':'5','₆':'6','₇':'7','₈':'8','₉':'9'};
-  const SUP_D = {'⁰':'0','¹':'1','²':'2','³':'3','⁴':'4','⁵':'5','⁶':'6','⁷':'7','⁸':'8','⁹':'9','⁺':'+','⁻':'-'};
 
-  // Convertit une portion de texte en LaTeX
-  function toLatex(text) {
-    let t = text;
-    // 1) Retire les backticks des noms de variables, convertit Wc,is → W_{c,is}
-    t = t.replace(/`([^`\n]+)`/g, (_, inner) => {
-      // Comma-subscript : Wc,is → W_{c,is}  /  m,air → m_{air}
-      return inner.replace(/([A-Za-z][A-Za-z0-9]*),([A-Za-z][A-Za-z0-9]{0,6})\b/g, '$1_{$2}');
-    });
-    // 2) Indices Unicode → _{...}    (AVANT conversion grecque pour γ²→\gamma^{2})
-    t = t.replace(/[₀₁₂₃₄₅₆₇₈₉]+/g, m => '_{' + [...m].map(c=>SUB_D[c]||c).join('') + '}');
-    // 3) Exposants Unicode → ^{...}
-    t = t.replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻]+/g, m => '^{' + [...m].map(c=>SUP_D[c]||c).join('') + '}');
-    // 4) Symboles Unicode → LaTeX (ordre important : plus longs en premier)
-    for (const [u,l] of U2L) t = t.split(u).join(l + ' ');
-    // 5) Nettoie les espaces multiples
-    t = t.replace(/  +/g, ' ').trim();
-    return t;
-  }
-
-  // Détecte si une ligne contient des maths Unicode non balisées
-  function isMathLine(line) {
-    if (/\$/.test(line) || /\\\[|\\\(/.test(line)) return false; // déjà balisée
-    if (/^```|^\s{4}/.test(line)) return false;                   // bloc code
-    const hasMathOp  = /[×÷±√∑∫∂]/.test(line);
-    const hasSubSup  = /[₀₁₂₃₄₅₆₇₈₉⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻]/.test(line);
-    const hasGreek   = /[αβγδεηθλμνπρστφχψωΔΣΓΠΩ]/.test(line);
-    const hasEq      = /[A-Za-z₀-₉`\)]\s*=\s*[A-Za-z₀-₉(`√]/.test(line);
-    const hasFrac    = /[A-Za-z₀-₉\)]\s*\/\s*[A-Za-z₀-₉\(η]/.test(line);
-    // Score : ≥2 indicateurs math ET structure d'équation
-    const score = (hasMathOp?2:0) + (hasSubSup?1:0) + (hasGreek?1:0);
-    return score >= 2 && (hasEq || hasFrac);
-  }
-
-  const lines = raw.split('\n');
-  const out   = [];
-  let inCode  = false;
-
-  for (const line of lines) {
-    // Suivi des blocs ``` 
-    if (/^```/.test(line.trim())) { inCode = !inCode; out.push(line); continue; }
-    if (inCode) { out.push(line); continue; }
-
-    if (!isMathLine(line)) { out.push(line); continue; }
-
-    // La ligne est une formule — extraire préfixe textuel éventuel
-    // ex : "■ Compresseur : Wc,is = ..."  →  bullet + "Compresseur : " + formule
-    const m = line.match(/^(\s*(?:[-*•■□◦]\s+)?)((?:[A-ZÀ-Ö][^=×÷±√₀-₉⁰-⁹αβγδεηθλμνπρστφψωΔΣΓΠΩ`]*[:：]\s*)?)(.+)$/);
-    const bullet  = m ? m[1] : '';
-    const label   = m ? m[2] : '';
-    const formula = m ? m[3] : line;
-
-    const latex = toLatex(formula);
-    // Formule inline si préfixe textuel, sinon display block
-    if (label.length > 2) {
-      out.push(bullet + label + '$' + latex + '$');
-    } else {
-      out.push(bullet + '$$' + latex + '$$');
-    }
-  }
-
-  return out.join('\n');
+// ── latexToUnicode : fallback propre quand KaTeX est absent ou échoue ────
+function latexToUnicode(latex) {
+  var t = latex;
+  var LB = String.fromCharCode(123), RB = String.fromCharCode(125);
+  // Environnements
+  t = t.replace(new RegExp('\\\\begin' + LB + '[^' + RB + ']*' + RB, 'g'), '');
+  t = t.replace(new RegExp('\\\\end'   + LB + '[^' + RB + ']*' + RB, 'g'), '');
+  // \ce{...}
+  t = t.replace(new RegExp('\\\\ce' + LB + '([^' + RB + ']*)' + RB, 'g'), '$1');
+  // \text{}, \mathrm{}, \mathbf{}
+  t = t.replace(new RegExp('\\\\text(?:rm|bf|it|sf)?' + LB + '([^' + RB + ']*)' + RB, 'g'), '$1');
+  t = t.replace(new RegExp('\\\\math(?:rm|bf|it|sf|bb|cal)?' + LB + '([^' + RB + ']*)' + RB, 'g'), '$1');
+  t = t.replace(new RegExp('\\\\operatorname' + LB + '([^' + RB + ']*)' + RB, 'g'), '$1');
+  // \frac{a}{b} → a/b
+  t = t.replace(new RegExp('\\\\(?:d|t)?frac' + LB + '([^' + RB + ']*)' + RB + LB + '([^' + RB + ']*)' + RB, 'g'), '$1/$2');
+  // \sqrt
+  t = t.replace(new RegExp('\\\\sqrt' + LB + '([^' + RB + ']*)' + RB, 'g'), '√$1');
+  t = t.replace(/\\sqrt(?!\{)/g, '√');
+  // Subscripts
+  var subMap = {'0':'₀','1':'₁','2':'₂','3':'₃','4':'₄','5':'₅','6':'₆','7':'₇','8':'₈','9':'₉','a':'ₐ','e':'ₑ','i':'ᵢ','n':'ₙ','o':'ₒ','r':'ᵣ','x':'ₓ','+':'₊','-':'₋','=':'₌','(':'₍',')':'₎'};
+  t = t.replace(new RegExp('_' + LB + '([^' + RB + ']*)' + RB, 'g'), function(_, s) { return s.split('').map(function(c){return subMap[c]||c;}).join(''); });
+  t = t.replace(/_([0-9a-z+\-])/gi, function(_, c) { return subMap[c.toLowerCase()] || c; });
+  // Superscripts
+  var supMap = {'0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹','+':'⁺','-':'⁻','=':'⁼','(':'⁽',')':'⁾','n':'ⁿ','i':'ⁱ'};
+  t = t.replace(new RegExp('\\^' + LB + '([^' + RB + ']*)' + RB, 'g'), function(_, s) { return s.split('').map(function(c){return supMap[c]||c;}).join(''); });
+  t = t.replace(/\^([0-9+\-ni])/gi, function(_, c) { return supMap[c.toLowerCase()] || c; });
+  // Lettres grecques
+  var gr = {alpha:'α',beta:'β',gamma:'γ',delta:'δ',epsilon:'ε',zeta:'ζ',eta:'η',theta:'θ',iota:'ι',kappa:'κ',lambda:'λ',mu:'μ',nu:'ν',xi:'ξ',pi:'π',rho:'ρ',sigma:'σ',tau:'τ',phi:'φ',chi:'χ',psi:'ψ',omega:'ω',Delta:'Δ',Gamma:'Γ',Lambda:'Λ',Sigma:'Σ',Omega:'Ω',Pi:'Π',Phi:'Φ',Theta:'Θ',Eta:'H',varepsilon:'ε',varphi:'φ',varpi:'ϖ',vartheta:'ϑ',nabla:'∇'};
+  for (var g in gr) t = t.replace(new RegExp('\\\\' + g + '(?![a-zA-Z])', 'g'), gr[g]);
+  // Symboles
+  t=t.replace(/\\times/g,'×');t=t.replace(/\\div/g,'÷');t=t.replace(/\\pm/g,'±');t=t.replace(/\\mp/g,'∓');
+  t=t.replace(/\\neq/g,'≠');t=t.replace(/\\leq/g,'≤');t=t.replace(/\\geq/g,'≥');t=t.replace(/\\approx/g,'≈');t=t.replace(/\\equiv/g,'≡');t=t.replace(/\\propto/g,'∝');
+  t=t.replace(/\\infty/g,'∞');t=t.replace(/\\circ/g,'°');t=t.replace(/\\degree/g,'°');t=t.replace(/\\partial/g,'∂');t=t.replace(/\\nabla/g,'∇');
+  t=t.replace(/\\rightarrow/g,'→');t=t.replace(/\\leftarrow/g,'←');t=t.replace(/\\leftrightarrow/g,'↔');t=t.replace(/\\longrightarrow/g,'⟶');
+  t=t.replace(/\\Rightarrow/g,'⇒');t=t.replace(/\\Leftarrow/g,'⇐');t=t.replace(/\\rightleftharpoons/g,'⇌');t=t.replace(/\\Leftrightarrow/g,'⇔');
+  t=t.replace(/\\cdot/g,'·');t=t.replace(/\\bullet/g,'•');t=t.replace(/\\sum/g,'Σ');t=t.replace(/\\prod/g,'Π');t=t.replace(/\\int/g,'∫');
+  t=t.replace(/\\forall/g,'∀');t=t.replace(/\\exists/g,'∃');t=t.replace(/\\in\b/g,'∈');t=t.replace(/\\notin/g,'∉');
+  t=t.replace(/\\subset/g,'⊂');t=t.replace(/\\cup/g,'∪');t=t.replace(/\\cap/g,'∩');t=t.replace(/\\emptyset/g,'∅');
+  t=t.replace(/\\neg/g,'¬');t=t.replace(/\\angle/g,'∠');t=t.replace(/\\perp/g,'⊥');
+  // Chimie
+  t=t.replace(/->/g,'→');t=t.replace(/<->/g,'↔');t=t.replace(/<=>/g,'⇌');
+  // Fractions communes
+  t=t.replace(/\b1\/2\b/g,'½');t=t.replace(/\b1\/4\b/g,'¼');t=t.replace(/\b3\/4\b/g,'¾');
+  // Mise en page
+  t=t.replace(/\\[;:!,]/g,' ');t=t.replace(/\\\\/g,'\n');t=t.replace(/&/g,'  ');
+  t=t.replace(/\\quad/g,'  ');t=t.replace(/\\qquad/g,'    ');
+  t=t.replace(/\\left/g,'');t=t.replace(/\\right/g,'');t=t.replace(/\\big/gi,'');
+  t=t.replace(new RegExp('\\\\hspace' + LB + '[^' + RB + ']*' + RB, 'g'), ' ');
+  // Nettoyage final
+  t=t.replace(/\\[a-zA-Z]+/g,'');
+  t=t.replace(new RegExp('[' + LB + RB + ']', 'g'), '');
+  t=t.replace(/[ \t]{2,}/g,' ');t=t.replace(/\n{3,}/g,'\n\n');
+  return t.trim();
 }
 
-function formatAssistantContent(raw) {
-  if (!raw) return "";
+function latexToUnicodeHtml(latex) {
+  var t = latexToUnicode(latex);
+  return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+}
+
+// ── formatAssistantContent : rendu Markdown + Math (calqué sur IAgenius) ─
+function formatAssistantContent(text) {
+  if (!text) return '';
 
   // Nettoyer le HTML brut éventuel du modèle
-  raw = sanitizeModelResponse(raw);
+  text = sanitizeModelResponse(text);
 
-  // ── FIX IAgenius : Pré-validation de chaque \ce{...} ──────────────────────
-  // Même logique que IAgenius renderMarkdown() : tester si KaTeX + mhchem peut
-  // rendre la formule. Si non (mhchem absent, formule invalide, subscripts Unicode
-  // à l'intérieur…), convertir directement en Unicode lisible au lieu d'afficher
-  // une erreur KaTeX rouge inline.
-  raw = raw.replace(/\\ce\s*\{([^}]*)\}/g, function(_, inner) {
+  // Pré-traitement \ce{} : si mhchem non chargé, convertir en Unicode propre
+  text = text.replace(/\\ce\s*\{([^}]*)\}/g, function(_, inner) {
     try {
       if (typeof katex !== 'undefined') {
         katex.renderToString('\\ce{' + inner + '}', {throwOnError: true});
-        return '\\ce{' + inner + '}'; // KaTeX peut le rendre → on garde
+        return '\\ce{' + inner + '}'; // mhchem OK, garder tel quel
       }
     } catch(e) {}
-    // mhchem absent ou formule invalide → convertir en Unicode propre
+    // Fallback : convertir flèches et indices/exposants
     return inner
-      .replace(/->/g, '→').replace(/<->/g, '↔').replace(/<=>/g, '⇌')
-      .replace(/\^{([^}]*)}/g, function(_, s) {
-        var m = {'0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹','+':'⁺','-':'⁻'};
-        return s.split('').map(function(c){return m[c]||c;}).join('');
-      })
-      .replace(/_{([^}]*)}/g, function(_, s) {
-        var m = {'0':'₀','1':'₁','2':'₂','3':'₃','4':'₄','5':'₅','6':'₆','7':'₇','8':'₈','9':'₉','+':'₊','-':'₋'};
-        return s.split('').map(function(c){return m[c]||c;}).join('');
-      })
-      .replace(/_([0-9])/g, function(_,c){ return '₀₁₂₃₄₅₆₇₈₉'[+c]; })
-      .replace(/\^([0-9])/g, function(_,c){ return '⁰¹²³⁴⁵⁶⁷⁸⁹'[+c]; });
+      .replace(/->/g,'→').replace(/<->/g,'↔').replace(/<=>/g,'⇌')
+      .replace(/\^\{([^}]*)\}/g, function(_,s){ var m={'0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹','+':'⁺','-':'⁻'}; return s.split('').map(function(c){return m[c]||c;}).join(''); })
+      .replace(/\_\{([^}]*)\}/g, function(_,s){ var m={'0':'₀','1':'₁','2':'₂','3':'₃','4':'₄','5':'₅','6':'₆','7':'₇','8':'₈','9':'₉'}; return s.split('').map(function(c){return m[c]||c;}).join(''); })
+      .replace(/_([0-9])/g,function(_,c){return '₀₁₂₃₄₅₆₇₈₉'[+c];})
+      .replace(/\^([0-9])/g,function(_,c){return '⁰¹²³⁴⁵⁶⁷⁸⁹'[+c];});
   });
 
-  // Convertir les lignes de formules Unicode en LaTeX propre
-  // (Gère le cas où le LLM écrit `Wc,is` = Cp × T₂ × (γ⁻¹/γ − 1) sans $...$)
-  raw = preprocessUnicodeMath(raw);
-
-  // ── Pré-traitement : isoler les $$...$$ inline pour que l'extension
-  //    blockMath de marked les détecte (sinon ils restent en texte brut). ──
-  // 1) Si un $$...$$ est collé après du texte, on insère un saut de ligne avant et après.
-  raw = raw.replace(/([^\n])\s*\$\$([\s\S]+?)\$\$\s*([^\n])/g,
-    (_, before, math, after) => `${before}\n\n$$${math}$$\n\n${after}`);
-  // 2) Cas en début de ligne mais sans saut après
-  raw = raw.replace(/(^|\n)\$\$([\s\S]+?)\$\$([^\n])/g,
-    (_, pre, math, after) => `${pre}$$${math}$$\n\n${after}`);
-  // 3) Cas avec saut avant mais texte qui suit immédiatement après le $$ fermant
-  raw = raw.replace(/([^\n])\$\$([\s\S]+?)\$\$(\n|$)/g,
-    (_, before, math, post) => `${before}\n\n$$${math}$$${post}`);
-
-  // ── Sanitiseur du CONTENU math (corrige les erreurs LLM les plus courantes) ──
-  // Normalise les caractères qui font planter KaTeX et auto-enveloppe les
-  // équations multi-lignes ( \\ et & ) dans \begin{aligned}...\end{aligned}.
-  function sanitizeMath(inner) {
-    // 1) Tirets Unicode → ASCII (les LLM mettent souvent – ou — au lieu de -)
-    let t = inner
-      .replace(/[\u2010\u2011\u2012\u2013\u2014\u2015\u2212]/g, '-')
-      // espaces insécables typographiques
-      .replace(/[\u00A0\u202F\u2009]/g, ' ');
-    // 2) Si on a des \\ ou & et qu'on n'est PAS déjà dans un environnement,
-    //    on enveloppe dans \begin{aligned}...\end{aligned}.
-    const hasAlignTokens = /\\\\|(?:^|[^\\])&/.test(t);
-    const alreadyInEnv  = /\\begin\{(aligned|align\*?|array|matrix|cases|gather\*?|equation\*?)\}/.test(t);
-    if (hasAlignTokens && !alreadyInEnv) {
-      // Nettoyer un éventuel & en tout début (artefact LLM type "&(R)-...")
-      t = t.replace(/^\s*&/, '');
-      t = '\\begin{aligned} ' + t + ' \\end{aligned}';
-    }
-    return t;
-  }
-  // Appliquer aux blocs $$...$$
-  raw = raw.replace(/\$\$([\s\S]+?)\$\$/g, (_, m) => '$$' + sanitizeMath(m) + '$$');
-  // Et aux blocs \[ ... \]
-  raw = raw.replace(/\\\[([\s\S]+?)\\\]/g, (_, m) => '\\[' + sanitizeMath(m) + '\\]');
-  // Pour l'inline $...$, juste les tirets Unicode (pas d'aligned)
-  raw = raw.replace(/(^|[^\$])\$([^\$\n]{1,200}?)\$(?!\$)/g,
-    (_, pre, m) => pre + '$' + m.replace(/[\u2010\u2011\u2012\u2013\u2014\u2015\u2212]/g, '-') + '$');
-
-  // ── Enregistrer les extensions KaTeX avec marked (une seule fois) ──
-  // Technique : extensions natives au niveau du tokenizer,
-  // comme dans IA-Genius — plus robuste que les placeholders.
+  // Enregistrer les extensions marked une seule fois
   if (!formatAssistantContent._ext) {
     formatAssistantContent._ext = true;
-
-    // Convertisseur Unicode de secours quand KaTeX n'est pas dispo
-    // Inspiré de la version « latexToUnicode » d'IA-Genius : gère \ce, \frac, \sqrt,
-    // indices/exposants alphabétiques, dizaines de symboles math.
-    function latexFallback(tex) {
-      var t = tex;
-      var LB = String.fromCharCode(123), RB = String.fromCharCode(125);
-      // Environnements (aligned, array, matrix, cases...)
-      t = t.replace(new RegExp('\\\\begin' + LB + '[^' + RB + ']*' + RB, 'g'), '');
-      t = t.replace(new RegExp('\\\\end'   + LB + '[^' + RB + ']*' + RB, 'g'), '');
-      // \ce{...} (mhchem) — traitement spécial : transformer les chiffres
-      // qui suivent une lettre en indices Unicode (CH3 → CH₃, H2O → H₂O)
-      var subDigits = {'0':'₀','1':'₁','2':'₂','3':'₃','4':'₄','5':'₅','6':'₆','7':'₇','8':'₈','9':'₉'};
-      var supDigits = {'0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹','+':'⁺','-':'⁻'};
-      t = t.replace(new RegExp('\\\\ce' + LB + '([^' + RB + ']*)' + RB, 'g'), function(_, inner) {
-        var out = inner;
-        // Charges : ^2+, ^3-, ^- en exposants
-        out = out.replace(/\^(\{[^}]+\}|[+\-0-9]+)/g, function(_, s) {
-          s = s.replace(/[{}]/g, '');
-          return s.split('').map(function(c){return supDigits[c]||c;}).join('');
-        });
-        // Indices explicites _3, _{12}
-        out = out.replace(/_(\{[^}]+\}|[0-9]+)/g, function(_, s) {
-          s = s.replace(/[{}]/g, '');
-          return s.split('').map(function(c){return subDigits[c]||c;}).join('');
-        });
-        // Chiffres post-lettre (CH3, H2O, Na2Cr2O7) → indices
-        out = out.replace(/([A-Za-z\)\]])([0-9]+)/g, function(_, ch, dig) {
-          return ch + dig.split('').map(function(c){return subDigits[c]||c;}).join('');
-        });
-        // Charges écrites en suffixe (Fe3+, Cu2+, OH-) → exposants
-        out = out.replace(/([A-Za-z\)\]\u2080-\u2089])([0-9]*)([+\-])(?![a-zA-Z0-9])/g, function(_, ch, dig, sign) {
-          return ch + (dig + sign).split('').map(function(c){return supDigits[c]||c;}).join('');
-        });
-        // Flèches mhchem
-        out = out.replace(/<=>/g,'⇌').replace(/<->/g,'↔').replace(/->/g,'→');
-        return out;
-      });
-      // \text{}, \mathrm/bf/it/sf/bb/cal{}, \operatorname{}
-      t = t.replace(new RegExp('\\\\text(?:rm|bf|it|sf)?' + LB + '([^' + RB + ']*)' + RB, 'g'), '$1');
-      t = t.replace(new RegExp('\\\\math(?:rm|bf|it|sf|bb|cal)?' + LB + '([^' + RB + ']*)' + RB, 'g'), '$1');
-      t = t.replace(new RegExp('\\\\operatorname' + LB + '([^' + RB + ']*)' + RB, 'g'), '$1');
-      // \frac{a}{b} → a/b
-      t = t.replace(new RegExp('\\\\(?:d|t)?frac' + LB + '([^' + RB + ']*)' + RB + LB + '([^' + RB + ']*)' + RB, 'g'), '$1/$2');
-      // \sqrt{x} → √x
-      t = t.replace(new RegExp('\\\\sqrt' + LB + '([^' + RB + ']*)' + RB, 'g'), '√$1');
-      // Indices (incluant lettres usuelles : Hₐ, Vₑ, kₙ...)
-      var subMap = {'0':'₀','1':'₁','2':'₂','3':'₃','4':'₄','5':'₅','6':'₆','7':'₇','8':'₈','9':'₉','a':'ₐ','e':'ₑ','i':'ᵢ','n':'ₙ','o':'ₒ','r':'ᵣ','x':'ₓ','+':'₊','-':'₋','=':'₌','(':'₍',')':'₎'};
-      t = t.replace(new RegExp('_' + LB + '([^' + RB + ']*)' + RB, 'g'),
-        function(_,s){ return s.split('').map(function(c){return subMap[c]||c;}).join(''); });
-      t = t.replace(/_([0-9a-z+\-])/gi, function(_,c){ return subMap[c.toLowerCase()] || c; });
-      // Exposants
-      var supMap = {'0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹','+':'⁺','-':'⁻','=':'⁼','(':'⁽',')':'⁾','n':'ⁿ','i':'ⁱ'};
-      t = t.replace(new RegExp('\\^' + LB + '([^' + RB + ']*)' + RB, 'g'),
-        function(_,s){ return s.split('').map(function(c){return supMap[c]||c;}).join(''); });
-      t = t.replace(/\^([0-9+\-ni])/gi, function(_,c){ return supMap[c.toLowerCase()] || c; });
-      // Lettres grecques
-      var gr = {alpha:'α',beta:'β',gamma:'γ',delta:'δ',epsilon:'ε',varepsilon:'ε',zeta:'ζ',eta:'η',theta:'θ',iota:'ι',kappa:'κ',lambda:'λ',mu:'μ',nu:'ν',xi:'ξ',pi:'π',rho:'ρ',sigma:'σ',tau:'τ',upsilon:'υ',phi:'φ',varphi:'φ',chi:'χ',psi:'ψ',omega:'ω',Delta:'Δ',Gamma:'Γ',Lambda:'Λ',Sigma:'Σ',Omega:'Ω',Pi:'Π',Phi:'Φ',Psi:'Ψ',Theta:'Θ',Xi:'Ξ'};
-      for (var g in gr) t = t.replace(new RegExp('\\\\' + g + '(?![a-zA-Z])', 'g'), gr[g]);
-      // Symboles math
-      t=t.replace(/\\times/g,'×').replace(/\\div/g,'÷').replace(/\\pm/g,'±').replace(/\\mp/g,'∓');
-      t=t.replace(/\\neq/g,'≠').replace(/\\leq/g,'≤').replace(/\\geq/g,'≥').replace(/\\approx/g,'≈').replace(/\\equiv/g,'≡');
-      t=t.replace(/\\infty/g,'∞').replace(/\\circ/g,'°').replace(/\\degree/g,'°').replace(/\\propto/g,'∝');
-      t=t.replace(/\\rightarrow/g,'→').replace(/\\leftarrow/g,'←').replace(/\\leftrightarrow/g,'↔');
-      t=t.replace(/\\Rightarrow/g,'⇒').replace(/\\Leftarrow/g,'⇐').replace(/\\rightleftharpoons/g,'⇌');
-      t=t.replace(/\\longrightarrow/g,'⟶').replace(/\\to(?![a-zA-Z])/g,'→').replace(/\\gets(?![a-zA-Z])/g,'←');
-      t=t.replace(/\\cdot/g,'·').replace(/\\bullet/g,'•').replace(/\\sum/g,'Σ').replace(/\\prod/g,'Π').replace(/\\int/g,'∫');
-      t=t.replace(/\\partial/g,'∂').replace(/\\nabla/g,'∇').replace(/\\forall/g,'∀').replace(/\\exists/g,'∃');
-      t=t.replace(/\\in\b/g,'∈').replace(/\\notin/g,'∉').replace(/\\subset/g,'⊂').replace(/\\cup/g,'∪').replace(/\\cap/g,'∩');
-      t=t.replace(/\\emptyset/g,'∅').replace(/\\neg/g,'¬').replace(/\\angle/g,'∠').replace(/\\perp/g,'⊥');
-      // Flèches courtes (chimie mhchem-like)
-      t=t.replace(/<=>/g,'⇌').replace(/<->/g,'↔').replace(/->/g,'→');
-      // Fractions usuelles
-      t=t.replace(/\b1\/2\b/g,'½').replace(/\b1\/4\b/g,'¼').replace(/\b3\/4\b/g,'¾');
-      // Espaces et alignement
-      t=t.replace(/\\[;:!,]/g,' ').replace(/\\\\/g,'\n').replace(/&/g,'  ');
-      t=t.replace(/\\quad/g,'  ').replace(/\\qquad/g,'    ');
-      t=t.replace(/\\left/g,'').replace(/\\right/g,'').replace(/\\big/gi,'');
-      t = t.replace(new RegExp('\\\\hspace' + LB + '[^' + RB + ']*' + RB, 'g'), ' ');
-      // Nettoyage final
-      t=t.replace(/\\[a-zA-Z]+/g,'');
-      t=t.replace(new RegExp('[' + LB + RB + ']', 'g'), '');
-      t=t.replace(/[ \t]{2,}/g,' ').replace(/\n{3,}/g,'\n\n');
-      return t.trim();
-    }
-    // Version qui échappe le HTML (pour usage en innerHTML direct)
-    function latexFallbackHtml(tex) {
-      return latexFallback(tex)
-        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-        .replace(/\n/g,'<br>');
-    }
-
-    function renderKatexBlock(tex) {
-      // throwOnError:true → l'exception est attrapée et on bascule sur le fallback Unicode
-      // (comme IAgenius — évite les messages d'erreur KaTeX rouges inline)
-      try {
-        if (typeof katex !== "undefined") {
-          return '<div class="katex-block-wrap">' +
-            katex.renderToString(tex.trim(), {displayMode:true,throwOnError:true,strict:"ignore"}) +
-            '</div>';
-        }
-      } catch(e) {}
-      return '<div class="katex-fallback-block">' + latexFallback(tex) + '</div>';
-    }
-
-    function renderKatexInline(tex) {
-      // throwOnError:true → fallback Unicode propre en cas d'échec KaTeX
-      try {
-        if (typeof katex !== "undefined") {
-          return katex.renderToString(tex.trim(), {displayMode:false,throwOnError:true,strict:"ignore"});
-        }
-      } catch(e) {}
-      return '<span class="katex-fallback-inline">' + latexFallback(tex) + '</span>';
-    }
-
     try {
       marked.use({
         extensions: [
-          // ── $$ ... $$ display math (block) ──
+          // ── $$ ... $$ display ──
           {
-            name: 'blockMath',
-            level: 'block',
+            name: 'blockMath', level: 'block',
             start(src) { return src.indexOf('$$'); },
             tokenizer(src) {
               const m = src.match(/^\$\$([\s\S]+?)\$\$/);
-              if (m) return { type:'blockMath', raw:m[0], text:m[1] };
+              if (m) return { type: 'blockMath', raw: m[0], text: m[1] };
             },
-            renderer(token) { return renderKatexBlock(token.text); }
+            renderer(token) {
+              try {
+                if (typeof katex !== 'undefined')
+                  return '<div class="katex-block">' +
+                    katex.renderToString(token.text.trim(), { displayMode: true, throwOnError: true, strict: 'ignore' }) +
+                    '</div>';
+              } catch(e) {}
+              return '<div class="katex-block katex-unicode">' + latexToUnicodeHtml(token.text) + '</div>';
+            }
           },
-          // ── $ ... $ inline math ──
+          // ── $ ... $ inline ──
           {
-            name: 'inlineMath',
-            level: 'inline',
+            name: 'inlineMath', level: 'inline',
             start(src) { return src.indexOf('$'); },
             tokenizer(src) {
               if (src.startsWith('$$')) return;
-              const m = src.match(/^\$([^\$\n]{1,200}?)\$/);
-              if (m) return { type:'inlineMath', raw:m[0], text:m[1] };
+              const m = src.match(/^\$([^\$\n]+?)\$/);
+              if (m) return { type: 'inlineMath', raw: m[0], text: m[1] };
             },
-            renderer(token) { return renderKatexInline(token.text); }
+            renderer(token) {
+              try {
+                if (typeof katex !== 'undefined')
+                  return katex.renderToString(token.text.trim(), { displayMode: false, throwOnError: true, strict: 'ignore' });
+              } catch(e) {}
+              return '<span class="katex-unicode">' + latexToUnicodeHtml(token.text) + '</span>';
+            }
           },
-          // ── \[ ... \] display math ──
+          // ── \[ ... \] display ──
           {
-            name: 'displayMathBracket',
-            level: 'block',
+            name: 'displayMathBracket', level: 'block',
             start(src) { return src.indexOf('\\['); },
             tokenizer(src) {
               const m = src.match(/^\\\[([\s\S]+?)\\\]/);
-              if (m) return { type:'displayMathBracket', raw:m[0], text:m[1] };
+              if (m) return { type: 'displayMathBracket', raw: m[0], text: m[1] };
             },
-            renderer(token) { return renderKatexBlock(token.text); }
+            renderer(token) {
+              try {
+                if (typeof katex !== 'undefined')
+                  return '<div class="katex-block">' +
+                    katex.renderToString(token.text.trim(), { displayMode: true, throwOnError: true, strict: 'ignore' }) +
+                    '</div>';
+              } catch(e) {}
+              return '<div class="katex-block katex-unicode">' + latexToUnicodeHtml(token.text) + '</div>';
+            }
           },
-          // ── \( ... \) inline math ──
+          // ── \( ... \) inline ──
           {
-            name: 'inlineMathParen',
-            level: 'inline',
+            name: 'inlineMathParen', level: 'inline',
             start(src) { return src.indexOf('\\('); },
             tokenizer(src) {
               const m = src.match(/^\\\((.+?)\\\)/);
-              if (m) return { type:'inlineMathParen', raw:m[0], text:m[1] };
+              if (m) return { type: 'inlineMathParen', raw: m[0], text: m[1] };
             },
-            renderer(token) { return renderKatexInline(token.text); }
+            renderer(token) {
+              try {
+                if (typeof katex !== 'undefined')
+                  return katex.renderToString(token.text.trim(), { displayMode: false, throwOnError: true, strict: 'ignore' });
+              } catch(e) {}
+              return '<span class="katex-unicode">' + latexToUnicodeHtml(token.text) + '</span>';
+            }
           }
         ]
       });
-    } catch(e) {
-      console.warn('[BrAInShift] marked extensions failed:', e);
-    }
-
-    // Configurer marked
-    marked.setOptions({ gfm: true, breaks: false });
+    } catch(e) { /* marked extension failed, math won't render as KaTeX */ }
   }
 
-  // ── Parser le Markdown avec marked (math géré nativement) ──
-  let html = marked.parse(raw);
+  let html = marked.parse(text, { gfm: true, breaks: false });
 
-  // ── Ajouter les headers de code avec bouton Copier ──
-  html = html.replace(/<pre><code class="language-(\w+)">/g, function(_, lang) {
-    return '<div class="code-block-header"><span>' + lang + '</span>' +
-      '<button class="copy-code-btn" onclick="this.closest(\'pre\').previousElementSibling,' +
-      'navigator.clipboard.writeText(this.closest(\'pre\').querySelector(\'code\').textContent)' +
-      '.then(()=>{this.textContent=\'✓\';setTimeout(()=>this.textContent=\'Copier\',2000)})">Copier</button>' +
-      '</div><pre><code class="language-' + lang + '">';
-  });
-  html = html.replace(/<pre><code(?!.*language-)>/g,
-    '<div class="code-block-header"><span>code</span>' +
-    '<button class="copy-code-btn" onclick="navigator.clipboard.writeText(this.closest(\'pre\').querySelector(\'code\').textContent).then(()=>{this.textContent=\'✓\';setTimeout(()=>this.textContent=\'Copier\',2000)})">Copier</button>' +
-    '</div><pre><code>');
+  // Boutons copier sur les blocs de code
+  html = html.replace(/<pre><code class="language-(\w+)">/g, (_, l) =>
+    `<div class="code-header"><span>${l}</span><button class="copy-code-btn" onclick="copyCodeBlock(this)">Copier</button></div><pre><code class="language-${l}">`);
+  html = html.replace(/<pre><code>/g,
+    '<div class="code-header"><span>code</span><button class="copy-code-btn" onclick="copyCodeBlock(this)">Copier</button></div><pre><code>');
 
-  // ── Auto-conversion des <code> "chimiques" en math inline ──
-  // Quand le LLM met `-COOH` ou `RCOO-` au lieu de $-COOH$ ou $RCOO^-$, marked
-  // produit du <code> avec rendu monospace. Si le contenu RESSEMBLE à une
-  // formule (lettres + chiffres + +-, sans espaces ni ponctuation de code),
-  // on le rend via KaTeX inline pour avoir l'aspect "chimie pro".
-  html = html.replace(/<code(?:\s[^>]*)?>([^<]+)<\/code>/g, function(full, inner) {
-    // Décoder les entités HTML que marked a échappées
-    var decoded = inner
-      .replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>')
-      .replace(/&quot;/g,'"').replace(/&#39;/g,"'");
-    // Heuristiques d'exclusion : si ça ressemble à du code, on laisse
-    if (decoded.length > 40) return full;
-    if (/[;{}()\[\]=>]|==|=>|->|\.\w{2,}/.test(decoded)) return full;
-    // Heuristiques d'inclusion : formule chimique/physique probable
-    var looksChemical =
-      // contient un - ou + en signe de charge avec lettres/chiffres : -COOH, RCOO-, Fe3+
-      /^[A-Za-z0-9_^{}\\]*[+\-][A-Za-z0-9_^{}\\+\-]*$/.test(decoded) ||
-      // commence par un -CH3, -OH, -NH2, -COOH typique
-      /^-(COOH|OH|NH[23]?|CH[23]?|CHO|COO[\-]?|NO[23]|SO[34]|PO[34]|R'?|X)$/.test(decoded) ||
-      // se termine par -OH, -COOH... (R-OH, CH3-COOH)
-      /^[A-Z][A-Za-z0-9]*-(COOH|OH|NH[23]?|CH[23]?|CHO|COO[\-]?|NO[23])$/.test(decoded) ||
-      // formule moléculaire pure : H2O, CH4, NaCl, Na2Cr2O7, H2SO4
-      /^[A-Z][a-z]?[0-9]*([A-Z][a-z]?[0-9]*)+$/.test(decoded) ||
-      // notation LaTeX-like : X_2, X^-, X_{2}, X^{-}
-      /[_^]/.test(decoded) ||
-      // Variable physique avec comma-subscript : Wc,is  /  m,fuel  /  T,04
-      /^[A-Za-z][A-Za-z0-9]*,[A-Za-z][A-Za-z0-9]{0,6}$/.test(decoded) ||
-      // Variable courte style ingénierie : PCI, OPR, TIT, mair, mfuel
-      /^[A-Z]{2,4}$/.test(decoded) ||
-      // Identificateur alphanumérique court sans espace (pas de mot naturel)
-      (/^[A-Za-z][A-Za-z0-9_,]{1,12}$/.test(decoded) && !/[aeiou]{3,}/i.test(decoded));
-    if (!looksChemical) return full;
-    // Convertir en LaTeX : ajouter des accolades aux indices/exposants nus
-    var tex = decoded
-      .replace(/([A-Za-z\)\]])([0-9]+)/g, '$1_{$2}')   // H2O → H_{2}O
-      .replace(/\^([+\-])(?![{a-zA-Z0-9])/g, '^{$1}'); // X^- → X^{-}
-    try {
-      if (typeof katex !== 'undefined') {
-        // throwOnError:true → si KaTeX échoue (formule invalide), on bascule sur Unicode
-        return '<span class="chem-inline">' +
-               katex.renderToString(tex, {displayMode:false, throwOnError:true, strict:'ignore'}) +
-               '</span>';
-      }
-    } catch(e) {}
-    // Fallback : convertir en Unicode propre (sans box bleue)
-    return '<span class="chem-inline">' + latexFallback(tex) + '</span>';
-  });
+  // Highlight.js
+  if (typeof hljs !== 'undefined') {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    tmp.querySelectorAll('pre code').forEach(block => hljs.highlightElement(block));
+    html = tmp.innerHTML;
+  }
 
   return html;
 }
 
-
-
-
-/** Formatage inline Markdown (bold, code, inline) — sans escaper les placeholders */
-function mdInline(text) {
-  // Protéger les placeholders avant escapeHtml
-  const saved = [];
-  text = text.replace(/\x00(BLOCK|INLINE)\d+\x00/g, m => {
-    const id = `\x01PH${saved.length}\x01`;
-    saved.push(m);
-    return id;
-  });
-
-  let s = escapeHtml(text);
-  s = s.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
-  s = s.replace(/\*(.+?)\*/g,     "<em>$1</em>");
-  s = s.replace(/`([^`]+)`/g,     "<code style='background:#2a2a2a;padding:1px 5px;border-radius:4px;font-size:.88em;font-family:monospace'>$1</code>");
-
-  // Restaurer les placeholders
-  saved.forEach((ph, i) => { s = s.replaceAll(`\x01PH${i}\x01`, ph); });
-  return s;
-}
-
-/** Rend un bloc LaTeX display en HTML */
-function renderLatexBlock(latex) {
-  latex = latex.trim();
-  if (typeof katex !== "undefined") {
-    try {
-      return katex.renderToString(latex, {
-        displayMode: true,
-        throwOnError: true,   // ← true : l'exception déclenche le fallback Unicode
-        strict: "ignore"
-      });
-    } catch(e) {
-      // Fallback Unicode lisible via applyLatexSymbols (globale)
-      return '<div class="katex-fallback-block">' + applyLatexSymbols(latex) + '</div>';
-    }
-  }
-  return '<span class="chem-eq">' + applyLatexSymbols(latex) + '</span>';
-}
-
-function renderLatexInline(latex) {
-  latex = latex.trim();
-  if (typeof katex !== "undefined") {
-    try {
-      return '<span class="katex-inline-wrap">' + katex.renderToString(latex, {
-        displayMode: false,
-        throwOnError: true,   // ← true : l'exception déclenche le fallback Unicode
-        strict: "ignore"
-      }) + '</span>';
-    } catch(e) {
-      // Fallback Unicode lisible via applyLatexSymbols (globale)
-      return '<span class="katex-fallback-inline">' + applyLatexSymbols(latex) + '</span>';
-    }
-  }
-  return '<span class="chem-inline">' + applyLatexSymbols(latex) + '</span>';
-}
-
-function applyLatexSymbols(s) {
-  const SYM = [
-    [/\\rightarrow/g,"→"],[/\\leftarrow/g,"←"],[/\\leftrightarrow/g,"⇌"],
-    [/\\longrightarrow/g,"⟶"],[/\\Rightarrow/g,"⟹"],
-    [/\\cdot/g,"·"],[/\\times/g,"×"],[/\\pm/g,"±"],
-    [/\\leq/g,"≤"],[/\\geq/g,"≥"],[/\\neq/g,"≠"],[/\\approx/g,"≈"],
-    [/\\infty/g,"∞"],[/\\partial/g,"∂"],[/\\Delta/g,"Δ"],[/\\sum/g,"∑"],
-    [/\\int/g,"∫"],[/\\alpha/g,"α"],[/\\beta/g,"β"],[/\\gamma/g,"γ"],
-    [/\\delta/g,"δ"],[/\\lambda/g,"λ"],[/\\mu/g,"μ"],[/\\pi/g,"π"],
-    [/\\sigma/g,"σ"],[/\\theta/g,"θ"],[/\\phi/g,"φ"],[/\\omega/g,"ω"],
-    [/\\text\{([^}]+)\}/g,"$1"],[/\\mathrm\{([^}]+)\}/g,"$1"],
-  ];
-  for (const [re,rep] of SYM) s = s.replace(re,rep);
-  s = s.replace(/\^\{([^}]+)\}/g,(_,c)=>"<sup>"+c+"</sup>");
-  s = s.replace(/\^([-+A-Za-z0-9])/g,(_,c)=>"<sup>"+c+"</sup>");
-  s = s.replace(/_\{([^}]+)\}/g,(_,c)=>"<sub>"+c+"</sub>");
-  s = s.replace(/_([A-Za-z0-9])/g,(_,c)=>"<sub>"+c+"</sub>");
-  s = s.replace(/\{([^{}]*)\}/g,"$1");
-  return s.trim();
+function copyCodeBlock(btn) {
+  const code = btn.parentElement.nextElementSibling?.querySelector('code');
+  if (!code) return;
+  navigator.clipboard.writeText(code.textContent);
+  btn.textContent = '✓';
+  setTimeout(() => btn.textContent = 'Copier', 2000);
 }
 
 // ─────────────────────────────────────────────────
