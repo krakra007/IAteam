@@ -112,6 +112,18 @@
       padding: 10px 0;
       margin: 6px 0;
     }
+    /* ── Bloc Thinking (réflexion étendue) ── */
+    .thinking-block{
+      background:#1a1f2e;border:1px solid #2a3a5a;border-radius:8px;
+      padding:0;margin:0 0 12px;font-size:13px;
+    }
+    .thinking-block summary{
+      cursor:pointer;padding:8px 14px;color:#7b9cf7;font-size:13px;
+      font-weight:500;user-select:none;
+    }
+    .thinking-block summary:hover{color:#9bb8ff}
+    .thinking-block[open] summary{border-bottom:1px solid #2a3a5a;margin-bottom:8px}
+    .thinking-block > :not(summary){padding:0 14px 10px;color:#8899b8;white-space:pre-wrap;line-height:1.5}
     .katex-unicode {
       font-family: 'Georgia', 'Times New Roman', serif;
       font-size: 1.05em;
@@ -157,9 +169,36 @@
     .composer-box .send-circle{position:absolute;right:10px;bottom:10px}
 
     /* ── Panneaux flottants ── */
-    .params{display:none;position:absolute;right:14px;top:58px;background:#1f1f1f;border:1px solid var(--line);padding:10px;border-radius:10px;width:300px;z-index:20}
+    .params{display:none;position:absolute;right:14px;top:58px;background:#1a1a1e;border:1px solid var(--line);padding:0;border-radius:14px;width:340px;z-index:20;max-height:80vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.5)}
     .params.open{display:block}
-    .param{display:grid;grid-template-columns:1fr 95px;gap:8px;margin-bottom:8px;align-items:center}
+    .params-header{display:flex;justify-content:space-between;align-items:center;padding:16px 18px 12px;border-bottom:1px solid var(--line)}
+    .params-header h3{margin:0;font-size:15px;font-weight:600;color:#e0e0e0}
+    .params-close{background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0 4px;line-height:1}
+    .params-close:hover{color:#fff}
+    .params-section{padding:14px 18px 10px;border-bottom:1px solid #2a2a2e}
+    .params-section:last-child{border-bottom:none}
+    .params-section-title{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#d4956a;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+    .params-section-title::before{content:'◆';font-size:7px}
+    /* Slider row */
+    .p-row{margin-bottom:14px}
+    .p-row-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+    .p-row-head label{font-size:13px;font-weight:500;color:#c9d0db}
+    .p-row-head .p-val{font-size:13px;font-weight:600;color:#d4956a;min-width:48px;text-align:right}
+    .p-row input[type=range]{-webkit-appearance:none;width:100%;height:5px;border-radius:4px;background:#2a2a2e;outline:none;cursor:pointer}
+    .p-row input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:#d4956a;cursor:pointer;border:2px solid #1a1a1e;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+    .p-row input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:#d4956a;cursor:pointer;border:2px solid #1a1a1e}
+    .p-row .p-hint{font-size:11px;color:var(--muted);margin-top:3px;line-height:1.4}
+    /* Toggle row */
+    .p-toggle{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+    .p-toggle label{font-size:13px;font-weight:500;color:#c9d0db;display:flex;align-items:center;gap:6px}
+    .p-toggle label .p-toggle-icon{font-size:15px}
+    .toggle-switch{position:relative;width:42px;height:24px;flex-shrink:0;cursor:pointer}
+    .toggle-switch input{opacity:0;width:0;height:0}
+    .toggle-slider{position:absolute;inset:0;background:#3a3a3e;border-radius:24px;transition:background .2s}
+    .toggle-slider::before{content:'';position:absolute;width:18px;height:18px;left:3px;top:3px;background:#888;border-radius:50%;transition:transform .2s, background .2s}
+    .toggle-switch input:checked+.toggle-slider{background:#d4956a40}
+    .toggle-switch input:checked+.toggle-slider::before{transform:translateX(18px);background:#d4956a}
+    .p-toggle .p-hint{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.3}
 
     /* ── Bouton Envoyer ── */
     #sendBtn.send-circle{width:38px;height:38px;border-radius:999px;background:#fff;color:#111;border:none;display:inline-flex;align-items:center;justify-content:center;padding:0}
@@ -895,13 +934,22 @@ const MODEL_GROUPS = [
 const CURATED_MODELS = MODEL_GROUPS.flatMap(g => g.models);
 
 const DEF = {
-  temperature: 0.7,
+  temperature: 1.0,
   top_p: 1,
-  max_tokens: 1200,   // BUG CORRIGÉ : renommé max_tokens (universel) — chaque provider le mappe
+  top_k: 0,
+  max_tokens: 16128,
   frequency_penalty: 0,
   presence_penalty: 0,
   stop: "",
-  seed: ""
+  seed: "",
+  // Streaming
+  streaming: false,
+  // Réflexion étendue (Anthropic thinking)
+  thinking: false,
+  thinkingBudget: 10240,
+  showThinking: true,
+  // Recherche web
+  webSearch: false
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -2116,34 +2164,140 @@ async function loadModelsFromApi() {
 // ─────────────────────────────────────────────────
 function renderParams() {
   const p = el("paramsPanel");
+  const P = S.params;
+  const fmt = (v,d=1) => Number(v).toFixed(d);
+  const fmtInt = v => Number(v).toLocaleString('fr-FR');
+
   p.innerHTML = `
-    <div style="font-size:12px;color:var(--muted);margin-bottom:8px">
-      ⚠ Certains paramètres ne s'appliquent qu'à OpenAI/DeepSeek.
+    <div class="params-header">
+      <h3>⚙ Paramètres LLM</h3>
+      <button class="params-close" id="paramsCloseBtn">✕</button>
     </div>
-    <div class='param'><label>temperature</label>
-      <input id='p_temperature' type='number' step='0.1' min='0' max='2' value='${S.params.temperature}'></div>
-    <div class='param'><label>top_p</label>
-      <input id='p_top_p' type='number' step='0.1' min='0.1' max='1' value='${S.params.top_p}'></div>
-    <div class='param'><label>max_tokens</label>
-      <input id='p_max_tokens' type='number' step='1' min='1' max='32000' value='${S.params.max_tokens}'></div>
-    <div class='param'><label>frequency_penalty <small style="color:#6b7280">(OpenAI)</small></label>
-      <input id='p_frequency_penalty' type='number' step='0.1' min='-2' max='2' value='${S.params.frequency_penalty ?? 0}'></div>
-    <div class='param'><label>presence_penalty <small style="color:#6b7280">(OpenAI)</small></label>
-      <input id='p_presence_penalty' type='number' step='0.1' min='-2' max='2' value='${S.params.presence_penalty ?? 0}'></div>
-    <div class='param'><label>stop</label>
-      <input id='p_stop' type='text' placeholder='Ex: END' value='${S.params.stop ?? ""}'></div>
-    <div class='param'><label>seed <small style="color:#6b7280">(OpenAI)</small></label>
-      <input id='p_seed' type='number' step='1' min='0' placeholder='optionnel' value='${S.params.seed ?? ""}'></div>
+
+    <!-- ÉCHANTILLONNAGE -->
+    <div class="params-section">
+      <div class="params-section-title">Échantillonnage</div>
+
+      <div class="p-row">
+        <div class="p-row-head"><label>Temperature</label><span class="p-val" id="v_temp">${fmt(P.temperature)}</span></div>
+        <input type="range" id="r_temp" min="0" max="2" step="0.05" value="${P.temperature}">
+        <div class="p-hint">0 = déterministe · 1 = créatif</div>
+      </div>
+
+      <div class="p-row">
+        <div class="p-row-head"><label>Top P (nucleus)</label><span class="p-val" id="v_topp">${P.top_p > 0 ? fmt(P.top_p) : '—'}</span></div>
+        <input type="range" id="r_topp" min="0" max="1" step="0.05" value="${P.top_p}">
+        <div class="p-hint">0 = désactivé. Ne pas combiner avec temperature.</div>
+      </div>
+
+      <div class="p-row">
+        <div class="p-row-head"><label>Top K</label><span class="p-val" id="v_topk">${P.top_k > 0 ? P.top_k : '—'}</span></div>
+        <input type="range" id="r_topk" min="0" max="100" step="1" value="${P.top_k || 0}">
+        <div class="p-hint">0 = désactivé. Cas avancés uniquement.</div>
+      </div>
+    </div>
+
+    <!-- PÉNALITÉS -->
+    <div class="params-section">
+      <div class="params-section-title">Pénalités</div>
+
+      <div class="p-row">
+        <div class="p-row-head"><label>Presence Penalty</label><span class="p-val" id="v_presence">${fmt(P.presence_penalty)}</span></div>
+        <input type="range" id="r_presence" min="-2" max="2" step="0.1" value="${P.presence_penalty}">
+        <div class="p-hint">Encourage les nouveaux sujets. −2 à 2. Non supporté par Anthropic.</div>
+      </div>
+
+      <div class="p-row">
+        <div class="p-row-head"><label>Frequency Penalty</label><span class="p-val" id="v_freq">${fmt(P.frequency_penalty)}</span></div>
+        <input type="range" id="r_freq" min="-2" max="2" step="0.1" value="${P.frequency_penalty}">
+        <div class="p-hint">Réduit les répétitions. −2 à 2. Non supporté par Anthropic.</div>
+      </div>
+    </div>
+
+    <!-- GÉNÉRATION -->
+    <div class="params-section">
+      <div class="params-section-title">Génération</div>
+
+      <div class="p-row">
+        <div class="p-row-head"><label>Max Tokens (réponse)</label><span class="p-val" id="v_maxt">${fmtInt(P.max_tokens)}</span></div>
+        <input type="range" id="r_maxt" min="256" max="128000" step="256" value="${P.max_tokens}">
+        <div class="p-hint">Jusqu'à 128 000 pour Sonnet 4.5 / Opus.</div>
+      </div>
+
+      <div class="p-toggle">
+        <label>Streaming</label>
+        <label class="toggle-switch"><input type="checkbox" id="t_stream" ${P.streaming?'checked':''}><span class="toggle-slider"></span></label>
+      </div>
+      <div class="p-hint" style="margin-top:-8px;margin-bottom:10px">Réponse progressive vs réponse complète.</div>
+    </div>
+
+    <!-- RÉFLEXION ÉTENDUE -->
+    <div class="params-section">
+      <div class="params-section-title">Réflexion étendue (Thinking)</div>
+
+      <div class="p-toggle">
+        <label>Activer le thinking</label>
+        <label class="toggle-switch"><input type="checkbox" id="t_think" ${P.thinking?'checked':''}><span class="toggle-slider"></span></label>
+      </div>
+      <div class="p-hint" style="margin-top:-8px;margin-bottom:10px">Claude montre son raisonnement. Sonnet 4.5+.</div>
+
+      <div class="p-row" id="thinkingBudgetRow" style="display:${P.thinking?'block':'none'}">
+        <div class="p-row-head"><label>Budget tokens (thinking)</label><span class="p-val" id="v_thinkbudget">${fmtInt(P.thinkingBudget)}</span></div>
+        <input type="range" id="r_thinkbudget" min="1024" max="65536" step="1024" value="${P.thinkingBudget}">
+        <div class="p-hint">Min 1 024. Déduit du max tokens.</div>
+      </div>
+
+      <div class="p-toggle" id="showThinkingRow" style="display:${P.thinking?'flex':'none'}">
+        <label>Afficher le thinking</label>
+        <label class="toggle-switch"><input type="checkbox" id="t_showthink" ${P.showThinking?'checked':''}><span class="toggle-slider"></span></label>
+      </div>
+    </div>
+
+    <!-- RECHERCHE WEB -->
+    <div class="params-section">
+      <div class="params-section-title">Recherche Web (Web Search)</div>
+
+      <div class="p-toggle">
+        <label><span class="p-toggle-icon">🌐</span> Activer la recherche web</label>
+        <label class="toggle-switch"><input type="checkbox" id="t_websearch" ${P.webSearch?'checked':''}><span class="toggle-slider"></span></label>
+      </div>
+      <div class="p-hint" style="margin-top:-8px;margin-bottom:4px">Claude cherchera sur internet quand c'est pertinent.<br>Facturé ~$10/1000 recherches + tokens.</div>
+    </div>
   `;
 
-  const num = (id, key) => el(id).onchange = e => { S.params[key] = Number(e.target.value); save(); };
-  num("p_temperature",       "temperature");
-  num("p_top_p",             "top_p");
-  num("p_max_tokens",        "max_tokens");
-  num("p_frequency_penalty", "frequency_penalty");
-  num("p_presence_penalty",  "presence_penalty");
-  el("p_stop").onchange = e => { S.params.stop = e.target.value; save(); };
-  el("p_seed").onchange = e => { S.params.seed = e.target.value; save(); };
+  // ── Bindings sliders ─────────────────────────────
+  function bindSlider(sliderId, valId, paramKey, formatter) {
+    const slider = el(sliderId);
+    const valEl  = el(valId);
+    slider.oninput = () => { valEl.textContent = formatter(slider.value); };
+    slider.onchange = () => { S.params[paramKey] = Number(slider.value); save(); };
+  }
+  bindSlider('r_temp',    'v_temp',    'temperature',       v => Number(v).toFixed(2));
+  bindSlider('r_topp',    'v_topp',    'top_p',             v => Number(v)>0 ? Number(v).toFixed(2) : '—');
+  bindSlider('r_topk',    'v_topk',    'top_k',             v => Number(v)>0 ? v : '—');
+  bindSlider('r_presence','v_presence','presence_penalty',   v => Number(v).toFixed(1));
+  bindSlider('r_freq',    'v_freq',    'frequency_penalty',  v => Number(v).toFixed(1));
+  bindSlider('r_maxt',    'v_maxt',    'max_tokens',         v => Number(v).toLocaleString('fr-FR'));
+  bindSlider('r_thinkbudget','v_thinkbudget','thinkingBudget',v => Number(v).toLocaleString('fr-FR'));
+
+  // ── Bindings toggles ─────────────────────────────
+  function bindToggle(id, paramKey, onChange) {
+    el(id).onchange = e => {
+      S.params[paramKey] = e.target.checked;
+      save();
+      if (onChange) onChange(e.target.checked);
+    };
+  }
+  bindToggle('t_stream', 'streaming');
+  bindToggle('t_websearch', 'webSearch');
+  bindToggle('t_showthink', 'showThinking');
+  bindToggle('t_think', 'thinking', on => {
+    el('thinkingBudgetRow').style.display = on ? 'block' : 'none';
+    el('showThinkingRow').style.display   = on ? 'flex'  : 'none';
+  });
+
+  // Bouton fermer
+  el('paramsCloseBtn').onclick = () => p.classList.remove('open');
 }
 
 // ─────────────────────────────────────────────────
@@ -2337,7 +2491,6 @@ async function callOpenAICompatible(endpoint, key, model, messages) {
  *  - Pas de frequency_penalty / presence_penalty / n / seed
  */
 async function callAnthropic(key, model, messages) {
-  // Vérifier si des fichiers PDF sont présents (nécessite le header beta)
   const hasPdf = messages.some(m =>
     Array.isArray(m.content) && m.content.some(b => b.type === 'document')
   );
@@ -2349,6 +2502,19 @@ async function callAnthropic(key, model, messages) {
       .map(m => ({ role: m.role, content: m.content })),
     ...buildRequestParams(model, "anthropic")
   };
+
+  // Recherche web
+  if (S.params.webSearch) {
+    body.tools = [{ type: "web_search_20250305", name: "web_search", max_uses: 5 }];
+  }
+
+  // Thinking (extended thinking)
+  if (S.params.thinking && /sonnet|opus/i.test(model)) {
+    body.thinking = { type: "enabled", budget_tokens: S.params.thinkingBudget || 10240 };
+    // Thinking nécessite temperature = 1 et pas de top_p
+    body.temperature = 1;
+    delete body.top_p;
+  }
 
   const headers = {
     "Content-Type":      "application/json",
@@ -2368,7 +2534,21 @@ async function callAnthropic(key, model, messages) {
 
   if (d.error) throw new Error(`[Anthropic ${d.error.type || d.error.error_type || "erreur"}] ${d.error.message || JSON.stringify(d.error)}`);
 
-  return d.content?.[0]?.text || JSON.stringify(d);
+  // Extraire la réponse (peut contenir thinking + text + web_search_tool_result)
+  let thinking = '';
+  let text = '';
+  for (const block of (d.content || [])) {
+    if (block.type === 'thinking' && S.params.showThinking) {
+      thinking += block.thinking || '';
+    } else if (block.type === 'text') {
+      text += block.text || '';
+    }
+  }
+
+  if (thinking) {
+    return `<details class="thinking-block"><summary>💭 Réflexion du modèle</summary>\n\n${thinking}\n</details>\n\n${text}`;
+  }
+  return text || JSON.stringify(d);
 }
 
 /**
@@ -2418,10 +2598,15 @@ async function callOpenAIResponses(key, model, messages) {
 
   const body = {
     model,
-    instructions: getActiveSystemPrompt(),           // ← profil système actif
+    instructions: getActiveSystemPrompt(),
     input,
     ...buildRequestParams(model, "responses")
   };
+
+  // Recherche web OpenAI
+  if (S.params.webSearch) {
+    body.tools = [{ type: "web_search_preview" }];
+  }
 
   const r = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
