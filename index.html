@@ -163,10 +163,11 @@
     /* home-hero styles moved to BrAInShift section */
     .composer-wrap{transition:max-width .2s ease}
     .main.home-mode .composer-wrap{max-width:980px;width:min(94vw,980px);display:block}
-    .main.home-mode textarea{width:100%;height:64px;border-radius:28px;padding:18px 64px 18px 20px;overflow:hidden}
-    .main.home-mode .send-circle{position:absolute;right:12px;bottom:13px;top:auto;transform:none}
-    .composer-box{position:relative;width:100%}
-    .composer-box .send-circle{position:absolute;right:10px;bottom:10px}
+    .main.home-mode textarea{width:100%;height:64px;border-radius:28px;padding:18px 108px 18px 20px;overflow:hidden}
+    .textarea-wrap{position:relative;width:100%}
+    .composer-box{width:100%}
+    .textarea-wrap .send-circle{position:absolute;right:10px;top:50%;transform:translateY(-50%)}
+    .main.home-mode .textarea-wrap .send-circle{right:12px}
 
     /* ── Panneaux flottants ── */
     .params{display:none;position:absolute;right:14px;top:58px;background:#1a1a1e;border:1px solid var(--line);padding:0;border-radius:14px;width:340px;z-index:20;max-height:80vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.5)}
@@ -383,7 +384,7 @@
     }
     /* ── Pièces jointes ── */
     .attach-btn{
-      position:absolute;right:58px;bottom:10px;
+      position:absolute;right:58px;top:50%;transform:translateY(-50%);
       background:none;border:none;color:var(--muted2);
       font-size:20px;cursor:pointer;padding:2px 6px;border-radius:6px;
       transition:color .15s, background .15s;line-height:1;
@@ -408,7 +409,7 @@
     }
     .file-chip .file-remove:hover{color:#f87171}
     /* Textarea : padding-right pour laisser place à 📎 + bouton envoi */
-    .composer-box textarea{padding-right:108px}
+    .textarea-wrap textarea{padding-right:108px}
 
     .pe-textarea{
       width:100%;background:#0f0f0f;border:1px solid var(--line);color:#d4d8e0;
@@ -775,14 +776,16 @@
       <div class="composer-wrap"><div class="composer-box">
         <div class="file-preview-area" id="filePreviewArea"></div>
         <input type="file" id="fileInput" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx" style="display:none">
-        <button class="attach-btn" id="attachBtn" title="Joindre un fichier (images, PDF, Office)">📎</button>
-        <textarea id="prompt" placeholder="Poser une question"></textarea>
-        <button class="send-circle" id="sendBtn" aria-label="Envoyer" title="Envoyer">
+        <div class="textarea-wrap">
+          <textarea id="prompt" placeholder="Poser une question"></textarea>
+          <button class="attach-btn" id="attachBtn" title="Joindre un fichier (images, PDF, Office)">📎</button>
+          <button class="send-circle" id="sendBtn" aria-label="Envoyer" title="Envoyer">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M12 19V6"></path>
             <path d="M6.5 11.5 12 6l5.5 5.5"></path>
           </svg>
         </button>
+        </div><!-- /textarea-wrap -->
       </div></div>
     </div>
   </section>
