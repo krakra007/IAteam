@@ -1218,21 +1218,6 @@ function buildUserContent(text, files) {
   return parts.length === 1 && parts[0].type === 'text' ? parts[0].text : parts;
 }
 
-/** Pour les API OpenAI (vision) — format image_url */
-function buildOpenAIContent(text, files) {
-  if (!files || !files.length) return text;
-  const parts = [];
-  for (const f of files) {
-    if (f.isImage) {
-      parts.push({ type: 'image_url', image_url: { url: `data:${f.type};base64,${f.data}` } });
-    } else if (!f.supported) {
-      parts.push({ type: 'text', text: `[Fichier joint : ${f.icon} ${f.name}]` });
-    }
-  }
-  if (text) parts.push({ type: 'text', text });
-  return parts.length === 1 && parts[0].type === 'text' ? text : parts;
-}
-
 const apiErrorEl = el("apiError");
 
 // ─────────────────────────────────────────────────
@@ -1694,123 +1679,6 @@ function sanitizeModelResponse(raw) {
   // ── Étape 4 : récupérer le texte pur ─────────────────────────
   // textContent supprime tous les tags restants
   return tmp.textContent;
-}
-
-// ─────────────────────────────────────────────────────
-// CONVERSION LATEX → HTML (chimie, maths)
-// Pas de dépendance externe — rendu professionnel
-// ─────────────────────────────────────────────────────
-function convertLatex(text) {
-  if (!text) return text;
-
-  // Table de conversion : séquences LaTeX → Unicode/HTML
-  const SYM = [
-    // Flèches
-    [/\\rightarrow/g,  "→"],
-    [/\\leftarrow/g,   "←"],
-    [/\\leftrightarrow/g, "⇌"],
-    [/\\Rightarrow/g,  "⟹"],
-    [/\\Leftarrow/g,   "⟸"],
-    [/\\longrightarrow/g, "⟶"],
-    [/\\longleftarrow/g,  "⟵"],
-    // Opérateurs et relations
-    [/\\cdot/g,   "·"],
-    [/\\times/g,  "×"],
-    [/\\div/g,    "÷"],
-    [/\\pm/g,     "±"],
-    [/\\mp/g,     "∓"],
-    [/\\leq/g,    "≤"],
-    [/\\geq/g,    "≥"],
-    [/\\neq/g,    "≠"],
-    [/\\approx/g, "≈"],
-    [/\\equiv/g,  "≡"],
-    [/\\propto/g, "∝"],
-    [/\\infty/g,  "∞"],
-    [/\\partial/g,"∂"],
-    [/\\Delta/g,  "Δ"],
-    [/\\nabla/g,  "∇"],
-    [/\\sum/g,    "∑"],
-    [/\\prod/g,   "∏"],
-    [/\\int/g,    "∫"],
-    // Lettres grecques
-    [/\\alpha/g,"α"],[/\\beta/g,"β"],[/\\gamma/g,"γ"],[/\\delta/g,"δ"],
-    [/\\epsilon/g,"ε"],[/\\zeta/g,"ζ"],[/\\eta/g,"η"],[/\\theta/g,"θ"],
-    [/\\kappa/g,"κ"],[/\\lambda/g,"λ"],[/\\mu/g,"μ"],[/\\nu/g,"ν"],
-    [/\\xi/g,"ξ"],[/\\pi/g,"π"],[/\\rho/g,"ρ"],[/\\sigma/g,"σ"],
-    [/\\tau/g,"τ"],[/\\upsilon/g,"υ"],[/\\phi/g,"φ"],[/\\chi/g,"χ"],
-    [/\\psi/g,"ψ"],[/\\omega/g,"ω"],
-    [/\\Gamma/g,"Γ"],[/\\Lambda/g,"Λ"],[/\\Sigma/g,"Σ"],[/\\Phi/g,"Φ"],
-    [/\\Psi/g,"Ψ"],[/\\Omega/g,"Ω"],
-    // Chimie spécifique
-    [/\\ce\{([^}]+)\}/g, (_, c) => convertChemFormula(c)],
-    [/\\text\{([^}]+)\}/g, "$1"],
-    [/\\mathrm\{([^}]+)\}/g, "$1"],
-    [/\\mathbf\{([^}]+)\}/g, "<strong>$1</strong>"],
-    [/\\mathit\{([^}]+)\}/g, "<em>$1</em>"],
-    // Nettoyages restants
-    [/\\\s/g, " "],
-    [/\\,/g,  " "],
-    [/\\!/g,  ""],
-    [/\\\[/g, ""],
-    [/\\\]/g, ""],
-  ];
-
-  // Convertit une formule chimique brute (ex: CH_3Br)
-  function convertChemFormula(s) {
-    return s
-      .replace(/\^(\{[^}]+\}|[-+\d]+)/g, (_, e) => {
-        const content = e.replace(/[{}]/g, "");
-        return `<sup>${content}</sup>`;
-      })
-      .replace(/_(\{[^}]+\}|\d+)/g, (_, e) => {
-        const content = e.replace(/[{}]/g, "");
-        return `<sub>${content}</sub>`;
-      });
-  }
-
-  // Applique les substitutions simples sur une chaîne
-  function applySymbols(s) {
-    for (const [re, rep] of SYM) s = s.replace(re, rep);
-    // Exposants ^{...} ou ^X
-    s = s.replace(/\^\{([^}]+)\}/g, (_, c) => `<sup>${c}</sup>`);
-    s = s.replace(/\^([A-Za-z0-9+\-])/g, (_, c) => `<sup>${c}</sup>`);
-    // Indices _{...} ou _X
-    s = s.replace(/_\{([^}]+)\}/g, (_, c) => `<sub>${c}</sub>`);
-    s = s.replace(/_([A-Za-z0-9])/g, (_, c) => `<sub>${c}</sub>`);
-    // Fractions \frac{a}{b}
-    s = s.replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g,
-      (_, n, d) => `<span style="display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;font-size:.85em;line-height:1.15"><span style="border-bottom:1px solid currentColor;padding:0 4px">${n}</span><span style="padding:0 4px">${d}</span></span>`);
-    // Racines \sqrt{x}
-    s = s.replace(/\\sqrt\{([^}]+)\}/g, (_, c) => `√(${c})`);
-    // Crochets / parenthèses LaTeX
-    s = s.replace(/\\left\(/g,"(").replace(/\\right\)/g,")");
-    s = s.replace(/\\left\[/g,"[").replace(/\\right\]/g,"]");
-    s = s.replace(/\\left\\{/g,"{").replace(/\\right\\}/g,"}");
-    s = s.replace(/\\left\|/g,"‖").replace(/\\right\|/g,"‖");
-    // Accolades restantes vides
-    s = s.replace(/\{([^{}]*)\}/g, "$1");
-    return s.trim();
-  }
-
-  // Traite les blocs $$ ... $$ (display math → bloc stylé)
-  text = text.replace(/\$\$([\s\S]+?)\$\$/g, (_, inner) => {
-    const rendered = applySymbols(inner);
-    return `\n<span class="chem-eq">${rendered}</span>\n`;
-  });
-
-  // Traite les blocs $ ... $ (inline math)
-  text = text.replace(/\$([^\$\n]+?)\$/g, (_, inner) => {
-    const rendered = applySymbols(inner);
-    return `<span class="chem-inline">${rendered}</span>`;
-  });
-
-  // Traite les \[ ... \] (display math alternatif)
-  text = text.replace(/\\\[([\s\S]+?)\\\]/g, (_, inner) => {
-    const rendered = applySymbols(inner);
-    return `\n<span class="chem-eq">${rendered}</span>\n`;
-  });
-
-  return text;
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -2450,6 +2318,8 @@ function buildRequestParams(model, apiType) {
 
   // ── o-series (o1, o3) : AUCUN paramètre de sampling ─────────
   if (isOSeriesModel(model)) {
+    // Responses API utilise max_output_tokens, Chat Completions utilise max_completion_tokens
+    if (apiType === "responses") return { max_output_tokens: maxT };
     return { max_completion_tokens: maxT };
   }
 
@@ -3337,7 +3207,7 @@ async function ghPull() {
     if (raw.projects)      S.projects      = raw.projects;
     if (raw.profiles)        S.profiles       = raw.profiles;
     if (raw.activeProfiles)  S.activeProfiles  = raw.activeProfiles;
-    if (raw.params)        S.params        = raw.params;
+    if (raw.params)        S.params        = { ...DEF, ...raw.params };
     if (raw.model)         S.model         = raw.model;
 
     if (!S.chats.find(c => c.id === S.activeChat))
