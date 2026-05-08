@@ -138,7 +138,34 @@
     .katex-fallback-inline, .katex-error-fallback,
     .katex-inline-wrap { all: unset; display: inline; }
 
-    /* ── Badge provider ── */
+    /* ── Chat context menu (⋯) ── */
+    .chat-menu-btn{
+      background:none;border:none;color:var(--muted2);cursor:pointer;
+      font-size:16px;padding:2px 6px;border-radius:4px;line-height:1;
+      opacity:0;transition:opacity .15s;flex-shrink:0;
+    }
+    .item:hover .chat-menu-btn{opacity:1}
+    .chat-menu-btn:hover{color:#fff;background:#ffffff15}
+    .chat-ctx-menu{
+      position:fixed;z-index:100;background:#1e1e22;border:1px solid var(--line);
+      border-radius:10px;padding:4px 0;min-width:190px;box-shadow:0 8px 24px rgba(0,0,0,.5);
+      font-size:13px;
+    }
+    .chat-ctx-menu .ctx-item{
+      display:flex;align-items:center;gap:8px;
+      padding:8px 14px;color:#c9d0db;cursor:pointer;white-space:nowrap;
+    }
+    .chat-ctx-menu .ctx-item:hover{background:#ffffff10}
+    .chat-ctx-menu .ctx-item.danger{color:#f87171}
+    .chat-ctx-menu .ctx-item.danger:hover{background:#f8717115}
+    .chat-ctx-menu .ctx-divider{height:1px;background:var(--line);margin:4px 0}
+    .chat-ctx-menu .ctx-sub{
+      padding:6px 14px 6px 32px;font-size:12px;color:#9ca3af;cursor:pointer;
+    }
+    .chat-ctx-menu .ctx-sub:hover{background:#ffffff10;color:#e0e0e0}
+    .chat-ctx-menu .ctx-sub .proj-dot{
+      display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle;
+    }
     .provider-badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;margin-bottom:4px;font-weight:600;letter-spacing:.04em}
     .badge-openai{background:#10a37f22;color:#10a37f;border:1px solid #10a37f44}
     .badge-anthropic{background:#c8621a22;color:#c8621a;border:1px solid #c8621a44}
@@ -642,10 +669,10 @@
           <span id="chipProfileIcon">🤖</span>
           <span id="chipProfileName">Aucun profil</span>
         </div>
-        <button class="btn" id="toggleRightPanelBtn" title="Profils système">⚙ Profils</button>
-        <button class="btn" id="githubBtn" title="Synchronisation GitHub">⬡ GitHub</button>
+        <button class="btn" id="toggleRightPanelBtn" title="Profils système">📖</button>
+        <button class="btn" id="githubBtn" title="Synchronisation GitHub">🌐</button>
         <button class="btn" id="apiKeyBtn" title="Gérer les clés API">🔑</button>
-        <button class="btn" id="paramsBtn">Paramètres</button>
+        <button class="btn" id="paramsBtn" title="Paramètres LLM">⚙</button>
         <!-- Panneau GitHub -->
         <div id="githubPanel" class="params" style="right:200px;top:46px;width:380px">
           <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:#e2e8f0">⬡ Synchronisation GitHub</div>
@@ -792,7 +819,7 @@
   <!-- Panneau Profils (droite) -->
   <aside class="right-panel" id="rightPanel">
     <div class="right-panel-head">
-      <span class="right-panel-title">⚙ Profils système</span>
+      <span class="right-panel-title">📖 Profils système</span>
       <button class="icon-btn" id="newProfileBtn" title="Nouveau profil" style="font-size:18px;color:#7baaf7">＋</button>
     </div>
     <div id="activePromptBanner" style="display:none;margin:6px 8px;padding:6px 10px;background:#1e2a3a;border:1px solid #1f6feb44;border-radius:8px;font-size:11px;color:#7baaf7;line-height:1.4">
@@ -1485,7 +1512,6 @@ function chatRow(c, indent = false) {
   const d = document.createElement("div");
   d.className = "item" + (c.id === S.activeChat ? " active" : "");
   if (indent) d.style.marginLeft = "18px";
-  // Dernier modèle utilisé dans ce chat
   const lastMsg = [...(c.messages || [])].reverse().find(m => m.role === "assistant" && m.model);
   const modelTag = lastMsg ? `<span class='chat-model-tag'>${lastMsg.model}</span>` : "";
   d.innerHTML = `
@@ -1493,16 +1519,101 @@ function chatRow(c, indent = false) {
       <span class='name' title='${c.title}'>${c.title}</span>
       ${modelTag}
     </div>
-    <button class='icon-btn' data-a='edit' title='Renommer'>✎</button>
-    <button class='icon-btn' data-a='del'  title='Supprimer'>✕</button>
+    <button class='chat-menu-btn' data-a='menu' title='Options'>⋯</button>
   `;
   d.onclick = e => {
-    const a = e.target.dataset.a;
-    if (a === "edit") return renameChat(c.id);
-    if (a === "del")  return deleteChat(c.id);
+    if (e.target.dataset.a === "menu") {
+      e.stopPropagation();
+      openChatContextMenu(c.id, e.target);
+      return;
+    }
     S.activeChat = c.id; save(); render();
   };
   return d;
+}
+
+// ── Menu contextuel "⋯" pour les conversations ──
+let _ctxMenuEl = null;
+
+function closeChatContextMenu() {
+  if (_ctxMenuEl) { _ctxMenuEl.remove(); _ctxMenuEl = null; }
+  document.removeEventListener('click', closeChatContextMenu);
+}
+
+function openChatContextMenu(chatId, anchor) {
+  closeChatContextMenu();
+  const chat = S.chats.find(c => c.id === chatId);
+  if (!chat) return;
+
+  const menu = document.createElement('div');
+  menu.className = 'chat-ctx-menu';
+  _ctxMenuEl = menu;
+
+  // Renommer
+  menu.innerHTML = `
+    <div class="ctx-item" data-action="rename">✎ Renommer</div>
+    <div class="ctx-divider"></div>
+    <div class="ctx-item" data-action="move-header" style="cursor:default;color:#888;font-size:11px;text-transform:uppercase;letter-spacing:.05em;padding:6px 14px 4px">↗ Déplacer vers…</div>
+  `;
+
+  // Option "Sans projet" si le chat est dans un projet
+  if (chat.projectId) {
+    const noProj = document.createElement('div');
+    noProj.className = 'ctx-sub';
+    noProj.innerHTML = `<span class="proj-dot" style="background:#888"></span>Sans projet`;
+    noProj.onclick = e => { e.stopPropagation(); chat.projectId = null; save(); render(); closeChatContextMenu(); };
+    menu.appendChild(noProj);
+  }
+
+  // Liste des projets
+  S.projects.forEach(p => {
+    if (p.id === chat.projectId) return; // déjà dans ce projet
+    const item = document.createElement('div');
+    item.className = 'ctx-sub';
+    item.innerHTML = `<span class="proj-dot" style="background:${p.color || '#888'}"></span>${p.name}`;
+    item.onclick = e => { e.stopPropagation(); chat.projectId = p.id; save(); render(); closeChatContextMenu(); };
+    menu.appendChild(item);
+  });
+
+  if (!S.projects.length) {
+    const empty = document.createElement('div');
+    empty.className = 'ctx-sub';
+    empty.style.cssText = 'color:#6b7280;font-style:italic';
+    empty.textContent = 'Aucun projet créé';
+    menu.appendChild(empty);
+  }
+
+  // Divider + Supprimer
+  const divider = document.createElement('div');
+  divider.className = 'ctx-divider';
+  menu.appendChild(divider);
+
+  const delItem = document.createElement('div');
+  delItem.className = 'ctx-item danger';
+  delItem.setAttribute('data-action', 'delete');
+  delItem.innerHTML = '🗑 Supprimer';
+  menu.appendChild(delItem);
+
+  // Actions
+  menu.onclick = e => {
+    const action = e.target.closest('[data-action]')?.dataset.action;
+    if (action === 'rename') { closeChatContextMenu(); renameChat(chatId); }
+    else if (action === 'delete') { closeChatContextMenu(); deleteChat(chatId); }
+  };
+
+  // Positionnement
+  document.body.appendChild(menu);
+  const rect = anchor.getBoundingClientRect();
+  let top = rect.bottom + 4;
+  let left = rect.left;
+  // Garder dans la fenêtre
+  if (top + menu.offsetHeight > window.innerHeight - 10) top = rect.top - menu.offsetHeight - 4;
+  if (left + menu.offsetWidth > window.innerWidth - 10) left = window.innerWidth - menu.offsetWidth - 10;
+  menu.style.top = top + 'px';
+  menu.style.left = left + 'px';
+
+  // Fermer au clic extérieur
+  setTimeout(() => document.addEventListener('click', closeChatContextMenu), 10);
 }
 
 
