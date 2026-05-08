@@ -2173,7 +2173,7 @@ function renderParams() {
   const m = (S.model || '').toLowerCase();
 
   const supportsThinking = provider === 'ANTHROPIC' && /sonnet|opus/i.test(m);
-  const supportsWebSearch = ['ANTHROPIC','OPENAI','GOOGLE GEMINI','DEEPSEEK'].includes(provider);
+  const supportsWebSearch = ['ANTHROPIC','OPENAI','DEEPSEEK'].includes(provider);
   const supportsPenalties = ['OPENAI','DEEPSEEK'].includes(provider);
 
   const disabledAttr = 'disabled style="opacity:0.35;pointer-events:none"';
@@ -2185,8 +2185,8 @@ function renderParams() {
     ? 'Claude montre son raisonnement. Sonnet 4.5+.'
     : `Non supporté par ${provider === 'ANTHROPIC' ? 'ce modèle Claude (Haiku)' : provider}.`;
   const searchHint = supportsWebSearch
-    ? 'Le modèle cherchera sur internet quand c\'est pertinent.<br>Supporté : Claude, GPT-4/5, Gemini, DeepSeek.'
-    : `Non supporté par ${provider}. Disponible sur Claude, GPT-4/5, Gemini, DeepSeek.`;
+    ? 'Le modèle cherchera sur internet quand c\'est pertinent.<br>Supporté : Claude, GPT-4/5, DeepSeek.'
+    : `Non supporté par ${provider}. Disponible sur Claude, GPT-4/5, DeepSeek.`;
 
   p.innerHTML = `
     <div class="params-header">
@@ -2592,10 +2592,8 @@ async function callGemini(key, model, messages) {
     ...buildRequestParams(model, "gemini")
   };
 
-  // Recherche web Gemini (Google Search grounding)
-  if (S.params.webSearch) {
-    geminiBody.tools = [{ "google_search": {} }];
-  }
+  // Recherche web : non supportée via l'endpoint OpenAI-compat de Gemini
+  // (nécessiterait l'API native Gemini avec googleSearchRetrieval)
 
   const r = await fetch(
     "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
@@ -2795,13 +2793,27 @@ function togglePromptPreview() {
 }
 
 function getActiveSystemPrompt() {
+  let base = '';
+
+  // Instruction de vérification web (si recherche activée)
+  if (S.params.webSearch) {
+    base += `[INSTRUCTION PRIORITAIRE — RECHERCHE WEB ACTIVÉE]
+Tu disposes d'un outil de recherche web. UTILISE-LE SYSTÉMATIQUEMENT avant de répondre :
+1. Pour TOUTE question factuelle, actualité, données chiffrées, dates, noms, événements → cherche d'abord sur internet.
+2. Ne te fie JAMAIS uniquement à ta mémoire interne pour des faits vérifiables. Vérifie toujours.
+3. Si la recherche contredit ta mémoire, PRIORISE le résultat web récent.
+4. Cite tes sources quand tu utilises des informations trouvées en ligne.
+5. Pour les questions d'opinion ou de créativité pure, la recherche est facultative.
+Objectif : réponses précises, à jour, et sourcées.\n\n`;
+  }
+
   const ids = S.activeProfiles || [];
-  if (!ids.length) return SYSTEM_PROMPT;
+  if (!ids.length) return base + SYSTEM_PROMPT;
   const prompts = ids
     .map(id => S.profiles.find(p => p.id === id))
     .filter(Boolean)
     .map(p => `# ${p.icon || ''} ${p.name}\n${p.prompt}`);
-  return prompts.length ? prompts.join('\n\n---\n\n') : SYSTEM_PROMPT;
+  return base + (prompts.length ? prompts.join('\n\n---\n\n') : SYSTEM_PROMPT);
 }
 
 function updateProfileChip() {
