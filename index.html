@@ -2168,69 +2168,115 @@ function renderParams() {
   const fmt = (v,d=1) => Number(v).toFixed(d);
   const fmtInt = v => Number(v).toLocaleString('fr-FR');
 
-  // ── Détection des capacités du modèle actif ──
+  // ══════════════════════════════════════════════════════════════
+  // MATRICE DE COMPATIBILITÉ — par provider / famille de modèle
+  // Chaque champ : true = supporté, false = grisé + non envoyé
+  // ══════════════════════════════════════════════════════════════
   const provider = inferProviderFromModel(S.model);
   const m = (S.model || '').toLowerCase();
+  const oSeries = isOSeriesModel(S.model);
+  const gpt5 = isGPT5Model(S.model);
 
-  const supportsThinking = provider === 'ANTHROPIC' && /sonnet|opus/i.test(m);
-  const supportsWebSearch = ['ANTHROPIC','OPENAI','DEEPSEEK'].includes(provider);
-  const supportsPenalties = ['OPENAI','DEEPSEEK'].includes(provider);
+  const caps = {
+    temperature:      false,
+    tempMax:          2,        // plage max du slider temperature
+    top_p:            false,
+    top_k:            false,
+    frequency_penalty:false,
+    presence_penalty: false,
+    max_tokens:       true,     // toujours supporté
+    streaming:        true,
+    thinking:         false,
+    webSearch:        false,
+  };
 
-  const disabledAttr = 'disabled style="opacity:0.35;pointer-events:none"';
-  const thinkDis = supportsThinking ? '' : disabledAttr;
-  const searchDis = supportsWebSearch ? '' : disabledAttr;
-  const penaltyDis = supportsPenalties ? '' : 'style="opacity:0.5"';
+  if (provider === 'ANTHROPIC') {
+    caps.temperature = !oSeries;
+    caps.tempMax     = 1;        // Anthropic: max 1.0
+    caps.top_p       = !oSeries;
+    caps.top_k       = !oSeries; // Anthropic supporte top_k
+    caps.thinking    = /sonnet|opus/i.test(m);
+    caps.webSearch   = true;
+  } else if (provider === 'OPENAI') {
+    if (oSeries) {
+      // o1, o3, o4 : aucun paramètre de sampling
+    } else if (gpt5) {
+      caps.temperature = true;
+      caps.top_p       = true;
+    } else {
+      // GPT-4.x
+      caps.temperature       = true;
+      caps.top_p             = true;
+      caps.frequency_penalty = true;
+      caps.presence_penalty  = true;
+    }
+    caps.webSearch = true;
+  } else if (provider === 'GOOGLE GEMINI') {
+    caps.temperature = true;
+    caps.top_p       = true;
+    caps.top_k       = true;
+    caps.webSearch   = true;
+  } else if (provider === 'DEEPSEEK') {
+    caps.temperature       = true;
+    caps.top_p             = true;
+    caps.frequency_penalty = true;
+    caps.presence_penalty  = true;
+    // DeepSeek n'a PAS de web search API
+  } else if (provider === 'GROQ') {
+    caps.temperature = true;
+    caps.top_p       = true;
+    // Groq : penalties NON supportées sur la plupart des modèles
+  }
 
-  const thinkHint = supportsThinking
-    ? 'Claude montre son raisonnement. Sonnet 4.5+.'
-    : `Non supporté par ${provider === 'ANTHROPIC' ? 'ce modèle Claude (Haiku)' : provider}.`;
-  const searchHint = supportsWebSearch
-    ? 'Le modèle cherchera sur internet quand c\'est pertinent.<br>Supporté : Claude, GPT-4/5, DeepSeek.'
-    : `Non supporté par ${provider}. Disponible sur Claude, GPT-4/5, DeepSeek.`;
+  // Helpers UI
+  const dis  = ok => ok ? '' : 'disabled';
+  const opac = ok => ok ? '' : 'style="opacity:0.35;pointer-events:none"';
+  const note = (ok, param) => ok ? '' : `<span style="color:#f87171;font-size:10px"> (non supporté)</span>`;
 
   p.innerHTML = `
     <div class="params-header">
       <h3>⚙ Paramètres LLM</h3>
       <button class="params-close" id="paramsCloseBtn">✕</button>
     </div>
+    <div style="padding:4px 18px 0;font-size:11px;color:var(--muted)">Modèle : <strong style="color:#c9d0db">${S.model}</strong> · ${provider}</div>
 
     <!-- ÉCHANTILLONNAGE -->
     <div class="params-section">
       <div class="params-section-title">Échantillonnage</div>
 
-      <div class="p-row">
-        <div class="p-row-head"><label>Temperature</label><span class="p-val" id="v_temp">${fmt(P.temperature)}</span></div>
-        <input type="range" id="r_temp" min="0" max="2" step="0.05" value="${P.temperature}">
-        <div class="p-hint">0 = déterministe · 1 = créatif</div>
+      <div class="p-row" ${opac(caps.temperature)}>
+        <div class="p-row-head"><label>Temperature${note(caps.temperature)}</label><span class="p-val" id="v_temp">${caps.temperature ? fmt(P.temperature,2) : '—'}</span></div>
+        <input type="range" id="r_temp" min="0" max="${caps.tempMax}" step="0.05" value="${P.temperature}" ${dis(caps.temperature)}>
+        <div class="p-hint">0 = déterministe · ${caps.tempMax === 1 ? '1' : '2'} = créatif${caps.tempMax === 1 ? ' (max Anthropic: 1.0)' : ''}</div>
       </div>
 
-      <div class="p-row">
-        <div class="p-row-head"><label>Top P (nucleus)</label><span class="p-val" id="v_topp">${P.top_p > 0 ? fmt(P.top_p) : '—'}</span></div>
-        <input type="range" id="r_topp" min="0" max="1" step="0.05" value="${P.top_p}">
+      <div class="p-row" ${opac(caps.top_p)}>
+        <div class="p-row-head"><label>Top P (nucleus)${note(caps.top_p)}</label><span class="p-val" id="v_topp">${caps.top_p && P.top_p > 0 ? fmt(P.top_p,2) : '—'}</span></div>
+        <input type="range" id="r_topp" min="0" max="1" step="0.05" value="${P.top_p}" ${dis(caps.top_p)}>
         <div class="p-hint">0 = désactivé. Ne pas combiner avec temperature.</div>
       </div>
 
-      <div class="p-row">
-        <div class="p-row-head"><label>Top K</label><span class="p-val" id="v_topk">${P.top_k > 0 ? P.top_k : '—'}</span></div>
-        <input type="range" id="r_topk" min="0" max="100" step="1" value="${P.top_k || 0}">
-        <div class="p-hint">0 = désactivé. Cas avancés uniquement.</div>
+      <div class="p-row" ${opac(caps.top_k)}>
+        <div class="p-row-head"><label>Top K${note(caps.top_k)}</label><span class="p-val" id="v_topk">${caps.top_k && P.top_k > 0 ? P.top_k : '—'}</span></div>
+        <input type="range" id="r_topk" min="0" max="100" step="1" value="${P.top_k || 0}" ${dis(caps.top_k)}>
+        <div class="p-hint">0 = désactivé. Anthropic &amp; Gemini uniquement.</div>
       </div>
     </div>
 
     <!-- PÉNALITÉS -->
-    <div class="params-section" ${penaltyDis}>
+    <div class="params-section" ${opac(caps.frequency_penalty || caps.presence_penalty)}>
       <div class="params-section-title">Pénalités</div>
 
-      <div class="p-row">
-        <div class="p-row-head"><label>Presence Penalty</label><span class="p-val" id="v_presence">${fmt(P.presence_penalty)}</span></div>
-        <input type="range" id="r_presence" min="-2" max="2" step="0.1" value="${P.presence_penalty}">
-        <div class="p-hint">Encourage les nouveaux sujets. −2 à 2.${supportsPenalties ? '' : ' Non supporté par ' + provider + '.'}</div>
+      <div class="p-row" ${opac(caps.presence_penalty)}>
+        <div class="p-row-head"><label>Presence Penalty${note(caps.presence_penalty)}</label><span class="p-val" id="v_presence">${caps.presence_penalty ? fmt(P.presence_penalty) : '—'}</span></div>
+        <input type="range" id="r_presence" min="-2" max="2" step="0.1" value="${P.presence_penalty}" ${dis(caps.presence_penalty)}>
+        <div class="p-hint">Encourage les nouveaux sujets. −2 à 2.</div>
       </div>
 
-      <div class="p-row">
-        <div class="p-row-head"><label>Frequency Penalty</label><span class="p-val" id="v_freq">${fmt(P.frequency_penalty)}</span></div>
-        <input type="range" id="r_freq" min="-2" max="2" step="0.1" value="${P.frequency_penalty}">
-        <div class="p-hint">Réduit les répétitions. −2 à 2.${supportsPenalties ? '' : ' Non supporté par ' + provider + '.'}</div>
+      <div class="p-row" ${opac(caps.frequency_penalty)}>
+        <div class="p-row-head"><label>Frequency Penalty${note(caps.frequency_penalty)}</label><span class="p-val" id="v_freq">${caps.frequency_penalty ? fmt(P.frequency_penalty) : '—'}</span></div>
+        <input type="range" id="r_freq" min="-2" max="2" step="0.1" value="${P.frequency_penalty}" ${dis(caps.frequency_penalty)}>
+        <div class="p-hint">Réduit les répétitions. −2 à 2.</div>
       </div>
     </div>
 
@@ -2252,36 +2298,36 @@ function renderParams() {
     </div>
 
     <!-- RÉFLEXION ÉTENDUE -->
-    <div class="params-section" ${thinkDis}>
+    <div class="params-section" ${opac(caps.thinking)}>
       <div class="params-section-title">Réflexion étendue (Thinking)</div>
 
       <div class="p-toggle">
         <label>Activer le thinking</label>
-        <label class="toggle-switch"><input type="checkbox" id="t_think" ${supportsThinking && P.thinking?'checked':''} ${supportsThinking?'':'disabled'}><span class="toggle-slider"></span></label>
+        <label class="toggle-switch"><input type="checkbox" id="t_think" ${caps.thinking && P.thinking?'checked':''} ${dis(caps.thinking)}><span class="toggle-slider"></span></label>
       </div>
-      <div class="p-hint" style="margin-top:-8px;margin-bottom:10px">${thinkHint}</div>
+      <div class="p-hint" style="margin-top:-8px;margin-bottom:10px">${caps.thinking ? 'Claude montre son raisonnement. Sonnet 4.5+.' : `Non supporté par ${provider === 'ANTHROPIC' ? 'ce modèle Claude' : provider}.`}</div>
 
-      <div class="p-row" id="thinkingBudgetRow" style="display:${supportsThinking && P.thinking?'block':'none'}">
+      <div class="p-row" id="thinkingBudgetRow" style="display:${caps.thinking && P.thinking?'block':'none'}">
         <div class="p-row-head"><label>Budget tokens (thinking)</label><span class="p-val" id="v_thinkbudget">${fmtInt(P.thinkingBudget)}</span></div>
         <input type="range" id="r_thinkbudget" min="1024" max="65536" step="1024" value="${P.thinkingBudget}">
         <div class="p-hint">Min 1 024. Déduit du max tokens.</div>
       </div>
 
-      <div class="p-toggle" id="showThinkingRow" style="display:${supportsThinking && P.thinking?'flex':'none'}">
+      <div class="p-toggle" id="showThinkingRow" style="display:${caps.thinking && P.thinking?'flex':'none'}">
         <label>Afficher le thinking</label>
-        <label class="toggle-switch"><input type="checkbox" id="t_showthink" ${P.showThinking?'checked':''} ${supportsThinking?'':'disabled'}><span class="toggle-slider"></span></label>
+        <label class="toggle-switch"><input type="checkbox" id="t_showthink" ${P.showThinking?'checked':''} ${dis(caps.thinking)}><span class="toggle-slider"></span></label>
       </div>
     </div>
 
     <!-- RECHERCHE WEB -->
-    <div class="params-section" ${searchDis}>
+    <div class="params-section" ${opac(caps.webSearch)}>
       <div class="params-section-title">Recherche Web (Web Search)</div>
 
       <div class="p-toggle">
         <label><span class="p-toggle-icon">🌐</span> Activer la recherche web</label>
-        <label class="toggle-switch"><input type="checkbox" id="t_websearch" ${supportsWebSearch && P.webSearch?'checked':''} ${supportsWebSearch?'':'disabled'}><span class="toggle-slider"></span></label>
+        <label class="toggle-switch"><input type="checkbox" id="t_websearch" ${caps.webSearch && P.webSearch?'checked':''} ${dis(caps.webSearch)}><span class="toggle-slider"></span></label>
       </div>
-      <div class="p-hint" style="margin-top:-8px;margin-bottom:4px">${searchHint}</div>
+      <div class="p-hint" style="margin-top:-8px;margin-bottom:4px">${caps.webSearch ? 'Le modèle cherchera sur internet quand c\'est pertinent.<br>Supporté : Claude, GPT-4/5, Gemini.' : `Non supporté par ${provider}.`}</div>
     </div>
   `;
 
@@ -2390,65 +2436,79 @@ function buildRequestParams(model, apiType) {
   const p    = S.params;
   const temp = Number(p.temperature);
   const topP = Number(p.top_p);
-  const maxT = Number(p.max_tokens) || 1200;
+  const topK = Number(p.top_k) || 0;
+  const maxT = Number(p.max_tokens) || 16128;
   const freqP = Number(p.frequency_penalty) || 0;
   const presP = Number(p.presence_penalty)  || 0;
 
-  // Helpers de validation par plage
+  // Validation par plage
   const valid = (v, lo, hi) => Number.isFinite(v) && v >= lo && v <= hi;
   const stop  = p.stop ? { stop: p.stop } : {};
 
-  // ── o-series OpenAI (o1, o3, o4…) ────────────────────────────
-  // Aucun paramètre de sampling : uniquement max_completion_tokens.
+  // ── o-series (o1, o3) : AUCUN paramètre de sampling ─────────
   if (isOSeriesModel(model)) {
     return { max_completion_tokens: maxT };
   }
 
-  // ── GPT-5.x via Responses API ────────────────────────────────
+  // ── GPT-5.x via Responses API ───────────────────────────────
   if (apiType === "responses") {
-    return { max_output_tokens: maxT, ...stop };
+    const out = { max_output_tokens: maxT, ...stop };
+    if (valid(temp, 0, 2)) out.temperature = temp;
+    if (valid(topP, 0, 1) && topP > 0) out.top_p = topP;
+    return out;
   }
 
-  // ── Anthropic Claude ─────────────────────────────────────────
-  // • temperature : [0, 1] (pas 2 comme OpenAI)
-  // • top_p       : (0, 1) strictement — NON envoyé si temperature présente
-  //   (Anthropic rejette les deux simultanément)
-  // • Pas de frequency_penalty / presence_penalty
+  // ── Anthropic Claude ────────────────────────────────────────
+  // temperature [0,1], top_p (0,1] mais pas les deux ensemble,
+  // top_k supporté, PAS de penalties, PAS de seed
   if (apiType === "anthropic") {
     const out = { max_tokens: maxT };
-    const t = valid(temp, 0, 1) ? temp : 0.7;
+    const t = valid(temp, 0, 1) ? temp : 1.0;
     out.temperature = t;
-    // top_p seulement si < 1 ET temperature est à sa valeur max (1)
-    // → en pratique : ne pas envoyer les deux
-    if (valid(topP, 0, 1) && topP < 1 && t === 1) out.top_p = topP;
+    // top_p seulement si temperature = 1 (sinon Anthropic rejette les deux)
+    if (valid(topP, 0, 1) && topP > 0 && topP < 1 && t >= 1) out.top_p = topP;
+    // top_k supporté par Anthropic (filtre les K tokens les plus probables)
+    if (topK > 0) out.top_k = topK;
     return out;
   }
 
-  // ── Groq ─────────────────────────────────────────────────────
-  // frequency/presence_penalty non supportés sur la plupart des modèles Groq.
+  // ── Groq ────────────────────────────────────────────────────
+  // temperature, top_p, max_tokens, stop. PAS de penalties.
   if (apiType === "groq") {
     const out = { max_tokens: maxT, ...stop };
-    if (valid(temp, 0, 2))           out.temperature = temp;
-    if (valid(topP, 0, 1) && topP > 0) out.top_p    = topP;
+    if (valid(temp, 0, 2)) out.temperature = temp;
+    if (valid(topP, 0, 1) && topP > 0) out.top_p = topP;
     return out;
   }
 
-  // ── Gemini (couche OpenAI compat) ─────────────────────────────
-  // top_p/penalty pas systématiquement supportés selon le modèle.
+  // ── Gemini (couche OpenAI compat) ───────────────────────────
+  // temperature, top_p, top_k, max_tokens. PAS de penalties.
   if (apiType === "gemini") {
     const out = { max_tokens: maxT };
     if (valid(temp, 0, 2)) out.temperature = temp;
+    if (valid(topP, 0, 1) && topP > 0) out.top_p = topP;
+    if (topK > 0) out.top_k = topK;
     return out;
   }
 
-  // ── Chat Completions standard (OpenAI GPT-4.x, DeepSeek…) ───
+  // ── DeepSeek ────────────────────────────────────────────────
+  // max_tokens (pas max_completion_tokens), temperature, top_p, penalties, stop.
+  if (apiType === "deepseek") {
+    const out = { max_tokens: maxT, ...stop };
+    if (valid(temp, 0, 2)) out.temperature = temp;
+    if (valid(topP, 0, 1) && topP > 0) out.top_p = topP;
+    if (freqP !== 0 && valid(freqP, -2, 2)) out.frequency_penalty = freqP;
+    if (presP !== 0 && valid(presP, -2, 2)) out.presence_penalty  = presP;
+    return out;
+  }
+
+  // ── Chat Completions standard (OpenAI GPT-4.x) ─────────────
   const out = { max_completion_tokens: maxT, ...stop };
-  if (valid(temp, 0, 2))     out.temperature        = temp;
-  // top_p : la plupart des APIs exigent (0, 1] — 0 est interdit
+  if (valid(temp, 0, 2)) out.temperature = temp;
   if (valid(topP, 0, 1) && topP > 0) out.top_p = topP;
   if (freqP !== 0 && valid(freqP, -2, 2)) out.frequency_penalty = freqP;
   if (presP !== 0 && valid(presP, -2, 2)) out.presence_penalty  = presP;
-  if (p.seed !== "" && p.seed != null)    out.seed = Number(p.seed);
+  if (p.seed !== "" && p.seed != null) out.seed = Number(p.seed);
   return out;
 }
 
@@ -2460,7 +2520,7 @@ function buildRequestParams(model, apiType) {
  * OpenAI & DeepSeek utilisent le format Chat Completions.
  * DeepSeek est compatible OpenAI mais sur son propre endpoint.
  */
-async function callOpenAICompatible(endpoint, key, model, messages) {
+async function callOpenAICompatible(endpoint, key, model, messages, apiType) {
   // Préparer les messages avec system prompt en tête
   const chatMessages = [
     { role: "system", content: getActiveSystemPrompt() },
@@ -2482,13 +2542,11 @@ async function callOpenAICompatible(endpoint, key, model, messages) {
   const body = {
     model,
     messages: chatMessages,
-    ...buildRequestParams(model, "chat")
+    ...buildRequestParams(model, apiType || "chat")
   };
 
-  // Recherche web (OpenAI GPT-4o+, DeepSeek)
-  if (S.params.webSearch && /gpt-4|gpt-3|deepseek/i.test(model)) {
-    body.tools = [{ type: "web_search_preview" }];
-  }
+  // Note : web search n'est PAS supporté en Chat Completions standard.
+  // Pour GPT-4.x avec web search → routé vers Responses API dans send().
 
   const r = await fetch(endpoint, {
     method: "POST",
@@ -2535,7 +2593,10 @@ async function callAnthropic(key, model, messages) {
 
   // Thinking (extended thinking)
   if (S.params.thinking && /sonnet|opus/i.test(model)) {
-    body.thinking = { type: "enabled", budget_tokens: S.params.thinkingBudget || 10240 };
+    const budget = S.params.thinkingBudget || 10240;
+    // max_tokens doit être > budget_tokens
+    if (body.max_tokens <= budget) body.max_tokens = budget + 4096;
+    body.thinking = { type: "enabled", budget_tokens: budget };
     // Thinking nécessite temperature = 1 et pas de top_p
     body.temperature = 1;
     delete body.top_p;
@@ -2547,7 +2608,11 @@ async function callAnthropic(key, model, messages) {
     "anthropic-version": "2023-06-01",
     "anthropic-dangerous-direct-browser-access": "true"
   };
-  if (hasPdf) headers["anthropic-beta"] = "pdfs-2024-09-25";
+  // Beta headers pour fonctionnalités avancées
+  const betas = [];
+  if (hasPdf) betas.push("pdfs-2024-09-25");
+  if (S.params.thinking && /sonnet|opus/i.test(model)) betas.push("interleaved-thinking-2025-05-14");
+  if (betas.length) headers["anthropic-beta"] = betas.join(",");
 
   const r = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -2581,19 +2646,32 @@ async function callAnthropic(key, model, messages) {
  * via l'API generativelanguage.googleapis.com
  */
 async function callGemini(key, model, messages) {
+  // ── Si recherche web activée → API native Gemini (seule à supporter google_search)
+  if (S.params.webSearch) {
+    return callGeminiNative(key, model, messages);
+  }
+
+  // ── Sinon → endpoint OpenAI-compatible (plus simple)
   const geminiBody = {
     model,
     messages: [
       { role: "system", content: getActiveSystemPrompt() },
       ...messages
         .filter(m => m.role === "user" || m.role === "assistant")
-        .map(m => ({ role: m.role, content: m.content }))
+        .map(m => {
+          if (Array.isArray(m.content)) {
+            const parts = m.content.map(b => {
+              if (b.type === 'image') return { type: 'image_url', image_url: { url: `data:${b.source.media_type};base64,${b.source.data}` } };
+              if (b.type === 'document') return { type: 'text', text: `[Document PDF joint : ${b.title || 'fichier.pdf'}]` };
+              return { type: 'text', text: b.text || '' };
+            });
+            return { role: m.role, content: parts };
+          }
+          return { role: m.role, content: m.content };
+        })
     ],
     ...buildRequestParams(model, "gemini")
   };
-
-  // Recherche web : non supportée via l'endpoint OpenAI-compat de Gemini
-  // (nécessiterait l'API native Gemini avec googleSearchRetrieval)
 
   const r = await fetch(
     "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
@@ -2608,10 +2686,75 @@ async function callGemini(key, model, messages) {
   );
 
   const d = await r.json();
+  if (d.error) throw new Error(`[Gemini ${d.error.code || ""}] ${d.error.message}`);
+  return d.choices?.[0]?.message?.content || JSON.stringify(d);
+}
 
+/** API native Gemini — utilisée pour la recherche web (google_search) */
+async function callGeminiNative(key, model, messages) {
+  // Construire le format natif Gemini : contents [{role, parts: [{text}]}]
+  const contents = [];
+  const filtered = messages.filter(m => m.role === "user" || m.role === "assistant");
+  for (const m of filtered) {
+    const role = m.role === "assistant" ? "model" : "user";
+    const parts = [];
+    if (Array.isArray(m.content)) {
+      for (const b of m.content) {
+        if (b.type === 'image') {
+          parts.push({ inline_data: { mime_type: b.source.media_type, data: b.source.data } });
+        } else if (b.type === 'text') {
+          parts.push({ text: b.text || '' });
+        } else if (b.type === 'document') {
+          parts.push({ text: `[Document PDF joint : ${b.title || 'fichier.pdf'}]` });
+        }
+      }
+    } else {
+      parts.push({ text: typeof m.content === 'string' ? m.content : '' });
+    }
+    if (parts.length) contents.push({ role, parts });
+  }
+
+  const body = {
+    contents,
+    systemInstruction: { parts: [{ text: getActiveSystemPrompt() }] },
+    tools: [{ google_search: {} }],
+    generationConfig: {
+      maxOutputTokens: S.params.max_tokens || 16128,
+      temperature: Math.min(Number(S.params.temperature) || 1, 2)
+    }
+  };
+
+  const r = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    }
+  );
+
+  const d = await r.json();
   if (d.error) throw new Error(`[Gemini ${d.error.code || ""}] ${d.error.message}`);
 
-  return d.choices?.[0]?.message?.content || JSON.stringify(d);
+  // Extraire le texte de la réponse native
+  const candidate = d.candidates?.[0];
+  if (!candidate) throw new Error("[Gemini] Aucune réponse reçue");
+
+  let text = '';
+  for (const part of (candidate.content?.parts || [])) {
+    if (part.text) text += part.text;
+  }
+
+  // Ajouter les sources si grounding metadata présent
+  const meta = candidate.groundingMetadata;
+  if (meta?.groundingChunks?.length) {
+    text += '\n\n---\n**Sources :**\n';
+    meta.groundingChunks.forEach((chunk, i) => {
+      if (chunk.web) text += `- [${chunk.web.title || 'Source ' + (i+1)}](${chunk.web.uri})\n`;
+    });
+  }
+
+  return text || JSON.stringify(d);
 }
 
 
@@ -2624,7 +2767,18 @@ async function callOpenAIResponses(key, model, messages) {
   // Responses API : system via instructions, historique via input
   const input = messages
     .filter(m => m.role === "user" || m.role === "assistant")
-    .map(m => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.content }));
+    .map(m => {
+      // Convertir multimodal Anthropic → format OpenAI
+      if (Array.isArray(m.content)) {
+        const parts = m.content.map(b => {
+          if (b.type === 'image') return { type: 'input_image', image_url: `data:${b.source.media_type};base64,${b.source.data}` };
+          if (b.type === 'document') return { type: 'input_text', text: `[Document PDF joint : ${b.title || 'fichier.pdf'}]` };
+          return { type: 'input_text', text: b.text || '' };
+        });
+        return { role: m.role === "assistant" ? "assistant" : "user", content: parts };
+      }
+      return { role: m.role === "assistant" ? "assistant" : "user", content: m.content };
+    });
 
   const body = {
     model,
@@ -2633,9 +2787,9 @@ async function callOpenAIResponses(key, model, messages) {
     ...buildRequestParams(model, "responses")
   };
 
-  // Recherche web OpenAI
+  // Recherche web OpenAI (Responses API)
   if (S.params.webSearch) {
-    body.tools = [{ type: "web_search_preview" }];
+    body.tools = [{ type: "web_search", search_context_size: "medium" }];
   }
 
   const r = await fetch("https://api.openai.com/v1/responses", {
@@ -2670,7 +2824,18 @@ async function callGroq(key, model, messages) {
     { role: "system", content: getActiveSystemPrompt() },
     ...messages
       .filter(m => m.role === "user" || m.role === "assistant")
-      .map(m => ({ role: m.role, content: m.content }))
+      .map(m => {
+        // Convertir multimodal → format OpenAI vision pour Groq
+        if (Array.isArray(m.content)) {
+          const parts = m.content.map(b => {
+            if (b.type === 'image') return { type: 'image_url', image_url: { url: `data:${b.source.media_type};base64,${b.source.data}` } };
+            if (b.type === 'document') return { type: 'text', text: `[Document PDF joint : ${b.title || 'fichier.pdf'}]` };
+            return { type: 'text', text: b.text || '' };
+          });
+          return { role: m.role, content: parts };
+        }
+        return { role: m.role, content: m.content };
+      })
   ];
   const body = {
     model,
@@ -2746,14 +2911,18 @@ async function send() {
       responseContent = await callGroq(key, S.model, c.messages);
 
     } else if (provider === "DEEPSEEK") {
-      // BUG CORRIGÉ : endpoint DeepSeek propre (pas OpenAI)
+      // BUG CORRIGÉ : endpoint DeepSeek propre + apiType dédié (max_tokens au lieu de max_completion_tokens)
       responseContent = await callOpenAICompatible(
         "https://api.deepseek.com/chat/completions",
-        key, S.model, c.messages
+        key, S.model, c.messages, "deepseek"
       );
 
     } else if (isGPT5Model(S.model)) {
       // GPT-5.x → Responses API (/v1/responses)
+      responseContent = await callOpenAIResponses(key, S.model, c.messages);
+
+    } else if (S.params.webSearch && provider === "OPENAI") {
+      // GPT-4.x avec web search → Responses API (Chat Completions ne supporte pas web search)
       responseContent = await callOpenAIResponses(key, S.model, c.messages);
 
     } else {
