@@ -99,10 +99,23 @@
     .msg-foot{display:flex;justify-content:flex-end;margin-top:4px;width:100%}
     .copy{background:transparent;border:0;color:#aeb4be;font-size:13px;cursor:pointer;line-height:1;padding:3px 4px;border-radius:6px}
     .copy:hover{background:#2a2a2a;color:#d6dbe3}
-    .msg-actions{display:flex;gap:10px;margin-top:6px;align-items:center}
     /* (anciennes règles .assistant-body retirées — voir bloc « Rendu Markdown professionnel » plus bas) */
     .msg-icon{border:0;background:transparent;color:#d0d4db;cursor:pointer;font-size:16px;line-height:1;padding:2px}
     .msg-icon:hover{color:#ffffff}
+    /* ── Menu export réponse ── */
+    .export-menu{
+      position:absolute;bottom:100%;left:0;margin-bottom:6px;
+      background:#1e1e22;border:1px solid var(--line);border-radius:10px;
+      padding:4px 0;min-width:200px;box-shadow:0 -4px 20px rgba(0,0,0,.45);
+      z-index:50;font-size:13px;
+    }
+    .export-menu .ex-item{
+      display:flex;align-items:center;gap:8px;
+      padding:8px 14px;color:#c9d0db;cursor:pointer;white-space:nowrap;
+    }
+    .export-menu .ex-item:hover{background:#ffffff10}
+    .export-menu .ex-divider{height:1px;background:var(--line);margin:3px 0}
+    .msg-actions{display:flex;gap:10px;margin-top:6px;align-items:center;position:relative}
 
     /* ── Équations chimiques/math (rendu sans LaTeX) ── */
     /* ── Rendu Math KaTeX / Unicode fallback ── */
@@ -674,7 +687,7 @@
         <button class="btn" id="apiKeyBtn" title="Gérer les clés API">🔑</button>
         <button class="btn" id="paramsBtn" title="Paramètres LLM">⚙</button>
         <!-- Panneau GitHub -->
-        <div id="githubPanel" class="params" style="right:200px;top:46px;width:380px">
+        <div id="githubPanel" class="params" style="right:60px;top:46px;width:380px">
           <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:#e2e8f0">⬡ Synchronisation GitHub</div>
           <div style="display:grid;gap:8px">
             <div class="param" style="grid-template-columns:110px 1fr">
@@ -1987,6 +2000,17 @@ function copyCodeBlock(btn) {
   setTimeout(() => btn.textContent = 'Copier', 2000);
 }
 
+/** Télécharge une chaîne comme fichier */
+function downloadFile(content, filename, mimeType) {
+  const blob = new Blob([content], { type: mimeType + ';charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 // ─────────────────────────────────────────────────
 // AFFICHAGE MESSAGES
 // ─────────────────────────────────────────────────
@@ -2067,7 +2091,7 @@ function renderMessages() {
       actions.className = "msg-actions";
 
       const copyBtn = document.createElement("button");
-      copyBtn.className = "msg-icon"; copyBtn.textContent = "⧉"; copyBtn.title = "Copier";
+      copyBtn.className = "msg-icon"; copyBtn.textContent = "⧉"; copyBtn.title = "Copier le texte brut";
       copyBtn.onclick = () => navigator.clipboard.writeText(typeof m.content === 'string' ? m.content : (m._text || ''));
 
       const regenBtn = document.createElement("button");
@@ -2079,7 +2103,57 @@ function renderMessages() {
         send();
       };
 
-      actions.append(copyBtn, regenBtn);
+      const exportBtn = document.createElement("button");
+      exportBtn.className = "msg-icon"; exportBtn.textContent = "⤓"; exportBtn.title = "Exporter la réponse";
+      exportBtn.onclick = e => {
+        e.stopPropagation();
+        // Fermer tout menu existant
+        document.querySelectorAll('.export-menu').forEach(el => el.remove());
+        const menu = document.createElement('div');
+        menu.className = 'export-menu';
+        const rawContent = typeof m.content === 'string' ? m.content : (m._text || '');
+        const htmlContent = d.querySelector('.assistant-body')?.innerHTML || '';
+        menu.innerHTML = `
+          <div class="ex-item" data-ex="copy-fmt">📋 Copier avec formatage</div>
+          <div class="ex-item" data-ex="copy-raw">📝 Copier en Markdown brut</div>
+          <div class="ex-divider"></div>
+          <div class="ex-item" data-ex="dl-md">⬇ Télécharger .md</div>
+          <div class="ex-item" data-ex="dl-html">⬇ Télécharger .html</div>
+        `;
+        menu.onclick = ev => {
+          const action = ev.target.closest('[data-ex]')?.dataset.ex;
+          if (!action) return;
+          menu.remove();
+          if (action === 'copy-fmt') {
+            // Copier le HTML formaté dans le presse-papier (rich text)
+            const blob = new Blob([htmlContent], {type: 'text/html'});
+            const plainBlob = new Blob([rawContent], {type: 'text/plain'});
+            navigator.clipboard.write([new ClipboardItem({
+              'text/html': blob,
+              'text/plain': plainBlob
+            })]).catch(() => navigator.clipboard.writeText(rawContent));
+          } else if (action === 'copy-raw') {
+            navigator.clipboard.writeText(rawContent);
+          } else if (action === 'dl-md') {
+            downloadFile(rawContent, 'reponse.md', 'text/markdown');
+          } else if (action === 'dl-html') {
+            const fullHtml = `<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>BrAInShift Export</title>
+<style>body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;max-width:800px;margin:40px auto;padding:20px;line-height:1.6;color:#1a1a1a}
+pre{background:#f4f4f4;padding:12px;border-radius:6px;overflow-x:auto}code{font-size:0.9em}
+table{border-collapse:collapse;width:100%}th,td{border:1px solid #ddd;padding:8px;text-align:left}
+blockquote{border-left:3px solid #4abfbf;margin:10px 0;padding:8px 16px;color:#555}</style>
+</head><body>${htmlContent}</body></html>`;
+            downloadFile(fullHtml, 'reponse.html', 'text/html');
+          }
+        };
+        actions.appendChild(menu);
+        setTimeout(() => {
+          const closer = () => { menu.remove(); document.removeEventListener('click', closer); };
+          document.addEventListener('click', closer);
+        }, 10);
+      };
+
+      actions.append(copyBtn, regenBtn, exportBtn);
       foot.appendChild(actions);
     } else {
       const b = document.createElement("button");
