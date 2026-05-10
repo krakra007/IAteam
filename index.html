@@ -606,6 +606,11 @@
       padding:2px 8px;border-radius:5px;font-size:11px;cursor:pointer;font-family:inherit
     }
     .assistant-body .copy-code-btn:hover{color:#e6edf3;border-color:#484f58}
+    /* ── Bloc de code replié (>50 lignes) ── */
+    .collapsed-code{border:1px solid #30363d;border-radius:8px;overflow:hidden;margin:10px 0}
+    .collapsed-code .code-header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px}
+    .collapsed-code details pre{max-height:600px;overflow:auto;margin:0}
+    .collapsed-code details summary{display:none}
     .assistant-body table{
       width:100%;border-collapse:separate;border-spacing:0;
       margin:14px 0;font-size:15px;border-radius:8px;border:1px solid var(--line);overflow:hidden
@@ -1989,15 +1994,71 @@ function formatAssistantContent(text) {
     html = tmp.innerHTML;
   }
 
+  // ── Collapse des gros blocs de code (>50 lignes) → bouton télécharger ──
+  const collapseDiv = document.createElement('div');
+  collapseDiv.innerHTML = html;
+  collapseDiv.querySelectorAll('pre code').forEach(codeEl => {
+    const raw = codeEl.textContent;
+    const lineCount = raw.split('\n').length;
+    if (lineCount < 50) return; // garder les petits blocs tels quels
+
+    // Détecter le langage depuis le header ou la classe
+    const pre = codeEl.parentElement;
+    const header = pre.previousElementSibling;
+    const lang = header?.querySelector('span')?.textContent || 'code';
+    const ext = { html:'html', javascript:'js', js:'js', python:'py', css:'css', json:'json', typescript:'ts', bash:'sh', shell:'sh', sql:'sql', xml:'xml', yaml:'yml', markdown:'md' }[lang.toLowerCase()] || 'txt';
+    const filename = `code.${ext}`;
+
+    // Aperçu : 8 premières lignes
+    const preview = raw.split('\n').slice(0, 8).join('\n');
+
+    // Créer le bloc replié
+    const wrapper = document.createElement('div');
+    wrapper.className = 'collapsed-code';
+    wrapper.innerHTML = `
+      <div class="code-header">
+        <span>${lang} · ${lineCount} lignes</span>
+        <div style="display:flex;gap:6px">
+          <button class="copy-code-btn" onclick="this.closest('.collapsed-code').querySelector('details').open=!this.closest('.collapsed-code').querySelector('details').open;this.textContent=this.closest('.collapsed-code').querySelector('details').open?'Replier':'Déplier'">Déplier</button>
+          <button class="copy-code-btn" onclick="copyCodeBlock(this)">Copier</button>
+          <button class="copy-code-btn" onclick="downloadCodeBlock(this, '${filename}')">⬇ ${filename}</button>
+        </div>
+      </div>
+      <pre style="max-height:180px;overflow:hidden;position:relative"><code>${codeEl.innerHTML.split('\n').slice(0, 8).join('\n')}</code><div style="position:absolute;bottom:0;left:0;right:0;height:50px;background:linear-gradient(transparent, #1e1e2e)"></div></pre>
+      <details style="display:none"><summary></summary><pre><code>${codeEl.innerHTML}</code></pre></details>
+    `;
+
+    // Remplacer header + pre par le wrapper
+    if (header?.classList.contains('code-header')) {
+      header.replaceWith(wrapper);
+      pre.remove();
+    } else {
+      pre.replaceWith(wrapper);
+    }
+  });
+  html = collapseDiv.innerHTML;
+
   return html;
 }
 
 function copyCodeBlock(btn) {
-  const code = btn.parentElement.nextElementSibling?.querySelector('code');
+  // Chercher le code dans le bloc complet (details si collapsed, sinon pre direct)
+  const container = btn.closest('.collapsed-code') || btn.closest('.code-header')?.parentElement;
+  const code = container?.querySelector('details code') || btn.closest('.code-header')?.nextElementSibling?.querySelector('code');
   if (!code) return;
   navigator.clipboard.writeText(code.textContent);
   btn.textContent = '✓';
   setTimeout(() => btn.textContent = 'Copier', 2000);
+}
+
+/** Télécharge le contenu d'un bloc de code */
+function downloadCodeBlock(btn, filename) {
+  const container = btn.closest('.collapsed-code');
+  const code = container?.querySelector('details code') || container?.querySelector('pre code');
+  if (!code) return;
+  downloadFile(code.textContent, filename, 'text/plain');
+  btn.textContent = '✓ Téléchargé';
+  setTimeout(() => btn.textContent = '⬇ ' + filename, 2000);
 }
 
 /** Télécharge une chaîne comme fichier */
