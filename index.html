@@ -824,7 +824,7 @@
     <div class="composer">
       <div class="composer-wrap"><div class="composer-box">
         <div class="file-preview-area" id="filePreviewArea"></div>
-        <input type="file" id="fileInput" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx" style="display:none">
+        <input type="file" id="fileInput" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.html,.htm,.css,.js,.json,.md,.txt,.csv,.py,.xml,.yaml,.yml,.ts,.jsx,.tsx,.sql,.sh,.bat,.log,.ini,.cfg,.env,.toml" style="display:none">
         <div class="textarea-wrap">
           <textarea id="prompt" placeholder="Poser une question"></textarea>
           <button class="attach-btn" id="attachBtn" title="Joindre un fichier (images, PDF, Office)">📎</button>
@@ -1127,9 +1127,42 @@ const SUPPORTED_TYPES = {
   'application/vnd.ms-excel': { icon: '📊', label: 'Excel', supported: false },
   'application/vnd.openxmlformats-officedocument.presentationml.presentation': { icon: '📑', label: 'PowerPoint', supported: false },
   'application/vnd.ms-powerpoint': { icon: '📑', label: 'PowerPoint', supported: false },
+  // Fichiers texte / code
+  'text/html':       { icon: '🌐', label: 'HTML', supported: true, isText: true },
+  'text/css':        { icon: '🎨', label: 'CSS',  supported: true, isText: true },
+  'text/javascript': { icon: '📜', label: 'JS',   supported: true, isText: true },
+  'application/javascript': { icon: '📜', label: 'JS', supported: true, isText: true },
+  'application/json':{ icon: '📋', label: 'JSON', supported: true, isText: true },
+  'text/markdown':   { icon: '📝', label: 'MD',   supported: true, isText: true },
+  'text/plain':      { icon: '📄', label: 'TXT',  supported: true, isText: true },
+  'text/csv':        { icon: '📊', label: 'CSV',  supported: true, isText: true },
+  'text/xml':        { icon: '📋', label: 'XML',  supported: true, isText: true },
+  'application/xml': { icon: '📋', label: 'XML',  supported: true, isText: true },
+  'text/x-python':   { icon: '🐍', label: 'Python', supported: true, isText: true },
+  'application/x-yaml': { icon: '📋', label: 'YAML', supported: true, isText: true },
 };
 
 el('attachBtn').onclick = () => el('fileInput').click();
+
+/** Détecte le type de fichier par extension si le MIME est inconnu */
+function guessMetaFromName(name) {
+  const ext = (name || '').split('.').pop().toLowerCase();
+  const map = {
+    html:'🌐 HTML', htm:'🌐 HTML', css:'🎨 CSS', js:'📜 JS', jsx:'📜 JSX', tsx:'📜 TSX',
+    ts:'📜 TS', json:'📋 JSON', md:'📝 MD', txt:'📄 TXT', csv:'📊 CSV',
+    py:'🐍 Python', xml:'📋 XML', yaml:'📋 YAML', yml:'📋 YAML', sql:'🗃 SQL',
+    sh:'⚙ Shell', bat:'⚙ Batch', log:'📄 Log', ini:'📋 INI', cfg:'📋 Config',
+    env:'📋 ENV', toml:'📋 TOML', rb:'💎 Ruby', java:'☕ Java',
+    c:'📜 C', cpp:'📜 C++', h:'📜 Header', rs:'🦀 Rust', go:'📜 Go', php:'📜 PHP',
+    swift:'📜 Swift', kt:'📜 Kotlin'
+  };
+  const label = map[ext];
+  if (label) {
+    const [icon, ...rest] = label.split(' ');
+    return { icon, label: rest.join(' '), supported: true, isText: true };
+  }
+  return { icon: '📎', label: ext || 'Fichier', supported: false };
+}
 
 /** Extrait le texte d'un fichier Office côté navigateur */
 async function extractOfficeText(file) {
@@ -1185,7 +1218,7 @@ async function extractOfficeText(file) {
 el('fileInput').onchange = async e => {
   const files = [...e.target.files];
   for (const file of files) {
-    const meta = SUPPORTED_TYPES[file.type] || { icon: '📎', label: file.type || 'Fichier', supported: false };
+    const meta = SUPPORTED_TYPES[file.type] || guessMetaFromName(file.name);
     const isImage = file.type.startsWith('image/');
     const isPdf   = file.type === 'application/pdf';
 
@@ -1197,10 +1230,23 @@ el('fileInput').onchange = async e => {
       r.readAsDataURL(file);
     });
 
-    // Tentative d'extraction texte pour Office
+    // Tentative d'extraction texte pour Office ou lecture directe pour fichiers texte
     let extractedText = null;
     if (!isImage && !isPdf) {
-      try { extractedText = await extractOfficeText(file); } catch(e) {}
+      // Fichiers texte/code : lecture directe
+      const isTextFile = meta.isText || /\.(html?|css|js|jsx|tsx|ts|json|md|txt|csv|py|xml|yaml|yml|sql|sh|bat|log|ini|cfg|env|toml|rb|java|c|cpp|h|hpp|rs|go|php|swift|kt)$/i.test(file.name);
+      if (isTextFile) {
+        try {
+          extractedText = await new Promise((res, rej) => {
+            const r = new FileReader();
+            r.onload = () => res(r.result);
+            r.onerror = rej;
+            r.readAsText(file);
+          });
+        } catch(e) {}
+      } else {
+        try { extractedText = await extractOfficeText(file); } catch(e) {}
+      }
     }
 
     pendingFiles.push({
