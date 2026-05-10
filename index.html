@@ -716,6 +716,10 @@
             <input type="checkbox" id="ghAutoSync" />
             <label for="ghAutoSync">Synchronisation automatique après chaque message</label>
           </div>
+          <div class="gh-auto-row">
+            <input type="checkbox" id="ghTimedSync" />
+            <label for="ghTimedSync">Sauvegarde automatique toutes les 5 minutes</label>
+          </div>
           <div class="gh-btn-row">
             <button class="gh-btn primary" id="ghSaveConfig">💾 Enregistrer</button>
             <button class="gh-btn" id="ghTest">🔌 Tester</button>
@@ -3256,7 +3260,9 @@ const GH = {
   owner:    localStorage.getItem("ghOwner")    || "",
   repo:     localStorage.getItem("ghRepo")     || "",
   path:     localStorage.getItem("ghPath")     || "data/chats.json",
-  autoSync: localStorage.getItem("ghAutoSync") === "1"
+  autoSync: localStorage.getItem("ghAutoSync") === "1",
+  timedSync: localStorage.getItem("ghTimedSync") === "1",
+  _timedInterval: null
 };
 
 function ghSaveConfig() {
@@ -3265,12 +3271,53 @@ function ghSaveConfig() {
   GH.repo     = el("ghRepo").value.trim();
   GH.path     = el("ghPath").value.trim() || "data/chats.json";
   GH.autoSync = el("ghAutoSync").checked;
+  GH.timedSync = el("ghTimedSync").checked;
   localStorage.setItem("ghToken",    GH.token);
   localStorage.setItem("ghOwner",    GH.owner);
   localStorage.setItem("ghRepo",     GH.repo);
   localStorage.setItem("ghPath",     GH.path);
   localStorage.setItem("ghAutoSync", GH.autoSync ? "1" : "0");
+  localStorage.setItem("ghTimedSync", GH.timedSync ? "1" : "0");
+  ghStartTimedSync(); // Démarre ou arrête le timer
   ghStatus("✅ Configuration sauvegardée", "ok");
+}
+
+/** Démarre/arrête la sauvegarde automatique toutes les 5 min */
+function ghStartTimedSync() {
+  // Arrêter l'ancien timer s'il existe
+  if (GH._timedInterval) { clearInterval(GH._timedInterval); GH._timedInterval = null; }
+  if (!GH.timedSync || !GH.token || !GH.owner || !GH.repo) return;
+  // Démarrer un nouveau timer : push silencieux toutes les 5 minutes
+  GH._timedInterval = setInterval(async () => {
+    try {
+      console.log('[BrAInShift] ⏱ Auto-sync GitHub…');
+      await ghPushSilent();
+      console.log('[BrAInShift] ✅ Auto-sync OK');
+    } catch(e) {
+      console.warn('[BrAInShift] ❌ Auto-sync échoué:', e.message);
+    }
+  }, 5 * 60 * 1000); // 5 minutes
+  console.log('[BrAInShift] ⏱ Auto-sync GitHub activé (toutes les 5 min)');
+}
+
+/** Push silencieux (sans UI feedback) pour l'auto-sync */
+async function ghPushSilent() {
+  if (!GH.token || !GH.owner || !GH.repo) return;
+  const sha = await ghGetFileSha();
+  const data = {
+    chats: S.chats, projects: S.projects,
+    profiles: S.profiles, activeProfiles: S.activeProfiles || [],
+    params: S.params, model: S.model,
+    savedAt: new Date().toISOString(), version: 2
+  };
+  const content = ghEncode(data);
+  const body = {
+    message: "BrAInShift auto-sync — " + new Date().toLocaleString("fr-FR"),
+    content, ...(sha ? { sha } : {})
+  };
+  const url = `https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${GH.path}`;
+  const r = await fetch(url, { method: "PUT", headers: ghHeaders(), body: JSON.stringify(body) });
+  if (!r.ok) throw new Error(`PUT ${r.status}`);
 }
 
 function ghStatus(msg, type="") {
@@ -3337,6 +3384,9 @@ function ghAutoSave() {
   GH.path     = p;       localStorage.setItem("ghPath", p);
   GH.autoSync = el("ghAutoSync").checked;
   localStorage.setItem("ghAutoSync", GH.autoSync ? "1" : "0");
+  GH.timedSync = el("ghTimedSync").checked;
+  localStorage.setItem("ghTimedSync", GH.timedSync ? "1" : "0");
+  ghStartTimedSync();
   // Mettre à jour le lien repo
   const linkDiv = el("ghRepoLink");
   const anchor  = el("ghRepoAnchor");
@@ -3511,6 +3561,8 @@ function initGithubPanel() {
   el("ghRepo").value       = GH.repo;
   el("ghPath").value       = GH.path;
   el("ghAutoSync").checked = GH.autoSync;
+  el("ghTimedSync").checked = GH.timedSync;
+  ghStartTimedSync(); // Démarrer le timer si activé
 
   el("ghSaveConfig").onclick  = ghSaveConfig;
   el("ghTest").onclick        = ghTest;
