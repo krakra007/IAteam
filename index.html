@@ -194,7 +194,7 @@
     /* ── Composer ── */
     .composer{padding:12px;background:var(--top);border-top:1px solid var(--line)}
     .composer-wrap{max-width:900px;margin:0 auto;display:flex;gap:10px}
-    textarea{flex:1;width:100%;resize:none;height:90px;border-radius:12px;background:#222;color:var(--text);border:1px solid var(--line);padding:12px 14px;font-family:inherit;font-size:17px;line-height:1.5}
+    textarea{flex:1;width:100%;resize:none;min-height:52px;max-height:200px;height:52px;border-radius:12px;background:#222;color:var(--text);border:1px solid var(--line);padding:12px 14px;font-family:inherit;font-size:17px;line-height:1.5}
 
     /* ── Home mode ── */
     .main.home-mode .top{border-bottom:none}
@@ -203,7 +203,7 @@
     /* home-hero styles moved to BrAInShift section */
     .composer-wrap{transition:max-width .2s ease}
     .main.home-mode .composer-wrap{max-width:980px;width:min(94vw,980px);display:block}
-    .main.home-mode textarea{width:100%;height:64px;border-radius:28px;padding:18px 108px 18px 20px;overflow:hidden}
+    .main.home-mode textarea{width:100%;min-height:64px;max-height:200px;height:64px;border-radius:28px;padding:18px 108px 18px 20px;overflow-y:auto}
     .textarea-wrap{position:relative;width:100%}
     .composer-box{width:100%}
     .textarea-wrap .send-circle{position:absolute;right:10px;top:50%;transform:translateY(-50%)}
@@ -2223,7 +2223,35 @@ function renderMessages() {
         const menu = document.createElement('div');
         menu.className = 'export-menu';
         const rawContent = typeof m.content === 'string' ? m.content : (m._text || '');
-        const htmlContent = d.querySelector('.assistant-body')?.innerHTML || '';
+        const rawHtml = d.querySelector('.assistant-body')?.innerHTML || '';
+
+        /** Nettoie le HTML pour l'export (supprime hljs spans, thinking, collapsed wrappers) */
+        function cleanHtmlForExport(html) {
+          const div = document.createElement('div');
+          div.innerHTML = html;
+          // Supprimer les blocs thinking
+          div.querySelectorAll('.thinking-block, details.thinking-block').forEach(el => el.remove());
+          // Supprimer les wrappers collapsed-code et restaurer le code propre
+          div.querySelectorAll('.collapsed-code').forEach(wrap => {
+            const code = wrap.querySelector('details code') || wrap.querySelector('pre code');
+            const lang = wrap.querySelector('.code-header span')?.textContent?.split('·')[0]?.trim() || 'code';
+            if (code) {
+              const pre = document.createElement('pre');
+              const codeEl = document.createElement('code');
+              codeEl.textContent = code.textContent; // texte brut, pas innerHTML
+              pre.appendChild(codeEl);
+              wrap.replaceWith(pre);
+            }
+          });
+          // Supprimer les spans hljs dans les blocs code restants
+          div.querySelectorAll('pre code').forEach(codeEl => {
+            codeEl.textContent = codeEl.textContent; // écrase innerHTML par le texte brut
+          });
+          // Supprimer les boutons copy-code-btn et code-header
+          div.querySelectorAll('.copy-code-btn, .code-header').forEach(el => el.remove());
+          return div.innerHTML;
+        }
+
         menu.innerHTML = `
           <div class="ex-item" data-ex="copy-fmt">📋 Copier avec formatage</div>
           <div class="ex-item" data-ex="copy-raw">📝 Copier en Markdown brut</div>
@@ -2236,8 +2264,8 @@ function renderMessages() {
           if (!action) return;
           menu.remove();
           if (action === 'copy-fmt') {
-            // Copier le HTML formaté dans le presse-papier (rich text)
-            const blob = new Blob([htmlContent], {type: 'text/html'});
+            const clean = cleanHtmlForExport(rawHtml);
+            const blob = new Blob([clean], {type: 'text/html'});
             const plainBlob = new Blob([rawContent], {type: 'text/plain'});
             navigator.clipboard.write([new ClipboardItem({
               'text/html': blob,
@@ -2248,12 +2276,13 @@ function renderMessages() {
           } else if (action === 'dl-md') {
             downloadFile(rawContent, 'reponse.md', 'text/markdown');
           } else if (action === 'dl-html') {
+            const clean = cleanHtmlForExport(rawHtml);
             const fullHtml = `<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>BrAInShift Export</title>
 <style>body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;max-width:800px;margin:40px auto;padding:20px;line-height:1.6;color:#1a1a1a}
 pre{background:#f4f4f4;padding:12px;border-radius:6px;overflow-x:auto}code{font-size:0.9em}
 table{border-collapse:collapse;width:100%}th,td{border:1px solid #ddd;padding:8px;text-align:left}
 blockquote{border-left:3px solid #4abfbf;margin:10px 0;padding:8px 16px;color:#555}</style>
-</head><body>${htmlContent}</body></html>`;
+</head><body>${clean}</body></html>`;
             downloadFile(fullHtml, 'reponse.html', 'text/html');
           }
         };
@@ -3053,6 +3082,7 @@ async function send() {
   if (c.title === "Nouveau chat") c.title = displayText.slice(0, 38);
 
   promptEl.value      = "";
+  promptEl.style.height = ''; // Reset auto-resize
   pendingFiles = []; renderFilePreview();
   isWaitingResponse   = true;
   render();
@@ -3640,6 +3670,14 @@ el("toggleSidebarBtn").onclick = () => {
 
 el("modelSelect").onchange = e => { S.model = e.target.value; save(); renderParams(); };
 el("paramsBtn").onclick    = () => el("paramsPanel").classList.toggle("open");
+
+// Auto-resize du textarea (s'agrandit avec le texte, se réduit quand vidé)
+function autoResizePrompt() {
+  promptEl.style.height = 'auto';
+  const max = parseInt(getComputedStyle(promptEl).maxHeight) || 200;
+  promptEl.style.height = Math.min(promptEl.scrollHeight, max) + 'px';
+}
+promptEl.addEventListener("input", autoResizePrompt);
 
 promptEl.addEventListener("keydown", e => {
   if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
