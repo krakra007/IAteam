@@ -1867,54 +1867,67 @@ function sanitizeModelResponse(raw) {
 // ── latexToUnicode : fallback propre quand KaTeX est absent ou échoue ────
 function latexToUnicode(latex) {
   var t = latex;
-  var LB = String.fromCharCode(123), RB = String.fromCharCode(125);
-  // Environnements
-  t = t.replace(new RegExp('\\\\begin' + LB + '[^' + RB + ']*' + RB, 'g'), '');
-  t = t.replace(new RegExp('\\\\end'   + LB + '[^' + RB + ']*' + RB, 'g'), '');
-  // \ce{...}
-  t = t.replace(new RegExp('\\\\ce' + LB + '([^' + RB + ']*)' + RB, 'g'), '$1');
-  // \text{}, \mathrm{}, \mathbf{}
-  t = t.replace(new RegExp('\\\\text(?:rm|bf|it|sf)?' + LB + '([^' + RB + ']*)' + RB, 'g'), '$1');
-  t = t.replace(new RegExp('\\\\math(?:rm|bf|it|sf|bb|cal)?' + LB + '([^' + RB + ']*)' + RB, 'g'), '$1');
-  t = t.replace(new RegExp('\\\\operatorname' + LB + '([^' + RB + ']*)' + RB, 'g'), '$1');
-  // \frac{a}{b} → a/b
-  t = t.replace(new RegExp('\\\\(?:d|t)?frac' + LB + '([^' + RB + ']*)' + RB + LB + '([^' + RB + ']*)' + RB, 'g'), '$1/$2');
-  // \sqrt
-  t = t.replace(new RegExp('\\\\sqrt' + LB + '([^' + RB + ']*)' + RB, 'g'), '√$1');
-  t = t.replace(/\\sqrt(?!\{)/g, '√');
-  // Subscripts
-  var subMap = {'0':'₀','1':'₁','2':'₂','3':'₃','4':'₄','5':'₅','6':'₆','7':'₇','8':'₈','9':'₉','a':'ₐ','e':'ₑ','i':'ᵢ','n':'ₙ','o':'ₒ','r':'ᵣ','x':'ₓ','+':'₊','-':'₋','=':'₌','(':'₍',')':'₎'};
-  t = t.replace(new RegExp('_' + LB + '([^' + RB + ']*)' + RB, 'g'), function(_, s) { return s.split('').map(function(c){return subMap[c]||c;}).join(''); });
+  // Environnements (supprimer)
+  t = t.replace(/\\begin\{[^}]*\}/g, '');
+  t = t.replace(/\\end\{[^}]*\}/g, '');
+  // \ce{...} chimie
+  t = t.replace(/\\ce\{([^}]*)\}/g, '$1');
+  // \text{}, \mathrm{}, etc. -> contenu brut
+  t = t.replace(/\\text(?:rm|bf|it|sf|tt)?\{([^}]*)\}/g, '$1');
+  t = t.replace(/\\math(?:rm|bf|it|sf|bb|cal|frak)?\{([^}]*)\}/g, '$1');
+  t = t.replace(/\\operatorname\{([^}]*)\}/g, '$1');
+  t = t.replace(/\\textbf\{([^}]*)\}/g, '$1');
+  t = t.replace(/\\textit\{([^}]*)\}/g, '$1');
+  // \frac{a}{b} -> a/b
+  t = t.replace(/\\(?:d|t)?frac\{([^}]*)\}\{([^}]*)\}/g, '$1/$2');
+  // \sqrt{x} -> sqrt(x)
+  t = t.replace(/\\sqrt\{([^}]*)\}/g, '\u221a($1)');
+  t = t.replace(/\\sqrt(?!\{)/g, '\u221a');
+  // Subscripts _{...} et _x
+  var subMap = {'0':'\u2080','1':'\u2081','2':'\u2082','3':'\u2083','4':'\u2084','5':'\u2085','6':'\u2086','7':'\u2087','8':'\u2088','9':'\u2089','a':'\u2090','e':'\u2091','i':'\u1D62','n':'\u2099','o':'\u2092','r':'\u1D63','x':'\u2093','u':'\u1D64','p':'\u209A','k':'\u2096','l':'\u2097','m':'\u2098','s':'\u209B','t':'\u209C','h':'\u2095','+':'\u208A','-':'\u208B','=':'\u208C','(':'\u208D',')':'\u208E'};
+  t = t.replace(/_\{([^}]*)\}/g, function(_, s) {
+    if (s.length > 3) return '(' + s + ')';
+    return s.split('').map(function(c){ return subMap[c] || c; }).join('');
+  });
   t = t.replace(/_([0-9a-z+\-])/gi, function(_, c) { return subMap[c.toLowerCase()] || c; });
-  // Superscripts
-  var supMap = {'0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹','+':'⁺','-':'⁻','=':'⁼','(':'⁽',')':'⁾','n':'ⁿ','i':'ⁱ'};
-  t = t.replace(new RegExp('\\^' + LB + '([^' + RB + ']*)' + RB, 'g'), function(_, s) { return s.split('').map(function(c){return supMap[c]||c;}).join(''); });
+  // Superscripts ^{...} et ^x
+  var supMap = {'0':'\u2070','1':'\u00b9','2':'\u00b2','3':'\u00b3','4':'\u2074','5':'\u2075','6':'\u2076','7':'\u2077','8':'\u2078','9':'\u2079','+':'\u207a','-':'\u207b','=':'\u207c','(':'\u207d',')':'\u207e','n':'\u207f','i':'\u2071','a':'\u1d43','b':'\u1d47','c':'\u1d9c','d':'\u1d48','e':'\u1d49','f':'\u1da0','k':'\u1d4f','m':'\u1d50','o':'\u1d52','p':'\u1d56','r':'\u02b3','s':'\u02e2','t':'\u1d57','u':'\u1d58','x':'\u02e3'};
+  t = t.replace(/\^\{([^}]*)\}/g, function(_, s) {
+    return s.split('').map(function(c){ return supMap[c] || c; }).join('');
+  });
   t = t.replace(/\^([0-9+\-ni])/gi, function(_, c) { return supMap[c.toLowerCase()] || c; });
   // Lettres grecques
-  var gr = {alpha:'α',beta:'β',gamma:'γ',delta:'δ',epsilon:'ε',zeta:'ζ',eta:'η',theta:'θ',iota:'ι',kappa:'κ',lambda:'λ',mu:'μ',nu:'ν',xi:'ξ',pi:'π',rho:'ρ',sigma:'σ',tau:'τ',phi:'φ',chi:'χ',psi:'ψ',omega:'ω',Delta:'Δ',Gamma:'Γ',Lambda:'Λ',Sigma:'Σ',Omega:'Ω',Pi:'Π',Phi:'Φ',Theta:'Θ',Eta:'H',varepsilon:'ε',varphi:'φ',varpi:'ϖ',vartheta:'ϑ',nabla:'∇'};
-  for (var g in gr) t = t.replace(new RegExp('\\\\' + g + '(?![a-zA-Z])', 'g'), gr[g]);
-  // Symboles
-  t=t.replace(/\\times/g,'×');t=t.replace(/\\div/g,'÷');t=t.replace(/\\pm/g,'±');t=t.replace(/\\mp/g,'∓');
-  t=t.replace(/\\neq/g,'≠');t=t.replace(/\\leq/g,'≤');t=t.replace(/\\geq/g,'≥');t=t.replace(/\\approx/g,'≈');t=t.replace(/\\equiv/g,'≡');t=t.replace(/\\propto/g,'∝');
-  t=t.replace(/\\infty/g,'∞');t=t.replace(/\\circ/g,'°');t=t.replace(/\\degree/g,'°');t=t.replace(/\\partial/g,'∂');t=t.replace(/\\nabla/g,'∇');
-  t=t.replace(/\\rightarrow/g,'→');t=t.replace(/\\leftarrow/g,'←');t=t.replace(/\\leftrightarrow/g,'↔');t=t.replace(/\\longrightarrow/g,'⟶');
-  t=t.replace(/\\Rightarrow/g,'⇒');t=t.replace(/\\Leftarrow/g,'⇐');t=t.replace(/\\rightleftharpoons/g,'⇌');t=t.replace(/\\Leftrightarrow/g,'⇔');
-  t=t.replace(/\\cdot/g,'·');t=t.replace(/\\bullet/g,'•');t=t.replace(/\\sum/g,'Σ');t=t.replace(/\\prod/g,'Π');t=t.replace(/\\int/g,'∫');
-  t=t.replace(/\\forall/g,'∀');t=t.replace(/\\exists/g,'∃');t=t.replace(/\\in\b/g,'∈');t=t.replace(/\\notin/g,'∉');
-  t=t.replace(/\\subset/g,'⊂');t=t.replace(/\\cup/g,'∪');t=t.replace(/\\cap/g,'∩');t=t.replace(/\\emptyset/g,'∅');
-  t=t.replace(/\\neg/g,'¬');t=t.replace(/\\angle/g,'∠');t=t.replace(/\\perp/g,'⊥');
+  var gr = {alpha:'\u03b1',beta:'\u03b2',gamma:'\u03b3',delta:'\u03b4',epsilon:'\u03b5',zeta:'\u03b6',eta:'\u03b7',theta:'\u03b8',iota:'\u03b9',kappa:'\u03ba',lambda:'\u03bb',mu:'\u03bc',nu:'\u03bd',xi:'\u03be',pi:'\u03c0',rho:'\u03c1',sigma:'\u03c3',tau:'\u03c4',upsilon:'\u03c5',phi:'\u03c6',chi:'\u03c7',psi:'\u03c8',omega:'\u03c9',Delta:'\u0394',Gamma:'\u0393',Lambda:'\u039b',Sigma:'\u03a3',Omega:'\u03a9',Pi:'\u03a0',Phi:'\u03a6',Theta:'\u0398',Psi:'\u03a8',Xi:'\u039e',varepsilon:'\u03b5',varphi:'\u03c6',nabla:'\u2207'};
+  for (var g in gr) {
+    t = t.replace(new RegExp('\\\\' + g + '(?![a-zA-Z])', 'g'), gr[g]);
+  }
+  // Symboles speciaux
+  t=t.replace(/\\ddagger/g,'\u2021');t=t.replace(/\\dagger/g,'\u2020');
+  t=t.replace(/\\times/g,'\u00d7');t=t.replace(/\\div/g,'\u00f7');t=t.replace(/\\pm/g,'\u00b1');t=t.replace(/\\mp/g,'\u2213');
+  t=t.replace(/\\neq/g,'\u2260');t=t.replace(/\\leq/g,'\u2264');t=t.replace(/\\geq/g,'\u2265');t=t.replace(/\\approx/g,'\u2248');t=t.replace(/\\equiv/g,'\u2261');t=t.replace(/\\propto/g,'\u221d');t=t.replace(/\\sim/g,'\u223c');
+  t=t.replace(/\\infty/g,'\u221e');t=t.replace(/\\circ/g,'\u00b0');t=t.replace(/\\degree/g,'\u00b0');t=t.replace(/\\partial/g,'\u2202');t=t.replace(/\\nabla/g,'\u2207');t=t.replace(/\\ell/g,'\u2113');t=t.replace(/\\hbar/g,'\u210f');
+  t=t.replace(/\\rightarrow/g,'\u2192');t=t.replace(/\\leftarrow/g,'\u2190');t=t.replace(/\\leftrightarrow/g,'\u2194');t=t.replace(/\\longrightarrow/g,'\u27f6');
+  t=t.replace(/\\Rightarrow/g,'\u21d2');t=t.replace(/\\Leftarrow/g,'\u21d0');t=t.replace(/\\rightleftharpoons/g,'\u21cc');t=t.replace(/\\Leftrightarrow/g,'\u21d4');
+  t=t.replace(/\\cdot/g,'\u00b7');t=t.replace(/\\bullet/g,'\u2022');t=t.replace(/\\star/g,'\u22c6');
+  t=t.replace(/\\sum/g,'\u03a3');t=t.replace(/\\prod/g,'\u03a0');t=t.replace(/\\int/g,'\u222b');
+  t=t.replace(/\\forall/g,'\u2200');t=t.replace(/\\exists/g,'\u2203');t=t.replace(/\\in\b/g,'\u2208');t=t.replace(/\\notin/g,'\u2209');
+  t=t.replace(/\\subset/g,'\u2282');t=t.replace(/\\cup/g,'\u222a');t=t.replace(/\\cap/g,'\u2229');t=t.replace(/\\emptyset/g,'\u2205');
+  t=t.replace(/\\neg/g,'\u00ac');t=t.replace(/\\angle/g,'\u2220');t=t.replace(/\\perp/g,'\u22a5');
+  t=t.replace(/\\ldots/g,'\u2026');t=t.replace(/\\cdots/g,'\u22ef');
+  t=t.replace(/\\prime/g,'\u2032');t=t.replace(/\\langle/g,'\u27e8');t=t.replace(/\\rangle/g,'\u27e9');
   // Chimie
-  t=t.replace(/->/g,'→');t=t.replace(/<->/g,'↔');t=t.replace(/<=>/g,'⇌');
-  // Fractions communes
-  t=t.replace(/\b1\/2\b/g,'½');t=t.replace(/\b1\/4\b/g,'¼');t=t.replace(/\b3\/4\b/g,'¾');
-  // Mise en page
-  t=t.replace(/\\[;:!,]/g,' ');t=t.replace(/\\\\/g,'\n');t=t.replace(/&/g,'  ');
+  t=t.replace(/->/g,'\u2192');t=t.replace(/<->/g,'\u2194');t=t.replace(/<=>/g,'\u21cc');
+  // Espacement
+  t=t.replace(/\\ /g,' ');
+  t=t.replace(/\\[;:!,]/g,' ');
+  t=t.replace(/\\\\/g,'\n');
+  t=t.replace(/&/g,'  ');
   t=t.replace(/\\quad/g,'  ');t=t.replace(/\\qquad/g,'    ');
-  t=t.replace(/\\left/g,'');t=t.replace(/\\right/g,'');t=t.replace(/\\big/gi,'');
-  t=t.replace(new RegExp('\\\\hspace' + LB + '[^' + RB + ']*' + RB, 'g'), ' ');
+  t=t.replace(/\\left/g,'');t=t.replace(/\\right/g,'');t=t.replace(/\\big/gi,'');t=t.replace(/\\middle/g,'');
+  t=t.replace(/\\hspace\{[^}]*\}/g,' ');t=t.replace(/\\phantom\{[^}]*\}/g,' ');t=t.replace(/\\tag\{([^}]*)\}/g,'($1)');
   // Nettoyage final
   t=t.replace(/\\[a-zA-Z]+/g,'');
-  t=t.replace(new RegExp('[' + LB + RB + ']', 'g'), '');
+  t=t.replace(/[{}]/g,'');
   t=t.replace(/[ \t]{2,}/g,' ');t=t.replace(/\n{3,}/g,'\n\n');
   return t.trim();
 }
