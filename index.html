@@ -3163,8 +3163,10 @@ function togglePromptPreview() {
 function getActiveSystemPrompt() {
   let base = '';
 
-  // Instruction de vérification web (si recherche activée)
-  if (S.params.webSearch) {
+  // Instruction de vérification web (seulement si le provider supporte la recherche web)
+  const provider = inferProviderFromModel(S.model);
+  const providerSupportsWeb = ['ANTHROPIC','OPENAI','GOOGLE GEMINI'].includes(provider);
+  if (S.params.webSearch && providerSupportsWeb) {
     base += `[INSTRUCTION PRIORITAIRE — RECHERCHE WEB ACTIVÉE]
 Tu disposes d'un outil de recherche web. UTILISE-LE SYSTÉMATIQUEMENT avant de répondre :
 1. Pour TOUTE question factuelle, actualité, données chiffrées, dates, noms, événements → cherche d'abord sur internet.
