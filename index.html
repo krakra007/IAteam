@@ -66,6 +66,17 @@
       width:12px;height:12px;border-radius:50%;flex-shrink:0;
       box-shadow:0 0 0 2px rgba(255,255,255,.08);
     }
+    /* ── Projet : flèche replier/déplier + compteur ── */
+    .proj-toggle{
+      font-size:10px;color:var(--muted2);cursor:pointer;
+      flex-shrink:0;width:14px;text-align:center;transition:color .15s;
+      user-select:none;
+    }
+    .proj-toggle:hover{color:#fff}
+    .proj-count{
+      font-size:10px;color:var(--muted2);background:#2a2a2e;
+      border-radius:8px;padding:1px 6px;margin-left:auto;flex-shrink:0;
+    }
 
     /* ── Badge modèle dans la sidebar (sous le titre du chat) ── */
     .chat-model-tag{
@@ -1740,6 +1751,19 @@ function renderChats() {
   const w = el("chatList");
   w.innerHTML = "";
 
+  // État replié/déplié des projets (persisté en mémoire)
+  if (!renderChats._collapsed) {
+    try { renderChats._collapsed = JSON.parse(localStorage.getItem("collapsedProjects") || "{}"); }
+    catch(e) { renderChats._collapsed = {}; }
+  }
+  const collapsed = renderChats._collapsed;
+
+  function toggleCollapse(pid) {
+    collapsed[pid] = !collapsed[pid];
+    localStorage.setItem("collapsedProjects", JSON.stringify(collapsed));
+    renderChats();
+  }
+
   // — Projets —
   const pTitle = document.createElement("div");
   pTitle.className = "group-title";
@@ -1747,13 +1771,17 @@ function renderChats() {
   w.appendChild(pTitle);
 
   S.projects.forEach(p => {
+    const isCollapsed = !!collapsed[p.id];
+    const chatCount = S.chats.filter(c => c.projectId === p.id).length;
     const h = document.createElement("div");
     h.className = "item project-item" + (p.id === S.activeProject ? " active" : "");
     h.style.borderLeftColor = p.color || PROJECT_COLORS[0];
     const dotColor = p.color || PROJECT_COLORS[0];
     h.innerHTML = `
+      <span class='proj-toggle' data-a='toggle' title='${isCollapsed ? "Déplier" : "Replier"}'>${isCollapsed ? '▶' : '▼'}</span>
       <span class='proj-dot' style='background:${dotColor}' title='Couleur projet'></span>
       <span class='name' title='${p.name}'>${p.name}</span>
+      <span class='proj-count'>${chatCount}</span>
       <button class='icon-btn' data-a='color' title='Changer couleur'>●</button>
       <button class='icon-btn' data-a='addchat' title='Nouveau chat'>＋</button>
       <button class='icon-btn' data-a='edit'    title='Renommer'>✎</button>
@@ -1761,6 +1789,7 @@ function renderChats() {
     `;
     h.onclick = e => {
       const a = e.target.dataset.a;
+      if (a === "toggle")  return toggleCollapse(p.id);
       if (a === "addchat") return createChat(p.id);
       if (a === "edit")    return renameProject(p.id);
       if (a === "del")     return deleteProject(p.id);
@@ -1771,7 +1800,11 @@ function renderChats() {
       S.activeProject = p.id; save(); render();
     };
     w.appendChild(h);
-    S.chats.filter(c => c.projectId === p.id).forEach(c => w.appendChild(chatRow(c, true)));
+
+    // Afficher les chats du projet seulement s'il est déplié
+    if (!isCollapsed) {
+      S.chats.filter(c => c.projectId === p.id).forEach(c => w.appendChild(chatRow(c, true)));
+    }
   });
 
   const sep = document.createElement("div");
