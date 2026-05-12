@@ -1954,7 +1954,7 @@ function formatAssistantContent(text) {
     try {
       marked.use({
         extensions: [
-          // ── $$ ... $$ display ──
+          // ── $$ ... $$ display (block level — début de ligne) ──
           {
             name: 'blockMath', level: 'block',
             start(src) { return src.indexOf('$$'); },
@@ -1972,12 +1972,34 @@ function formatAssistantContent(text) {
               return '<div class="katex-block katex-unicode">' + latexToUnicodeHtml(token.text) + '</div>';
             }
           },
+          // ── $$ ... $$ inline (dans les tableaux, mid-paragraphe) ──
+          {
+            name: 'inlineDisplayMath', level: 'inline',
+            start(src) { return src.indexOf('$$'); },
+            tokenizer(src) {
+              const m = src.match(/^\$\$([\s\S]+?)\$\$/);
+              if (m) return { type: 'inlineDisplayMath', raw: m[0], text: m[1] };
+            },
+            renderer(token) {
+              try {
+                if (typeof katex !== 'undefined')
+                  return katex.renderToString(token.text.trim(), { displayMode: false, throwOnError: true, strict: 'ignore' });
+              } catch(e) {}
+              return '<span class="katex-unicode">' + latexToUnicodeHtml(token.text) + '</span>';
+            }
+          },
           // ── $ ... $ inline ──
           {
             name: 'inlineMath', level: 'inline',
-            start(src) { return src.indexOf('$'); },
+            start(src) {
+              const idx = src.indexOf('$');
+              // Ne pas matcher si c'est $$ (géré par inlineDisplayMath)
+              if (idx >= 0 && src[idx + 1] === '$') return src.indexOf('$', idx + 2) + 2 || -1;
+              return idx;
+            },
             tokenizer(src) {
               if (src.startsWith('$$')) return;
+              // Match $...$ mais pas à l'intérieur d'un mot (ex: prix$50)
               const m = src.match(/^\$([^\$\n]+?)\$/);
               if (m) return { type: 'inlineMath', raw: m[0], text: m[1] };
             },
@@ -2203,7 +2225,16 @@ function renderMessages() {
 
       const copyBtn = document.createElement("button");
       copyBtn.className = "msg-icon"; copyBtn.textContent = "⧉"; copyBtn.title = "Copier le texte brut";
-      copyBtn.onclick = () => navigator.clipboard.writeText(typeof m.content === 'string' ? m.content : (m._text || ''));
+      copyBtn.onclick = () => {
+        const raw = typeof m.content === 'string' ? m.content : (m._text || '');
+        // Nettoyer le LaTeX pour la copie : $$ → display, $ → inline
+        let clean = raw;
+        clean = clean.replace(/\$\$([^$]+?)\$\$/g, (_, tex) => latexToUnicode(tex));
+        clean = clean.replace(/\$([^$\n]+?)\$/g, (_, tex) => latexToUnicode(tex));
+        clean = clean.replace(/\\\[([^\]]+?)\\\]/g, (_, tex) => latexToUnicode(tex));
+        clean = clean.replace(/\\\(([^)]+?)\\\)/g, (_, tex) => latexToUnicode(tex));
+        navigator.clipboard.writeText(clean);
+      };
 
       const regenBtn = document.createElement("button");
       regenBtn.className = "msg-icon"; regenBtn.textContent = "↻"; regenBtn.title = "Régénérer";
