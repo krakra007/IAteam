@@ -904,81 +904,81 @@ Exemple pour la chimie :
 // ─────────────────────────────────────────────────
 const MODEL_GROUPS = [
   // ── Anthropic Claude ──────────────────────────────
-  // Source : platform.claude.com/docs — mai 2026
-  // claude-opus-4-7   → plus capable, coding avancé, vision HD
-  // claude-sonnet-4-6 → meilleur rapport vitesse/intelligence
-  // claude-haiku-4-5  → le plus rapide / économique
-  // claude-opus-4-6   → opus précédent (context 1M tokens)
-  // claude-sonnet-4-5 → sonnet précédent (stable)
+  // Source : docs.anthropic.com — mai 2026
   {
     label: "Anthropic Claude",
     models: [
-      "claude-opus-4-7",
-      "claude-sonnet-4-6",
-      "claude-haiku-4-5",
-      "claude-opus-4-6",
-      "claude-sonnet-4-5"
+      "claude-opus-4-7",       // plus capable, coding avancé, vision HD
+      "claude-sonnet-4-6",     // meilleur rapport vitesse/intelligence
+      "claude-haiku-4-5",      // le plus rapide / économique
+      "claude-opus-4-6",       // opus précédent (context 1M tokens)
+      "claude-sonnet-4-5"      // sonnet précédent (stable)
     ]
   },
-  // ── OpenAI GPT-5.x ────────────────────────────────
+  // ── OpenAI GPT-5.x (Responses API) ────────────────
   // Source : developers.openai.com — mai 2026
-  // gpt-5.5     → flagship actuel (23 avril 2026), coding + agent
-  // gpt-5.5-pro → pro, raisonnement maximal
-  // gpt-5.4     → précédent flagship (mars 2026)
-  // gpt-5.4-mini / nano → rapide / très économique
-  // gpt-5.2     → ancienne génération (retraite juin 2026)
+  // Tous via Responses API (/v1/responses)
   {
     label: "OpenAI GPT-5",
-    models: ["gpt-5.5", "gpt-5.5-pro", "gpt-5.4", "gpt-5.4-mini", "gpt-5.4-nano", "gpt-5.2"]
+    models: [
+      "gpt-5.5",               // flagship (avril 2026) — raisonnement + coding
+      "gpt-5.5-pro",           // raisonnement maximal, plus lent
+      "gpt-5.4",               // précédent flagship (mars 2026), context 1M
+      "gpt-5.4-mini",          // rapide / économique
+      "gpt-5.4-nano"           // ultra-rapide / très économique
+    ]
   },
-  // ── OpenAI GPT-4 (API uniquement) ─────────────────
-  // gpt-4.1 et gpt-4.1-mini restent disponibles via API
-  // o3 disponible via API (o4-mini déprécié dans ChatGPT)
+  // ── OpenAI GPT-4.x / o-series (Chat Completions) ─
+  // Restent disponibles via API (Chat Completions)
   {
-    label: "OpenAI GPT-4 / o-series (API)",
-    models: ["gpt-4.1", "gpt-4.1-mini", "o3"]
+    label: "OpenAI GPT-4 / o-series",
+    models: [
+      "gpt-4.1",               // stable, bon rapport qualité/coût
+      "gpt-4.1-mini",          // léger, rapide
+      "o3"                     // raisonnement avancé (pas de sampling)
+    ]
   },
   // ── Google Gemini ─────────────────────────────────
   // Source : ai.google.dev/gemini-api/docs/models — mai 2026
-  // gemini-3.1-pro-preview → dernier modèle (mars 2026), raisonnement avancé
-  // gemini-3-flash         → Gemini 3, équilibre vitesse/capacité
-  // gemini-2.5-pro         → stable, production
-  // gemini-2.5-flash       → économique, stable
-  // gemini-2.5-flash-lite  → très économique
-  // ⚠ gemini-2.0-flash DÉPRÉCIÉ au 1er juin 2026 → ne pas utiliser
+  // ⚠ gemini-2.0-flash DÉPRÉCIÉ (arrêt 1er juin 2026)
+  // ⚠ gemini-3.1-flash-lite-preview → GA le 25 mai 2026 → utiliser gemini-3.1-flash-lite
   {
     label: "Google Gemini",
     models: [
-      "gemini-3.1-pro-preview",
-      "gemini-3-flash",
-      "gemini-2.5-pro",
-      "gemini-2.5-flash",
-      "gemini-2.5-flash-lite"
+      "gemini-3.1-pro-preview",   // dernier, raisonnement avancé, grounding
+      "gemini-3.1-flash-lite",    // GA 25 mai 2026 (ex-preview), ultra économique
+      "gemini-3-flash",           // Gemini 3, équilibre vitesse/capacité
+      "gemini-2.5-pro",           // stable production, thinking adaptatif
+      "gemini-2.5-flash",         // économique stable
+      "gemini-2.5-flash-lite"     // très économique stable
     ]
   },
   // ── DeepSeek ──────────────────────────────────────
   // Source : api-docs.deepseek.com — mai 2026
-  // deepseek-v4-pro   → flagship (mars 2026), agent + raisonnement
-  // deepseek-v4-flash → rapide / économique
-  // deepseek-chat     → alias legacy → v4-flash non-thinking (déprécié 24 juil. 2026)
-  // deepseek-reasoner → alias legacy → v4-flash thinking mode (déprécié 24 juil. 2026)
+  // V4 lancé 24 avril 2026 (preview), context 1M, mode thinking supporté
+  // ⚠ deepseek-chat/reasoner DÉPRÉCIÉS le 24 juillet 2026
   {
     label: "DeepSeek",
-    models: ["deepseek-v4-pro", "deepseek-v4-flash", "deepseek-chat", "deepseek-reasoner"]
+    models: [
+      "deepseek-v4-pro",       // flagship 1.6T params, 49B actifs, agent + raisonnement
+      "deepseek-v4-flash",     // 284B params, 13B actifs, rapide/économique
+      "deepseek-chat",         // alias legacy → v4-flash non-thinking (⚠ fin 24/07/2026)
+      "deepseek-reasoner"      // alias legacy → v4-flash thinking (⚠ fin 24/07/2026)
+    ]
   },
   // ── Groq (Open Source, ultra-rapide via LPU) ──────
-  // Source : groq.com/pricing & console.groq.com/docs/models — mai 2026
-  // API compatible OpenAI → endpoint dédié api.groq.com
+  // Source : console.groq.com/docs/models — mai 2026
+  // ⚠ moonshotai/kimi-k2-instruct-0905 DÉPRÉCIÉ → remplacé par gpt-oss-120b
+  // ⚠ llama-4-maverick DÉPRÉCIÉ → remplacé par gpt-oss-120b
   {
     label: "🚀 Groq — Open Source",
     models: [
-      "openai/gpt-oss-120b",
-      "openai/gpt-oss-20b",
-      "moonshotai/kimi-k2-instruct-0905",
-      "meta-llama/llama-4-scout-17b-16e-instruct",
-      "qwen/qwen3-32b",
-      "llama-3.3-70b-versatile",
-      "llama-3.1-8b-instant"
+      "openai/gpt-oss-120b",  // reasoning, le plus puissant sur Groq
+      "openai/gpt-oss-20b",   // rapide, bon rapport perf/coût
+      "qwen/qwen3-32b",       // Alibaba, reasoning, structured output
+      "meta-llama/llama-4-scout-17b-16e-instruct",  // Meta, multimodal
+      "llama-3.3-70b-versatile",   // Meta, généraliste
+      "llama-3.1-8b-instant"       // Meta, ultra-rapide
     ]
   }
 ];
