@@ -660,6 +660,105 @@
       background:#1a2235;border-radius:4px;padding:1px 5px
     }
 
+    /* ═══════════════════════════════════════════════
+       MOTEUR DE RECHERCHE CONVERSATIONS
+    ═══════════════════════════════════════════════ */
+    .search-box{
+      position:relative;
+      padding:2px 0 6px;
+      margin-bottom:4px;
+    }
+    .search-input-wrap{
+      position:relative;display:flex;align-items:center;
+    }
+    .search-input-wrap .search-icon{
+      position:absolute;left:10px;color:var(--muted2);font-size:14px;
+      pointer-events:none;transition:color .15s;
+    }
+    .search-input{
+      width:100%;background:#1a1a1e;border:1px solid #2c2c2e;
+      color:var(--text);border-radius:10px;padding:9px 34px 9px 32px;
+      font-size:13px;font-family:inherit;transition:border-color .2s,box-shadow .2s;
+      outline:none;
+    }
+    .search-input::placeholder{color:#5a5f6a}
+    .search-input:focus{border-color:#4a6cf7;box-shadow:0 0 0 2px #4a6cf720}
+    .search-input:focus ~ .search-icon{color:#7b9cf7}
+    .search-clear{
+      position:absolute;right:8px;background:none;border:none;
+      color:#6b7280;font-size:15px;cursor:pointer;padding:2px 4px;
+      border-radius:4px;line-height:1;display:none;
+    }
+    .search-clear:hover{color:#e2e8f0;background:#ffffff15}
+    .search-input:not(:placeholder-shown) ~ .search-clear{display:block}
+
+    /* ── Résultats de recherche (dropdown) ── */
+    .search-results{
+      position:absolute;top:100%;left:0;right:0;
+      background:#1a1a1e;border:1px solid #2c2c2e;
+      border-radius:12px;margin-top:4px;
+      max-height:65vh;overflow-y:auto;
+      box-shadow:0 12px 40px rgba(0,0,0,.55);
+      z-index:80;display:none;
+    }
+    .search-results.open{display:block}
+    .search-results-header{
+      display:flex;justify-content:space-between;align-items:center;
+      padding:10px 14px 8px;border-bottom:1px solid #2a2a2e;
+      font-size:11px;color:var(--muted);font-weight:600;
+      letter-spacing:.04em;text-transform:uppercase;
+      position:sticky;top:0;background:#1a1a1e;z-index:1;
+      border-radius:12px 12px 0 0;
+    }
+    .search-results-count{
+      font-size:10px;color:#4a6cf7;background:#4a6cf715;
+      padding:2px 8px;border-radius:10px;font-weight:600;
+    }
+    .search-result-item{
+      padding:10px 14px;cursor:pointer;
+      border-bottom:1px solid #1f1f24;
+      transition:background .12s;
+    }
+    .search-result-item:last-child{border-bottom:none}
+    .search-result-item:hover{background:#ffffff08}
+    .search-result-item.active{background:#1e2a3a}
+    .search-result-title{
+      font-size:13px;font-weight:600;color:#e2e8f0;
+      display:flex;align-items:center;gap:6px;
+      margin-bottom:3px;
+    }
+    .search-result-title .proj-badge{
+      font-size:9px;padding:1px 6px;border-radius:6px;
+      font-weight:600;letter-spacing:.03em;
+    }
+    .search-result-preview{
+      font-size:12px;color:#8a8f9c;line-height:1.5;
+      display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+      overflow:hidden;word-break:break-word;
+    }
+    .search-result-preview mark{
+      background:#4a6cf730;color:#a8c0ff;border-radius:2px;
+      padding:0 1px;font-weight:500;
+    }
+    .search-result-meta{
+      display:flex;gap:8px;margin-top:4px;font-size:10px;color:#5a5f6a;
+    }
+    .search-result-meta .model-tag{
+      background:#ffffff0a;padding:1px 6px;border-radius:4px;
+    }
+    .search-empty{
+      padding:24px 14px;text-align:center;
+      color:#5a5f6a;font-size:13px;
+    }
+    .search-empty-icon{font-size:28px;margin-bottom:8px;display:block;opacity:.5}
+
+    /* ── Kbd shortcut hint ── */
+    .search-kbd{
+      font-size:10px;color:#4a4f5a;background:#1e1e22;
+      border:1px solid #2c2c2e;border-radius:4px;
+      padding:1px 5px;font-family:monospace;margin-left:auto;
+    }
+
   </style>
   <!-- marked.js + highlight.js + KaTeX — stack pro comme IA-Genius -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
@@ -682,6 +781,16 @@
 <!-- VERSION_FIXED_V8 -->
 <div class="app">
   <aside class="sidebar">
+    <!-- Moteur de recherche conversations -->
+    <div class="search-box" id="searchBox">
+      <div class="search-input-wrap">
+        <span class="search-icon">🔍</span>
+        <input class="search-input" id="searchInput" type="text"
+               placeholder="Rechercher…" autocomplete="off" spellcheck="false" />
+        <button class="search-clear" id="searchClear" title="Effacer">✕</button>
+      </div>
+      <div class="search-results" id="searchResults"></div>
+    </div>
     <div id="chatList"></div>
   </aside>
   <div class="resizer" id="resizer"></div>
@@ -3475,6 +3584,57 @@ async function ghPushSilent() {
   if (!r.ok) throw new Error(`PUT ${r.status}`);
 }
 
+/** Pull silencieux à l'ouverture — fusionne les données distantes sans toucher à l'UI GitHub */
+async function ghPullSilent() {
+  if (!GH.token || !GH.owner || !GH.repo) return;
+  const url = `https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${GH.path}`;
+  const r = await fetch(url, { headers: ghHeaders() });
+  if (!r.ok) return; // 404 ou erreur → on ignore silencieusement
+  const d   = await r.json();
+  const raw = ghDecode(d.content);
+  if (!raw || !raw.chats) return;
+
+  // Fusionner intelligemment : on garde les conversations locales absentes du remote
+  // et on ajoute/met à jour celles du remote
+  const remoteChatsMap = new Map(raw.chats.map(c => [c.id, c]));
+  const localChatsMap  = new Map(S.chats.map(c => [c.id, c]));
+
+  // Merge : remote est la vérité pour les chats existants des deux côtés
+  // (le dernier push gagne), on ajoute les chats locaux-only
+  const merged = [...raw.chats];
+  for (const [id, localChat] of localChatsMap) {
+    if (!remoteChatsMap.has(id)) {
+      merged.push(localChat); // chat local pas encore pushé
+    }
+  }
+  S.chats = merged;
+
+  if (raw.projects) {
+    // Fusionner les projets aussi
+    const remoteProjMap = new Map(raw.projects.map(p => [p.id, p]));
+    const localProjMap  = new Map(S.projects.map(p => [p.id, p]));
+    const mergedProj = [...raw.projects];
+    for (const [id, lp] of localProjMap) {
+      if (!remoteProjMap.has(id)) mergedProj.push(lp);
+    }
+    S.projects = mergedProj;
+  }
+  if (raw.profiles)       S.profiles       = raw.profiles;
+  if (raw.activeProfiles) S.activeProfiles  = raw.activeProfiles;
+  if (raw.params)         S.params         = { ...DEF, ...raw.params };
+  if (raw.model)          S.model          = raw.model;
+
+  if (!S.chats.find(c => c.id === S.activeChat))
+    S.activeChat = S.chats[0]?.id || null;
+
+  save();
+  renderModels();
+  renderProfiles();
+  updateProfileChip();
+  render();
+  console.log(`[BrAInShift] ✅ Pull silencieux OK — ${S.chats.length} conversations, ${S.projects.length} projets`);
+}
+
 function ghStatus(msg, type="") {
   const s = el("ghStatus");
   s.textContent  = msg;
@@ -3733,6 +3893,275 @@ function initGithubPanel() {
   });
 }
 
+// ═══════════════════════════════════════════════════════
+// MOTEUR DE RECHERCHE DANS LES CONVERSATIONS
+// ═══════════════════════════════════════════════════════
+
+/**
+ * Recherche full-text dans toutes les conversations :
+ * - Titre de la conversation
+ * - Contenu de tous les messages (user + assistant)
+ * Retourne un tableau de résultats triés par pertinence.
+ */
+function searchConversations(query) {
+  if (!query || query.trim().length < 2) return [];
+  const q = query.trim().toLowerCase();
+  const terms = q.split(/\s+/).filter(t => t.length >= 2);
+  if (!terms.length) return [];
+
+  const results = [];
+
+  for (const chat of S.chats) {
+    let score = 0;
+    let matchedMessages = [];
+    const titleLower = (chat.title || '').toLowerCase();
+
+    // Score titre
+    for (const term of terms) {
+      if (titleLower.includes(term)) score += 10;
+    }
+    if (titleLower.includes(q)) score += 20; // match exact titre
+
+    // Score messages
+    for (let i = 0; i < (chat.messages || []).length; i++) {
+      const m = chat.messages[i];
+      const text = typeof m.content === 'string'
+        ? m.content
+        : (m._text || (Array.isArray(m.content)
+            ? m.content.filter(b => b.type === 'text').map(b => b.text).join(' ')
+            : ''));
+      const textLower = text.toLowerCase();
+
+      let msgScore = 0;
+      for (const term of terms) {
+        const idx = textLower.indexOf(term);
+        if (idx >= 0) {
+          msgScore += (m.role === 'user' ? 5 : 3);
+          // Bonus si match exact de la requête complète
+          if (textLower.includes(q)) msgScore += 8;
+        }
+      }
+
+      if (msgScore > 0) {
+        score += msgScore;
+        matchedMessages.push({
+          index: i,
+          role: m.role,
+          model: m.model || null,
+          text: text,
+          score: msgScore
+        });
+      }
+    }
+
+    if (score > 0) {
+      // Trier les messages matchés par score décroissant
+      matchedMessages.sort((a, b) => b.score - a.score);
+      const project = chat.projectId ? S.projects.find(p => p.id === chat.projectId) : null;
+      results.push({
+        chatId: chat.id,
+        title: chat.title,
+        project,
+        score,
+        messageCount: (chat.messages || []).length,
+        matchCount: matchedMessages.length,
+        bestMatch: matchedMessages[0] || null,
+        matches: matchedMessages.slice(0, 3)
+      });
+    }
+  }
+
+  // Trier par score décroissant
+  results.sort((a, b) => b.score - a.score);
+  return results.slice(0, 30); // max 30 résultats
+}
+
+/**
+ * Surligne les termes recherchés dans un extrait de texte.
+ * Retourne du HTML safe.
+ */
+function highlightSearchTerms(text, query) {
+  const maxLen = 180;
+  const q = query.trim().toLowerCase();
+  const terms = q.split(/\s+/).filter(t => t.length >= 2);
+  const textLower = text.toLowerCase();
+
+  // Trouver la position du premier match pour centrer l'extrait
+  let firstIdx = text.length;
+  for (const term of terms) {
+    const idx = textLower.indexOf(term);
+    if (idx >= 0 && idx < firstIdx) firstIdx = idx;
+  }
+
+  // Extraire autour du match
+  let start = Math.max(0, firstIdx - 40);
+  let end = Math.min(text.length, start + maxLen);
+  if (start > 0) start = text.lastIndexOf(' ', start) + 1 || start;
+  let excerpt = text.slice(start, end).replace(/\n+/g, ' ').trim();
+  if (start > 0) excerpt = '…' + excerpt;
+  if (end < text.length) excerpt = excerpt + '…';
+
+  // Escape HTML puis surligner
+  excerpt = excerpt.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  for (const term of terms) {
+    const re = new RegExp('(' + term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+    excerpt = excerpt.replace(re, '<mark>$1</mark>');
+  }
+  return excerpt;
+}
+
+/**
+ * Rendu des résultats de recherche dans le dropdown.
+ */
+function renderSearchResults(query) {
+  const container = el('searchResults');
+  if (!query || query.trim().length < 2) {
+    container.classList.remove('open');
+    return;
+  }
+
+  const results = searchConversations(query);
+  container.innerHTML = '';
+
+  // Header
+  const header = document.createElement('div');
+  header.className = 'search-results-header';
+  header.innerHTML = `
+    <span>🔍 Résultats</span>
+    <span class="search-results-count">${results.length} conversation${results.length !== 1 ? 's' : ''}</span>
+  `;
+  container.appendChild(header);
+
+  if (!results.length) {
+    container.innerHTML += `
+      <div class="search-empty">
+        <span class="search-empty-icon">🔎</span>
+        Aucun résultat pour « ${escapeHtml(query)} »
+      </div>
+    `;
+    container.classList.add('open');
+    return;
+  }
+
+  results.forEach(r => {
+    const item = document.createElement('div');
+    item.className = 'search-result-item' + (r.chatId === S.activeChat ? ' active' : '');
+
+    // Badge projet
+    const projBadge = r.project
+      ? `<span class="proj-badge" style="background:${r.project.color}22;color:${r.project.color};border:1px solid ${r.project.color}44">${r.project.name}</span>`
+      : '';
+
+    // Aperçu du meilleur match
+    let preview = '';
+    if (r.bestMatch) {
+      const roleIcon = r.bestMatch.role === 'user' ? '👤' : '🤖';
+      preview = `<div class="search-result-preview">${roleIcon} ${highlightSearchTerms(r.bestMatch.text, query)}</div>`;
+    }
+
+    // Meta
+    const modelTag = r.bestMatch?.model
+      ? `<span class="model-tag">${r.bestMatch.model}</span>`
+      : '';
+
+    item.innerHTML = `
+      <div class="search-result-title">
+        ${projBadge}
+        ${escapeHtml(r.title)}
+      </div>
+      ${preview}
+      <div class="search-result-meta">
+        <span>${r.messageCount} messages</span>
+        <span>${r.matchCount} correspondance${r.matchCount > 1 ? 's' : ''}</span>
+        ${modelTag}
+      </div>
+    `;
+
+    item.onclick = () => {
+      S.activeChat = r.chatId;
+      if (r.project) S.activeProject = r.project.id;
+      save();
+      render();
+      // Fermer la recherche
+      el('searchInput').value = '';
+      container.classList.remove('open');
+      // Scroll au message trouvé si possible
+      if (r.bestMatch) {
+        setTimeout(() => {
+          const msgRows = el('messages').querySelectorAll('.msg-row');
+          if (msgRows[r.bestMatch.index]) {
+            msgRows[r.bestMatch.index].scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Flash highlight
+            msgRows[r.bestMatch.index].style.transition = 'background .3s';
+            msgRows[r.bestMatch.index].style.background = '#4a6cf715';
+            setTimeout(() => { msgRows[r.bestMatch.index].style.background = ''; }, 1800);
+          }
+        }, 150);
+      }
+    };
+
+    container.appendChild(item);
+  });
+
+  container.classList.add('open');
+}
+
+// ── Bindings recherche ──
+(function initSearch() {
+  const input = el('searchInput');
+  const clear = el('searchClear');
+  const results = el('searchResults');
+  let debounceTimer = null;
+
+  input.addEventListener('input', () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      renderSearchResults(input.value);
+    }, 200);
+  });
+
+  clear.onclick = () => {
+    input.value = '';
+    results.classList.remove('open');
+    input.focus();
+  };
+
+  // Fermer quand on clique en dehors
+  document.addEventListener('click', e => {
+    const searchBox = el('searchBox');
+    if (!searchBox.contains(e.target)) {
+      results.classList.remove('open');
+    }
+  });
+
+  // Raccourci clavier Ctrl+K / Cmd+K pour focus la recherche
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+      e.preventDefault();
+      // Ouvrir la sidebar si elle est fermée
+      const appEl = document.querySelector('.app');
+      if (appEl.classList.contains('sidebar-collapsed')) {
+        appEl.classList.remove('sidebar-collapsed');
+        localStorage.setItem('sidebarCollapsed', '0');
+      }
+      input.focus();
+      input.select();
+    }
+    // Echap pour fermer
+    if (e.key === 'Escape' && results.classList.contains('open')) {
+      results.classList.remove('open');
+      input.blur();
+    }
+  });
+
+  // Re-ouvrir si l'input a du texte quand on focus
+  input.addEventListener('focus', () => {
+    if (input.value.trim().length >= 2) {
+      renderSearchResults(input.value);
+    }
+  });
+})();
+
 // ─────────────────────────────────────────────────
 // ÉVÉNEMENTS
 // ─────────────────────────────────────────────────
@@ -3860,6 +4289,19 @@ if (typeof marked !== "undefined") {
 }
 buildColorPicker();
 initGithubPanel();
+
+// ── Pull automatique à l'ouverture (5 secondes après le chargement) ──
+// Permet de récupérer les conversations de l'autre machine via GitHub
+setTimeout(() => {
+  if (GH.token && GH.owner && GH.repo) {
+    console.log('[BrAInShift] ⏱ Pull automatique au démarrage…');
+    ghPullSilent().then(() => {
+      console.log('[BrAInShift] ✅ Pull au démarrage terminé');
+    }).catch(e => {
+      console.warn('[BrAInShift] ⚠ Pull au démarrage échoué:', e.message);
+    });
+  }
+}, 5000);
 
   // KaTeX + marked : extensions enregistrées lors du 1er appel de formatAssistantContent
   // Si KaTeX n'est pas encore chargé, on attend puis on re-render une seule fois
