@@ -772,6 +772,8 @@
   <!-- Extraction texte Office côté navigateur -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <!-- docx.js — génération de Word .docx côté navigateur -->
+  <script src="https://unpkg.com/docx@8.5.0/build/index.umd.js"></script>
   <!-- Favicon — cerveau numérique BrAInShift -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+CiAgPGRlZnM+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjNGE5ZmQ0Ii8+CiAgICAgIDxzdG9wIG9mZnNldD0iNTAlIiBzdG9wLWNvbG9yPSIjN2I2OGQ0Ii8+CiAgICAgIDxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iI2Q0NmFiZiIvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICA8L2RlZnM+CiAgPCEtLSBGb25kIGFycm9uZGkgc29tYnJlIC0tPgogIDxyZWN0IHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgcng9IjgiIGZpbGw9IiMxYTFhMmUiLz4KICA8IS0tIEjDqW1pc3Bow6hyZSBnYXVjaGUgLS0+CiAgPHBhdGggZD0iTTE2IDUgQzEwIDUgNiA4IDUgMTMgQzQgMTcgNSAyMSA4IDI0IEMxMCAyNiAxMyAyNyAxNSAyNiBMMTUuNSAyNiBMMTUuNSA2IFoiCiAgICAgICAgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ1cmwoI2cpIiBzdHJva2Utd2lkdGg9IjEuNSIgb3BhY2l0eT0iMC45Ii8+CiAgPCEtLSBIw6ltaXNwaMOocmUgZHJvaXQgLS0+CiAgPHBhdGggZD0iTTE2IDUgQzIyIDUgMjYgOCAyNyAxMyBDMjggMTcgMjcgMjEgMjQgMjQgQzIyIDI2IDE5IDI3IDE3IDI2IEwxNi41IDI2IEwxNi41IDYgWiIKICAgICAgICBmaWxsPSJub25lIiBzdHJva2U9InVybCgjZykiIHN0cm9rZS13aWR0aD0iMS41IiBvcGFjaXR5PSIwLjkiLz4KICA8IS0tIFNpbGxvbiBjZW50cmFsIC0tPgogIDxsaW5lIHgxPSIxNiIgeTE9IjUiIHgyPSIxNiIgeTI9IjI2IiBzdHJva2U9InVybCgjZykiIHN0cm9rZS13aWR0aD0iMC44IiBvcGFjaXR5PSIwLjQiLz4KICA8IS0tIENpcmNvbnZvbHV0aW9ucyBnYXVjaGUgLS0+CiAgPHBhdGggZD0iTTggMTIgQzEwIDEwIDEzIDEwIDE0IDEyIiBmaWxsPSJub25lIiBzdHJva2U9InVybCgjZykiIHN0cm9rZS13aWR0aD0iMS4yIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KICA8cGF0aCBkPSJNNiAxNyBDOCAxNSAxMiAxNSAxMyAxNyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ1cmwoI2cpIiBzdHJva2Utd2lkdGg9IjEuMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CiAgPHBhdGggZD0iTTcgMjIgQzkgMjAgMTIgMjAgMTQgMjEiIGZpbGw9Im5vbmUiIHN0cm9rZT0idXJsKCNnKSIgc3Ryb2tlLXdpZHRoPSIxLjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgogIDwhLS0gQ2lyY29udm9sdXRpb25zIGRyb2l0ZSAtLT4KICA8cGF0aCBkPSJNMjQgMTIgQzIyIDEwIDE5IDEwIDE4IDEyIiBmaWxsPSJub25lIiBzdHJva2U9InVybCgjZykiIHN0cm9rZS13aWR0aD0iMS4yIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KICA8cGF0aCBkPSJNMjYgMTcgQzI0IDE1IDIwIDE1IDE5IDE3IiBmaWxsPSJub25lIiBzdHJva2U9InVybCgjZykiIHN0cm9rZS13aWR0aD0iMS4yIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KICA8cGF0aCBkPSJNMjUgMjIgQzIzIDIwIDIwIDIwIDE4IDIxIiBmaWxsPSJub25lIiBzdHJva2U9InVybCgjZykiIHN0cm9rZS13aWR0aD0iMS4yIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KICA8IS0tIE5vZXVkcyBzeW5hcHRpcXVlcyAtLT4KICA8Y2lyY2xlIGN4PSI4IiAgY3k9IjExIiByPSIxLjgiIGZpbGw9IiM0YTlmZDQiIG9wYWNpdHk9IjAuOTUiLz4KICA8Y2lyY2xlIGN4PSI2IiAgY3k9IjE3IiByPSIxLjgiIGZpbGw9IiM3YjY4ZDQiIG9wYWNpdHk9IjAuOTUiLz4KICA8Y2lyY2xlIGN4PSI4IiAgY3k9IjIyIiByPSIxLjgiIGZpbGw9IiNkNDZhYmYiIG9wYWNpdHk9IjAuOTUiLz4KICA8Y2lyY2xlIGN4PSIyNCIgY3k9IjExIiByPSIxLjgiIGZpbGw9IiM0YTlmZDQiIG9wYWNpdHk9IjAuOTUiLz4KICA8Y2lyY2xlIGN4PSIyNiIgY3k9IjE3IiByPSIxLjgiIGZpbGw9IiM3YjY4ZDQiIG9wYWNpdHk9IjAuOTUiLz4KICA8Y2lyY2xlIGN4PSIyNCIgY3k9IjIyIiByPSIxLjgiIGZpbGw9IiNkNDZhYmYiIG9wYWNpdHk9IjAuOTUiLz4KICA8Y2lyY2xlIGN4PSIxNiIgY3k9IjUiICByPSIxLjgiIGZpbGw9IiM0YWJmYmYiIG9wYWNpdHk9IjAuOTUiLz4KPC9zdmc+">
   <link rel="shortcut icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+CiAgPGRlZnM+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjNGE5ZmQ0Ii8+CiAgICAgIDxzdG9wIG9mZnNldD0iNTAlIiBzdG9wLWNvbG9yPSIjN2I2OGQ0Ii8+CiAgICAgIDxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iI2Q0NmFiZiIvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICA8L2RlZnM+CiAgPCEtLSBGb25kIGFycm9uZGkgc29tYnJlIC0tPgogIDxyZWN0IHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgcng9IjgiIGZpbGw9IiMxYTFhMmUiLz4KICA8IS0tIEjDqW1pc3Bow6hyZSBnYXVjaGUgLS0+CiAgPHBhdGggZD0iTTE2IDUgQzEwIDUgNiA4IDUgMTMgQzQgMTcgNSAyMSA4IDI0IEMxMCAyNiAxMyAyNyAxNSAyNiBMMTUuNSAyNiBMMTUuNSA2IFoiCiAgICAgICAgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ1cmwoI2cpIiBzdHJva2Utd2lkdGg9IjEuNSIgb3BhY2l0eT0iMC45Ii8+CiAgPCEtLSBIw6ltaXNwaMOocmUgZHJvaXQgLS0+CiAgPHBhdGggZD0iTTE2IDUgQzIyIDUgMjYgOCAyNyAxMyBDMjggMTcgMjcgMjEgMjQgMjQgQzIyIDI2IDE5IDI3IDE3IDI2IEwxNi41IDI2IEwxNi41IDYgWiIKICAgICAgICBmaWxsPSJub25lIiBzdHJva2U9InVybCgjZykiIHN0cm9rZS13aWR0aD0iMS41IiBvcGFjaXR5PSIwLjkiLz4KICA8IS0tIFNpbGxvbiBjZW50cmFsIC0tPgogIDxsaW5lIHgxPSIxNiIgeTE9IjUiIHgyPSIxNiIgeTI9IjI2IiBzdHJva2U9InVybCgjZykiIHN0cm9rZS13aWR0aD0iMC44IiBvcGFjaXR5PSIwLjQiLz4KICA8IS0tIENpcmNvbnZvbHV0aW9ucyBnYXVjaGUgLS0+CiAgPHBhdGggZD0iTTggMTIgQzEwIDEwIDEzIDEwIDE0IDEyIiBmaWxsPSJub25lIiBzdHJva2U9InVybCgjZykiIHN0cm9rZS13aWR0aD0iMS4yIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KICA8cGF0aCBkPSJNNiAxNyBDOCAxNSAxMiAxNSAxMyAxNyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ1cmwoI2cpIiBzdHJva2Utd2lkdGg9IjEuMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CiAgPHBhdGggZD0iTTcgMjIgQzkgMjAgMTIgMjAgMTQgMjEiIGZpbGw9Im5vbmUiIHN0cm9rZT0idXJsKCNnKSIgc3Ryb2tlLXdpZHRoPSIxLjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgogIDwhLS0gQ2lyY29udm9sdXRpb25zIGRyb2l0ZSAtLT4KICA8cGF0aCBkPSJNMjQgMTIgQzIyIDEwIDE5IDEwIDE4IDEyIiBmaWxsPSJub25lIiBzdHJva2U9InVybCgjZykiIHN0cm9rZS13aWR0aD0iMS4yIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KICA8cGF0aCBkPSJNMjYgMTcgQzI0IDE1IDIwIDE1IDE5IDE3IiBmaWxsPSJub25lIiBzdHJva2U9InVybCgjZykiIHN0cm9rZS13aWR0aD0iMS4yIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KICA8cGF0aCBkPSJNMjUgMjIgQzIzIDIwIDIwIDIwIDE4IDIxIiBmaWxsPSJub25lIiBzdHJva2U9InVybCgjZykiIHN0cm9rZS13aWR0aD0iMS4yIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KICA8IS0tIE5vZXVkcyBzeW5hcHRpcXVlcyAtLT4KICA8Y2lyY2xlIGN4PSI4IiAgY3k9IjExIiByPSIxLjgiIGZpbGw9IiM0YTlmZDQiIG9wYWNpdHk9IjAuOTUiLz4KICA8Y2lyY2xlIGN4PSI2IiAgY3k9IjE3IiByPSIxLjgiIGZpbGw9IiM3YjY4ZDQiIG9wYWNpdHk9IjAuOTUiLz4KICA8Y2lyY2xlIGN4PSI4IiAgY3k9IjIyIiByPSIxLjgiIGZpbGw9IiNkNDZhYmYiIG9wYWNpdHk9IjAuOTUiLz4KICA8Y2lyY2xlIGN4PSIyNCIgY3k9IjExIiByPSIxLjgiIGZpbGw9IiM0YTlmZDQiIG9wYWNpdHk9IjAuOTUiLz4KICA8Y2lyY2xlIGN4PSIyNiIgY3k9IjE3IiByPSIxLjgiIGZpbGw9IiM3YjY4ZDQiIG9wYWNpdHk9IjAuOTUiLz4KICA8Y2lyY2xlIGN4PSIyNCIgY3k9IjIyIiByPSIxLjgiIGZpbGw9IiNkNDZhYmYiIG9wYWNpdHk9IjAuOTUiLz4KICA8Y2lyY2xlIGN4PSIxNiIgY3k9IjUiICByPSIxLjgiIGZpbGw9IiM0YWJmYmYiIG9wYWNpdHk9IjAuOTUiLz4KPC9zdmc+">
@@ -2299,6 +2301,413 @@ function downloadFile(content, filename, mimeType) {
   URL.revokeObjectURL(url);
 }
 
+// ═══════════════════════════════════════════════════════════
+// EXPORT DOCX PROFESSIONNEL — Markdown → Word (.docx)
+// Utilise docx.js (UMD) chargé via CDN
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * Génère un fichier .docx professionnel à partir du Markdown brut
+ * d'une réponse assistant et déclenche le téléchargement.
+ */
+async function generateDocxFromMarkdown(rawMarkdown, chatTitle) {
+  if (typeof docx === 'undefined') {
+    alert('Librairie docx.js non chargée. Vérifiez votre connexion internet.');
+    return;
+  }
+
+  const {
+    Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
+    Header, Footer, AlignmentType, HeadingLevel, BorderStyle,
+    WidthType, ShadingType, LevelFormat, PageBreak, PageNumber,
+    TabStopType, TabStopPosition
+  } = docx;
+
+  // ── Couleurs du thème ──
+  const COL = {
+    primary:   '2E5090',  // bleu foncé titres
+    secondary: '1F3864',  // bleu très foncé H1
+    accent:    '4472C4',  // bleu accent
+    headerBg:  'D6E4F0',  // fond en-tête tableau
+    alertBg:   'FFF3CD',  // fond encadré alerte
+    alertBdr:  'E0A800',  // bordure encadré alerte
+    infoBg:    'E8F0FE',  // fond encadré info
+    infoBdr:   '4472C4',  // bordure encadré info
+    codeBg:    'F2F2F2',  // fond code
+    grey:      '666666',  // texte secondaire
+    lightLine: 'D0D0D0',  // bordures légères
+    text:      '1A1A1A',  // texte principal
+  };
+
+  const thinBorder = { style: BorderStyle.SINGLE, size: 1, color: COL.lightLine };
+  const noBorder   = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' };
+  const borders4   = { top: thinBorder, bottom: thinBorder, left: thinBorder, right: thinBorder };
+  const cellMargins = { top: 60, bottom: 60, left: 100, right: 100 };
+
+  // ── Parsing inline : convertit le texte avec **bold**, *italic*, `code` en TextRun[] ──
+  function parseInline(text) {
+    if (!text) return [new TextRun({ text: '' })];
+    const runs = [];
+    // Regex pour capturer **bold**, *italic*, `code`, ***bolditalic***
+    const re = /(\*\*\*(.+?)\*\*\*|\*\*(.+?)\*\*|\*(.+?)\*|`([^`]+?)`|([^*`]+))/g;
+    let match;
+    while ((match = re.exec(text)) !== null) {
+      if (match[2]) {
+        // ***bold italic***
+        runs.push(new TextRun({ text: match[2], bold: true, italics: true, font: 'Calibri', size: 22, color: COL.text }));
+      } else if (match[3]) {
+        // **bold**
+        runs.push(new TextRun({ text: match[3], bold: true, font: 'Calibri', size: 22, color: COL.text }));
+      } else if (match[4]) {
+        // *italic*
+        runs.push(new TextRun({ text: match[4], italics: true, font: 'Calibri', size: 22, color: COL.text }));
+      } else if (match[5]) {
+        // `code`
+        runs.push(new TextRun({ text: match[5], font: 'Consolas', size: 20, color: '8B0000',
+          shading: { type: ShadingType.CLEAR, fill: COL.codeBg } }));
+      } else if (match[6]) {
+        runs.push(new TextRun({ text: match[6], font: 'Calibri', size: 22, color: COL.text }));
+      }
+    }
+    return runs.length ? runs : [new TextRun({ text: text, font: 'Calibri', size: 22, color: COL.text })];
+  }
+
+  // ── Parse les tokens Markdown via marked.lexer ──
+  const tokens = marked.lexer(rawMarkdown);
+  const children = [];
+
+  // Extraire un titre possible du H1
+  let docTitle = chatTitle || 'Document';
+  const firstH1 = tokens.find(t => t.type === 'heading' && t.depth === 1);
+  if (firstH1) docTitle = firstH1.text.replace(/\*\*/g, '');
+
+  // ── Page de garde ──
+  children.push(
+    new Paragraph({ spacing: { before: 3600 }, children: [] }),
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 200 },
+      children: [new TextRun({ text: 'BRAINSHIFT', font: 'Calibri Light', size: 28, color: COL.grey, characterSpacing: 200 })]
+    }),
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 100 },
+      border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: COL.accent, space: 8 } },
+      children: [new TextRun({ text: ' ', size: 10 })]
+    }),
+    new Paragraph({ spacing: { before: 600 }, children: [] }),
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 300 },
+      children: [new TextRun({ text: docTitle, font: 'Calibri', size: 52, bold: true, color: COL.secondary })]
+    }),
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 200 },
+      children: [new TextRun({ text: 'Document généré par BrAInShift', font: 'Calibri Light', size: 24, color: COL.grey })]
+    }),
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 200 },
+      children: [new TextRun({ text: new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }),
+        font: 'Calibri', size: 22, color: COL.grey })]
+    }),
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 100 },
+      children: [new TextRun({ text: `Modèle : ${S.model}`, font: 'Calibri Light', size: 20, color: COL.accent })]
+    }),
+    new Paragraph({ children: [new PageBreak()] })
+  );
+
+  // ── Conversion token par token ──
+  for (let ti = 0; ti < tokens.length; ti++) {
+    const tok = tokens[ti];
+
+    switch (tok.type) {
+      case 'heading': {
+        const cleanText = tok.text.replace(/\*\*/g, '');
+        const headingMap = {
+          1: { level: HeadingLevel.HEADING_1, size: 36, color: COL.secondary, spacing: { before: 360, after: 200 } },
+          2: { level: HeadingLevel.HEADING_2, size: 30, color: COL.primary,   spacing: { before: 300, after: 160 } },
+          3: { level: HeadingLevel.HEADING_3, size: 26, color: COL.accent,    spacing: { before: 240, after: 120 } },
+          4: { level: HeadingLevel.HEADING_4, size: 23, color: COL.grey,      spacing: { before: 200, after: 100 } },
+        };
+        const h = headingMap[tok.depth] || headingMap[4];
+        children.push(new Paragraph({
+          heading: h.level,
+          spacing: h.spacing,
+          children: [new TextRun({ text: cleanText, font: 'Calibri', size: h.size, bold: true, color: h.color })]
+        }));
+        break;
+      }
+
+      case 'paragraph': {
+        const text = tok.text;
+        // Détecter les encadrés (lignes qui commencent par **Attention**, **Principe**, etc.)
+        if (/^\*\*(Attention|Principe|Note|Important|Avertissement|Règle)\b/i.test(text)) {
+          const isWarning = /^\*\*(Attention|Avertissement|Important)/i.test(text);
+          const bg = isWarning ? COL.alertBg : COL.infoBg;
+          const bdr = isWarning ? COL.alertBdr : COL.infoBdr;
+          // Encadré spécial comme tableau à 1 cellule
+          const cellBorder = { style: BorderStyle.SINGLE, size: 1, color: bdr };
+          children.push(new Table({
+            width: { size: 9026, type: WidthType.DXA },
+            columnWidths: [9026],
+            rows: [new TableRow({
+              children: [new TableCell({
+                borders: { top: cellBorder, bottom: cellBorder, right: cellBorder,
+                  left: { style: BorderStyle.SINGLE, size: 12, color: bdr } },
+                shading: { fill: bg, type: ShadingType.CLEAR },
+                margins: { top: 100, bottom: 100, left: 160, right: 120 },
+                children: [new Paragraph({ spacing: { after: 0 }, children: parseInline(text) })]
+              })]
+            })]
+          }));
+        } else {
+          children.push(new Paragraph({
+            spacing: { after: 160, line: 276 },
+            children: parseInline(text)
+          }));
+        }
+        break;
+      }
+
+      case 'list': {
+        const ordered = tok.ordered;
+        tok.items.forEach((item, idx) => {
+          const text = item.text.replace(/\n.*/g, ''); // première ligne seulement
+          children.push(new Paragraph({
+            numbering: { reference: ordered ? 'docNumbers' : 'docBullets', level: 0 },
+            spacing: { after: 80, line: 276 },
+            children: parseInline(text)
+          }));
+          // Sous-listes (items imbriqués)
+          if (item.items && item.items.length) {
+            item.items.forEach(sub => {
+              children.push(new Paragraph({
+                numbering: { reference: ordered ? 'docNumbers' : 'docBullets', level: 1 },
+                spacing: { after: 60, line: 264 },
+                children: parseInline(sub.text || '')
+              }));
+            });
+          }
+        });
+        break;
+      }
+
+      case 'table': {
+        if (!tok.header || !tok.rows) break;
+        const colCount = tok.header.length;
+        const tableWidth = 9026;
+        const colWidth = Math.floor(tableWidth / colCount);
+        const colWidths = Array(colCount).fill(colWidth);
+        // Ajuster la dernière pour combler l'arrondi
+        colWidths[colCount - 1] = tableWidth - colWidth * (colCount - 1);
+
+        const headerRow = new TableRow({
+          tableHeader: true,
+          children: tok.header.map((cell, ci) => new TableCell({
+            borders: borders4,
+            width: { size: colWidths[ci], type: WidthType.DXA },
+            shading: { fill: COL.headerBg, type: ShadingType.CLEAR },
+            margins: cellMargins,
+            children: [new Paragraph({
+              spacing: { after: 0 },
+              children: [new TextRun({ text: (cell.text || cell || '').replace(/\*\*/g, ''),
+                font: 'Calibri', size: 20, bold: true, color: COL.secondary })]
+            })]
+          }))
+        });
+
+        const dataRows = tok.rows.map(row =>
+          new TableRow({
+            children: row.map((cell, ci) => new TableCell({
+              borders: borders4,
+              width: { size: colWidths[ci], type: WidthType.DXA },
+              margins: cellMargins,
+              children: [new Paragraph({
+                spacing: { after: 0 },
+                children: parseInline((cell.text || cell || '').toString())
+              })]
+            }))
+          })
+        );
+
+        children.push(new Table({
+          width: { size: tableWidth, type: WidthType.DXA },
+          columnWidths: colWidths,
+          rows: [headerRow, ...dataRows]
+        }));
+        // Espacement après tableau
+        children.push(new Paragraph({ spacing: { after: 160 }, children: [] }));
+        break;
+      }
+
+      case 'code': {
+        const codeLines = tok.text.split('\n');
+        const langLabel = tok.lang || 'code';
+        // En-tête du bloc code
+        children.push(new Paragraph({
+          spacing: { before: 160, after: 0 },
+          shading: { type: ShadingType.CLEAR, fill: 'E0E0E0' },
+          children: [new TextRun({ text: `  ${langLabel}`, font: 'Consolas', size: 18, color: COL.grey, italics: true })]
+        }));
+        codeLines.forEach(line => {
+          children.push(new Paragraph({
+            spacing: { after: 0, line: 240 },
+            shading: { type: ShadingType.CLEAR, fill: COL.codeBg },
+            children: [new TextRun({ text: '  ' + line, font: 'Consolas', size: 18, color: '333333' })]
+          }));
+        });
+        children.push(new Paragraph({ spacing: { after: 160 }, children: [] }));
+        break;
+      }
+
+      case 'blockquote': {
+        const bqText = tok.text || (tok.tokens ? tok.tokens.map(t => t.text || t.raw || '').join(' ') : '');
+        children.push(new Paragraph({
+          spacing: { after: 160, line: 276 },
+          indent: { left: 400 },
+          border: { left: { style: BorderStyle.SINGLE, size: 8, color: COL.accent, space: 8 } },
+          children: [new TextRun({ text: bqText.replace(/\*\*/g, ''), font: 'Calibri', size: 22, italics: true, color: COL.grey })]
+        }));
+        break;
+      }
+
+      case 'hr':
+        children.push(new Paragraph({
+          spacing: { before: 200, after: 200 },
+          border: { bottom: { style: BorderStyle.SINGLE, size: 2, color: COL.lightLine, space: 4 } },
+          children: [new TextRun({ text: ' ', size: 6 })]
+        }));
+        break;
+
+      case 'space':
+        // Un espace léger entre les blocs
+        break;
+
+      default:
+        // Fallback : texte brut
+        if (tok.raw && tok.raw.trim()) {
+          children.push(new Paragraph({
+            spacing: { after: 120, line: 276 },
+            children: [new TextRun({ text: tok.raw.trim(), font: 'Calibri', size: 22, color: COL.text })]
+          }));
+        }
+    }
+  }
+
+  // ── Assemblage du document ──
+  const doc = new Document({
+    creator: 'BrAInShift',
+    title: docTitle,
+    description: `Document généré par BrAInShift — ${S.model}`,
+    styles: {
+      default: {
+        document: { run: { font: 'Calibri', size: 22, color: COL.text } }
+      },
+      paragraphStyles: [
+        {
+          id: 'Heading1', name: 'Heading 1', basedOn: 'Normal', next: 'Normal', quickFormat: true,
+          run: { size: 36, bold: true, font: 'Calibri', color: COL.secondary },
+          paragraph: { spacing: { before: 360, after: 200 }, outlineLevel: 0 }
+        },
+        {
+          id: 'Heading2', name: 'Heading 2', basedOn: 'Normal', next: 'Normal', quickFormat: true,
+          run: { size: 30, bold: true, font: 'Calibri', color: COL.primary },
+          paragraph: { spacing: { before: 300, after: 160 }, outlineLevel: 1 }
+        },
+        {
+          id: 'Heading3', name: 'Heading 3', basedOn: 'Normal', next: 'Normal', quickFormat: true,
+          run: { size: 26, bold: true, font: 'Calibri', color: COL.accent },
+          paragraph: { spacing: { before: 240, after: 120 }, outlineLevel: 2 }
+        },
+        {
+          id: 'Heading4', name: 'Heading 4', basedOn: 'Normal', next: 'Normal', quickFormat: true,
+          run: { size: 23, bold: true, font: 'Calibri', color: COL.grey },
+          paragraph: { spacing: { before: 200, after: 100 }, outlineLevel: 3 }
+        }
+      ]
+    },
+    numbering: {
+      config: [
+        {
+          reference: 'docBullets',
+          levels: [
+            { level: 0, format: LevelFormat.BULLET, text: '\u2022', alignment: AlignmentType.LEFT,
+              style: { paragraph: { indent: { left: 720, hanging: 360 } } } },
+            { level: 1, format: LevelFormat.BULLET, text: '\u25E6', alignment: AlignmentType.LEFT,
+              style: { paragraph: { indent: { left: 1440, hanging: 360 } } } }
+          ]
+        },
+        {
+          reference: 'docNumbers',
+          levels: [
+            { level: 0, format: LevelFormat.DECIMAL, text: '%1.', alignment: AlignmentType.LEFT,
+              style: { paragraph: { indent: { left: 720, hanging: 360 } } } },
+            { level: 1, format: LevelFormat.LOWER_LETTER, text: '%2)', alignment: AlignmentType.LEFT,
+              style: { paragraph: { indent: { left: 1440, hanging: 360 } } } }
+          ]
+        }
+      ]
+    },
+    sections: [{
+      properties: {
+        page: {
+          size: { width: 11906, height: 16838 }, // A4
+          margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 }
+        }
+      },
+      headers: {
+        default: new Header({
+          children: [new Paragraph({
+            alignment: AlignmentType.RIGHT,
+            border: { bottom: { style: BorderStyle.SINGLE, size: 2, color: COL.accent, space: 4 } },
+            children: [
+              new TextRun({ text: 'BrAInShift', font: 'Calibri Light', size: 16, color: COL.accent }),
+              new TextRun({ text: '  —  ', font: 'Calibri Light', size: 16, color: COL.lightLine }),
+              new TextRun({ text: docTitle, font: 'Calibri Light', size: 16, color: COL.grey, italics: true }),
+            ]
+          })]
+        })
+      },
+      footers: {
+        default: new Footer({
+          children: [new Paragraph({
+            alignment: AlignmentType.CENTER,
+            border: { top: { style: BorderStyle.SINGLE, size: 1, color: COL.lightLine, space: 4 } },
+            children: [
+              new TextRun({ text: 'Page ', font: 'Calibri', size: 16, color: COL.grey }),
+              new TextRun({ children: [PageNumber.CURRENT], font: 'Calibri', size: 16, color: COL.grey }),
+              new TextRun({ text: ' / ', font: 'Calibri', size: 16, color: COL.grey }),
+              new TextRun({ children: [PageNumber.TOTAL_PAGES], font: 'Calibri', size: 16, color: COL.grey }),
+            ]
+          })]
+        })
+      },
+      children: children
+    }]
+  });
+
+  // ── Packer : générer le buffer et télécharger ──
+  try {
+    const buffer = await Packer.toBlob(doc);
+    const filename = (docTitle.replace(/[^a-zA-Z0-9àâäéèêëïîôùûüÿçÀÂÄÉÈÊËÏÎÔÙÛÜŸÇ _-]/g, '').trim() || 'document') + '.docx';
+    const url = URL.createObjectURL(buffer);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch(e) {
+    console.error('[BrAInShift] Erreur génération DOCX:', e);
+    alert('Erreur lors de la génération du fichier Word : ' + e.message);
+  }
+}
+
 // ─────────────────────────────────────────────────
 // AFFICHAGE MESSAGES
 // ─────────────────────────────────────────────────
@@ -2442,6 +2851,7 @@ function renderMessages() {
           <div class="ex-item" data-ex="copy-fmt">📋 Copier avec formatage</div>
           <div class="ex-item" data-ex="copy-raw">📝 Copier en Markdown brut</div>
           <div class="ex-divider"></div>
+          <div class="ex-item" data-ex="dl-docx" style="color:#7baaf7;font-weight:500">📄 Télécharger .docx (Word)</div>
           <div class="ex-item" data-ex="dl-md">⬇ Télécharger .md</div>
           <div class="ex-item" data-ex="dl-html">⬇ Télécharger .html</div>
         `;
@@ -2449,7 +2859,10 @@ function renderMessages() {
           const action = ev.target.closest('[data-ex]')?.dataset.ex;
           if (!action) return;
           menu.remove();
-          if (action === 'copy-fmt') {
+          if (action === 'dl-docx') {
+            const title = activeChat()?.title || 'Document';
+            generateDocxFromMarkdown(rawContent, title);
+          } else if (action === 'copy-fmt') {
             const clean = cleanHtmlForExport(rawHtml);
             const blob = new Blob([clean], {type: 'text/html'});
             const plainBlob = new Blob([rawContent], {type: 'text/plain'});
