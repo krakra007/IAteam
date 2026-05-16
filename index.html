@@ -369,30 +369,13 @@
        PANNEAU PROFILS (droite)
     ═══════════════════════════════════════════════ */
     .right-panel{
-      position:fixed;
-      right:0;
-      top:0;
-      height:100vh;
-      width:340px;
-      background:var(--side);
-      border-left:1px solid var(--line);
-      display:flex;
-      flex-direction:column;
-      z-index:35;
-      box-shadow:-8px 0 32px rgba(0,0,0,.45);
-      transform:translateX(100%);
-      transition:transform .22s cubic-bezier(.4,0,.2,1);
-      overflow:hidden;
+      width:380px;max-height:80vh;
+      display:flex;flex-direction:column;
+      padding:0;
     }
-    .right-panel.open{transform:translateX(0)}
-    .right-panel-backdrop{
-      display:none;position:fixed;inset:0;z-index:34;background:rgba(0,0,0,.25);
-    }
-    .right-panel-backdrop.open{display:block}
-
-    .right-panel-head{
+    .right-panel .right-panel-head{
       display:flex;align-items:center;justify-content:space-between;
-      padding:12px 14px 10px;border-bottom:1px solid var(--line);
+      padding:14px 16px 10px;border-bottom:1px solid var(--line);
       flex-shrink:0;
     }
     .right-panel-title{font-size:13px;font-weight:600;color:#e2e8f0;letter-spacing:.03em}
@@ -818,6 +801,41 @@
           <span id="chipProfileName">Aucun profil</span>
         </div>
         <button class="btn" id="toggleRightPanelBtn" title="Profils système">📖</button>
+        <!-- Panneau Profils système (dropdown comme les autres) -->
+        <div id="rightPanel" class="params right-panel" style="right:100px;top:46px;width:380px">
+          <div class="right-panel-head">
+            <span class="right-panel-title">📖 Profils système</span>
+            <button class="icon-btn" id="newProfileBtn" title="Nouveau profil" style="font-size:18px;color:#7baaf7">＋</button>
+          </div>
+          <div id="activePromptBanner" style="display:none;margin:6px 8px;padding:6px 10px;background:#1e2a3a;border:1px solid #1f6feb44;border-radius:8px;font-size:11px;color:#7baaf7;line-height:1.4">
+            <div style="font-weight:600;margin-bottom:3px">✅ Profil actif :</div>
+            <div id="activePromptName" style="color:#e2e8f0"></div>
+            <button onclick="togglePromptPreview()" style="margin-top:4px;border:none;background:#ffffff12;color:#9ca3af;border-radius:4px;padding:2px 8px;font-size:10px;cursor:pointer">Voir le prompt</button>
+            <pre id="promptPreview" style="display:none;margin:6px 0 0;padding:8px;background:#111;border-radius:6px;font-size:10px;color:#9ca3af;white-space:pre-wrap;max-height:200px;overflow-y:auto;border:1px solid #333"></pre>
+          </div>
+          <div id="noProfileBanner" style="margin:6px 8px;padding:6px 10px;background:#2a1a0a;border:1px solid #d4b44a44;border-radius:8px;font-size:11px;color:#d4b44a;line-height:1.4">
+            ⚠ Aucun profil actif — cliquez sur un profil ci-dessous pour l'activer
+          </div>
+          <div class="profile-list" id="profileList"></div>
+          <div class="profile-editor hidden" id="profileEditor">
+            <div class="pe-title" id="peEditorTitle">Nouveau profil</div>
+            <div class="pe-row">
+              <input class="pe-emoji" id="peIcon" value="🤖" maxlength="2" title="Emoji icône" />
+              <input class="pe-input" id="peName" placeholder="Nom du profil" maxlength="40" />
+            </div>
+            <textarea class="pe-textarea" id="pePrompt" placeholder="Entrez ici votre prompt système…
+
+Exemple pour la chimie :
+- Utilise toujours $$...$$ pour les équations
+- Ne jamais utiliser de HTML
+- Réponses structurées avec ##"></textarea>
+            <div class="pe-actions">
+              <button class="pe-btn primary" id="peSave">💾 Enregistrer</button>
+              <button class="pe-btn" id="peCancel">Annuler</button>
+              <button class="pe-btn danger" id="peDelete" style="margin-left:auto">🗑 Supprimer</button>
+            </div>
+          </div>
+        </div>
         <button class="btn" id="githubBtn" title="Synchronisation GitHub">🌐</button>
         <button class="btn" id="apiKeyBtn" title="Gérer les clés API">🔑</button>
         <button class="btn" id="paramsBtn" title="Paramètres LLM">⚙</button>
@@ -968,46 +986,6 @@
       </div></div>
     </div>
   </section>
-  <!-- Panneau Profils (droite) — overlay -->
-  <div class="right-panel-backdrop" id="rightPanelBackdrop"></div>
-  <aside class="right-panel" id="rightPanel">
-    <div class="right-panel-head">
-      <span class="right-panel-title">📖 Profils système</span>
-      <div style="display:flex;gap:6px;align-items:center">
-        <button class="icon-btn" id="newProfileBtn" title="Nouveau profil" style="font-size:18px;color:#7baaf7">＋</button>
-        <button class="icon-btn" id="closeRightPanelBtn" title="Fermer" style="font-size:16px;color:#9ca3af">✕</button>
-      </div>
-    </div>
-    <div id="activePromptBanner" style="display:none;margin:6px 8px;padding:6px 10px;background:#1e2a3a;border:1px solid #1f6feb44;border-radius:8px;font-size:11px;color:#7baaf7;line-height:1.4">
-      <div style="font-weight:600;margin-bottom:3px">✅ Profil actif :</div>
-      <div id="activePromptName" style="color:#e2e8f0"></div>
-      <button onclick="togglePromptPreview()" style="margin-top:4px;border:none;background:#ffffff12;color:#9ca3af;border-radius:4px;padding:2px 8px;font-size:10px;cursor:pointer">Voir le prompt</button>
-      <pre id="promptPreview" style="display:none;margin:6px 0 0;padding:8px;background:#111;border-radius:6px;font-size:10px;color:#9ca3af;white-space:pre-wrap;max-height:200px;overflow-y:auto;border:1px solid #333"></pre>
-    </div>
-    <div id="noProfileBanner" style="margin:6px 8px;padding:6px 10px;background:#2a1a0a;border:1px solid #d4b44a44;border-radius:8px;font-size:11px;color:#d4b44a;line-height:1.4">
-      ⚠ Aucun profil actif — cliquez sur un profil ci-dessous pour l'activer
-    </div>
-    <div class="profile-list" id="profileList"></div>
-    <!-- Éditeur -->
-    <div class="profile-editor hidden" id="profileEditor">
-      <div class="pe-title" id="peEditorTitle">Nouveau profil</div>
-      <div class="pe-row">
-        <input class="pe-emoji" id="peIcon" value="🤖" maxlength="2" title="Emoji icône" />
-        <input class="pe-input" id="peName" placeholder="Nom du profil" maxlength="40" />
-      </div>
-      <textarea class="pe-textarea" id="pePrompt" placeholder="Entrez ici votre prompt système…
-
-Exemple pour la chimie :
-- Utilise toujours $$...$$ pour les équations
-- Ne jamais utiliser de HTML
-- Réponses structurées avec ##"></textarea>
-      <div class="pe-actions">
-        <button class="pe-btn primary" id="peSave">💾 Enregistrer</button>
-        <button class="pe-btn" id="peCancel">Annuler</button>
-        <button class="pe-btn danger" id="peDelete" style="margin-left:auto">🗑 Supprimer</button>
-      </div>
-    </div>
-  </aside>
   <div class="color-picker-popup" id="colorPickerPopup"></div>
 
   <!-- Modal création de projet -->
@@ -4315,7 +4293,7 @@ function initGithubPanel() {
   el("ghListRepos").onclick   = ghListRepos;
   el("ghPush").onclick       = ghPush;
   el("ghPull").onclick       = ghPull;
-  el("githubBtn").onclick    = () => { el("githubPanel").classList.toggle("open"); el("rightPanel").classList.remove("open"); el("rightPanelBackdrop").classList.remove("open"); };
+  el("githubBtn").onclick    = () => el("githubPanel").classList.toggle("open");
 
   document.addEventListener("click", e => {
     const panel = el("githubPanel");
@@ -4608,7 +4586,7 @@ el("toggleSidebarBtn").onclick = () => {
 };
 
 el("modelSelect").onchange = e => { S.model = e.target.value; save(); renderParams(); };
-el("paramsBtn").onclick    = () => { el("paramsPanel").classList.toggle("open"); el("rightPanel").classList.remove("open"); el("rightPanelBackdrop").classList.remove("open"); };
+el("paramsBtn").onclick    = () => el("paramsPanel").classList.toggle("open");
 
 // Auto-resize du textarea (s'agrandit avec le texte, se réduit quand vidé)
 function autoResizePrompt() {
@@ -4623,7 +4601,7 @@ promptEl.addEventListener("keydown", e => {
 });
 
 // Clés API
-el("apiKeyBtn").onclick   = () => { el("apiKeyPanel").classList.toggle("open"); el("rightPanel").classList.remove("open"); el("rightPanelBackdrop").classList.remove("open"); };
+el("apiKeyBtn").onclick   = () => el("apiKeyPanel").classList.toggle("open");
 el("saveApiKeyBtn").onclick = async () => {
   // Lire toutes les valeurs depuis les inputs actuels
   el("providerKeys").querySelectorAll("input[data-provider]").forEach(inp => {
@@ -4659,10 +4637,13 @@ el("saveApiKeyBtn").onclick = async () => {
 document.addEventListener("click", e => {
   const panel   = el("paramsPanel");
   const apiPanel = el("apiKeyPanel");
+  const profPanel = el("rightPanel");
   if (!el("paramsBtn").contains(e.target) && !panel.contains(e.target))
     panel.classList.remove("open");
   if (!el("apiKeyBtn").contains(e.target) && !apiPanel.contains(e.target))
     apiPanel.classList.remove("open");
+  if (!el("toggleRightPanelBtn").contains(e.target) && !el("activeProfileChip").contains(e.target) && !profPanel.contains(e.target))
+    profPanel.classList.remove("open");
 });
 
 
@@ -4748,35 +4729,7 @@ setTimeout(() => {
 
 
 // ── Panneau Profils droit ──
-el("toggleRightPanelBtn").onclick = () => {
-  const panel = el("rightPanel");
-  const backdrop = el("rightPanelBackdrop");
-  const opening = !panel.classList.contains("open");
-  panel.classList.toggle("open");
-  backdrop.classList.toggle("open");
-  // Fermer les autres panneaux ouverts
-  if (opening) {
-    el("paramsPanel").classList.remove("open");
-    el("apiKeyPanel").classList.remove("open");
-    el("githubPanel").classList.remove("open");
-  }
-};
-el("rightPanelBackdrop").onclick = () => {
-  el("rightPanel").classList.remove("open");
-  el("rightPanelBackdrop").classList.remove("open");
-};
-el("closeRightPanelBtn").onclick = () => {
-  el("rightPanel").classList.remove("open");
-  el("rightPanelBackdrop").classList.remove("open");
-};
-// Fermer avec Echap
-document.addEventListener("keydown", e => {
-  if (e.key === "Escape" && el("rightPanel").classList.contains("open")) {
-    el("rightPanel").classList.remove("open");
-    el("rightPanelBackdrop").classList.remove("open");
-  }
-});
-
+el("toggleRightPanelBtn").onclick = () => el("rightPanel").classList.toggle("open");
 el("newProfileBtn").onclick  = () => openProfileEditor(null);
 el("peSave").onclick         = saveProfileEditor;
 el("peCancel").onclick       = closeProfileEditor;
