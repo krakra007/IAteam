@@ -1269,7 +1269,7 @@ el('attachBtn').onclick = () => el('fileInput').click();
 
 // ═══════════════════════════════════════════════════════
 // DICTÉE VOCALE — Web Speech API (Speech-to-Text)
-// V3 — robuste Mac/Chrome/Chromebook
+// V4 — avec diagnostic visible pour debug Mac
 // ═══════════════════════════════════════════════════════
 (function initVoiceInput() {
   const micBtn = el('micBtn');
@@ -1277,37 +1277,41 @@ el('attachBtn').onclick = () => el('fileInput').click();
 
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) {
-    micBtn.title = 'Dictée vocale non supportée par ce navigateur';
+    micBtn.title = 'Non supporté';
     micBtn.style.opacity = '0.3';
-    micBtn.style.cursor = 'default';
-    micBtn.onclick = () => alert('⚠ Votre navigateur ne supporte pas la dictée vocale.\n\nUtilisez Chrome, Edge ou Safari.');
+    micBtn.onclick = () => alert('⚠ Navigateur non supporté. Utilisez Chrome, Edge ou Safari.');
     return;
   }
 
-  // ── État global de la session vocale ──
-  let recognition = null;
-  let isRecording = false;
-  let textBefore = '';           // Texte dans le textarea avant démarrage
-  let allConfirmed = '';         // Tout le texte confirmé cumulé (survit aux restarts)
-  let currentInterim = '';       // Texte provisoire de la session en cours
-  let sessionConfirmed = '';     // Texte confirmé de la session en cours
-  let gotResultInSession = false;// A-t-on reçu au moins un résultat dans cette session ?
-  let restartCount = 0;          // Nombre de restarts pour limiter les boucles infinies
+  // ── Debug overlay (visible quand micro actif) ──
+  const debugBox = document.createElement('div');
+  debugBox.id = 'voiceDebug';
+  debugBox.style.cssText = `
+    display:none; position:fixed; bottom:80px; right:20px; width:320px; max-height:200px;
+    background:#111; border:1px solid #333; border-radius:10px; padding:10px 12px;
+    font-family:monospace; font-size:11px; color:#8f8; overflow-y:auto; z-index:999;
+    line-height:1.6; box-shadow:0 4px 20px rgba(0,0,0,.6);
+  `;
+  document.body.appendChild(debugBox);
 
-  // ── Feedback via le bouton mic lui-même ──
-  function showStatus(msg) {
-    // Petit texte dans le placeholder du textarea
-    if (msg && isRecording) {
-      textarea.setAttribute('data-oldplaceholder', textarea.placeholder);
-      textarea.placeholder = msg;
-    } else {
-      const old = textarea.getAttribute('data-oldplaceholder');
-      if (old) { textarea.placeholder = old; textarea.removeAttribute('data-oldplaceholder'); }
-    }
+  function dbg(msg, color) {
+    const t = new Date().toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    const line = document.createElement('div');
+    line.style.color = color || '#8f8';
+    line.textContent = `[${t}] ${msg}`;
+    debugBox.appendChild(line);
+    debugBox.scrollTop = debugBox.scrollHeight;
+    console.log('[Voice]', msg);
   }
 
-  function updateTextarea() {
-    const combined = allConfirmed + sessionConfirmed + currentInterim;
+  // ── État ──
+  let recognition = null;
+  let isRecording = false;
+  let textBefore = '';
+  let allConfirmed = '';
+
+  function updateTextarea(interim) {
+    const combined = allConfirmed + (interim || '');
     const sep = textBefore && !textBefore.endsWith(' ') && combined ? ' ' : '';
     textarea.value = textBefore + sep + combined;
     textarea.style.height = 'auto';
@@ -1315,150 +1319,136 @@ el('attachBtn').onclick = () => el('fileInput').click();
   }
 
   function detectLang() {
-    const t = textBefore.trim().toLowerCase();
-    if (/^(the |i |my |we |you |it |this |that |how |what |why |when |where |can |could |would |should |please |hello|hi )/i.test(t)) return 'en-US';
-    if (/^(das |der |die |ich |wir |ein |ist |auf |mit )/i.test(t)) return 'de-DE';
-    if (/^(el |la |los |las |un |una |es |por |que |como )/i.test(t)) return 'es-ES';
+    const t = (textBefore || '').trim().toLowerCase();
+    if (/^(the |i |my |we |you |it |this |that |how |what |why |can |please |hello)/i.test(t)) return 'en-US';
     return 'fr-FR';
   }
 
-  function createAndStart() {
+  let restartCount = 0;
+  const MAX_RESTARTS = 60;
+
+  function launchSession() {
     if (!isRecording) return;
 
     const rec = new SpeechRecognition();
-    // continuous: false est plus fiable sur Mac Chrome
-    // On relance manuellement entre les pauses
-    rec.continuous = false;
+    rec.lang = detectLang();
     rec.interimResults = true;
     rec.maxAlternatives = 1;
-    rec.lang = detectLang();
+    rec.continuous = false;
 
-    gotResultInSession = false;
-    sessionConfirmed = '';
-    currentInterim = '';
+    let gotResult = false;
 
-    rec.onstart = () => {
-      console.log('[Voice] ✅ Session démarrée (#' + restartCount + ')');
-    };
+    rec.addEventListener('start', () => {
+      dbg('▶ start (lang=' + rec.lang + ', session #' + restartCount + ')');
+    });
 
-    rec.onaudiostart = () => {
-      showStatus('🎤 Parlez…');
-    };
+    rec.addEventListener('audiostart', () => {
+      dbg('🔊 audiostart — micro capte');
+    });
 
-    rec.onspeechstart = () => {
-      showStatus('🎤 Écoute…');
-    };
+    rec.addEventListener('soundstart', () => {
+      dbg('🔉 soundstart — du son détecté');
+    });
 
-    rec.onresult = (event) => {
-      gotResultInSession = true;
+    rec.addEventListener('speechstart', () => {
+      dbg('🗣 speechstart — voix détectée !', '#ff0');
+    });
+
+    rec.addEventListener('speechend', () => {
+      dbg('🗣 speechend — fin de parole');
+    });
+
+    rec.addEventListener('result', (event) => {
+      gotResult = true;
       let confirmed = '';
       let interim = '';
       for (let i = 0; i < event.results.length; i++) {
         const r = event.results[i];
         if (r.isFinal) {
           confirmed += r[0].transcript;
+          dbg('✅ FINAL: "' + r[0].transcript + '" (conf: ' + (r[0].confidence*100).toFixed(0) + '%)', '#0f0');
         } else {
           interim += r[0].transcript;
+          dbg('… interim: "' + r[0].transcript + '"', '#aaa');
         }
       }
-      sessionConfirmed = confirmed;
-      currentInterim = interim;
-      updateTextarea();
-      showStatus('🎤 ' + (currentInterim ? '…' : '✓'));
-    };
+      allConfirmed = allConfirmed.replace(/\s+$/, '') + (allConfirmed ? ' ' : '') + confirmed;
+      updateTextarea(interim);
+    });
 
-    rec.onend = () => {
-      console.log('[Voice] Session terminée. gotResult:', gotResultInSession, 'restarts:', restartCount);
+    rec.addEventListener('nomatch', () => {
+      dbg('❌ nomatch — parole non reconnue', '#f80');
+    });
 
-      // Archiver le confirmé de cette session dans allConfirmed
-      if (sessionConfirmed) {
-        allConfirmed += sessionConfirmed;
-        sessionConfirmed = '';
-      }
-      currentInterim = '';
-      updateTextarea();
-
-      // Relancer si on est toujours en mode enregistrement
-      if (isRecording && restartCount < 50) {
-        restartCount++;
-        if (!gotResultInSession) {
-          // Aucun résultat dans cette session — petite pause avant retry
-          showStatus('🎤 …');
-          setTimeout(() => { if (isRecording) createAndStart(); }, 300);
-        } else {
-          createAndStart();
-        }
-      } else if (isRecording) {
-        // Trop de restarts, arrêter
+    rec.addEventListener('error', (event) => {
+      dbg('❌ error: ' + event.error + (event.message ? ' — ' + event.message : ''), '#f44');
+      if (event.error === 'not-allowed') {
+        alert('⚠ Micro refusé.\n\nMac : Réglages Système → Confidentialité → Microphone → Chrome\nChrome : 🔒 → Microphone → Autoriser');
+        stopRecording();
+      } else if (event.error === 'network') {
+        alert('⚠ Erreur réseau. Chrome a besoin d\'internet pour la dictée.');
+        stopRecording();
+      } else if (event.error === 'audio-capture') {
+        alert('⚠ Micro introuvable.\nVérifiez Réglages Système → Son → Entrée.');
         stopRecording();
       }
-    };
+      // no-speech et autres : onend gère le restart
+    });
 
-    rec.onerror = (event) => {
-      console.warn('[Voice] Erreur:', event.error);
-      switch (event.error) {
-        case 'not-allowed':
-          alert(
-            '⚠ Accès au microphone refusé.\n\n' +
-            'Sur Mac :\n' +
-            '  1. Réglages Système → Confidentialité → Microphone → Chrome ✅\n' +
-            '  2. Clic sur 🔒 dans la barre d\'adresse Chrome → Microphone → Autoriser\n' +
-            '  3. Rechargez la page'
-          );
-          stopRecording();
-          break;
-        case 'network':
-          alert('⚠ Erreur réseau. La dictée Chrome nécessite une connexion internet.');
-          stopRecording();
-          break;
-        case 'audio-capture':
-          alert('⚠ Aucun microphone détecté.\nVérifiez Réglages Système → Son → Entrée.');
-          stopRecording();
-          break;
-        case 'no-speech':
-          // Pas grave, onend va relancer
-          showStatus('🎤 …');
-          break;
-        case 'aborted':
-          // Normal quand on arrête manuellement
-          break;
-        default:
-          showStatus('⚠ ' + event.error);
-          // Laisser onend gérer le restart
+    rec.addEventListener('end', () => {
+      dbg('⏹ end (gotResult=' + gotResult + ', restarts=' + restartCount + ')');
+      recognition = null;
+
+      if (isRecording && restartCount < MAX_RESTARTS) {
+        restartCount++;
+        const delay = gotResult ? 100 : 500;
+        setTimeout(() => { if (isRecording) launchSession(); }, delay);
+      } else if (restartCount >= MAX_RESTARTS) {
+        dbg('⚠ Max restarts atteint, arrêt', '#f80');
+        stopRecording();
       }
-    };
+    });
 
     recognition = rec;
     try {
       rec.start();
-    } catch(e) {
-      console.error('[Voice] Erreur start:', e);
+    } catch (e) {
+      dbg('💥 Exception start: ' + e.message, '#f44');
       stopRecording();
     }
   }
 
   function startRecording() {
     if (location.protocol === 'file:') {
-      alert(
-        '⚠ La dictée vocale ne fonctionne pas en file://.\n\n' +
-        'Lancez un serveur local :\n' +
-        '  python3 -m http.server 8000\n' +
-        'Puis ouvrez http://localhost:8000'
-      );
+      alert('⚠ Dictée vocale impossible en file://.\n\nLancez : python3 -m http.server 8000\nPuis ouvrez http://localhost:8000');
       return;
     }
 
     textBefore = textarea.value;
     allConfirmed = '';
-    sessionConfirmed = '';
-    currentInterim = '';
     restartCount = 0;
     isRecording = true;
     micBtn.classList.add('recording');
-    micBtn.title = '🔴 Écoute en cours… cliquer pour arrêter';
-    showStatus('🎤 Démarrage…');
-    console.log('[Voice] 🎤 Démarrage (protocol:', location.protocol + ')');
-    createAndStart();
+    micBtn.title = '🔴 Cliquer pour arrêter';
+
+    debugBox.innerHTML = '';
+    debugBox.style.display = 'block';
+    dbg('🎤 Démarrage dictée vocale…', '#7bf');
+    dbg('Protocol: ' + location.protocol + ' | UA: ' + navigator.userAgent.split(' ').slice(-2).join(' '), '#888');
+
+    // Vérifier accès micro avant de lancer
+    navigator.mediaDevices.getUserMedia({ audio: true })
+      .then(stream => {
+        dbg('✅ Micro accessible (' + stream.getAudioTracks()[0].label + ')', '#0f0');
+        // Libérer le flux, SpeechRecognition gère le sien
+        stream.getTracks().forEach(t => t.stop());
+        launchSession();
+      })
+      .catch(err => {
+        dbg('❌ getUserMedia: ' + err.name + ' — ' + err.message, '#f44');
+        alert('⚠ Impossible d\'accéder au microphone:\n' + err.message);
+        stopRecording();
+      });
   }
 
   function stopRecording() {
@@ -1467,24 +1457,19 @@ el('attachBtn').onclick = () => el('fileInput').click();
       try { recognition.abort(); } catch(e) {}
       recognition = null;
     }
-    // Finaliser
-    if (sessionConfirmed) {
-      allConfirmed += sessionConfirmed;
-      sessionConfirmed = '';
-    }
-    currentInterim = '';
-    updateTextarea();
+    updateTextarea('');
     micBtn.classList.remove('recording');
     micBtn.title = 'Dictée vocale (cliquer pour démarrer)';
-    showStatus('');
-    console.log('[Voice] ⏹ Arrêté. Total capté:', allConfirmed.length, 'car.');
+    dbg('⏹ Dictée arrêtée. Total: ' + allConfirmed.length + ' car.', '#7bf');
+    // Garder le debug visible 5s puis masquer
+    setTimeout(() => { debugBox.style.display = 'none'; }, 5000);
   }
 
   window.stopVoiceRecording = stopRecording;
 
   micBtn.onclick = () => {
-    if (isRecording) { stopRecording(); }
-    else { startRecording(); }
+    if (isRecording) stopRecording();
+    else startRecording();
   };
 
   document.addEventListener('keydown', e => {
