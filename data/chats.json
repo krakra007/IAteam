@@ -590,12 +590,6 @@
       ]
     },
     {
-      "id": "c0c5d7a1-2f7d-4211-80b6-470d15ff6584",
-      "title": "Nouveau chat",
-      "projectId": null,
-      "messages": []
-    },
-    {
       "id": "54d0ea86-9572-4e9a-8774-1122adee765a",
       "title": "Réaction de Ficher",
       "projectId": "06407384-63b3-4383-b87c-6248d2482d0a",
@@ -670,12 +664,6 @@
       ]
     },
     {
-      "id": "b9372812-6ec9-48a9-84c2-34c755c63954",
-      "title": "Nouveau chat",
-      "projectId": null,
-      "messages": []
-    },
-    {
       "id": "01cf4a63-9307-4e2d-a89d-d1f866bdb32c",
       "title": "rappelle moi brièvement la réaction pa",
       "projectId": "06407384-63b3-4383-b87c-6248d2482d0a",
@@ -738,12 +726,6 @@
       ]
     },
     {
-      "id": "e5af10f7-dee0-4c5c-8283-94187ff0100a",
-      "title": "Nouveau chat",
-      "projectId": null,
-      "messages": []
-    },
-    {
       "id": "30ba9de3-15bd-4a2c-bb9c-2ed63476e7e2",
       "title": "Lire et analyser le document joint. Le",
       "projectId": "4a80a2bb-5a7f-49d2-b420-c20965d8067b",
@@ -769,24 +751,6 @@
           "model": "claude-opus-4-6"
         }
       ]
-    },
-    {
-      "id": "1ee6e659-c135-4181-a7f5-87b6a332d55f",
-      "title": "Nouveau chat",
-      "projectId": null,
-      "messages": []
-    },
-    {
-      "id": "5a335bef-8841-41a3-8884-40416cce6095",
-      "title": "Nouveau chat",
-      "projectId": null,
-      "messages": []
-    },
-    {
-      "id": "17c86c19-1ce7-487a-bc87-a70fc60f4fec",
-      "title": "Nouveau chat",
-      "projectId": null,
-      "messages": []
     }
   ],
   "projects": [
@@ -879,6 +843,6 @@
     "webSearch": true
   },
   "model": "openai/gpt-oss-120b",
-  "savedAt": "2026-05-14T15:49:46.440Z",
+  "savedAt": "2026-05-16T06:17:42.940Z",
   "version": 2
 }
