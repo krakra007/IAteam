@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="fr">
 <head>
@@ -369,14 +370,23 @@
        PANNEAU PROFILS (droite)
     ═══════════════════════════════════════════════ */
     .right-panel{
-      width:380px;max-height:80vh;
+      background:var(--side);
+      border-left:1px solid var(--line);
+      height:100vh;
+      width:320px;
+      min-width:240px;
+      max-width:480px;
+      flex-shrink:0;
+      display:flex;
       flex-direction:column;
-      padding:0;
+      transition:width .18s ease, padding .18s ease, border .18s ease;
+      overflow:hidden;
     }
-    .right-panel.open{display:flex}
-    .right-panel .right-panel-head{
+    .app.rpanel-collapsed .right-panel{width:0;border-left:0;min-width:0}
+
+    .right-panel-head{
       display:flex;align-items:center;justify-content:space-between;
-      padding:14px 16px 10px;border-bottom:1px solid var(--line);
+      padding:12px 14px 10px;border-bottom:1px solid var(--line);
       flex-shrink:0;
     }
     .right-panel-title{font-size:13px;font-weight:600;color:#e2e8f0;letter-spacing:.03em}
@@ -426,21 +436,12 @@
     }
     /* ── Pièces jointes ── */
     .attach-btn{
-      position:absolute;right:90px;top:50%;transform:translateY(-50%);
+      position:absolute;right:58px;top:50%;transform:translateY(-50%);
       background:none;border:none;color:var(--muted2);
-      font-size:22px;cursor:pointer;padding:2px 5px;border-radius:6px;
-      transition:color .15s, background .15s;line-height:1;font-weight:300;
-    }
-    .attach-btn:hover{color:#7baaf7;background:#7baaf720}
-    .mic-btn{
-      position:absolute;right:54px;top:50%;transform:translateY(-50%);
-      background:none;border:none;color:var(--muted2);
-      font-size:17px;cursor:pointer;padding:3px 6px;border-radius:6px;
+      font-size:20px;cursor:pointer;padding:2px 6px;border-radius:6px;
       transition:color .15s, background .15s;line-height:1;
     }
-    .mic-btn:hover{color:#7baaf7;background:#7baaf720}
-    .mic-btn.recording{color:#ef4444;animation:mic-pulse 1s ease-in-out infinite}
-    @keyframes mic-pulse{0%,100%{opacity:1}50%{opacity:.4}}
+    .attach-btn:hover{color:#7baaf7;background:#7baaf720}
     .file-preview-area{
       display:flex;flex-wrap:wrap;gap:6px;
       padding:8px 52px 0 12px; /* padding-right pour éviter chevauchement avec les boutons */
@@ -459,8 +460,8 @@
       font-size:14px;padding:0 0 0 3px;line-height:1;flex-shrink:0;
     }
     .file-chip .file-remove:hover{color:#f87171}
-    /* Textarea : padding-right pour laisser place à ＋ + 🎤 + bouton envoi */
-    .textarea-wrap textarea{padding-right:130px}
+    /* Textarea : padding-right pour laisser place à 📎 + bouton envoi */
+    .textarea-wrap textarea{padding-right:108px}
 
     .pe-textarea{
       width:100%;background:#0f0f0f;border:1px solid var(--line);color:#d4d8e0;
@@ -806,46 +807,11 @@
       </div>
       <div style="display:flex;gap:8px;align-items:center;position:relative">
         <!-- Chip profil actif -->
-        <div class="active-profile-chip" id="activeProfileChip" onclick="el('toggleRightPanelBtn').click()" title="Profil système actif">
+        <div class="active-profile-chip" id="activeProfileChip" onclick="el('rightPanel').classList.toggle('hidden-override'); el('toggleRightPanelBtn').click()" title="Profil système actif">
           <span id="chipProfileIcon">🤖</span>
           <span id="chipProfileName">Aucun profil</span>
         </div>
         <button class="btn" id="toggleRightPanelBtn" title="Profils système">📖</button>
-        <!-- Panneau Profils système (dropdown comme les autres) -->
-        <div id="rightPanel" class="params right-panel" style="right:100px;top:46px;width:380px">
-          <div class="right-panel-head">
-            <span class="right-panel-title">📖 Profils système</span>
-            <button class="icon-btn" id="newProfileBtn" title="Nouveau profil" style="font-size:18px;color:#7baaf7">＋</button>
-          </div>
-          <div id="activePromptBanner" style="display:none;margin:6px 8px;padding:6px 10px;background:#1e2a3a;border:1px solid #1f6feb44;border-radius:8px;font-size:11px;color:#7baaf7;line-height:1.4">
-            <div style="font-weight:600;margin-bottom:3px">✅ Profil actif :</div>
-            <div id="activePromptName" style="color:#e2e8f0"></div>
-            <button onclick="togglePromptPreview()" style="margin-top:4px;border:none;background:#ffffff12;color:#9ca3af;border-radius:4px;padding:2px 8px;font-size:10px;cursor:pointer">Voir le prompt</button>
-            <pre id="promptPreview" style="display:none;margin:6px 0 0;padding:8px;background:#111;border-radius:6px;font-size:10px;color:#9ca3af;white-space:pre-wrap;max-height:200px;overflow-y:auto;border:1px solid #333"></pre>
-          </div>
-          <div id="noProfileBanner" style="margin:6px 8px;padding:6px 10px;background:#2a1a0a;border:1px solid #d4b44a44;border-radius:8px;font-size:11px;color:#d4b44a;line-height:1.4">
-            ⚠ Aucun profil actif — cliquez sur un profil ci-dessous pour l'activer
-          </div>
-          <div class="profile-list" id="profileList"></div>
-          <div class="profile-editor hidden" id="profileEditor">
-            <div class="pe-title" id="peEditorTitle">Nouveau profil</div>
-            <div class="pe-row">
-              <input class="pe-emoji" id="peIcon" value="🤖" maxlength="2" title="Emoji icône" />
-              <input class="pe-input" id="peName" placeholder="Nom du profil" maxlength="40" />
-            </div>
-            <textarea class="pe-textarea" id="pePrompt" placeholder="Entrez ici votre prompt système…
-
-Exemple pour la chimie :
-- Utilise toujours $$...$$ pour les équations
-- Ne jamais utiliser de HTML
-- Réponses structurées avec ##"></textarea>
-            <div class="pe-actions">
-              <button class="pe-btn primary" id="peSave">💾 Enregistrer</button>
-              <button class="pe-btn" id="peCancel">Annuler</button>
-              <button class="pe-btn danger" id="peDelete" style="margin-left:auto">🗑 Supprimer</button>
-            </div>
-          </div>
-        </div>
         <button class="btn" id="githubBtn" title="Synchronisation GitHub">🌐</button>
         <button class="btn" id="apiKeyBtn" title="Gérer les clés API">🔑</button>
         <button class="btn" id="paramsBtn" title="Paramètres LLM">⚙</button>
@@ -985,8 +951,7 @@ Exemple pour la chimie :
         <input type="file" id="fileInput" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.html,.htm,.css,.js,.json,.md,.txt,.csv,.py,.xml,.yaml,.yml,.ts,.jsx,.tsx,.sql,.sh,.bat,.log,.ini,.cfg,.env,.toml" style="display:none">
         <div class="textarea-wrap">
           <textarea id="prompt" placeholder="Poser une question"></textarea>
-          <button class="attach-btn" id="attachBtn" title="Joindre un fichier (images, PDF, Office)">＋</button>
-          <button class="mic-btn" id="micBtn" title="Dictée vocale (cliquer pour démarrer)">🎤</button>
+          <button class="attach-btn" id="attachBtn" title="Joindre un fichier (images, PDF, Office)">📎</button>
           <button class="send-circle" id="sendBtn" aria-label="Envoyer" title="Envoyer">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M12 19V6"></path>
@@ -997,6 +962,42 @@ Exemple pour la chimie :
       </div></div>
     </div>
   </section>
+  <!-- Panneau Profils (droite) -->
+  <aside class="right-panel" id="rightPanel">
+    <div class="right-panel-head">
+      <span class="right-panel-title">📖 Profils système</span>
+      <button class="icon-btn" id="newProfileBtn" title="Nouveau profil" style="font-size:18px;color:#7baaf7">＋</button>
+    </div>
+    <div id="activePromptBanner" style="display:none;margin:6px 8px;padding:6px 10px;background:#1e2a3a;border:1px solid #1f6feb44;border-radius:8px;font-size:11px;color:#7baaf7;line-height:1.4">
+      <div style="font-weight:600;margin-bottom:3px">✅ Profil actif :</div>
+      <div id="activePromptName" style="color:#e2e8f0"></div>
+      <button onclick="togglePromptPreview()" style="margin-top:4px;border:none;background:#ffffff12;color:#9ca3af;border-radius:4px;padding:2px 8px;font-size:10px;cursor:pointer">Voir le prompt</button>
+      <pre id="promptPreview" style="display:none;margin:6px 0 0;padding:8px;background:#111;border-radius:6px;font-size:10px;color:#9ca3af;white-space:pre-wrap;max-height:200px;overflow-y:auto;border:1px solid #333"></pre>
+    </div>
+    <div id="noProfileBanner" style="margin:6px 8px;padding:6px 10px;background:#2a1a0a;border:1px solid #d4b44a44;border-radius:8px;font-size:11px;color:#d4b44a;line-height:1.4">
+      ⚠ Aucun profil actif — cliquez sur un profil ci-dessous pour l'activer
+    </div>
+    <div class="profile-list" id="profileList"></div>
+    <!-- Éditeur -->
+    <div class="profile-editor hidden" id="profileEditor">
+      <div class="pe-title" id="peEditorTitle">Nouveau profil</div>
+      <div class="pe-row">
+        <input class="pe-emoji" id="peIcon" value="🤖" maxlength="2" title="Emoji icône" />
+        <input class="pe-input" id="peName" placeholder="Nom du profil" maxlength="40" />
+      </div>
+      <textarea class="pe-textarea" id="pePrompt" placeholder="Entrez ici votre prompt système…
+
+Exemple pour la chimie :
+- Utilise toujours $$...$$ pour les équations
+- Ne jamais utiliser de HTML
+- Réponses structurées avec ##"></textarea>
+      <div class="pe-actions">
+        <button class="pe-btn primary" id="peSave">💾 Enregistrer</button>
+        <button class="pe-btn" id="peCancel">Annuler</button>
+        <button class="pe-btn danger" id="peDelete" style="margin-left:auto">🗑 Supprimer</button>
+      </div>
+    </div>
+  </aside>
   <div class="color-picker-popup" id="colorPickerPopup"></div>
 
   <!-- Modal création de projet -->
@@ -1266,147 +1267,6 @@ const SUPPORTED_TYPES = {
 };
 
 el('attachBtn').onclick = () => el('fileInput').click();
-
-// ═══════════════════════════════════════════════════════
-// DICTÉE VOCALE — Web Speech API (Speech-to-Text)
-// Réécriture complète : ancrage sur le texte pré-existant
-// ═══════════════════════════════════════════════════════
-(function initVoiceInput() {
-  const micBtn = el('micBtn');
-  const textarea = el('prompt');
-
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRecognition) {
-    micBtn.title = 'Dictée vocale non supportée par ce navigateur';
-    micBtn.style.opacity = '0.3';
-    micBtn.style.cursor = 'default';
-    micBtn.onclick = () => alert('⚠ Votre navigateur ne supporte pas la dictée vocale.\n\nUtilisez Chrome, Edge ou Safari pour cette fonctionnalité.');
-    return;
-  }
-
-  let recognition = null;
-  let isRecording = false;
-
-  // ── Ancre : texte présent AVANT le démarrage du micro ──
-  let textBefore = '';
-  // ── Tout le texte confirmé (final) depuis le début de la session ──
-  let confirmedText = '';
-  // ── Texte intermédiaire en cours (sera écrasé à chaque event) ──
-  let interimText = '';
-
-  /** Met à jour le textarea = ancre + confirmé + interim */
-  function updateTextarea() {
-    const separator = textBefore && !textBefore.endsWith(' ') && (confirmedText || interimText) ? ' ' : '';
-    textarea.value = textBefore + separator + confirmedText + interimText;
-    // Auto-resize
-    textarea.style.height = 'auto';
-    textarea.style.height = Math.min(textarea.scrollHeight, 280) + 'px';
-  }
-
-  /** Détecte la langue probable du texte existant */
-  function detectLang() {
-    const t = textBefore.trim().toLowerCase();
-    if (/^(the |i |my |we |you |it |this |that |how |what |why |when |where |can |could |would |should |please |hello|hi )/i.test(t)) return 'en-US';
-    if (/^(das |der |die |ich |wir |ein |ist |auf |mit )/i.test(t)) return 'de-DE';
-    if (/^(el |la |los |las |un |una |es |por |que |como )/i.test(t)) return 'es-ES';
-    return 'fr-FR';
-  }
-
-  function startRecording() {
-    // Figer l'ancre = tout ce qui est dans le textarea avant le micro
-    textBefore = textarea.value;
-    confirmedText = '';
-    interimText = '';
-
-    recognition = new SpeechRecognition();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.maxAlternatives = 1;
-    recognition.lang = detectLang();
-
-    recognition.onresult = (event) => {
-      // Recalculer confirmed + interim à partir de TOUS les résultats
-      // Cela évite toute accumulation externe
-      let newConfirmed = '';
-      let newInterim = '';
-      for (let i = 0; i < event.results.length; i++) {
-        if (event.results[i].isFinal) {
-          newConfirmed += event.results[i][0].transcript;
-        } else {
-          newInterim += event.results[i][0].transcript;
-        }
-      }
-      confirmedText = newConfirmed;
-      interimText = newInterim;
-      updateTextarea();
-    };
-
-    recognition.onend = () => {
-      // Le navigateur a coupé la reconnaissance (silence, perte de focus, etc.)
-      // On NE relance PAS automatiquement pour éviter les duplications.
-      // On intègre ce qui a été capté et on arrête proprement.
-      if (isRecording) {
-        console.log('[Voice] Session terminée par le navigateur, arrêt propre.');
-        stopRecording();
-      }
-    };
-
-    recognition.onerror = (event) => {
-      console.warn('[Voice] Erreur:', event.error);
-      if (event.error === 'not-allowed') {
-        alert('⚠ Accès au microphone refusé.\n\nAutorisez le microphone dans les paramètres de votre navigateur.');
-      }
-      if (event.error !== 'no-speech') {
-        stopRecording();
-      }
-    };
-
-    try {
-      recognition.start();
-      isRecording = true;
-      micBtn.classList.add('recording');
-      micBtn.title = '🔴 Écoute en cours… cliquer pour arrêter';
-      console.log('[Voice] 🎤 Démarré (lang:', recognition.lang + ')');
-    } catch(e) {
-      console.error('[Voice] Erreur démarrage:', e);
-    }
-  }
-
-  function stopRecording() {
-    isRecording = false;
-    if (recognition) {
-      try { recognition.stop(); } catch(e) {}
-      recognition = null;
-    }
-    micBtn.classList.remove('recording');
-    micBtn.title = 'Dictée vocale (cliquer pour démarrer)';
-
-    // Finaliser : retirer l'interim, garder uniquement le confirmé
-    interimText = '';
-    updateTextarea();
-
-    console.log('[Voice] ⏹ Arrêté. Texte capté:', confirmedText.length, 'caractères');
-  }
-
-  // Exposer globalement pour send()
-  window.stopVoiceRecording = stopRecording;
-
-  micBtn.onclick = () => {
-    if (isRecording) {
-      stopRecording();
-    } else {
-      startRecording();
-    }
-  };
-
-  // Raccourci Ctrl+Shift+V
-  document.addEventListener('keydown', e => {
-    if (e.ctrlKey && e.shiftKey && e.key === 'V') {
-      e.preventDefault();
-      micBtn.click();
-    }
-  });
-})();
 
 /** Détecte le type de fichier par extension si le MIME est inconnu */
 function guessMetaFromName(name) {
@@ -3805,9 +3665,6 @@ async function callGroq(key, model, messages) {
 // ENVOI — aiguillage selon le provider
 // ─────────────────────────────────────────────────
 async function send() {
-  // Arrêter la dictée vocale si active
-  if (window.stopVoiceRecording) window.stopVoiceRecording();
-
   const provider = inferProviderFromModel(S.model);
   const key      = (apiKeysByProvider[provider] || "").trim();
 
@@ -4792,13 +4649,10 @@ el("saveApiKeyBtn").onclick = async () => {
 document.addEventListener("click", e => {
   const panel   = el("paramsPanel");
   const apiPanel = el("apiKeyPanel");
-  const profPanel = el("rightPanel");
   if (!el("paramsBtn").contains(e.target) && !panel.contains(e.target))
     panel.classList.remove("open");
   if (!el("apiKeyBtn").contains(e.target) && !apiPanel.contains(e.target))
     apiPanel.classList.remove("open");
-  if (!el("toggleRightPanelBtn").contains(e.target) && !el("activeProfileChip").contains(e.target) && !profPanel.contains(e.target))
-    profPanel.classList.remove("open");
 });
 
 
@@ -4884,7 +4738,14 @@ setTimeout(() => {
 
 
 // ── Panneau Profils droit ──
-el("toggleRightPanelBtn").onclick = () => el("rightPanel").classList.toggle("open");
+el("toggleRightPanelBtn").onclick = () => {
+  const app = document.querySelector(".app");
+  app.classList.toggle("rpanel-collapsed");
+  localStorage.setItem("rpanelCollapsed", app.classList.contains("rpanel-collapsed") ? "1" : "0");
+};
+if (localStorage.getItem("rpanelCollapsed") === "1")
+  document.querySelector(".app").classList.add("rpanel-collapsed");
+
 el("newProfileBtn").onclick  = () => openProfileEditor(null);
 el("peSave").onclick         = saveProfileEditor;
 el("peCancel").onclick       = closeProfileEditor;
