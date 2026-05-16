@@ -1269,12 +1269,12 @@ el('attachBtn').onclick = () => el('fileInput').click();
 
 // ═══════════════════════════════════════════════════════
 // DICTÉE VOCALE — Web Speech API (Speech-to-Text)
+// Réécriture complète : ancrage sur le texte pré-existant
 // ═══════════════════════════════════════════════════════
 (function initVoiceInput() {
   const micBtn = el('micBtn');
-  const prompt = el('prompt');
+  const textarea = el('prompt');
 
-  // Vérifier la compatibilité du navigateur
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) {
     micBtn.title = 'Dictée vocale non supportée par ce navigateur';
@@ -1286,71 +1286,89 @@ el('attachBtn').onclick = () => el('fileInput').click();
 
   let recognition = null;
   let isRecording = false;
-  let finalTranscript = '';
 
-  function createRecognition() {
-    const rec = new SpeechRecognition();
-    rec.continuous = true;
-    rec.interimResults = true;
-    rec.lang = 'fr-FR'; // Par défaut français
+  // ── Ancre : texte présent AVANT le démarrage du micro ──
+  let textBefore = '';
+  // ── Tout le texte confirmé (final) depuis le début de la session ──
+  let confirmedText = '';
+  // ── Texte intermédiaire en cours (sera écrasé à chaque event) ──
+  let interimText = '';
 
-    // Détecter la langue : si le texte existant est en anglais, switcher
-    const existing = prompt.value.trim().toLowerCase();
-    if (/^(the|i |my |we |you |it |this|that|how|what|why|when|where|can|could|would|should|please|hello|hi )/i.test(existing)) {
-      rec.lang = 'en-US';
-    }
+  /** Met à jour le textarea = ancre + confirmé + interim */
+  function updateTextarea() {
+    const separator = textBefore && !textBefore.endsWith(' ') && (confirmedText || interimText) ? ' ' : '';
+    textarea.value = textBefore + separator + confirmedText + interimText;
+    // Auto-resize
+    textarea.style.height = 'auto';
+    textarea.style.height = Math.min(textarea.scrollHeight, 280) + 'px';
+  }
 
-    rec.onresult = (event) => {
-      let interim = '';
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          finalTranscript += transcript;
-        } else {
-          interim += transcript;
-        }
-      }
-      // Afficher dans le textarea : texte existant + final + interim grisé
-      const base = prompt.value.substring(0, prompt.value.length - (prompt._interimLen || 0));
-      prompt.value = base + finalTranscript + interim;
-      prompt._interimLen = interim.length;
-
-      // Auto-resize textarea
-      prompt.style.height = 'auto';
-      prompt.style.height = Math.min(prompt.scrollHeight, 280) + 'px';
-    };
-
-    rec.onend = () => {
-      // Si on est toujours en mode recording, c'est un arrêt auto (silence)
-      // On relance pour garner le mode continu
-      if (isRecording) {
-        try { rec.start(); } catch(e) { stopRecording(); }
-      }
-    };
-
-    rec.onerror = (event) => {
-      console.warn('[BrAInShift Voice] Erreur:', event.error);
-      if (event.error === 'not-allowed') {
-        alert('⚠ Accès au microphone refusé.\n\nAutorisez le microphone dans les paramètres de votre navigateur.');
-      }
-      stopRecording();
-    };
-
-    return rec;
+  /** Détecte la langue probable du texte existant */
+  function detectLang() {
+    const t = textBefore.trim().toLowerCase();
+    if (/^(the |i |my |we |you |it |this |that |how |what |why |when |where |can |could |would |should |please |hello|hi )/i.test(t)) return 'en-US';
+    if (/^(das |der |die |ich |wir |ein |ist |auf |mit )/i.test(t)) return 'de-DE';
+    if (/^(el |la |los |las |un |una |es |por |que |como )/i.test(t)) return 'es-ES';
+    return 'fr-FR';
   }
 
   function startRecording() {
-    finalTranscript = '';
-    prompt._interimLen = 0;
-    recognition = createRecognition();
+    // Figer l'ancre = tout ce qui est dans le textarea avant le micro
+    textBefore = textarea.value;
+    confirmedText = '';
+    interimText = '';
+
+    recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.maxAlternatives = 1;
+    recognition.lang = detectLang();
+
+    recognition.onresult = (event) => {
+      // Recalculer confirmed + interim à partir de TOUS les résultats
+      // Cela évite toute accumulation externe
+      let newConfirmed = '';
+      let newInterim = '';
+      for (let i = 0; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          newConfirmed += event.results[i][0].transcript;
+        } else {
+          newInterim += event.results[i][0].transcript;
+        }
+      }
+      confirmedText = newConfirmed;
+      interimText = newInterim;
+      updateTextarea();
+    };
+
+    recognition.onend = () => {
+      // Le navigateur a coupé la reconnaissance (silence, perte de focus, etc.)
+      // On NE relance PAS automatiquement pour éviter les duplications.
+      // On intègre ce qui a été capté et on arrête proprement.
+      if (isRecording) {
+        console.log('[Voice] Session terminée par le navigateur, arrêt propre.');
+        stopRecording();
+      }
+    };
+
+    recognition.onerror = (event) => {
+      console.warn('[Voice] Erreur:', event.error);
+      if (event.error === 'not-allowed') {
+        alert('⚠ Accès au microphone refusé.\n\nAutorisez le microphone dans les paramètres de votre navigateur.');
+      }
+      if (event.error !== 'no-speech') {
+        stopRecording();
+      }
+    };
+
     try {
       recognition.start();
       isRecording = true;
       micBtn.classList.add('recording');
-      micBtn.title = 'Écoute en cours… cliquer pour arrêter';
-      console.log('[BrAInShift Voice] 🎤 Enregistrement démarré (lang:', recognition.lang + ')');
+      micBtn.title = '🔴 Écoute en cours… cliquer pour arrêter';
+      console.log('[Voice] 🎤 Démarré (lang:', recognition.lang + ')');
     } catch(e) {
-      console.error('[BrAInShift Voice] Erreur démarrage:', e);
+      console.error('[Voice] Erreur démarrage:', e);
     }
   }
 
@@ -1362,15 +1380,15 @@ el('attachBtn').onclick = () => el('fileInput').click();
     }
     micBtn.classList.remove('recording');
     micBtn.title = 'Dictée vocale (cliquer pour démarrer)';
-    // Nettoyer l'interim restant
-    if (prompt._interimLen > 0) {
-      prompt.value = prompt.value.substring(0, prompt.value.length - prompt._interimLen);
-      prompt._interimLen = 0;
-    }
-    console.log('[BrAInShift Voice] ⏹ Enregistrement arrêté');
+
+    // Finaliser : retirer l'interim, garder uniquement le confirmé
+    interimText = '';
+    updateTextarea();
+
+    console.log('[Voice] ⏹ Arrêté. Texte capté:', confirmedText.length, 'caractères');
   }
 
-  // Exposer globalement pour que send() puisse arrêter l'enregistrement
+  // Exposer globalement pour send()
   window.stopVoiceRecording = stopRecording;
 
   micBtn.onclick = () => {
@@ -1381,7 +1399,7 @@ el('attachBtn').onclick = () => el('fileInput').click();
     }
   };
 
-  // Support Ctrl+Shift+V pour toggle vocal
+  // Raccourci Ctrl+Shift+V
   document.addEventListener('keydown', e => {
     if (e.ctrlKey && e.shiftKey && e.key === 'V') {
       e.preventDefault();
