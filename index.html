@@ -426,12 +426,21 @@
     }
     /* ── Pièces jointes ── */
     .attach-btn{
-      position:absolute;right:58px;top:50%;transform:translateY(-50%);
+      position:absolute;right:90px;top:50%;transform:translateY(-50%);
       background:none;border:none;color:var(--muted2);
-      font-size:20px;cursor:pointer;padding:2px 6px;border-radius:6px;
-      transition:color .15s, background .15s;line-height:1;
+      font-size:22px;cursor:pointer;padding:2px 5px;border-radius:6px;
+      transition:color .15s, background .15s;line-height:1;font-weight:300;
     }
     .attach-btn:hover{color:#7baaf7;background:#7baaf720}
+    .mic-btn{
+      position:absolute;right:54px;top:50%;transform:translateY(-50%);
+      background:none;border:none;color:var(--muted2);
+      font-size:17px;cursor:pointer;padding:3px 6px;border-radius:6px;
+      transition:color .15s, background .15s;line-height:1;
+    }
+    .mic-btn:hover{color:#7baaf7;background:#7baaf720}
+    .mic-btn.recording{color:#ef4444;animation:mic-pulse 1s ease-in-out infinite}
+    @keyframes mic-pulse{0%,100%{opacity:1}50%{opacity:.4}}
     .file-preview-area{
       display:flex;flex-wrap:wrap;gap:6px;
       padding:8px 52px 0 12px; /* padding-right pour éviter chevauchement avec les boutons */
@@ -450,8 +459,8 @@
       font-size:14px;padding:0 0 0 3px;line-height:1;flex-shrink:0;
     }
     .file-chip .file-remove:hover{color:#f87171}
-    /* Textarea : padding-right pour laisser place à 📎 + bouton envoi */
-    .textarea-wrap textarea{padding-right:108px}
+    /* Textarea : padding-right pour laisser place à ＋ + 🎤 + bouton envoi */
+    .textarea-wrap textarea{padding-right:130px}
 
     .pe-textarea{
       width:100%;background:#0f0f0f;border:1px solid var(--line);color:#d4d8e0;
@@ -976,7 +985,8 @@ Exemple pour la chimie :
         <input type="file" id="fileInput" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.html,.htm,.css,.js,.json,.md,.txt,.csv,.py,.xml,.yaml,.yml,.ts,.jsx,.tsx,.sql,.sh,.bat,.log,.ini,.cfg,.env,.toml" style="display:none">
         <div class="textarea-wrap">
           <textarea id="prompt" placeholder="Poser une question"></textarea>
-          <button class="attach-btn" id="attachBtn" title="Joindre un fichier (images, PDF, Office)">📎</button>
+          <button class="attach-btn" id="attachBtn" title="Joindre un fichier (images, PDF, Office)">＋</button>
+          <button class="mic-btn" id="micBtn" title="Dictée vocale (cliquer pour démarrer)">🎤</button>
           <button class="send-circle" id="sendBtn" aria-label="Envoyer" title="Envoyer">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M12 19V6"></path>
@@ -1256,6 +1266,129 @@ const SUPPORTED_TYPES = {
 };
 
 el('attachBtn').onclick = () => el('fileInput').click();
+
+// ═══════════════════════════════════════════════════════
+// DICTÉE VOCALE — Web Speech API (Speech-to-Text)
+// ═══════════════════════════════════════════════════════
+(function initVoiceInput() {
+  const micBtn = el('micBtn');
+  const prompt = el('prompt');
+
+  // Vérifier la compatibilité du navigateur
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    micBtn.title = 'Dictée vocale non supportée par ce navigateur';
+    micBtn.style.opacity = '0.3';
+    micBtn.style.cursor = 'default';
+    micBtn.onclick = () => alert('⚠ Votre navigateur ne supporte pas la dictée vocale.\n\nUtilisez Chrome, Edge ou Safari pour cette fonctionnalité.');
+    return;
+  }
+
+  let recognition = null;
+  let isRecording = false;
+  let finalTranscript = '';
+
+  function createRecognition() {
+    const rec = new SpeechRecognition();
+    rec.continuous = true;
+    rec.interimResults = true;
+    rec.lang = 'fr-FR'; // Par défaut français
+
+    // Détecter la langue : si le texte existant est en anglais, switcher
+    const existing = prompt.value.trim().toLowerCase();
+    if (/^(the|i |my |we |you |it |this|that|how|what|why|when|where|can|could|would|should|please|hello|hi )/i.test(existing)) {
+      rec.lang = 'en-US';
+    }
+
+    rec.onresult = (event) => {
+      let interim = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript;
+        } else {
+          interim += transcript;
+        }
+      }
+      // Afficher dans le textarea : texte existant + final + interim grisé
+      const base = prompt.value.substring(0, prompt.value.length - (prompt._interimLen || 0));
+      prompt.value = base + finalTranscript + interim;
+      prompt._interimLen = interim.length;
+
+      // Auto-resize textarea
+      prompt.style.height = 'auto';
+      prompt.style.height = Math.min(prompt.scrollHeight, 280) + 'px';
+    };
+
+    rec.onend = () => {
+      // Si on est toujours en mode recording, c'est un arrêt auto (silence)
+      // On relance pour garner le mode continu
+      if (isRecording) {
+        try { rec.start(); } catch(e) { stopRecording(); }
+      }
+    };
+
+    rec.onerror = (event) => {
+      console.warn('[BrAInShift Voice] Erreur:', event.error);
+      if (event.error === 'not-allowed') {
+        alert('⚠ Accès au microphone refusé.\n\nAutorisez le microphone dans les paramètres de votre navigateur.');
+      }
+      stopRecording();
+    };
+
+    return rec;
+  }
+
+  function startRecording() {
+    finalTranscript = '';
+    prompt._interimLen = 0;
+    recognition = createRecognition();
+    try {
+      recognition.start();
+      isRecording = true;
+      micBtn.classList.add('recording');
+      micBtn.title = 'Écoute en cours… cliquer pour arrêter';
+      console.log('[BrAInShift Voice] 🎤 Enregistrement démarré (lang:', recognition.lang + ')');
+    } catch(e) {
+      console.error('[BrAInShift Voice] Erreur démarrage:', e);
+    }
+  }
+
+  function stopRecording() {
+    isRecording = false;
+    if (recognition) {
+      try { recognition.stop(); } catch(e) {}
+      recognition = null;
+    }
+    micBtn.classList.remove('recording');
+    micBtn.title = 'Dictée vocale (cliquer pour démarrer)';
+    // Nettoyer l'interim restant
+    if (prompt._interimLen > 0) {
+      prompt.value = prompt.value.substring(0, prompt.value.length - prompt._interimLen);
+      prompt._interimLen = 0;
+    }
+    console.log('[BrAInShift Voice] ⏹ Enregistrement arrêté');
+  }
+
+  // Exposer globalement pour que send() puisse arrêter l'enregistrement
+  window.stopVoiceRecording = stopRecording;
+
+  micBtn.onclick = () => {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
+    }
+  };
+
+  // Support Ctrl+Shift+V pour toggle vocal
+  document.addEventListener('keydown', e => {
+    if (e.ctrlKey && e.shiftKey && e.key === 'V') {
+      e.preventDefault();
+      micBtn.click();
+    }
+  });
+})();
 
 /** Détecte le type de fichier par extension si le MIME est inconnu */
 function guessMetaFromName(name) {
@@ -3654,6 +3787,9 @@ async function callGroq(key, model, messages) {
 // ENVOI — aiguillage selon le provider
 // ─────────────────────────────────────────────────
 async function send() {
+  // Arrêter la dictée vocale si active
+  if (window.stopVoiceRecording) window.stopVoiceRecording();
+
   const provider = inferProviderFromModel(S.model);
   const key      = (apiKeysByProvider[provider] || "").trim();
 
