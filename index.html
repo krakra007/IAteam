@@ -1283,26 +1283,7 @@ el('attachBtn').onclick = () => el('fileInput').click();
     return;
   }
 
-  // ── Debug overlay (visible quand micro actif) ──
-  const debugBox = document.createElement('div');
-  debugBox.id = 'voiceDebug';
-  debugBox.style.cssText = `
-    display:none; position:fixed; bottom:80px; right:20px; width:320px; max-height:200px;
-    background:#111; border:1px solid #333; border-radius:10px; padding:10px 12px;
-    font-family:monospace; font-size:11px; color:#8f8; overflow-y:auto; z-index:999;
-    line-height:1.6; box-shadow:0 4px 20px rgba(0,0,0,.6);
-  `;
-  document.body.appendChild(debugBox);
-
-  function dbg(msg, color) {
-    const t = new Date().toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
-    const line = document.createElement('div');
-    line.style.color = color || '#8f8';
-    line.textContent = `[${t}] ${msg}`;
-    debugBox.appendChild(line);
-    debugBox.scrollTop = debugBox.scrollHeight;
-    console.log('[Voice]', msg);
-  }
+  function dbg(msg) { console.log('[Voice]', msg); }
 
   // ── État ──
   let recognition = null;
@@ -1351,7 +1332,7 @@ el('attachBtn').onclick = () => el('fileInput').click();
     });
 
     rec.addEventListener('speechstart', () => {
-      dbg('🗣 speechstart — voix détectée !', '#ff0');
+      dbg('🗣 speechstart — voix détectée !');
     });
 
     rec.addEventListener('speechend', () => {
@@ -1369,7 +1350,7 @@ el('attachBtn').onclick = () => el('fileInput').click();
           dbg('✅ FINAL: "' + r[0].transcript + '" (conf: ' + (r[0].confidence*100).toFixed(0) + '%)', '#0f0');
         } else {
           interim += r[0].transcript;
-          dbg('… interim: "' + r[0].transcript + '"', '#aaa');
+          dbg('… interim: "' + r[0].transcript + '"');
         }
       }
       allConfirmed = allConfirmed.replace(/\s+$/, '') + (allConfirmed ? ' ' : '') + confirmed;
@@ -1377,7 +1358,7 @@ el('attachBtn').onclick = () => el('fileInput').click();
     });
 
     rec.addEventListener('nomatch', () => {
-      dbg('❌ nomatch — parole non reconnue', '#f80');
+      dbg('❌ nomatch — parole non reconnue');
     });
 
     rec.addEventListener('error', (event) => {
@@ -1404,7 +1385,7 @@ el('attachBtn').onclick = () => el('fileInput').click();
         const delay = gotResult ? 100 : 500;
         setTimeout(() => { if (isRecording) launchSession(); }, delay);
       } else if (restartCount >= MAX_RESTARTS) {
-        dbg('⚠ Max restarts atteint, arrêt', '#f80');
+        dbg('⚠ Max restarts atteint, arrêt');
         stopRecording();
       }
     });
@@ -1413,7 +1394,7 @@ el('attachBtn').onclick = () => el('fileInput').click();
     try {
       rec.start();
     } catch (e) {
-      dbg('💥 Exception start: ' + e.message, '#f44');
+      dbg('💥 Exception start: ' + e.message);
       stopRecording();
     }
   }
@@ -1431,10 +1412,8 @@ el('attachBtn').onclick = () => el('fileInput').click();
     micBtn.classList.add('recording');
     micBtn.title = '🔴 Cliquer pour arrêter';
 
-    debugBox.innerHTML = '';
-    debugBox.style.display = 'block';
-    dbg('🎤 Démarrage dictée vocale…', '#7bf');
-    dbg('Protocol: ' + location.protocol + ' | UA: ' + navigator.userAgent.split(' ').slice(-2).join(' '), '#888');
+    dbg('🎤 Démarrage dictée vocale…');
+    dbg('Protocol: ' + location.protocol);
 
     // Vérifier accès micro avant de lancer
     navigator.mediaDevices.getUserMedia({ audio: true })
@@ -1445,7 +1424,7 @@ el('attachBtn').onclick = () => el('fileInput').click();
         launchSession();
       })
       .catch(err => {
-        dbg('❌ getUserMedia: ' + err.name + ' — ' + err.message, '#f44');
+        dbg('❌ getUserMedia: ' + err.name + ' — ' + err.message);
         alert('⚠ Impossible d\'accéder au microphone:\n' + err.message);
         stopRecording();
       });
@@ -1460,9 +1439,7 @@ el('attachBtn').onclick = () => el('fileInput').click();
     updateTextarea('');
     micBtn.classList.remove('recording');
     micBtn.title = 'Dictée vocale (cliquer pour démarrer)';
-    dbg('⏹ Dictée arrêtée. Total: ' + allConfirmed.length + ' car.', '#7bf');
-    // Garder le debug visible 5s puis masquer
-    setTimeout(() => { debugBox.style.display = 'none'; }, 5000);
+    dbg('⏹ Dictée arrêtée. Total: ' + allConfirmed.length + ' car.');
   }
 
   window.stopVoiceRecording = stopRecording;
