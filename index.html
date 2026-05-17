@@ -1431,6 +1431,7 @@ el('attachBtn').onclick = () => el('fileInput').click();
   }
 
   function stopRecording() {
+    if (!isRecording && !recognition) return; // rien à faire si jamais démarré
     isRecording = false;
     if (recognition) {
       try { recognition.abort(); } catch(e) {}
