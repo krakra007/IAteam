@@ -883,9 +883,32 @@
     },
     {
       "id": "32dc9ac5-3bf4-4051-b7f9-fb35102e131f",
-      "title": "Nouveau chat",
+      "title": "définir la phosphorilaiton",
       "projectId": null,
-      "messages": []
+      "messages": [
+        {
+          "role": "user",
+          "content": "définir la phosphorilaiton",
+          "_text": "définir la phosphorilaiton"
+        },
+        {
+          "role": "assistant",
+          "content": "**PHOSPHORYLATION**  \n---  \n\n**SYNTHÈSE GLOBALE**  \n*Définition* : Transfert covalent d’un groupe phosphate provenant d’une molécule riche en énergie vers un groupe fonctionnel nucléophile d’un substrat, catalysé par une enzyme kinase.  \n\n| Entité Chimique | Rôle Spécifique | Résultat du Processus |\n| :--- | :--- | :--- |\n| $C_{10}H_{16}N_{5}O_{13}P_{3}$ (adénosine triphosphate) | Donneur de **groupe phosphate** | Formation de $C_{10}H_{16}N_{5}O_{10}P_{2}$ (adénosine diphosphate) et libération d’énergie |\n| Substrat contenant un groupe hydroxyle (ex. $C_{6}H_{12}O_{6}$ – glucose) | Accepteur nucléophile du **phosphate** | Formation d’un ester phosphorique $substrat\\!-\\!O\\!-\\!PO_{3}^{2-}$ |\n| Kinase (enzyme protéique) | Catalyseur protéique, positionne les réactifs | Baisse de l’énergie d’activation, orientation du **flux électronique** |\n| $H^{+}$ (ion hydrogène) | Protonation du groupe phosphate libéré | Stabilisation du produit final |\n\n---  \n\n**DÉVELOPPEMENT MÉCANISTIQUE ÉTENDU**  \n\n• **Géométrie et Nuages Électroniques**  \n  - **Hybridation** : Le phosphore du groupe phosphate adopte une hybridation $sp^{3}d$ avec une géométrie trigonal bipyramidale, permettant la formation simultanée de liaisons $P\\!-\\!O$ multiples.  \n  - **Densité Électronique** : Les atomes d’oxygène du phosphate possèdent des paires non liantes fortement **inductrices**, augmentant la basicité du groupe oxygéné et facilitant l’attaque nucléophile.  \n\n• **Cinétique et Flux Électronique**  \n  - **Interaction Orbitalaire** : Le **flux électronique** s’opère depuis l’**Orbitale Haute Occupée** des paires non liantes de l’oxygène du phosphate vers l’**Orbitale Basse Vacante** du groupe hydroxyle du substrat, formant un pont de transition.  \n  - **Équations**  \n\n    $$\\text{substrat-OH} + C_{10}H_{16}N_{5}O_{13}P_{3} \\xrightarrow{\\text{kinase}} \\text{substrat-O-PO}_{3}^{2-} + C_{10}H_{16}N_{5}O_{10}P_{2} + H^{+}$$  \n\n    $$\\Delta G^{\\ddagger}_{\\text{phosphorylation}} \\approx 15\\ \\text{kJ·mol}^{-1}$$  \n\n    La diminution de $$\\Delta G^{\\ddagger}$$ provient de la stabilisation du complexe enzyme‑substrat et de la réorganisation du nuage électronique du phosphore.  \n\n• **Biologie et Cancérologie**  \n  - **Application Cellulaire** : La phosphorylation régule l’activité enzymatique, la localisation subcellulaire et les interactions protéine‑protéine, constituant le cœur des cascades de signalisation intracellulaire.  \n  - **Implication Oncologique** : Une hyperphosphorylation de protéines de signalisation (ex. récepteurs tyrosine kinases) conduit à une activation constitutive de voies de prolifération, constituant des **cibles thérapeutiques** pour les inhibiteurs de kinases dans le traitement des néoplasmes.  ",
+          "provider": "GROQ",
+          "model": "openai/gpt-oss-120b"
+        },
+        {
+          "role": "user",
+          "content": "définir la phosphorilaiton",
+          "_text": "définir la phosphorilaiton"
+        },
+        {
+          "role": "assistant",
+          "content": "**PHOSPHORYLATION**  \n---  \n\n**SYNTHÈSE GLOBALE**  \n*Définition* : Transfert covalent d’un groupe phosphate provenant d’une molécule riche en énergie vers un groupe fonctionnel nucléophile d’un substrat, sous l’action d’une enzyme kinase.  \n\n| Entité Chimique | Rôle Spécifique | Résultat du Processus |\n| :--- | :--- | :--- |\n| $C_{10}H_{16}N_{5}O_{13}P_{3}$ (adénosine triphosphate) | Donneur de **groupe phosphate** | Formation de $C_{10}H_{16}N_{5}O_{10}P_{2}$ (adénosine diphosphate) et libération d’énergie |\n| Substrat contenant un groupe hydroxyle (ex. $C_{6}H_{12}O_{6}$ – glucose) | Accepteur nucléophile du **phosphate** | Formation d’un ester phosphorique $substrat\\!-\\!O\\!-\\!PO_{3}^{2-}$ |\n| Kinase (enzyme protéique) | Catalyseur, oriente le **flux électronique** | Diminution de l’énergie d’activation, stabilisation de l’**État de transition** |\n| $H^{+}$ (ion hydrogène) | Protonation du groupe phosphate libéré | Stabilisation du produit final |\n\n---  \n\n**DÉVELOPPEMENT MÉCANISTIQUE ÉTENDU**  \n\n• **Géométrie et Nuages Électroniques**  \n  - **Hybridation** : Le phosphore du groupe phosphate adopte une hybridation $sp^{3}d$, conférant une géométrie trigonal bipyramidale propice à la formation simultanée de plusieurs liaisons $P\\!-\\!O$.  \n  - **Densité Électronique** : Les atomes d’oxygène du phosphate portent des paires non liantes fortement **inductrices**, augmentant la basicité du groupe oxygéné et facilitant l’attaque nucléophile.  \n\n• **Cinétique et Flux Électronique**  \n  - **Interaction Orbitalaire** : Le **flux électronique** s’opère depuis l’**Orbitale Haute Occupée** des paires non liantes de l’oxygène du phosphate vers l’**Orbitale Basse Vacante** du groupe hydroxyle du substrat, créant un pont de transition.  \n  - **Équations**  \n\n    $$\\text{substrat-OH} + C_{10}H_{16}N_{5}O_{13}P_{3} \\xrightarrow{\\text{kinase}} \\text{substrat-O-PO}_{3}^{2-} + C_{10}H_{16}N_{5}O_{10}P_{2} + H^{+}$$  \n\n    $$\\Delta G^{\\ddagger}_{\\text{phosphorylation}} \\approx 15\\ \\text{kJ·mol}^{-1}$$  \n\n    La réduction de $$\\Delta G^{\\ddagger}$$ résulte de la stabilisation du complexe enzyme‑substrat et de la réorganisation du nuage électronique du phosphore.  \n\n• **Biologie et Cancérologie**  \n  - **Application Cellulaire** : La **phosphorylation** régule l’activité enzymatique, la localisation subcellulaire et les interactions protéine‑protéine, constituant le cœur des cascades de signalisation intracellulaire.  \n  - **Implication Oncologique** : Une hyperphosphorylation de protéines de signalisation (ex. récepteurs tyrosine kinases) entraîne une activation constitutive de voies de prolifération, constituant des **cibles thérapeutiques** pour les inhibiteurs de kinases dans le traitement des néoplasmes.  ",
+          "provider": "GROQ",
+          "model": "openai/gpt-oss-120b"
+        }
+      ]
     }
   ],
   "projects": [
@@ -962,7 +985,8 @@
     }
   ],
   "activeProfiles": [
-    "chemistry"
+    "chemistry",
+    "2218384d-6483-4331-893b-51078886fce5"
   ],
   "params": {
     "temperature": 0.2,
@@ -980,6 +1004,6 @@
     "webSearch": true
   },
   "model": "openai/gpt-oss-120b",
-  "savedAt": "2026-05-17T13:33:09.311Z",
+  "savedAt": "2026-05-17T13:39:07.252Z",
   "version": 2
 }
