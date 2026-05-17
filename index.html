@@ -1211,7 +1211,7 @@ const S = {
       prompt: "Tu es un assistant IA expert et polyvalent. Réponds de manière précise, structurée et professionnelle. N'utilise jamais de balises HTML dans tes réponses. Utilise Markdown pour la mise en forme."
     }
   ],
-  activeProfiles: [],  // multi-sélection — vide au démarrage
+  activeProfiles: JSON.parse(localStorage.getItem("activeProfiles") || "[]"),
   activeChat:    localStorage.getItem("activeChat")    || null,
   activeProject: localStorage.getItem("activeProject") || null,
   model:  localStorage.getItem("model") || CURATED_MODELS[0],
