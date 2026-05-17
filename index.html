@@ -850,7 +850,8 @@
       .code-header { flex-wrap: wrap; gap: 4px; }
 
       /* ── Tableaux : scroll horizontal ── */
-      .assistant-body table { display: block; overflow-x: auto; white-space: nowrap; }
+      .assistant-body table { display: block; overflow-x: auto; }
+      .assistant-body table td, .assistant-body table th { white-space: normal; }
 
       /* ── KaTeX : empêcher débordement ── */
       .katex-block { overflow-x: auto; -webkit-overflow-scrolling: touch; }
@@ -904,10 +905,104 @@
         z-index: 60 !important;
       }
 
-      /* ── Messages : pleine largeur ── */
-      .msg-row { padding: 8px 8px; }
-      .msg-body { max-width: 100%; }
-      .assistant-body { font-size: 14px; line-height: 1.55; }
+      /* ══════════════════════════════════════════════════
+         ANTI-DÉBORDEMENT — Rien ne doit dépasser l'écran
+      ══════════════════════════════════════════════════ */
+
+      /* Container messages : couper tout débordement */
+      #messages { overflow-x: hidden !important; }
+
+      /* Msg row : largeur stricte viewport */
+      .msg-row {
+        width: 100% !important;
+        max-width: 100vw !important;
+        padding: 8px 8px;
+        box-sizing: border-box;
+      }
+
+      /* Assistant : écraser le max-width:78ch qui fait ~1100px */
+      .msg.assistant {
+        max-width: 100% !important;
+        width: 100% !important;
+        font-size: 15px;
+        overflow-wrap: break-word !important;
+        word-break: break-word !important;
+      }
+      .msg-row.assistant > div {
+        max-width: 100% !important;
+        min-width: 0;
+      }
+
+      /* User : idem */
+      .msg-row.user > div { max-width: 88% !important; }
+
+      /* Assistant body : tout doit wrapper */
+      .assistant-body {
+        font-size: 14px;
+        line-height: 1.55;
+        overflow-wrap: break-word !important;
+        word-break: break-word !important;
+        overflow-x: hidden !important;
+        max-width: 100% !important;
+      }
+      .assistant-body * {
+        max-width: 100% !important;
+        box-sizing: border-box;
+      }
+
+      /* Tableaux : scroll horizontal, texte wrappé dans les cellules */
+      .assistant-body table {
+        display: block !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+        max-width: 100% !important;
+        font-size: 12px;
+      }
+      .assistant-body td, .assistant-body th {
+        white-space: normal !important;
+        word-break: break-word !important;
+        min-width: 60px;
+        padding: 6px 8px !important;
+      }
+
+      /* Code : scroll horizontal, jamais déborder le parent */
+      .assistant-body pre {
+        max-width: calc(100vw - 32px) !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+        font-size: 12px !important;
+        margin: 8px 0 !important;
+      }
+      .assistant-body pre code {
+        white-space: pre !important;
+        word-break: normal !important;
+      }
+      .assistant-body code {
+        word-break: break-all !important;
+        font-size: 13px;
+      }
+
+      /* KaTeX : scroll horizontal, pas de débordement */
+      .katex-block, .katex-display, .katex-block-wrap {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+        max-width: calc(100vw - 32px) !important;
+        padding: 6px 8px !important;
+      }
+      .katex { font-size: 0.9em !important; }
+
+      /* Images dans les réponses */
+      .assistant-body img {
+        max-width: 100% !important;
+        height: auto !important;
+      }
+
+      /* Blockquotes */
+      .assistant-body blockquote {
+        margin-left: 8px !important;
+        margin-right: 0 !important;
+        padding-left: 10px !important;
+      }
 
       /* ── Menu export : plus grand pour le tactile ── */
       .export-menu { min-width: 220px; }
@@ -918,7 +1013,7 @@
       .textarea-wrap textarea {
         font-size: 16px !important;
         min-height: 44px;
-        padding: 10px 120px 10px 12px;
+        padding: 10px 90px 10px 12px;
         border-radius: 22px;
       }
       .attach-btn {
@@ -956,11 +1051,6 @@
       /* ── Chat items sidebar : plus grands pour le tactile ── */
       .item { padding: 10px 10px; min-height: 44px; }
       .chat-menu-btn { opacity: 1; font-size: 18px; padding: 6px 8px; }
-
-      /* ── KaTeX : plus petit pour tenir dans l'écran ── */
-      .katex-block { padding: 6px 0; margin: 4px 0; }
-      .katex-display { padding: 8px 10px; margin: 8px 0; }
-      .katex { font-size: 0.95em; }
     }
 
     /* ── Hauteur viewport dynamique (clavier virtuel iOS) ── */
