@@ -759,6 +759,134 @@
       padding:1px 5px;font-family:monospace;margin-left:auto;
     }
 
+    /* ═══════════════════════════════════════════════════════
+       RESPONSIVE — iPad / Tablettes (≤ 1024px)
+       Ces règles ne s'appliquent QUE sur petit écran.
+       Aucun impact sur les écrans > 1024px (Mac, PC).
+    ═══════════════════════════════════════════════════════ */
+
+    @media (max-width: 1024px) {
+      /* ── Sidebar : overlay au lieu de flex ── */
+      .sidebar {
+        position: fixed;
+        left: 0; top: 0;
+        height: 100vh; height: 100dvh;
+        z-index: 50;
+        width: 280px !important;
+        min-width: 0;
+        max-width: 85vw;
+        box-shadow: 4px 0 24px rgba(0,0,0,.5);
+        transform: translateX(0);
+        transition: transform .22s cubic-bezier(.4,0,.2,1);
+      }
+      .app.sidebar-collapsed .sidebar {
+        transform: translateX(-100%);
+        width: 280px !important;
+        padding: 10px;
+        border-right: 1px solid var(--line);
+      }
+
+      /* Backdrop quand sidebar ouverte */
+      .sidebar-backdrop {
+        display: none;
+        position: fixed; inset: 0;
+        background: rgba(0,0,0,.35);
+        z-index: 49;
+      }
+      .app:not(.sidebar-collapsed) .sidebar-backdrop { display: block; }
+
+      /* ── Divider : invisible sur tactile ── */
+      .resizer { display: none; }
+
+      /* ── Zone principale : pleine largeur ── */
+      .main { min-width: 0; width: 100%; }
+
+      /* ── Barre du haut : compacte ── */
+      .top { padding: 8px 10px; gap: 6px; }
+      .top .btn { min-width: 44px; min-height: 44px; font-size: 18px; }
+      #modelSelect { font-size: 13px; max-width: 160px; }
+
+      /* ── Panneaux dropdown : pleine largeur ── */
+      .params {
+        right: 6px !important;
+        left: 6px !important;
+        width: auto !important;
+        max-width: none;
+        top: 52px !important;
+        max-height: 70vh;
+      }
+      .right-panel {
+        right: 6px !important;
+        left: 6px !important;
+        width: auto !important;
+        top: 52px !important;
+        max-height: 70vh;
+      }
+
+      /* ── Zone de saisie ── */
+      .input-area { padding: 8px 10px; }
+      .textarea-wrap textarea {
+        font-size: 16px !important; /* évite le zoom auto iOS */
+        padding-right: 130px;
+        min-height: 48px;
+      }
+
+      /* ── Boutons tactiles : 44px minimum ── */
+      .attach-btn {
+        min-width: 44px; min-height: 44px;
+        font-size: 24px;
+        display: inline-flex; align-items: center; justify-content: center;
+      }
+      .mic-btn {
+        min-width: 44px; min-height: 44px;
+        font-size: 20px;
+        display: inline-flex; align-items: center; justify-content: center;
+      }
+      #sendBtn.send-circle {
+        width: 44px; height: 44px;
+      }
+      #sendBtn.send-circle svg { width: 20px; height: 20px; }
+
+      /* ── Messages : marges réduites ── */
+      .msg-row { padding: 10px 12px; }
+      .msg-body { max-width: 95%; }
+
+      /* ── Recherche sidebar ── */
+      .search-input { font-size: 16px !important; padding: 11px 34px 11px 32px; }
+
+      /* ── Home mode : texte plus petit ── */
+      .main.home-mode h1 { font-size: 1.6em; }
+
+      /* ── Code blocks : scroll horizontal ── */
+      pre { max-width: 100%; overflow-x: auto; }
+      .code-header { flex-wrap: wrap; gap: 4px; }
+
+      /* ── Tableaux : scroll horizontal ── */
+      .assistant-body table { display: block; overflow-x: auto; white-space: nowrap; }
+
+      /* ── KaTeX : empêcher débordement ── */
+      .katex-block { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      .katex-display { overflow-x: auto; -webkit-overflow-scrolling: touch; padding: 10px 12px; }
+    }
+
+    /* ── Petit écran portrait (phone / iPad mini portrait) ── */
+    @media (max-width: 600px) {
+      .sidebar { width: 260px !important; }
+      .top .btn { padding: 6px 8px; }
+      #modelSelect { max-width: 120px; font-size: 12px; }
+      .msg-body { max-width: 98%; }
+      .attach-btn { right: 84px; }
+      .mic-btn { right: 50px; }
+    }
+
+    /* ── Hauteur viewport dynamique (clavier virtuel iOS) ── */
+    @supports (height: 100dvh) {
+      @media (max-width: 1024px) {
+        .app { height: 100dvh; }
+        .sidebar { height: 100dvh; }
+      }
+    }
+
   </style>
   <!-- marked.js + highlight.js + KaTeX — stack pro comme IA-Genius -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
@@ -783,6 +911,8 @@
 <body>
 <!-- VERSION_FIXED_V8 -->
 <div class="app">
+  <!-- Backdrop pour fermer la sidebar sur tablette (invisible sur desktop) -->
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
   <aside class="sidebar">
     <!-- Moteur de recherche conversations -->
     <div class="search-box" id="searchBox">
@@ -4962,6 +5092,61 @@ renderModels();
 renderParams();
 render();
 loadModelsFromApi();
+
+// ═══════════════════════════════════════════════════════
+// RESPONSIVE — Adaptations tablette / iPad
+// Ce code ne modifie le comportement QUE sur écran ≤ 1024px.
+// ═══════════════════════════════════════════════════════
+(function initResponsive() {
+  const isTablet = () => window.innerWidth <= 1024;
+
+  // ── Auto-collapse sidebar sur tablette au démarrage ──
+  if (isTablet()) {
+    document.querySelector('.app').classList.add('sidebar-collapsed');
+  }
+
+  // ── Backdrop : fermer sidebar au tap ──
+  const backdrop = el('sidebarBackdrop');
+  if (backdrop) {
+    backdrop.onclick = () => {
+      document.querySelector('.app').classList.add('sidebar-collapsed');
+      localStorage.setItem('sidebarCollapsed', '1');
+    };
+  }
+
+  // ── Fermer sidebar après sélection d'un chat (tablette) ──
+  const chatList = el('chatList');
+  if (chatList) {
+    chatList.addEventListener('click', (e) => {
+      if (!isTablet()) return;
+      // Si on a cliqué sur un élément de chat (pas un bouton de menu)
+      const chatItem = e.target.closest('.chat-item');
+      if (chatItem && !e.target.closest('.chat-menu-btn') && !e.target.closest('.ctx-menu')) {
+        setTimeout(() => {
+          document.querySelector('.app').classList.add('sidebar-collapsed');
+        }, 150);
+      }
+    });
+  }
+
+  // ── Fermer les panneaux dropdown quand on tape dans le textarea (tablette) ──
+  el('prompt').addEventListener('focus', () => {
+    if (!isTablet()) return;
+    el('paramsPanel').classList.remove('open');
+    el('apiKeyPanel').classList.remove('open');
+    el('githubPanel').classList.remove('open');
+    el('rightPanel').classList.remove('open');
+  });
+
+  // ── Visual viewport resize (clavier virtuel iOS) ──
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', () => {
+      if (!isTablet()) return;
+      const vv = window.visualViewport;
+      document.documentElement.style.setProperty('--vvh', vv.height + 'px');
+    });
+  }
+})();
 </script>
 </body>
 </html>
