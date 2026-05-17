@@ -909,6 +909,12 @@
           "model": "openai/gpt-oss-120b"
         }
       ]
+    },
+    {
+      "id": "5a86b56d-2224-4ccd-b9ed-b62d84f1360c",
+      "title": "Nouveau chat",
+      "projectId": null,
+      "messages": []
     }
   ],
   "projects": [
@@ -1004,6 +1010,6 @@
     "webSearch": true
   },
   "model": "openai/gpt-oss-120b",
-  "savedAt": "2026-05-17T14:14:30.481Z",
+  "savedAt": "2026-05-17T15:37:34.221Z",
   "version": 2
 }
