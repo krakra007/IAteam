@@ -754,9 +754,21 @@
     },
     {
       "id": "2357d181-924e-4b85-b223-f1e4071a5bd5",
-      "title": "Nouveau chat",
+      "title": "décrire la phosophorilation",
       "projectId": null,
-      "messages": []
+      "messages": [
+        {
+          "role": "user",
+          "content": "décrire la phosophorilation",
+          "_text": "décrire la phosophorilation"
+        },
+        {
+          "role": "assistant",
+          "content": "**PHOSPHORILATION**  \n---  \n\n**SYNTHÈSE GLOBALE**  \n* **Définition** : Transfert covalent d’un **groupe phosphate** d’un donneur énergétique tel que $$\\text{ATP}$$ vers un accepteur nucléophile, généralement un groupe hydroxyle ou amine, sous l’action d’une **kinase**.  \n\n| Entité Chimique | Rôle Spécifique | Résultat du Processus |\n| :--- | :--- | :--- |\n| $$\\text{ATP}$$ | Donneur de **groupe phosphate** | Formation de $$\\text{ADP}$$ et libération du **phosphate** transféré |\n| $$\\text{ADP}$$ | Produit de la donation | Accumulation de l’énergie libérée |\n| $$\\text{R–OH}$$ (substrat) | Accepteur nucléophile | Formation du **phosphate ester** $$\\text{R–O–PO}_3^{2-}$$ |\n| **Kinase** | Catalyseur enzymatique | Baisse de $$\\Delta G^{\\ddagger}$$ et orientation du **flux électronique** |\n\n**DÉVELOPPEMENT MÉCANISTIQUE ÉTENDU**  \n\n• **Géométrie et Nuages Électroniques**  \n  - **Hybridation** : Le phosphore du groupe $$\\text{PO}_4^{3-}$$ adopte une configuration **sp³** tétraédrique, chaque oxygène porte une paire non liante en **sp³**.  \n  - **Densité Électronique** : Effet inductif fortement **électronégatif** des oxygènes stabilise la charge négative, tandis que la résonance entre les liaisons $$\\text{P=O}$$ et $$\\text{P–O^-}$$ répartit la densité sur le groupe phosphate.  \n\n• **Cinétique et Flux Électronique**  \n  - **Interaction Orbitalaire** : Le **paire d’électrons** de l’**Orbitale Haute Occupée** du groupe hydroxyle attaque l’**Orbitale Basse Vacante** antibondante $$\\sigma^{*}_{\\text{P–O}}$$ du groupe phosphate, conduisant à la formation du **phosphate ester**.  \n  - **Équations** :  \n    $$\\text{ATP} + \\text{R–OH} \\xrightarrow{\\text{Kinase}} \\text{ADP} + \\text{R–O–PO}_3^{2-}$$  \n    $$\\Delta G^{\\ddagger}_{\\text{phosphorilation}} = \\Delta G^{\\ddagger}_{\\text{non‑catalysé}} - \\text{effet catalytique de la kinase}$$  \n\n• **Biologie et Cancérologie**  \n  - **Application Cellulaire** : Modulation de la **signalisation** intracellulaire, activation de voies métaboliques et régulation de la conformation protéique.  \n  - **Implication Oncologique** : Hyperactivation des kinases (ex. **PI3‑kinase**, **BCR‑ABL**) conduit à une phosphorylation aberrante, favorisant la prolifération cellulaire et la résistance aux traitements ; les inhibiteurs de kinases ciblent ces processus pour le contrôle tumoral.  ",
+          "provider": "GROQ",
+          "model": "openai/gpt-oss-120b"
+        }
+      ]
     },
     {
       "id": "f66180f4-d232-4896-b015-13d3014d5d68",
@@ -962,6 +974,6 @@
     "webSearch": true
   },
   "model": "openai/gpt-oss-120b",
-  "savedAt": "2026-05-17T12:53:38.897Z",
+  "savedAt": "2026-05-17T12:58:39.561Z",
   "version": 2
 }
