@@ -524,6 +524,24 @@
           "model": "openai/gpt-oss-120b"
         }
       ]
+    },
+    {
+      "id": "1f43f3e0-b025-4204-a9ba-0035acad9a1b",
+      "title": "quelle est la capitale de la Bulgarie",
+      "projectId": null,
+      "messages": [
+        {
+          "role": "user",
+          "content": "quelle est la capitale de la Bulgarie",
+          "_text": "quelle est la capitale de la Bulgarie"
+        },
+        {
+          "role": "assistant",
+          "content": "Sofia.",
+          "provider": "GROQ",
+          "model": "openai/gpt-oss-120b"
+        }
+      ]
     }
   ],
   "projects": [
@@ -619,6 +637,6 @@
     "webSearch": true
   },
   "model": "openai/gpt-oss-120b",
-  "savedAt": "2026-05-17T15:51:02.898Z",
+  "savedAt": "2026-05-17T15:56:08.197Z",
   "version": 2
 }
