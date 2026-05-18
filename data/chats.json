@@ -1,6 +1,35 @@
 {
   "chats": [
     {
+      "id": "932032ce-a190-4ed3-ac7c-b04dd1b741b3",
+      "title": "quand on dit fonction carbonyle on pen",
+      "projectId": "06407384-63b3-4383-b87c-6248d2482d0a",
+      "messages": [
+        {
+          "role": "user",
+          "content": "quand on dit fonction carbonyle on pense à?",
+          "_text": "quand on dit fonction carbonyle on pense à?"
+        },
+        {
+          "role": "assistant",
+          "content": "### FONCTION CARBONYLE\n---\n**1. CONTEXTE ET ENJEUX**  \nLa **fonction carbonyle** désigne le groupe fonctionnel caractérisé par une double liaison entre un atome de carbone et un atome d’oxygène ($C=O$). Ce groupe est présent dans une grande variété de composés organiques majeurs, dont les aldéhydes, les cétones, les acides carboxyliques, les esters et les amides. Sa polarité confère au carbone une forte **carence électronique**, le rendant réactif envers les nucléophiles et les agents oxydants, ce qui en fait un pivot central en synthèse organique et en biochimie.\n\n**2. LES ACTEURS DE LA RÉACTION (PRÉREQUIS)**  \n* **Le centre électrophile** : le carbone de la **fonction carbonyle** possède une hybridation $sp^2$ et porte une densité électronique partielle positive du fait du tirage inductif de l’oxygène très électronégatif.  \n* **Le réactif nucléophile** : toute espèce riche en paire d’électrons libres (exemple $OH^-$, $NH_2^-$, $R^-)$ peut attaquer le carbone carbonylé en transférant son **Orbitale Haute Occupée** vers l’**Orbitale Basse Vacante** du carbone.\n\n**3. MÉCANISME ET DYNAMIQUE ÉLECTRONIQUE**  \n* **L'approche** : le nuage électronique du nucléophile s’approche du carbone carbonylé, entraînant une **polarisation** accrue de la liaison $C=O$.  \n* **Le flux orbitalaire** : l’électron provenant de l’**Orbitale Haute Occupée** du nucléophile se déplace vers l’**Orbitale Basse Vacante** du carbone, formant une nouvelle liaison simple $C–Nu$ et convertissant le $C=O$ en un **état de transition** tétraédrique.  \n* **L'état de transition** : structure éphémère où le carbone porte simultanément les deux liaisons $C=O$ et $C–Nu$, caractérisée par une énergie d’activation $${\\Delta G^{\\ddagger}}$$ élevée, dépendant de la nature du nucléophile et du solvant.\n\n**4. RÉSUMÉ SYNTHÉTIQUE**  \n\n| Étape du Processus | Mouvement Électronique | Conséquence Structurale |\n| :--- | :--- | :--- |\n| Polarisation initiale | Délocalisation partielle des électrons de la liaison $C=O$ vers l’oxygène | Augmentation de la charge positive sur le carbone |\n| Attaque nucléophile | Transfert d’électrons du **Orbitale Haute Occupée** du nucléophile vers l’**Orbitale Basse Vacante** du carbone | Formation d’un **état de transition** tétraédrique |\n| Effondrement de l’état de transition | Reformation d’une double liaison $C=O$ ou stabilisation par protonation | Obtention d’un produit : aldéhyde, cétone, acide, ester ou amide selon le réactif |\n\n**5. APPLICATIONS ET PATHOLOGIES**  \n* **Synthèse** : la **fonction carbonyle** est exploitéedans les réactions d’addition nucléophile, d’oxydation, de réduction (hydrogénation, réduction de **C=O** en alcool) et de condensation (formation d’esters, d’amides).  \n* **Biologie et Cancer** : les enzymes telles que les déshydrogénases et les aldéhydes déshydrogénases manipulent la **fonction carbonyle** pour métaboliser les sucres et les acides gras. Des dérivés carbonylés réactifs (ex. $4$‑hydroxy‑2‑nonenal) peuvent former des adduits avec l’ADN, induisant des mutations et participant à la carcinogenèse.",
+          "provider": "GROQ",
+          "model": "openai/gpt-oss-120b"
+        },
+        {
+          "role": "user",
+          "content": "quand on dit fonction carbonyle on pense à?",
+          "_text": "quand on dit fonction carbonyle on pense à?"
+        },
+        {
+          "role": "assistant",
+          "content": "## Fonction carbonyle  \n\n- **Définition** : groupe fonctionnel caractérisé par une double liaison carbone‑oxygène, notée $C=O$.  \n- **Caractéristique principale** : le carbone est **électrophile** (charge partielle $δ+$) tandis que l’oxygène porte une charge partielle $δ-$, ce qui rend le groupe très réactif aux attaques nucléophiles.  \n\n### Principaux dérivés contenant la fonction carbonyle  \n\n- **Aldéhydes** : $R\\!-\\!CHO$  \n- **Cétones** : $R_1\\!-\\!CO\\!-\\!R_2$  \n- **Acides carboxyliques** : $R\\!-\\!COOH$  \n- **Esters** : $R\\!-\\!COOR'$  \n- **Amides** : $R\\!-\\!CONH_2$ (ou $R\\!-\\!CONHR'$)  \n- **Acyl chlorures** : $R\\!-\\!COCl$  \n- **Anhydrides d’acide** : $R\\!-\\!CO\\!-\\!O\\!-\\!CO\\!-\\!R'$  \n\n### Réactivité typique  \n\n- **Addition nucléophile** (ex. $OH^-$, $CN^-$, $R^-$) → formation d’un **intermédiaire tétraédrique**.  \n- **Oxydation** (ex. $R\\!-\\!CHO \\rightarrow R\\!-\\!COOH$).  \n- **Réduction** (ex. $R\\!-\\!CO\\!-\\!R' \\rightarrow R\\!-\\!CH_2\\!-\\!R'$).  \n\nEn résumé, la **fonction carbonyle** évoque immédiatement le groupe $C=O$ et les familles de composés ci‑dessus, qui sont au cœur de la chimie organique et de nombreuses réactions biochimiques.",
+          "provider": "GROQ",
+          "model": "openai/gpt-oss-120b"
+        }
+      ]
+    },
+    {
       "id": "03a85aa2-4f77-45a5-a040-401b9de523b9",
       "title": "Regarde le document joint qui retrace ",
       "projectId": "4a80a2bb-5a7f-49d2-b420-c20965d8067b",
@@ -566,6 +595,12 @@
       "title": "Nouveau chat",
       "projectId": null,
       "messages": []
+    },
+    {
+      "id": "6f796aea-0f0f-4a2d-a470-0aa291ff173b",
+      "title": "Nouveau chat",
+      "projectId": null,
+      "messages": []
     }
   ],
   "projects": [
@@ -641,10 +676,7 @@
       "prompt": "Proposer une explication courte et précise. Il s'agit du domaine de la chimie organique de la biologie cellulaire et de la biologiei moléculaire."
     }
   ],
-  "activeProfiles": [
-    "chemistry",
-    "2218384d-6483-4331-893b-51078886fce5"
-  ],
+  "activeProfiles": [],
   "params": {
     "temperature": 0.2,
     "top_p": 0,
@@ -661,6 +693,6 @@
     "webSearch": true
   },
   "model": "openai/gpt-oss-120b",
-  "savedAt": "2026-05-17T19:07:57.056Z",
+  "savedAt": "2026-05-18T04:37:53.505Z",
   "version": 2
 }
