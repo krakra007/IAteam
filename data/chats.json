@@ -786,6 +786,12 @@
       "title": "Nouveau chat",
       "projectId": null,
       "messages": []
+    },
+    {
+      "id": "3de1553d-29b1-4a82-b49a-5b4804681f03",
+      "title": "Nouveau chat",
+      "projectId": null,
+      "messages": []
     }
   ],
   "projects": [
@@ -878,6 +884,6 @@
     "webSearch": true
   },
   "model": "openai/gpt-oss-120b",
-  "savedAt": "2026-05-18T13:55:44.197Z",
+  "savedAt": "2026-05-18T18:29:33.268Z",
   "version": 2
 }
