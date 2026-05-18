@@ -26,6 +26,17 @@
           "content": "## Fonction carbonyle  \n\n- **Définition** : groupe fonctionnel caractérisé par une double liaison carbone‑oxygène, notée $C=O$.  \n- **Caractéristique principale** : le carbone est **électrophile** (charge partielle $δ+$) tandis que l’oxygène porte une charge partielle $δ-$, ce qui rend le groupe très réactif aux attaques nucléophiles.  \n\n### Principaux dérivés contenant la fonction carbonyle  \n\n- **Aldéhydes** : $R\\!-\\!CHO$  \n- **Cétones** : $R_1\\!-\\!CO\\!-\\!R_2$  \n- **Acides carboxyliques** : $R\\!-\\!COOH$  \n- **Esters** : $R\\!-\\!COOR'$  \n- **Amides** : $R\\!-\\!CONH_2$ (ou $R\\!-\\!CONHR'$)  \n- **Acyl chlorures** : $R\\!-\\!COCl$  \n- **Anhydrides d’acide** : $R\\!-\\!CO\\!-\\!O\\!-\\!CO\\!-\\!R'$  \n\n### Réactivité typique  \n\n- **Addition nucléophile** (ex. $OH^-$, $CN^-$, $R^-$) → formation d’un **intermédiaire tétraédrique**.  \n- **Oxydation** (ex. $R\\!-\\!CHO \\rightarrow R\\!-\\!COOH$).  \n- **Réduction** (ex. $R\\!-\\!CO\\!-\\!R' \\rightarrow R\\!-\\!CH_2\\!-\\!R'$).  \n\nEn résumé, la **fonction carbonyle** évoque immédiatement le groupe $C=O$ et les familles de composés ci‑dessus, qui sont au cœur de la chimie organique et de nombreuses réactions biochimiques.",
           "provider": "GROQ",
           "model": "openai/gpt-oss-120b"
+        },
+        {
+          "role": "user",
+          "content": "quand on dit tautomérisation, on pense à?",
+          "_text": "quand on dit tautomérisation, on pense à?"
+        },
+        {
+          "role": "assistant",
+          "content": "## Tautomérisation  \n\n- **Définition** : la **tautomérisation** est un **équilibre dynamique** entre deux isomères constitutionnels (les **tautomères**) qui diffèrent par le **déplacement d’un atome d’hydrogène** et la **migration d’une double liaison**.  \n- **Mécanisme général** : transfert **intramoléculaire** d’un proton (ou d’un ion hydrogène) accompagné d’une **relocalisation des électrons π**, ce qui transforme une fonction fonctionnelle en une autre (ex. $C=O \\leftrightarrow C–OH$).  \n\n### Principaux types de tautomères  \n\n| Type de tautomérie | Forme dominante | Forme minoritaire | Exemple de réaction |\n|--------------------|-----------------|-------------------|----------------------|\n| **Kéto‑énol** | Cétone ($C=O$) | Enol ($C=C\\!-\\!OH$) | $$\\begin{aligned} \\text{CH}_3\\!-\\!CO\\!-\\!CH_3 &\\;\\rightleftharpoons\\; \\text{CH}_2\\!=\\!C(OH)\\!-\\!CH_3 \\\\ \\text{(acétone)} &\\;\\rightleftharpoons\\; \\text{(énol)} \\end{aligned}$$ |\n| **Imine‑énamine** | Imine ($C=N$) | Enamine ($C=C\\!-\\!NH_2$) | $$\\begin{aligned} \\text{R}_2C\\!=\\!NH &\\;\\rightleftharpoons\\; \\text{R}_2C\\!=\\!CH\\!-\\!NH_2 \\end{aligned}$$ |\n| **Lactame‑lactim** | Lactame (amide cyclique, $C=O$) | Lactim (hydroxy‑imide, $C–OH$) | $$\\begin{aligned} \\text{C}_5\\!H_5\\!N\\!O &\\;\\rightleftharpoons\\; \\text{C}_5\\!H_5\\!N\\!OH \\end{aligned}$$ |\n| **Phénol‑cyclohexadienone** | Phénol ($Ar–OH$) | Cyclohexadienone (keto) | $$\\begin{aligned} \\text{Ar–OH} &\\;\\rightleftharpoons\\; \\text{Ar=O\\; (keto)} \\end{aligned}$$ |\n| **Amide‑imidate** | Amide ($C=O\\!-\\!NR_2$) | Imidate ($C=N\\!-\\!OR$) | $$\\begin{aligned} \\text{R\\!-\\!CO\\!-\\!NR_2} &\\;\\rightleftharpoons\\; \\text{R\\!-\\!C(=NR)\\!-\\!OR} \\end{aligned}$$ |\n\n### Caractéristiques clés  \n\n- **Proton mobile** : généralement un **hydrogène α** au groupe carbonyle ou à un atome d’azote.  \n- **Catalyseurs** : acides, bases, enzymes (ex. **tautomerases**).  \n- **Influence du solvant** : les solvants polaires stabilisent les formes **hydroxy‑** (énol, lactim) grâce à l’hydratation.  \n- **Équilibre** : dépend de la **stabilité relative** des tautomères (conjugaison, aromatisation, intramoléculaire H‑bond).  \n\n### Importance en chimie et en biologie  \n\n1. **Réactivité chimique**  \n   - Les formes **énoliques** sont plus nucléophiles que les cétones, ce qui explique la **réactivité α‑alkylation**, la **condensation de Claisen**, etc.  \n   - La **tautomerisation** permet la formation de **liaisons C–C** ou **C–N** via des intermédiaires plus réactifs.  \n\n2. **Biochimie**  \n   - **Tautomerases** (ex. **triose‑phosphate isomerase**) accélèrent la conversion **aldéhyde ↔ cétone** dans le métabolisme glycolytique.  \n   - Les bases azotées de l’ADN existent sous forme **lactame/lactim** ; la forme lactam (keto) est la plus stable, assurant la **paires de H** correcte.  \n\n3. **Pharmacologie**  \n   - Certains médicaments (ex. **imatinib**) existent sous plusieurs tautomères, influençant leur **affinité pour la cible** et leur **profil pharmacocinétique**.  \n\n### Schéma simplifié d’une tautomerisation kéto‑énol  \n\n$$\\begin{aligned}\n\\text{R}_2C\\!-\\!C(=O)\\!-\\!R_1 &\\;\\xrightleftharpoons[\\text{base}]{\\text{acide}}\\; \\text{R}_2C\\!=\\!C(R_1)\\!-\\!OH \\\\\n\\text{(cétone)} &\\qquad\\qquad\\qquad\\;\\;\\;\\text{(énol)}\n\\end{aligned}$$  \n\n- **Étape 1** (déprotonation ou protonation) : le proton α est retiré (ou ajouté) par le catalyseur.  \n- **Étape 2** (relocalisation π) : la double liaison $C=O$ se transforme en $C=C$, l’oxygène capte le proton pour former $OH$.  \n\n---\n\n**En résumé**, la **tautomérisation** évoque le **déplacement d’un proton** accompagné d’une **relocalisation des doubles liaisons**, générant un **équilibre** entre deux formes structurales (ex. **kéto ↔ énol**, **imide ↔ imine**, **lactame ↔ lactim**) qui joue un rôle central dans la réactivité organique, le métabolisme enzymatique et la conception de molécules actives.",
+          "provider": "GROQ",
+          "model": "openai/gpt-oss-120b"
         }
       ]
     },
@@ -589,18 +600,6 @@
           "model": "openai/gpt-oss-120b"
         }
       ]
-    },
-    {
-      "id": "3de1553d-29b1-4a82-b49a-5b4804681f03",
-      "title": "Nouveau chat",
-      "projectId": null,
-      "messages": []
-    },
-    {
-      "id": "6f796aea-0f0f-4a2d-a470-0aa291ff173b",
-      "title": "Nouveau chat",
-      "projectId": null,
-      "messages": []
     }
   ],
   "projects": [
@@ -693,6 +692,6 @@
     "webSearch": true
   },
   "model": "openai/gpt-oss-120b",
-  "savedAt": "2026-05-18T04:37:53.505Z",
+  "savedAt": "2026-05-18T04:42:53.897Z",
   "version": 2
 }
