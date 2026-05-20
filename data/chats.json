@@ -994,7 +994,9 @@
       "prompt": "Proposer une explication courte et précise. Il s'agit du domaine de la chimie organique de la biologie cellulaire et de la biologiei moléculaire."
     }
   ],
-  "activeProfiles": [],
+  "activeProfiles": [
+    "40ba6b82-d96a-418e-838c-44c792873ca7"
+  ],
   "params": {
     "temperature": 0.2,
     "top_p": 0,
@@ -1011,6 +1013,6 @@
     "webSearch": true
   },
   "model": "openai/gpt-oss-120b",
-  "savedAt": "2026-05-20T06:46:58.944Z",
+  "savedAt": "2026-05-20T06:52:03.684Z",
   "version": 2
 }
