@@ -1,6 +1,18 @@
 {
   "chats": [
     {
+      "id": "f3c03920-7fed-4bb9-b7c0-714b179a8ce8",
+      "title": "je vois souvent que dans les réactions",
+      "projectId": "06407384-63b3-4383-b87c-6248d2482d0a",
+      "messages": [
+        {
+          "role": "user",
+          "content": "je vois souvent que dans les réactions chimiques on met des solvant ou des réactifs pour mettre en oeuvre la réaction chimique. Mais comment on a trouvé ou on a su qu'il fallait utiliser le dihydrogene gazeaux en présence d'un catalyseur de nickel dans la réaction dite amination reductrice. Il fallait le deviner quand meme.",
+          "_text": "je vois souvent que dans les réactions chimiques on met des solvant ou des réactifs pour mettre en oeuvre la réaction chimique. Mais comment on a trouvé ou on a su qu'il fallait utiliser le dihydrogene gazeaux en présence d'un catalyseur de nickel dans la réaction dite amination reductrice. Il fallait le deviner quand meme."
+        }
+      ]
+    },
+    {
       "id": "932032ce-a190-4ed3-ac7c-b04dd1b741b3",
       "title": "quand on dit fonction carbonyle on pen",
       "projectId": "06407384-63b3-4383-b87c-6248d2482d0a",
@@ -860,6 +872,6 @@
     "webSearch": true
   },
   "model": "gemini-3.5-flash",
-  "savedAt": "2026-05-20T19:55:21.227Z",
+  "savedAt": "2026-05-20T20:00:22.417Z",
   "version": 2
 }
