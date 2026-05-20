@@ -4047,7 +4047,29 @@ async function send() {
     c.messages.push({ role: "assistant", content: responseContent, provider, model: S.model });
 
   } catch (e) {
-    c.messages.push({ role: "assistant", content: "❌ Erreur : " + e.message, provider, model: S.model });
+    let errMsg = e.message;
+    // ── Diagnostic enrichi pour "Failed to fetch" ──
+    if (/failed to fetch|networkerror|load failed/i.test(errMsg)) {
+      const hints = [];
+      if (location.protocol === 'file:') hints.push('Le fichier est ouvert en file:// — certains navigateurs bloquent les requêtes API depuis cette origine. Essayez via un serveur local (ex: npx serve, python -m http.server, Live Server VS Code).');
+      else hints.push('La requête réseau a échoué avant d\'atteindre le serveur API.');
+      hints.push('Causes possibles : ad-blocker/extension navigateur, VPN, pare-feu, proxy entreprise, ou API temporairement injoignable.');
+
+      const providerUrls = {
+        "ANTHROPIC": "api.anthropic.com",
+        "OPENAI": "api.openai.com",
+        "DEEPSEEK": "api.deepseek.com",
+        "GOOGLE GEMINI": "generativelanguage.googleapis.com",
+        "GROQ": "api.groq.com"
+      };
+      const host = providerUrls[provider] || '?';
+      hints.push(`Vérifiez que ${host} est accessible (ouvrez https://${host} dans un nouvel onglet).`);
+      hints.push('Essayez aussi : désactivez temporairement vos extensions navigateur, ou testez dans un onglet de navigation privée.');
+
+      errMsg = `Échec réseau (${provider} — ${host})\n\n${hints.join('\n\n')}`;
+      console.error('[BrAInShift] ❌ Failed to fetch — diagnostic:', { provider, model: S.model, protocol: location.protocol, url: location.href, error: e });
+    }
+    c.messages.push({ role: "assistant", content: "❌ Erreur : " + errMsg, provider, model: S.model });
     showApiError(e.message);
   } finally {
     isWaitingResponse = false;
