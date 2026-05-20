@@ -1074,6 +1074,11 @@
   <!-- Extraction texte Office côté navigateur -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <!-- pdf.js — extraction texte des PDFs côté navigateur -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>if(typeof pdfjsLib!=='undefined')pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
+  <!-- JSZip — extraction PPTX propre -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <!-- docx.js — génération de Word .docx côté navigateur -->
   <script src="https://cdn.jsdelivr.net/npm/docx@8.2.4/build/index.umd.js"></script>
   <script>if(typeof docx==='undefined')document.write('<script src="https://unpkg.com/docx@8.2.4/build/index.umd.js"><\/script>')</script>
@@ -1548,12 +1553,12 @@ const SUPPORTED_TYPES = {
   'image/gif':  { icon: '🖼', label: 'GIF',  supported: true },
   'image/webp': { icon: '🖼', label: 'WebP', supported: true },
   'application/pdf': { icon: '📄', label: 'PDF', supported: true },
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': { icon: '📝', label: 'Word', supported: false },
-  'application/msword':  { icon: '📝', label: 'Word', supported: false },
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { icon: '📊', label: 'Excel', supported: false },
-  'application/vnd.ms-excel': { icon: '📊', label: 'Excel', supported: false },
-  'application/vnd.openxmlformats-officedocument.presentationml.presentation': { icon: '📑', label: 'PowerPoint', supported: false },
-  'application/vnd.ms-powerpoint': { icon: '📑', label: 'PowerPoint', supported: false },
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': { icon: '📝', label: 'Word', supported: true },
+  'application/msword':  { icon: '📝', label: 'Word', supported: true },
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { icon: '📊', label: 'Excel', supported: true },
+  'application/vnd.ms-excel': { icon: '📊', label: 'Excel', supported: true },
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation': { icon: '📑', label: 'PowerPoint', supported: true },
+  'application/vnd.ms-powerpoint': { icon: '📑', label: 'PowerPoint', supported: true },
   // Fichiers texte / code
   'text/html':       { icon: '🌐', label: 'HTML', supported: true, isText: true },
   'text/css':        { icon: '🎨', label: 'CSS',  supported: true, isText: true },
@@ -1614,33 +1619,74 @@ async function extractOfficeText(file) {
     return lines.join('\n').trim() || null;
   }
 
-  // .pptx → extraction XML brute des diapositives
-  if (ext === 'pptx' && typeof XLSX !== 'undefined') {
-    // SheetJS peut lire le ZIP, on extrait les fichiers slide*.xml
-    const zip = XLSX.zip.inflate ? null : null; // SheetJS expose CFB/ZIP
-    // Fallback : utiliser l'API native pour lire le ZIP pptx comme texte
+  // .pptx → JSZip (extraction propre des slides XML)
+  if (ext === 'pptx' && typeof JSZip !== 'undefined') {
     try {
-      const text = await new Promise((res, rej) => {
-        const r = new FileReader();
-        r.onload = () => {
-          // PPTX = ZIP, on cherche le XML dans les slides
-          const bytes = new Uint8Array(r.result);
-          const str   = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
-          const texts = [];
-          // Regex pour extraire les balises <a:t> des slides PowerPoint
-          const re = /<a:t[^>]*>([^<]+)<\/a:t>/g;
-          let m;
-          while ((m = re.exec(str)) !== null) texts.push(m[1]);
-          res(texts.join(' ').trim() || null);
-        };
-        r.onerror = rej;
-        r.readAsArrayBuffer(file);
-      });
-      return text;
+      const zip = await JSZip.loadAsync(ab);
+      const slideTexts = [];
+      // Les slides sont dans ppt/slides/slide1.xml, slide2.xml, etc.
+      const slideFiles = Object.keys(zip.files)
+        .filter(f => /^ppt\/slides\/slide\d+\.xml$/i.test(f))
+        .sort((a, b) => {
+          const na = parseInt(a.match(/slide(\d+)/)[1]);
+          const nb = parseInt(b.match(/slide(\d+)/)[1]);
+          return na - nb;
+        });
+      for (const slideFile of slideFiles) {
+        const xml = await zip.files[slideFile].async('text');
+        const texts = [];
+        const re = /<a:t[^>]*>([^<]+)<\/a:t>/g;
+        let m;
+        while ((m = re.exec(xml)) !== null) texts.push(m[1]);
+        if (texts.length) {
+          const slideNum = slideFile.match(/slide(\d+)/)[1];
+          slideTexts.push(`--- Diapositive ${slideNum} ---\n${texts.join(' ')}`);
+        }
+      }
+      return slideTexts.join('\n\n').trim() || null;
+    } catch(e) {
+      console.warn('[BrAInShift] ⚠ Extraction PPTX échouée:', e.message);
+      return null;
+    }
+  }
+
+  // .pptx fallback sans JSZip (regex brute, moins fiable)
+  if (ext === 'pptx') {
+    try {
+      const bytes = new Uint8Array(ab);
+      const str   = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+      const texts = [];
+      const re = /<a:t[^>]*>([^<]+)<\/a:t>/g;
+      let m;
+      while ((m = re.exec(str)) !== null) texts.push(m[1]);
+      return texts.join(' ').trim() || null;
     } catch(e) { return null; }
   }
 
   return null; // non extractible
+}
+
+/** Extrait le texte d'un PDF côté navigateur via pdf.js */
+async function extractPdfText(data) {
+  if (typeof pdfjsLib === 'undefined') return null;
+  try {
+    const binary = atob(data);
+    const bytes  = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+
+    const pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
+    const pages = [];
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      const text = content.items.map(item => item.str).join(' ');
+      if (text.trim()) pages.push(text.trim());
+    }
+    return pages.join('\n\n').trim() || null;
+  } catch (e) {
+    console.warn('[BrAInShift] ⚠ Extraction PDF échouée:', e.message);
+    return null;
+  }
 }
 
 el('fileInput').onchange = async e => {
@@ -1660,7 +1706,10 @@ el('fileInput').onchange = async e => {
 
     // Tentative d'extraction texte pour Office ou lecture directe pour fichiers texte
     let extractedText = null;
-    if (!isImage && !isPdf) {
+    if (isPdf) {
+      // Extraire le texte du PDF (fallback pour providers qui ne supportent pas les PDFs natifs)
+      try { extractedText = await extractPdfText(data); } catch(e) {}
+    } else if (!isImage) {
       // Fichiers texte/code : lecture directe
       const isTextFile = meta.isText || /\.(html?|css|js|jsx|tsx|ts|json|md|txt|csv|py|xml|yaml|yml|sql|sh|bat|log|ini|cfg|env|toml|rb|java|c|cpp|h|hpp|rs|go|php|swift|kt)$/i.test(file.name);
       if (isTextFile) {
@@ -1728,7 +1777,7 @@ function buildUserContent(text, files) {
       parts.push({ type: 'image', source: { type: 'base64', media_type: f.type, data: f.data } });
     } else if (f.isPdf) {
       parts.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: f.data },
-        title: f.name });
+        title: f.name, _extractedText: f.extractedText || null });
     } else if (f.extractedText) {
       // Fichier Office : texte extrait côté navigateur
       parts.push({ type: 'text', text: `[${f.icon} Contenu du fichier "${f.name}" :]\n\n${f.extractedText}` });
@@ -3670,7 +3719,11 @@ async function callOpenAICompatible(endpoint, key, model, messages, apiType) {
         if (Array.isArray(m.content)) {
           const parts = m.content.map(b => {
             if (b.type === 'image') return { type: 'image_url', image_url: { url: `data:${b.source.media_type};base64,${b.source.data}` } };
-            if (b.type === 'document') return { type: 'text', text: `[Document PDF joint : ${b.title || 'fichier.pdf'}]` };
+            if (b.type === 'document') {
+              // Chat Completions ne supporte pas les PDFs inline → texte extrait
+              if (b._extractedText) return { type: 'text', text: `📄 Contenu de "${b.title || 'document.pdf'}" :\n\n${b._extractedText}` };
+              return { type: 'text', text: `[Fichier joint : ${b.title || 'document.pdf'} — texte non extractible. Le contenu n'a pas pu être lu.]` };
+            }
             return { type: 'text', text: b.text || '' };
           });
           return { role: m.role, content: parts };
@@ -3790,6 +3843,14 @@ async function callGemini(key, model, messages) {
     return callGeminiNative(key, model, messages);
   }
 
+  // ── Si documents PDF présents → API native (l'endpoint OpenAI-compat ne supporte pas les PDFs inline)
+  const hasDocs = messages.some(m =>
+    Array.isArray(m.content) && m.content.some(b => b.type === 'document' && b.source?.data)
+  );
+  if (hasDocs) {
+    return callGeminiNative(key, model, messages);
+  }
+
   // ── Sinon → endpoint OpenAI-compatible (plus simple)
   const geminiBody = {
     model,
@@ -3801,7 +3862,10 @@ async function callGemini(key, model, messages) {
           if (Array.isArray(m.content)) {
             const parts = m.content.map(b => {
               if (b.type === 'image') return { type: 'image_url', image_url: { url: `data:${b.source.media_type};base64,${b.source.data}` } };
-              if (b.type === 'document') return { type: 'text', text: `[Document PDF joint : ${b.title || 'fichier.pdf'}]` };
+              if (b.type === 'document') {
+                if (b._extractedText) return { type: 'text', text: `📄 Contenu de "${b.title || 'document.pdf'}" :\n\n${b._extractedText}` };
+                return { type: 'text', text: `[Fichier joint : ${b.title || 'document.pdf'} — texte non extractible]` };
+              }
               return { type: 'text', text: b.text || '' };
             });
             return { role: m.role, content: parts };
@@ -3841,10 +3905,11 @@ async function callGeminiNative(key, model, messages) {
       for (const b of m.content) {
         if (b.type === 'image') {
           parts.push({ inline_data: { mime_type: b.source.media_type, data: b.source.data } });
+        } else if (b.type === 'document' && b.source?.data) {
+          // Envoyer le PDF réel en inline_data (supporté par Gemini)
+          parts.push({ inline_data: { mime_type: b.source.media_type || 'application/pdf', data: b.source.data } });
         } else if (b.type === 'text') {
           parts.push({ text: b.text || '' });
-        } else if (b.type === 'document') {
-          parts.push({ text: `[Document PDF joint : ${b.title || 'fichier.pdf'}]` });
         }
       }
     } else {
@@ -3856,12 +3921,13 @@ async function callGeminiNative(key, model, messages) {
   const body = {
     contents,
     systemInstruction: { parts: [{ text: getActiveSystemPrompt() }] },
-    tools: [{ google_search: {} }],
     generationConfig: {
       maxOutputTokens: S.params.max_tokens || 16128,
       temperature: Math.min(Number(S.params.temperature) || 1, 2)
     }
   };
+  // N'ajouter google_search que si la recherche web est activée
+  if (S.params.webSearch) body.tools = [{ google_search: {} }];
 
   const r = await fetchWithRetry(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
@@ -3911,7 +3977,15 @@ async function callOpenAIResponses(key, model, messages) {
       if (Array.isArray(m.content)) {
         const parts = m.content.map(b => {
           if (b.type === 'image') return { type: 'input_image', image_url: `data:${b.source.media_type};base64,${b.source.data}` };
-          if (b.type === 'document') return { type: 'input_text', text: `[Document PDF joint : ${b.title || 'fichier.pdf'}]` };
+          if (b.type === 'document' && b.source?.data) {
+            // Responses API supporte input_file avec base64
+            return { type: 'input_file', filename: b.title || 'document.pdf', file_data: `data:${b.source.media_type || 'application/pdf'};base64,${b.source.data}` };
+          }
+          if (b.type === 'document') {
+            // Fallback texte si pas de données
+            if (b._extractedText) return { type: 'input_text', text: `📄 Contenu de "${b.title || 'document.pdf'}" :\n\n${b._extractedText}` };
+            return { type: 'input_text', text: `[Fichier joint : ${b.title || 'document.pdf'} — non lisible]` };
+          }
           return { type: 'input_text', text: b.text || '' };
         });
         return { role: m.role === "assistant" ? "assistant" : "user", content: parts };
@@ -3968,7 +4042,10 @@ async function callGroq(key, model, messages) {
         if (Array.isArray(m.content)) {
           const parts = m.content.map(b => {
             if (b.type === 'image') return { type: 'image_url', image_url: { url: `data:${b.source.media_type};base64,${b.source.data}` } };
-            if (b.type === 'document') return { type: 'text', text: `[Document PDF joint : ${b.title || 'fichier.pdf'}]` };
+            if (b.type === 'document') {
+              if (b._extractedText) return { type: 'text', text: `📄 Contenu de "${b.title || 'document.pdf'}" :\n\n${b._extractedText}` };
+              return { type: 'text', text: `[Fichier joint : ${b.title || 'document.pdf'} — texte non extractible]` };
+            }
             return { type: 'text', text: b.text || '' };
           });
           return { role: m.role, content: parts };
