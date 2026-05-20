@@ -79,6 +79,17 @@
           "content": "Oui. D’après le contenu que vous avez fourni (capture + texte du document), il s’agit d’un **“Justificatif d’abonnement”** émis par **TotalEnergies Électricité et Gaz France**.\n\n## De quoi s’agit-il ?\n- Un document qui **atteste que des personnes sont titulaires d’un contrat d’énergie** (électricité et/ou gaz) à une **adresse donnée**.\n- Il peut aussi servir de **justificatif de domicile** (le document le mentionne explicitement).\n\n## Informations principales visibles\n- **Titulaires du contrat :** KRASSIMIR et STÉPHANIE KRASTEV  \n- **Adresse :** 1 RUE DE CRUCHEN, 31490 LEGUEVIN  \n- **Date d’attestation :** **17/05/2026**\n- **Depuis le :** **10/01/2022**\n- **Référence client :** 111873765  \n- **Référence PDL :** 23232850905671  \n- **N° de compteur :** 542  \n- **N° du justificatif :** ATT3109715938  \n\n## À quoi ça sert concrètement ?\n- Prouver que vous êtes **abonné(e)** à l’énergie à cette adresse (souvent demandé pour démarches administratives).\n- Le document donne aussi des **contacts** (service client TotalEnergies) et rappelle de contacter **Enedis** (électricité) et **GrDF** (gaz) en cas de panne.\n\nSi vous voulez, je peux aussi vous dire **quelles lignes copier** (nom, adresse, dates, références) selon l’usage que vous en faites (dossier CAF, préfecture, banque, etc.).",
           "provider": "OPENAI",
           "model": "gpt-5.4-nano"
+        },
+        {
+          "role": "user",
+          "content": "PEux tu analyser le fichier et me dire de quoi il s'agit",
+          "_text": "PEux tu analyser le fichier et me dire de quoi il s'agit"
+        },
+        {
+          "role": "assistant",
+          "content": "Oui, j'ai bien analysé le fichier. Voici ce qu'il contient :\n\n## Résumé du document\n\nIl s'agit d'un **Justificatif d'abonnement** (N° ATT3109715938) émis par **TotalEnergies Électricité et Gaz France**.\n\n### Informations principales\n\n| Élément | Détail |\n|---------|--------|\n| **Type** | Justificatif d'abonnement / Justificatif de domicile |\n| **Titulaires** | KRASSIMIR et STÉPHANIE KRASTEV |\n| **Adresse** | 1 RUE DE CRUCHEN, 31490 LEGUEVIN |\n| **Depuis le** | 10/01/2022 |\n| **Date du document** | 17/05/2026 |\n| **Référence client** | 111873765 |\n| **Référence PDL** | 23232850905671 |\n| **N° compteur** | 542 |\n\n### Utilité du document\n\n- Preuve d'**abonnement à l'énergie** (électricité et gaz)\n- Peut servir de **justificatif de domicile** pour des démarches administratives\n- Authentifiable en ligne via le lien TotalEnergies fourni\n\n### Contacts fournis\n\n- **Service client TotalEnergies :** 09.70.80.69.69 (lundi-samedi, 9h-19h)\n- **Gestionnaires réseau :** Enedis (électricité) et GrDF (gaz)\n\nAvez-vous besoin d'informations spécifiques sur ce document ?",
+          "provider": "ANTHROPIC",
+          "model": "claude-haiku-4-5"
         }
       ]
     },
@@ -941,7 +952,7 @@
     "showThinking": true,
     "webSearch": true
   },
-  "model": "gpt-5.4-nano",
-  "savedAt": "2026-05-20T19:41:28.225Z",
+  "model": "claude-haiku-4-5",
+  "savedAt": "2026-05-20T19:41:43.575Z",
   "version": 2
 }
