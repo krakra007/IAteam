@@ -68,6 +68,17 @@
           "content": "## Analyse du document demandé  \n\nJe ne peux malheureusement **pas ouvrir ou lire directement le fichier PDF** que vous avez joint (« Justificatif Gaz Total Energie.pdf »).  \nMon environnement ne me permet pas d’accéder au contenu des pièces jointes.\n\n### Que faire pour que je puisse vous aider ?\n\n1. **Copiez‑collez le texte** du PDF dans votre prochain message.  \n2. **Décrivez le contenu** du document (titres, sections, tableaux, mentions importantes, etc.).  \n\nUne fois que j’aurai le texte ou une description détaillée, je pourrai :\n\n- Identifier le type de document (facture, contrat, justificatif de domicile, etc.).  \n- Extraire les informations clés (nom du client, adresse, dates, références, montants, etc.).  \n- Vous fournir une synthèse structurée et professionnelle.  \n\nN’hésitez pas à me transmettre ces éléments ; je vous répondrai immédiatement avec l’analyse demandée.",
           "provider": "GROQ",
           "model": "openai/gpt-oss-120b"
+        },
+        {
+          "role": "user",
+          "content": "PEux tu analyser le fichier et me dire de quoi il s'agit",
+          "_text": "PEux tu analyser le fichier et me dire de quoi il s'agit"
+        },
+        {
+          "role": "assistant",
+          "content": "Oui. D’après le contenu que vous avez fourni (capture + texte du document), il s’agit d’un **“Justificatif d’abonnement”** émis par **TotalEnergies Électricité et Gaz France**.\n\n## De quoi s’agit-il ?\n- Un document qui **atteste que des personnes sont titulaires d’un contrat d’énergie** (électricité et/ou gaz) à une **adresse donnée**.\n- Il peut aussi servir de **justificatif de domicile** (le document le mentionne explicitement).\n\n## Informations principales visibles\n- **Titulaires du contrat :** KRASSIMIR et STÉPHANIE KRASTEV  \n- **Adresse :** 1 RUE DE CRUCHEN, 31490 LEGUEVIN  \n- **Date d’attestation :** **17/05/2026**\n- **Depuis le :** **10/01/2022**\n- **Référence client :** 111873765  \n- **Référence PDL :** 23232850905671  \n- **N° de compteur :** 542  \n- **N° du justificatif :** ATT3109715938  \n\n## À quoi ça sert concrètement ?\n- Prouver que vous êtes **abonné(e)** à l’énergie à cette adresse (souvent demandé pour démarches administratives).\n- Le document donne aussi des **contacts** (service client TotalEnergies) et rappelle de contacter **Enedis** (électricité) et **GrDF** (gaz) en cas de panne.\n\nSi vous voulez, je peux aussi vous dire **quelles lignes copier** (nom, adresse, dates, références) selon l’usage que vous en faites (dossier CAF, préfecture, banque, etc.).",
+          "provider": "OPENAI",
+          "model": "gpt-5.4-nano"
         }
       ]
     },
@@ -930,7 +941,7 @@
     "showThinking": true,
     "webSearch": true
   },
-  "model": "openai/gpt-oss-120b",
-  "savedAt": "2026-05-20T19:41:03.291Z",
+  "model": "gpt-5.4-nano",
+  "savedAt": "2026-05-20T19:41:28.225Z",
   "version": 2
 }
