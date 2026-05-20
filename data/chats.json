@@ -1,6 +1,12 @@
 {
   "chats": [
     {
+      "id": "091158b2-d666-4cf5-9c37-0c709f303588",
+      "title": "Nouveau chat",
+      "projectId": null,
+      "messages": []
+    },
+    {
       "id": "25fd7048-f1e8-439c-bc8a-10ae4918df3e",
       "title": "En partant du document joint, peux tu ",
       "projectId": "4a80a2bb-5a7f-49d2-b420-c20965d8067b",
@@ -44,6 +50,17 @@
         {
           "role": "assistant",
           "content": "❌ Erreur : Failed to fetch",
+          "provider": "ANTHROPIC",
+          "model": "claude-opus-4-6"
+        },
+        {
+          "role": "user",
+          "content": "Présenter les slides de façon plus claire et avec plus de détails dans un schéma de couelurs fond blanc et des jeux des couleurs en bleu.",
+          "_text": "Présenter les slides de façon plus claire et avec plus de détails dans un schéma de couelurs fond blanc et des jeux des couleurs en bleu."
+        },
+        {
+          "role": "assistant",
+          "content": "❌ Erreur : [Anthropic overloaded_error] Overloaded",
           "provider": "ANTHROPIC",
           "model": "claude-opus-4-6"
         }
@@ -1066,6 +1083,6 @@
     "webSearch": true
   },
   "model": "claude-opus-4-6",
-  "savedAt": "2026-05-20T15:33:03.686Z",
+  "savedAt": "2026-05-20T15:39:04.608Z",
   "version": 2
 }
