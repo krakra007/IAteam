@@ -57,6 +57,17 @@
           "content": "Je suis désolé, mais je ne peux pas ouvrir ni lire directement un fichier PDF attaché. Mon environnement ne me donne pas accès au contenu des fichiers joints.\n\nPour que je puisse vous dire de quoi il s'agit, merci de copier-coller le texte du document dans votre prochain message, ou de décrire précisément ce que vous y voyez.",
           "provider": "DEEPSEEK",
           "model": "deepseek-v4-pro"
+        },
+        {
+          "role": "user",
+          "content": "PEux tu analyser le fichier et me dire de quoi il s'agit",
+          "_text": "PEux tu analyser le fichier et me dire de quoi il s'agit"
+        },
+        {
+          "role": "assistant",
+          "content": "## Analyse du document demandé  \n\nJe ne peux malheureusement **pas ouvrir ou lire directement le fichier PDF** que vous avez joint (« Justificatif Gaz Total Energie.pdf »).  \nMon environnement ne me permet pas d’accéder au contenu des pièces jointes.\n\n### Que faire pour que je puisse vous aider ?\n\n1. **Copiez‑collez le texte** du PDF dans votre prochain message.  \n2. **Décrivez le contenu** du document (titres, sections, tableaux, mentions importantes, etc.).  \n\nUne fois que j’aurai le texte ou une description détaillée, je pourrai :\n\n- Identifier le type de document (facture, contrat, justificatif de domicile, etc.).  \n- Extraire les informations clés (nom du client, adresse, dates, références, montants, etc.).  \n- Vous fournir une synthèse structurée et professionnelle.  \n\nN’hésitez pas à me transmettre ces éléments ; je vous répondrai immédiatement avec l’analyse demandée.",
+          "provider": "GROQ",
+          "model": "openai/gpt-oss-120b"
         }
       ]
     },
@@ -919,7 +930,7 @@
     "showThinking": true,
     "webSearch": true
   },
-  "model": "deepseek-v4-pro",
-  "savedAt": "2026-05-20T19:40:52.591Z",
+  "model": "openai/gpt-oss-120b",
+  "savedAt": "2026-05-20T19:41:03.291Z",
   "version": 2
 }
