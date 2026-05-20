@@ -1,6 +1,12 @@
 {
   "chats": [
     {
+      "id": "cb457d67-b967-4a3e-b3df-d0a689cf76da",
+      "title": "Nouveau chat",
+      "projectId": null,
+      "messages": []
+    },
+    {
       "id": "2b10489f-d2ee-444d-9ca2-4d89594a8191",
       "title": "PEux tu analyser le fichier et me dire",
       "projectId": null,
@@ -27,6 +33,17 @@
         {
           "role": "assistant",
           "content": "Je suis désolé, mais je ne peux pas analyser directement le fichier PDF que vous avez mentionné (\"Justificatif Gaz Total Energie.pdf\"). En tant qu'IA, je n'ai pas la capacité d'ouvrir, de lire ou de traiter des documents joints ou des fichiers locaux.\n\nPour que je puisse vous aider, pourriez-vous copier-coller le texte pertinent du document ici, ou me décrire son contenu ?",
+          "provider": "GOOGLE GEMINI",
+          "model": "gemini-2.5-flash"
+        },
+        {
+          "role": "user",
+          "content": "PEux tu analyser le fichier et me dire de quoi il s'agit",
+          "_text": "PEux tu analyser le fichier et me dire de quoi il s'agit"
+        },
+        {
+          "role": "assistant",
+          "content": "D'après l'analyse du texte fourni, il s'agit d'un **Justificatif d'abonnement** émis par **TotalEnergies Électricité et Gaz France**.\n\nVoici les informations clés du document :\n\n*   **Type de document :** Justificatif d'abonnement.\n*   **Émetteur :** TotalEnergies Électricité et Gaz France.\n*   **Titulaires du contrat :** Monsieur et Madame KRASSIMIR et STÉPHANIE KRASTEV.\n*   **Service concerné :** Contrat de fourniture d'énergie (électricité et gaz).\n*   **Adresse du contrat :** 1 RUE DE CRUCHEN, 31490 LEGUEVIN.\n*   **Dates importantes :** Le document atteste que les titulaires sont abonnés depuis le 10/01/2022, et le document est daté du 17/05/2026.\n*   **Utilité :** Il est précisé que ce document peut valoir **justificatif de domicile**.\n*   **Références :**\n    *   Référence client : 111873765\n    *   Référence PDL (Point De Livraison) : 23232850905671\n    *   N° de compteur : 542\n    *   N° du justificatif d'abonnement : ATT3109715938\n*   **Informations complémentaires :** Le document fournit également des contacts pour le service client (téléphone, adresse postale, email) et pour les pannes réseau (Enedis pour l'électricité, GrDF pour le gaz), ainsi que des informations sur le service de déménagement. Un lien est fourni pour vérifier l'authenticité du justificatif en ligne.",
           "provider": "GOOGLE GEMINI",
           "model": "gemini-2.5-flash"
         }
@@ -892,6 +909,6 @@
     "webSearch": true
   },
   "model": "gemini-2.5-flash",
-  "savedAt": "2026-05-20T19:37:42.251Z",
+  "savedAt": "2026-05-20T19:40:29.662Z",
   "version": 2
 }
