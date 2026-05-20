@@ -46,6 +46,17 @@
           "content": "D'après l'analyse du texte fourni, il s'agit d'un **Justificatif d'abonnement** émis par **TotalEnergies Électricité et Gaz France**.\n\nVoici les informations clés du document :\n\n*   **Type de document :** Justificatif d'abonnement.\n*   **Émetteur :** TotalEnergies Électricité et Gaz France.\n*   **Titulaires du contrat :** Monsieur et Madame KRASSIMIR et STÉPHANIE KRASTEV.\n*   **Service concerné :** Contrat de fourniture d'énergie (électricité et gaz).\n*   **Adresse du contrat :** 1 RUE DE CRUCHEN, 31490 LEGUEVIN.\n*   **Dates importantes :** Le document atteste que les titulaires sont abonnés depuis le 10/01/2022, et le document est daté du 17/05/2026.\n*   **Utilité :** Il est précisé que ce document peut valoir **justificatif de domicile**.\n*   **Références :**\n    *   Référence client : 111873765\n    *   Référence PDL (Point De Livraison) : 23232850905671\n    *   N° de compteur : 542\n    *   N° du justificatif d'abonnement : ATT3109715938\n*   **Informations complémentaires :** Le document fournit également des contacts pour le service client (téléphone, adresse postale, email) et pour les pannes réseau (Enedis pour l'électricité, GrDF pour le gaz), ainsi que des informations sur le service de déménagement. Un lien est fourni pour vérifier l'authenticité du justificatif en ligne.",
           "provider": "GOOGLE GEMINI",
           "model": "gemini-2.5-flash"
+        },
+        {
+          "role": "user",
+          "content": "PEux tu analyser le fichier et me dire de quoi il s'agit",
+          "_text": "PEux tu analyser le fichier et me dire de quoi il s'agit"
+        },
+        {
+          "role": "assistant",
+          "content": "Je suis désolé, mais je ne peux pas ouvrir ni lire directement un fichier PDF attaché. Mon environnement ne me donne pas accès au contenu des fichiers joints.\n\nPour que je puisse vous dire de quoi il s'agit, merci de copier-coller le texte du document dans votre prochain message, ou de décrire précisément ce que vous y voyez.",
+          "provider": "DEEPSEEK",
+          "model": "deepseek-v4-pro"
         }
       ]
     },
@@ -908,7 +919,7 @@
     "showThinking": true,
     "webSearch": true
   },
-  "model": "gemini-2.5-flash",
-  "savedAt": "2026-05-20T19:40:29.662Z",
+  "model": "deepseek-v4-pro",
+  "savedAt": "2026-05-20T19:40:52.591Z",
   "version": 2
 }
