@@ -654,27 +654,9 @@
       ]
     },
     {
-      "id": "1f43f3e0-b025-4204-a9ba-0035acad9a1b",
-      "title": "quelle est la capitale de la Bulgarie",
-      "projectId": null,
-      "messages": [
-        {
-          "role": "user",
-          "content": "quelle est la capitale de la Bulgarie",
-          "_text": "quelle est la capitale de la Bulgarie"
-        },
-        {
-          "role": "assistant",
-          "content": "Sofia.",
-          "provider": "GROQ",
-          "model": "openai/gpt-oss-120b"
-        }
-      ]
-    },
-    {
       "id": "c9611f14-4434-4bf3-9114-2f59dc0a4f98",
       "title": "décire les enoles",
-      "projectId": null,
+      "projectId": "06407384-63b3-4383-b87c-6248d2482d0a",
       "messages": [
         {
           "role": "user",
@@ -688,18 +670,6 @@
           "model": "openai/gpt-oss-120b"
         }
       ]
-    },
-    {
-      "id": "04211e8b-0342-4d42-8625-72e52fd06dbf",
-      "title": "Nouveau chat",
-      "projectId": null,
-      "messages": []
-    },
-    {
-      "id": "93bb6e37-e91c-4331-9af1-0a2f67379fef",
-      "title": "Nouveau chat",
-      "projectId": null,
-      "messages": []
     },
     {
       "id": "08913a6e-36d9-4e75-94b4-d6d3c7e84de0",
@@ -780,18 +750,6 @@
           "model": "gemini-2.5-pro"
         }
       ]
-    },
-    {
-      "id": "0e049427-4e8e-46d9-b2a9-538ee121d921",
-      "title": "Nouveau chat",
-      "projectId": null,
-      "messages": []
-    },
-    {
-      "id": "3de1553d-29b1-4a82-b49a-5b4804681f03",
-      "title": "Nouveau chat",
-      "projectId": null,
-      "messages": []
     }
   ],
   "projects": [
@@ -884,6 +842,6 @@
     "webSearch": true
   },
   "model": "openai/gpt-oss-120b",
-  "savedAt": "2026-05-20T18:50:55.432Z",
+  "savedAt": "2026-05-20T18:53:25.552Z",
   "version": 2
 }
