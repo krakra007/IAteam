@@ -1,6 +1,12 @@
 {
   "chats": [
     {
+      "id": "fbfc7324-0032-41b6-8665-b286ec7971b1",
+      "title": "Nouveau chat",
+      "projectId": null,
+      "messages": []
+    },
+    {
       "id": "42c7c863-4bb8-4078-bab6-61d7bf8e67de",
       "title": "En utilisant le document joint, peux t",
       "projectId": "4a80a2bb-5a7f-49d2-b420-c20965d8067b",
@@ -29,6 +35,22 @@
           "content": "Je suis désolé, mais je ne peux pas accéder aux documents PDF joints. Mon interface ne me permet pas de lire ou d'extraire des informations directement d'un fichier que vous avez joint.\n\nPour que je puisse vous aider, pourriez-vous copier-coller le contenu pertinent du \"Guide du classement ML_V2_oct25.pdf\" directement dans notre conversation ? Une fois que vous aurez fourni le texte, je pourrai l'analyser et extraire les conditions que vous recherchez.",
           "provider": "GOOGLE GEMINI",
           "model": "gemini-2.5-flash"
+        },
+        {
+          "role": "user",
+          "content": "En utilisant le document joint, peux tu extraire avec précision les conditions qui permettent ou impose à un composant d'être classé comme étant spécialement conçu pour applications militaires. Dans un second temps formule les phrases négatives qui permette de déterminer pourquoi le composant n'est pas conçu spécialement pour applications miliaires.",
+          "_text": "En utilisant le document joint, peux tu extraire avec précision les conditions qui permettent ou impose à un composant d'être classé comme étant spécialement conçu pour applications militaires. Dans un second temps formule les phrases négatives qui permette de déterminer pourquoi le composant n'est pas conçu spécialement pour applications miliaires."
+        },
+        {
+          "role": "assistant",
+          "content": "Voici les conditions qui permettent ou imposent à un composant d'être classé comme étant spécialement conçu pour applications militaires, ainsi que les conditions pour lesquelles il ne l'est pas, basées sur le document fourni :\n\n## Conditions pour qu'un composant soit classé comme \"spécialement conçu pour l'usage militaire\"\n\nUn composant est considéré comme \"spécialement conçu pour l'usage militaire\" si :\n\n*   Il a été développé et fabriqué ou modifié spécifiquement pour une finalité militaire, en recherchant des caractéristiques et des performances spécifiques à l'emploi opérationnel.\n*   Ses fonctionnalités et performances répondent aux nécessités de l'emploi opérationnel par les forces.\n*   Sa nature indique qu'il s'agit d'une arme, d'un système d'armes, d'une munition dont l'emploi est réservé aux forces, ou d'un matériel destiné à mettre en œuvre des armes ou systèmes d'armes.\n*   Il est conçu ou modifié pour résister aux conditions particulières de l'emploi opérationnel, telles que les accélérations, les environnements vibratoires et les chocs, la tenue à des gammes de températures extrêmes, le camouflage visuel, sonore, magnétique ou infrarouge, le durcissement aux radiations ou à l'IEM, l'affichage de valeurs spécifiques aux matériels militaires, ou le maintien d'une capacité opérationnelle après dégradation.\n*   Il fournit une performance opérationnelle intrinsèque supérieure à des matériels comparables du marché civil et exclusive à l'emploi opérationnel (par exemple, en termes de vitesse de fonctionnement, précision de mesure, distance de mise en œuvre, portée opérationnelle, efficacité des destructions, protection directe ou contre-mesures).\n*   Sa définition technique lui permet d'être intégré **uniquement** sur une version militaire d'un matériel (même si ce matériel existe en versions civiles et militaires).\n*   Il est spécialement conçu pour l'intégration dans un système militaire spécifique (par exemple, un circuit imprimé pour un radar militaire).\n*   Tous les sous-systèmes, jusqu'aux composants des matériels complets désignés, suivent le classement de l'entrée s'ils sont spécialement conçus pour le matériel complet listé.\n*   Les critères déterminants sont les spécifications, les caractéristiques, les capacités ou les fonctions résultant de son développement qui le distinguent comme un bien adapté aux finalités militaires.\n\n## Conditions pour qu'un composant ne soit **pas** classé comme \"spécialement conçu pour l'usage militaire\"\n\nUn composant n'est **pas** considéré comme \"spécialement conçu pour l'usage militaire\" si :\n\n*   Sa définition technique lui permet d'être intégré à la fois sur une version militaire et sur une version civile d'un matériel.\n*   Il s'agit d'un composant mécanique, électrique, électronique ou optique simple qui répond à l'ensemble des critères suivants :\n    *   Il a une fonction unique.\n    *   Sa production ne requiert aucune technologie (telle que définie dans la liste commune des équipements militaires de l'Union européenne), ni équipement lui conférant des caractéristiques militaires spécifiques.\n*   Il est issu d'une gamme de produits ne figurant pas dans les listes nationales de contrôle des États membres, même s'il satisfait des normes militaires lorsqu'il est testé.\n*   Il peut être intégré sur une version militaire et sur une version civile d'un même type d'aéronef, et est attesté par un document de certification (par exemple, un roulement).",
+          "provider": "GOOGLE GEMINI",
+          "model": "gemini-2.5-flash"
+        },
+        {
+          "role": "user",
+          "content": "Partons d'une approche différente. Dans la première partie concernant les cause de classement en spécialement conçu pour application militaire, définissons des lignes de fuites qui permettrait d'etre utiliser pour définir pourquoi un composant n'est pas spécialement conçu pour applicatoin militaire. Le but est de formuler les phrases initiales de façon négative pour définir ces condititions de non classement.",
+          "_text": "Partons d'une approche différente. Dans la première partie concernant les cause de classement en spécialement conçu pour application militaire, définissons des lignes de fuites qui permettrait d'etre utiliser pour définir pourquoi un composant n'est pas spécialement conçu pour applicatoin militaire. Le but est de formuler les phrases initiales de façon négative pour définir ces condititions de non classement."
         }
       ]
     },
@@ -1155,6 +1177,6 @@
     "webSearch": true
   },
   "model": "gemini-2.5-flash",
-  "savedAt": "2026-05-20T16:13:05.703Z",
+  "savedAt": "2026-05-20T16:18:36.699Z",
   "version": 2
 }
