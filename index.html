@@ -1074,6 +1074,11 @@
   <!-- Extraction texte Office côté navigateur -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <!-- pdf.js — extraction texte des PDFs côté navigateur -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>if(typeof pdfjsLib!=='undefined')pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
+  <!-- JSZip — extraction PPTX propre -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <!-- docx.js — génération de Word .docx côté navigateur -->
   <script src="https://cdn.jsdelivr.net/npm/docx@8.2.4/build/index.umd.js"></script>
   <script>if(typeof docx==='undefined')document.write('<script src="https://unpkg.com/docx@8.2.4/build/index.umd.js"><\/script>')</script>
@@ -1365,18 +1370,19 @@ const MODEL_GROUPS = [
     ]
   },
   // ── Google Gemini ─────────────────────────────────
-  // Source : ai.google.dev/gemini-api/docs/models — mai 2026
+  // Source : ai.google.dev/gemini-api/docs/models — 20 mai 2026
+  // 🆕 gemini-3.5-flash lancé le 19 mai 2026 (Google I/O) — bat 3.1 Pro sur coding/agents
   // ⚠ gemini-2.0-flash DÉPRÉCIÉ (arrêt 1er juin 2026)
-  // ⚠ gemini-3.1-flash-lite-preview → GA le 25 mai 2026 → utiliser gemini-3.1-flash-lite
+  // ⚠ gemini-3.5-pro attendu en juin 2026 (pas encore dispo)
   {
     label: "Google Gemini",
     models: [
-      "gemini-3.1-pro-preview",   // dernier, raisonnement avancé, grounding
-      "gemini-3.1-flash-lite",    // GA 25 mai 2026 (ex-preview), ultra économique
-      "gemini-3-flash",           // Gemini 3, équilibre vitesse/capacité
-      "gemini-2.5-pro",           // stable production, thinking adaptatif
-      "gemini-2.5-flash",         // économique stable
-      "gemini-2.5-flash-lite"     // très économique stable
+      "gemini-3.5-flash",           // 🆕 I/O 2026, flagship agentic+coding, 289 tok/s, 1M ctx
+      "gemini-3.1-pro-preview",     // raisonnement avancé, grounding, 2M context
+      "gemini-3.1-flash-lite",      // GA 25 mai 2026, ultra économique
+      "gemini-2.5-pro",             // stable production, thinking adaptatif
+      "gemini-2.5-flash",           // économique stable
+      "gemini-2.5-flash-lite"       // très économique stable
     ]
   },
   // ── DeepSeek ──────────────────────────────────────
@@ -1547,12 +1553,12 @@ const SUPPORTED_TYPES = {
   'image/gif':  { icon: '🖼', label: 'GIF',  supported: true },
   'image/webp': { icon: '🖼', label: 'WebP', supported: true },
   'application/pdf': { icon: '📄', label: 'PDF', supported: true },
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': { icon: '📝', label: 'Word', supported: false },
-  'application/msword':  { icon: '📝', label: 'Word', supported: false },
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { icon: '📊', label: 'Excel', supported: false },
-  'application/vnd.ms-excel': { icon: '📊', label: 'Excel', supported: false },
-  'application/vnd.openxmlformats-officedocument.presentationml.presentation': { icon: '📑', label: 'PowerPoint', supported: false },
-  'application/vnd.ms-powerpoint': { icon: '📑', label: 'PowerPoint', supported: false },
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': { icon: '📝', label: 'Word', supported: true },
+  'application/msword':  { icon: '📝', label: 'Word', supported: true },
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { icon: '📊', label: 'Excel', supported: true },
+  'application/vnd.ms-excel': { icon: '📊', label: 'Excel', supported: true },
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation': { icon: '📑', label: 'PowerPoint', supported: true },
+  'application/vnd.ms-powerpoint': { icon: '📑', label: 'PowerPoint', supported: true },
   // Fichiers texte / code
   'text/html':       { icon: '🌐', label: 'HTML', supported: true, isText: true },
   'text/css':        { icon: '🎨', label: 'CSS',  supported: true, isText: true },
@@ -1613,33 +1619,74 @@ async function extractOfficeText(file) {
     return lines.join('\n').trim() || null;
   }
 
-  // .pptx → extraction XML brute des diapositives
-  if (ext === 'pptx' && typeof XLSX !== 'undefined') {
-    // SheetJS peut lire le ZIP, on extrait les fichiers slide*.xml
-    const zip = XLSX.zip.inflate ? null : null; // SheetJS expose CFB/ZIP
-    // Fallback : utiliser l'API native pour lire le ZIP pptx comme texte
+  // .pptx → JSZip (extraction propre des slides XML)
+  if (ext === 'pptx' && typeof JSZip !== 'undefined') {
     try {
-      const text = await new Promise((res, rej) => {
-        const r = new FileReader();
-        r.onload = () => {
-          // PPTX = ZIP, on cherche le XML dans les slides
-          const bytes = new Uint8Array(r.result);
-          const str   = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
-          const texts = [];
-          // Regex pour extraire les balises <a:t> des slides PowerPoint
-          const re = /<a:t[^>]*>([^<]+)<\/a:t>/g;
-          let m;
-          while ((m = re.exec(str)) !== null) texts.push(m[1]);
-          res(texts.join(' ').trim() || null);
-        };
-        r.onerror = rej;
-        r.readAsArrayBuffer(file);
-      });
-      return text;
+      const zip = await JSZip.loadAsync(ab);
+      const slideTexts = [];
+      // Les slides sont dans ppt/slides/slide1.xml, slide2.xml, etc.
+      const slideFiles = Object.keys(zip.files)
+        .filter(f => /^ppt\/slides\/slide\d+\.xml$/i.test(f))
+        .sort((a, b) => {
+          const na = parseInt(a.match(/slide(\d+)/)[1]);
+          const nb = parseInt(b.match(/slide(\d+)/)[1]);
+          return na - nb;
+        });
+      for (const slideFile of slideFiles) {
+        const xml = await zip.files[slideFile].async('text');
+        const texts = [];
+        const re = /<a:t[^>]*>([^<]+)<\/a:t>/g;
+        let m;
+        while ((m = re.exec(xml)) !== null) texts.push(m[1]);
+        if (texts.length) {
+          const slideNum = slideFile.match(/slide(\d+)/)[1];
+          slideTexts.push(`--- Diapositive ${slideNum} ---\n${texts.join(' ')}`);
+        }
+      }
+      return slideTexts.join('\n\n').trim() || null;
+    } catch(e) {
+      console.warn('[BrAInShift] ⚠ Extraction PPTX échouée:', e.message);
+      return null;
+    }
+  }
+
+  // .pptx fallback sans JSZip (regex brute, moins fiable)
+  if (ext === 'pptx') {
+    try {
+      const bytes = new Uint8Array(ab);
+      const str   = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+      const texts = [];
+      const re = /<a:t[^>]*>([^<]+)<\/a:t>/g;
+      let m;
+      while ((m = re.exec(str)) !== null) texts.push(m[1]);
+      return texts.join(' ').trim() || null;
     } catch(e) { return null; }
   }
 
   return null; // non extractible
+}
+
+/** Extrait le texte d'un PDF côté navigateur via pdf.js */
+async function extractPdfText(data) {
+  if (typeof pdfjsLib === 'undefined') return null;
+  try {
+    const binary = atob(data);
+    const bytes  = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+
+    const pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
+    const pages = [];
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      const text = content.items.map(item => item.str).join(' ');
+      if (text.trim()) pages.push(text.trim());
+    }
+    return pages.join('\n\n').trim() || null;
+  } catch (e) {
+    console.warn('[BrAInShift] ⚠ Extraction PDF échouée:', e.message);
+    return null;
+  }
 }
 
 el('fileInput').onchange = async e => {
@@ -1659,7 +1706,10 @@ el('fileInput').onchange = async e => {
 
     // Tentative d'extraction texte pour Office ou lecture directe pour fichiers texte
     let extractedText = null;
-    if (!isImage && !isPdf) {
+    if (isPdf) {
+      // Extraire le texte du PDF (fallback pour providers qui ne supportent pas les PDFs natifs)
+      try { extractedText = await extractPdfText(data); } catch(e) {}
+    } else if (!isImage) {
       // Fichiers texte/code : lecture directe
       const isTextFile = meta.isText || /\.(html?|css|js|jsx|tsx|ts|json|md|txt|csv|py|xml|yaml|yml|sql|sh|bat|log|ini|cfg|env|toml|rb|java|c|cpp|h|hpp|rs|go|php|swift|kt)$/i.test(file.name);
       if (isTextFile) {
@@ -1727,7 +1777,7 @@ function buildUserContent(text, files) {
       parts.push({ type: 'image', source: { type: 'base64', media_type: f.type, data: f.data } });
     } else if (f.isPdf) {
       parts.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: f.data },
-        title: f.name });
+        title: f.name, _extractedText: f.extractedText || null });
     } else if (f.extractedText) {
       // Fichier Office : texte extrait côté navigateur
       parts.push({ type: 'text', text: `[${f.icon} Contenu du fichier "${f.name}" :]\n\n${f.extractedText}` });
@@ -3624,6 +3674,36 @@ function buildRequestParams(model, apiType) {
 // APPELS API — BUG CORRIGÉ : routage multi-provider
 // ─────────────────────────────────────────────────
 
+// ─────────────────────────────────────────────────────────────
+// FETCH AVEC RETRY AUTOMATIQUE (429 / 529 / erreurs réseau)
+// Backoff exponentiel : 1s → 2s → 4s (3 tentatives max)
+// ─────────────────────────────────────────────────────────────
+async function fetchWithRetry(url, options, maxRetries = 3) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const r = await fetch(url, options);
+      // 429 = rate limit, 529 = overloaded, 503 = service unavailable
+      if ((r.status === 429 || r.status === 529 || r.status === 503) && attempt < maxRetries) {
+        const retryAfter = r.headers.get('retry-after');
+        const wait = retryAfter ? Number(retryAfter) * 1000 : Math.pow(2, attempt) * 1000;
+        console.warn(`[BrAInShift] ⏳ ${r.status} — retry ${attempt + 1}/${maxRetries} dans ${Math.round(wait/1000)}s…`);
+        await new Promise(ok => setTimeout(ok, wait));
+        continue;
+      }
+      return r;
+    } catch (e) {
+      // Erreur réseau (Failed to fetch) — retry sauf dernière tentative
+      if (attempt < maxRetries) {
+        const wait = Math.pow(2, attempt) * 1000;
+        console.warn(`[BrAInShift] ⏳ Erreur réseau — retry ${attempt + 1}/${maxRetries} dans ${Math.round(wait/1000)}s…`, e.message);
+        await new Promise(ok => setTimeout(ok, wait));
+        continue;
+      }
+      throw e;
+    }
+  }
+}
+
 /**
  * OpenAI & DeepSeek utilisent le format Chat Completions.
  * DeepSeek est compatible OpenAI mais sur son propre endpoint.
@@ -3639,7 +3719,11 @@ async function callOpenAICompatible(endpoint, key, model, messages, apiType) {
         if (Array.isArray(m.content)) {
           const parts = m.content.map(b => {
             if (b.type === 'image') return { type: 'image_url', image_url: { url: `data:${b.source.media_type};base64,${b.source.data}` } };
-            if (b.type === 'document') return { type: 'text', text: `[Document PDF joint : ${b.title || 'fichier.pdf'}]` };
+            if (b.type === 'document') {
+              // Chat Completions ne supporte pas les PDFs inline → texte extrait
+              if (b._extractedText) return { type: 'text', text: `📄 Contenu de "${b.title || 'document.pdf'}" :\n\n${b._extractedText}` };
+              return { type: 'text', text: `[Fichier joint : ${b.title || 'document.pdf'} — texte non extractible. Le contenu n'a pas pu être lu.]` };
+            }
             return { type: 'text', text: b.text || '' };
           });
           return { role: m.role, content: parts };
@@ -3656,7 +3740,7 @@ async function callOpenAICompatible(endpoint, key, model, messages, apiType) {
   // Note : web search n'est PAS supporté en Chat Completions standard.
   // Pour GPT-4.x avec web search → routé vers Responses API dans send().
 
-  const r = await fetch(endpoint, {
+  const r = await fetchWithRetry(endpoint, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -3685,28 +3769,12 @@ async function callAnthropic(key, model, messages) {
   const hasPdf = messages.some(m =>
     Array.isArray(m.content) && m.content.some(b => b.type === 'document')
   );
-  
   const body = {
     model,
     system: getActiveSystemPrompt(),
     messages: messages
       .filter(m => m.role === "user" || m.role === "assistant")
-      .map(m => {
-        if (Array.isArray(m.content)) {
-          const parts = m.content.map(b => {
-            // Nettoyage strict du schéma pour l'API Anthropic
-            if (b.type === 'document') {
-              return { type: 'document', source: b.source };
-            }
-            if (b.type === 'image') {
-              return { type: 'image', source: b.source };
-            }
-            return { type: 'text', text: b.text || '' };
-          });
-          return { role: m.role, content: parts };
-        }
-        return { role: m.role, content: m.content };
-      }),
+      .map(m => ({ role: m.role, content: m.content })),
     ...buildRequestParams(model, "anthropic")
   };
 
@@ -3732,7 +3800,6 @@ async function callAnthropic(key, model, messages) {
     "anthropic-version": "2023-06-01",
     "anthropic-dangerous-direct-browser-access": "true"
   };
-  
   // Beta headers pour fonctionnalités avancées
   const betas = [];
   if (hasPdf) betas.push("pdfs-2024-09-25");
@@ -3765,6 +3832,7 @@ async function callAnthropic(key, model, messages) {
   }
   return text || JSON.stringify(d);
 }
+
 /**
  * Google Gemini — endpoint compatible OpenAI disponible
  * via l'API generativelanguage.googleapis.com
@@ -3772,6 +3840,14 @@ async function callAnthropic(key, model, messages) {
 async function callGemini(key, model, messages) {
   // ── Si recherche web activée → API native Gemini (seule à supporter google_search)
   if (S.params.webSearch) {
+    return callGeminiNative(key, model, messages);
+  }
+
+  // ── Si documents PDF présents → API native (l'endpoint OpenAI-compat ne supporte pas les PDFs inline)
+  const hasDocs = messages.some(m =>
+    Array.isArray(m.content) && m.content.some(b => b.type === 'document' && b.source?.data)
+  );
+  if (hasDocs) {
     return callGeminiNative(key, model, messages);
   }
 
@@ -3786,7 +3862,10 @@ async function callGemini(key, model, messages) {
           if (Array.isArray(m.content)) {
             const parts = m.content.map(b => {
               if (b.type === 'image') return { type: 'image_url', image_url: { url: `data:${b.source.media_type};base64,${b.source.data}` } };
-              if (b.type === 'document') return { type: 'text', text: `[Document PDF joint : ${b.title || 'fichier.pdf'}]` };
+              if (b.type === 'document') {
+                if (b._extractedText) return { type: 'text', text: `📄 Contenu de "${b.title || 'document.pdf'}" :\n\n${b._extractedText}` };
+                return { type: 'text', text: `[Fichier joint : ${b.title || 'document.pdf'} — texte non extractible]` };
+              }
               return { type: 'text', text: b.text || '' };
             });
             return { role: m.role, content: parts };
@@ -3797,7 +3876,7 @@ async function callGemini(key, model, messages) {
     ...buildRequestParams(model, "gemini")
   };
 
-  const r = await fetch(
+  const r = await fetchWithRetry(
     "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
     {
       method: "POST",
@@ -3826,10 +3905,11 @@ async function callGeminiNative(key, model, messages) {
       for (const b of m.content) {
         if (b.type === 'image') {
           parts.push({ inline_data: { mime_type: b.source.media_type, data: b.source.data } });
+        } else if (b.type === 'document' && b.source?.data) {
+          // Envoyer le PDF réel en inline_data (supporté par Gemini)
+          parts.push({ inline_data: { mime_type: b.source.media_type || 'application/pdf', data: b.source.data } });
         } else if (b.type === 'text') {
           parts.push({ text: b.text || '' });
-        } else if (b.type === 'document') {
-          parts.push({ text: `[Document PDF joint : ${b.title || 'fichier.pdf'}]` });
         }
       }
     } else {
@@ -3841,14 +3921,15 @@ async function callGeminiNative(key, model, messages) {
   const body = {
     contents,
     systemInstruction: { parts: [{ text: getActiveSystemPrompt() }] },
-    tools: [{ google_search: {} }],
     generationConfig: {
       maxOutputTokens: S.params.max_tokens || 16128,
       temperature: Math.min(Number(S.params.temperature) || 1, 2)
     }
   };
+  // N'ajouter google_search que si la recherche web est activée
+  if (S.params.webSearch) body.tools = [{ google_search: {} }];
 
-  const r = await fetch(
+  const r = await fetchWithRetry(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
     {
       method: "POST",
@@ -3896,7 +3977,15 @@ async function callOpenAIResponses(key, model, messages) {
       if (Array.isArray(m.content)) {
         const parts = m.content.map(b => {
           if (b.type === 'image') return { type: 'input_image', image_url: `data:${b.source.media_type};base64,${b.source.data}` };
-          if (b.type === 'document') return { type: 'input_text', text: `[Document PDF joint : ${b.title || 'fichier.pdf'}]` };
+          if (b.type === 'document' && b.source?.data) {
+            // Responses API supporte input_file avec base64
+            return { type: 'input_file', filename: b.title || 'document.pdf', file_data: `data:${b.source.media_type || 'application/pdf'};base64,${b.source.data}` };
+          }
+          if (b.type === 'document') {
+            // Fallback texte si pas de données
+            if (b._extractedText) return { type: 'input_text', text: `📄 Contenu de "${b.title || 'document.pdf'}" :\n\n${b._extractedText}` };
+            return { type: 'input_text', text: `[Fichier joint : ${b.title || 'document.pdf'} — non lisible]` };
+          }
           return { type: 'input_text', text: b.text || '' };
         });
         return { role: m.role === "assistant" ? "assistant" : "user", content: parts };
@@ -3916,7 +4005,7 @@ async function callOpenAIResponses(key, model, messages) {
     body.tools = [{ type: "web_search", search_context_size: "medium" }];
   }
 
-  const r = await fetch("https://api.openai.com/v1/responses", {
+  const r = await fetchWithRetry("https://api.openai.com/v1/responses", {
     method: "POST",
     headers: {
       "Content-Type":  "application/json",
@@ -3953,7 +4042,10 @@ async function callGroq(key, model, messages) {
         if (Array.isArray(m.content)) {
           const parts = m.content.map(b => {
             if (b.type === 'image') return { type: 'image_url', image_url: { url: `data:${b.source.media_type};base64,${b.source.data}` } };
-            if (b.type === 'document') return { type: 'text', text: `[Document PDF joint : ${b.title || 'fichier.pdf'}]` };
+            if (b.type === 'document') {
+              if (b._extractedText) return { type: 'text', text: `📄 Contenu de "${b.title || 'document.pdf'}" :\n\n${b._extractedText}` };
+              return { type: 'text', text: `[Fichier joint : ${b.title || 'document.pdf'} — texte non extractible]` };
+            }
             return { type: 'text', text: b.text || '' };
           });
           return { role: m.role, content: parts };
@@ -3967,7 +4059,7 @@ async function callGroq(key, model, messages) {
     ...buildRequestParams(model, "groq")
   };
 
-  const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+  const r = await fetchWithRetry("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: {
       "Content-Type":  "application/json",
@@ -4062,7 +4154,29 @@ async function send() {
     c.messages.push({ role: "assistant", content: responseContent, provider, model: S.model });
 
   } catch (e) {
-    c.messages.push({ role: "assistant", content: "❌ Erreur : " + e.message, provider, model: S.model });
+    let errMsg = e.message;
+    // ── Diagnostic enrichi pour "Failed to fetch" ──
+    if (/failed to fetch|networkerror|load failed/i.test(errMsg)) {
+      const hints = [];
+      if (location.protocol === 'file:') hints.push('Le fichier est ouvert en file:// — certains navigateurs bloquent les requêtes API depuis cette origine. Essayez via un serveur local (ex: npx serve, python -m http.server, Live Server VS Code).');
+      else hints.push('La requête réseau a échoué avant d\'atteindre le serveur API.');
+      hints.push('Causes possibles : ad-blocker/extension navigateur, VPN, pare-feu, proxy entreprise, ou API temporairement injoignable.');
+
+      const providerUrls = {
+        "ANTHROPIC": "api.anthropic.com",
+        "OPENAI": "api.openai.com",
+        "DEEPSEEK": "api.deepseek.com",
+        "GOOGLE GEMINI": "generativelanguage.googleapis.com",
+        "GROQ": "api.groq.com"
+      };
+      const host = providerUrls[provider] || '?';
+      hints.push(`Vérifiez que ${host} est accessible (ouvrez https://${host} dans un nouvel onglet).`);
+      hints.push('Essayez aussi : désactivez temporairement vos extensions navigateur, ou testez dans un onglet de navigation privée.');
+
+      errMsg = `Échec réseau (${provider} — ${host})\n\n${hints.join('\n\n')}`;
+      console.error('[BrAInShift] ❌ Failed to fetch — diagnostic:', { provider, model: S.model, protocol: location.protocol, url: location.href, error: e });
+    }
+    c.messages.push({ role: "assistant", content: "❌ Erreur : " + errMsg, provider, model: S.model });
     showApiError(e.message);
   } finally {
     isWaitingResponse = false;
