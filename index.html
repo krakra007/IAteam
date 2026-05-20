@@ -3625,6 +3625,36 @@ function buildRequestParams(model, apiType) {
 // APPELS API — BUG CORRIGÉ : routage multi-provider
 // ─────────────────────────────────────────────────
 
+// ─────────────────────────────────────────────────────────────
+// FETCH AVEC RETRY AUTOMATIQUE (429 / 529 / erreurs réseau)
+// Backoff exponentiel : 1s → 2s → 4s (3 tentatives max)
+// ─────────────────────────────────────────────────────────────
+async function fetchWithRetry(url, options, maxRetries = 3) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const r = await fetch(url, options);
+      // 429 = rate limit, 529 = overloaded, 503 = service unavailable
+      if ((r.status === 429 || r.status === 529 || r.status === 503) && attempt < maxRetries) {
+        const retryAfter = r.headers.get('retry-after');
+        const wait = retryAfter ? Number(retryAfter) * 1000 : Math.pow(2, attempt) * 1000;
+        console.warn(`[BrAInShift] ⏳ ${r.status} — retry ${attempt + 1}/${maxRetries} dans ${Math.round(wait/1000)}s…`);
+        await new Promise(ok => setTimeout(ok, wait));
+        continue;
+      }
+      return r;
+    } catch (e) {
+      // Erreur réseau (Failed to fetch) — retry sauf dernière tentative
+      if (attempt < maxRetries) {
+        const wait = Math.pow(2, attempt) * 1000;
+        console.warn(`[BrAInShift] ⏳ Erreur réseau — retry ${attempt + 1}/${maxRetries} dans ${Math.round(wait/1000)}s…`, e.message);
+        await new Promise(ok => setTimeout(ok, wait));
+        continue;
+      }
+      throw e;
+    }
+  }
+}
+
 /**
  * OpenAI & DeepSeek utilisent le format Chat Completions.
  * DeepSeek est compatible OpenAI mais sur son propre endpoint.
@@ -3657,7 +3687,7 @@ async function callOpenAICompatible(endpoint, key, model, messages, apiType) {
   // Note : web search n'est PAS supporté en Chat Completions standard.
   // Pour GPT-4.x avec web search → routé vers Responses API dans send().
 
-  const r = await fetch(endpoint, {
+  const r = await fetchWithRetry(endpoint, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -3723,7 +3753,7 @@ async function callAnthropic(key, model, messages) {
   if (S.params.thinking && /sonnet|opus/i.test(model)) betas.push("interleaved-thinking-2025-05-14");
   if (betas.length) headers["anthropic-beta"] = betas.join(",");
 
-  const r = await fetch("https://api.anthropic.com/v1/messages", {
+  const r = await fetchWithRetry("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers,
     body: JSON.stringify(body)
@@ -3782,7 +3812,7 @@ async function callGemini(key, model, messages) {
     ...buildRequestParams(model, "gemini")
   };
 
-  const r = await fetch(
+  const r = await fetchWithRetry(
     "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
     {
       method: "POST",
@@ -3833,7 +3863,7 @@ async function callGeminiNative(key, model, messages) {
     }
   };
 
-  const r = await fetch(
+  const r = await fetchWithRetry(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
     {
       method: "POST",
@@ -3901,7 +3931,7 @@ async function callOpenAIResponses(key, model, messages) {
     body.tools = [{ type: "web_search", search_context_size: "medium" }];
   }
 
-  const r = await fetch("https://api.openai.com/v1/responses", {
+  const r = await fetchWithRetry("https://api.openai.com/v1/responses", {
     method: "POST",
     headers: {
       "Content-Type":  "application/json",
@@ -3952,7 +3982,7 @@ async function callGroq(key, model, messages) {
     ...buildRequestParams(model, "groq")
   };
 
-  const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+  const r = await fetchWithRetry("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: {
       "Content-Type":  "application/json",
