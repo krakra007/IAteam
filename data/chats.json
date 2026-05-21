@@ -1452,6 +1452,12 @@
       "title": "Nouveau chat",
       "projectId": null,
       "messages": []
+    },
+    {
+      "id": "da32872e-77ef-4f97-9bdd-4d5172d342b0",
+      "title": "Nouveau chat",
+      "projectId": null,
+      "messages": []
     }
   ],
   "projects": [
@@ -1552,6 +1558,6 @@
     "webSearch": true
   },
   "model": "gemini-2.5-flash",
-  "savedAt": "2026-05-21T20:16:26.452Z",
+  "savedAt": "2026-05-21T20:16:46.827Z",
   "version": 2
 }
