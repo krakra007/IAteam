@@ -53,7 +53,63 @@
     /* ── Main ── */
     .main{display:flex;flex-direction:column;height:100vh;overflow:hidden;flex:1;min-width:0}
 
-    /* ── Sidebar items ── */
+    /* ── Artifact Panel (type Claude Artifacts) ── */
+    .artifact-panel{
+      display:none;flex-direction:column;height:100vh;overflow:hidden;
+      background:#1a1a1e;border-left:1px solid var(--line);
+      width:45%;min-width:320px;max-width:70%;flex-shrink:0;
+      position:relative;
+    }
+    .artifact-panel.open{display:flex}
+    .artifact-resizer{
+      width:5px;background:transparent;cursor:col-resize;flex-shrink:0;
+      position:relative;z-index:10;transition:background .15s;display:none;
+    }
+    .artifact-resizer.open{display:block}
+    .artifact-resizer:hover,.artifact-resizer.active{background:var(--line)}
+    .artifact-resizer::after{
+      content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+      height:32px;width:3px;border-radius:3px;background:var(--muted2);opacity:.5;
+    }
+    .artifact-header{
+      display:flex;align-items:center;gap:8px;padding:10px 14px;
+      border-bottom:1px solid var(--line);background:#1e1e24;min-height:52px;flex-shrink:0;
+    }
+    .artifact-title{flex:1;font-size:13px;font-weight:600;color:#e0e2e8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .artifact-lang{font-size:10px;color:#8b8fa3;background:#2a2a32;border-radius:4px;padding:2px 7px;flex-shrink:0}
+    .artifact-btn{
+      border:0;background:transparent;color:#9ca3af;cursor:pointer;font-size:15px;
+      padding:4px 6px;border-radius:6px;transition:all .15s;flex-shrink:0;
+    }
+    .artifact-btn:hover{background:#ffffff15;color:#e0e2e8}
+    .artifact-btn.primary{background:#2563eb;color:#fff;font-size:12px;padding:5px 12px;font-weight:500}
+    .artifact-btn.primary:hover{background:#3b82f6}
+    .artifact-body{flex:1;overflow:hidden;position:relative;display:flex;flex-direction:column}
+    .artifact-body iframe{
+      flex:1;width:100%;border:0;background:#fff;border-radius:0;
+    }
+    .artifact-body .artifact-code{
+      flex:1;overflow:auto;padding:16px;margin:0;background:#0d1117;
+      font:13px/1.6 'Menlo','Consolas','Courier New',monospace;color:#c9d1d9;white-space:pre-wrap;word-break:break-word;
+    }
+    .artifact-tabs{
+      display:flex;border-bottom:1px solid var(--line);background:#1e1e24;flex-shrink:0;
+    }
+    .artifact-tab{
+      padding:7px 16px;font-size:12px;color:#8b8fa3;cursor:pointer;
+      border-bottom:2px solid transparent;transition:all .15s;
+    }
+    .artifact-tab:hover{color:#c0c4d0}
+    .artifact-tab.active{color:#e0e2e8;border-bottom-color:#3b82f6}
+    /* Bouton "Ouvrir en Artifact" sur les blocs de code */
+    .code-artifact-btn{
+      position:absolute;top:6px;right:52px;
+      background:#ffffff18;border:1px solid #ffffff20;color:#b0b8c8;
+      font-size:11px;padding:3px 8px;border-radius:5px;cursor:pointer;
+      opacity:0;transition:opacity .15s;z-index:2;display:flex;align-items:center;gap:4px;
+    }
+    pre:hover .code-artifact-btn{opacity:1}
+    .code-artifact-btn:hover{background:#ffffff30;color:#fff}
     .group-title{display:flex;justify-content:space-between;align-items:center;margin:10px 6px 6px;font-size:12px;color:var(--muted)}
     .separator{border-top:1px solid #2c2c2c;margin:10px 6px}
     .item{display:flex;align-items:center;gap:6px;padding:7px 8px;border-radius:8px;cursor:pointer;min-height:36px}
@@ -1305,6 +1361,28 @@ Exemple pour la chimie :
       </div></div>
     </div>
   </section>
+
+  <!-- ── Artifact Panel (type Claude Artifacts) ── -->
+  <div class="artifact-resizer" id="artifactResizer"></div>
+  <div class="artifact-panel" id="artifactPanel">
+    <div class="artifact-header">
+      <span class="artifact-title" id="artifactTitle">Artifact</span>
+      <span class="artifact-lang" id="artifactLang">HTML</span>
+      <button class="artifact-btn" id="artifactCopyBtn" title="Copier le code">📋</button>
+      <button class="artifact-btn primary" id="artifactDownloadBtn" title="Télécharger">⬇ Télécharger</button>
+      <button class="artifact-btn" id="artifactFullscreenBtn" title="Plein écran">⛶</button>
+      <button class="artifact-btn" id="artifactCloseBtn" title="Fermer">✕</button>
+    </div>
+    <div class="artifact-tabs">
+      <div class="artifact-tab active" data-tab="preview" id="artifactTabPreview">Aperçu</div>
+      <div class="artifact-tab" data-tab="code" id="artifactTabCode">Code</div>
+    </div>
+    <div class="artifact-body" id="artifactBody">
+      <iframe id="artifactIframe" sandbox="allow-scripts allow-same-origin allow-modals allow-forms allow-popups" title="Artifact preview"></iframe>
+      <pre class="artifact-code" id="artifactCode" style="display:none"></pre>
+    </div>
+  </div>
+
   <div class="color-picker-popup" id="colorPickerPopup"></div>
 
   <!-- Modal création de projet -->
@@ -1473,19 +1551,20 @@ function nextProjectColor(){
 // Injecté dans chaque appel API pour interdire le HTML
 // et imposer des conventions de formatage professionnel.
 // ─────────────────────────────────────────────────────────────
-const SYSTEM_PROMPT = `Tu es un assistant IA expert. RÈGLES ABSOLUES — tu dois les respecter sans exception :
+const SYSTEM_PROMPT = `Tu es un assistant IA expert sur la plateforme BrAInShift. RÈGLES ABSOLUES — tu dois les respecter sans exception :
 
 1. JAMAIS de balises HTML dans tes réponses (<span>, <sup>, <sub>, <div>, <p>, <br>, etc.)
 2. JAMAIS de classes CSS (chem-eq, math-block, etc.)
 3. Pour les équations chimiques et mathématiques : utilise EXCLUSIVEMENT la notation LaTeX
-   - Bloc display : $$CH_3Br + OH^- \rightarrow CH_3OH + Br^-$$
+   - Bloc display : $$CH_3Br + OH^- \\rightarrow CH_3OH + Br^-$$
    - Inline : la constante $k$ dépend de $T$
    - Indices : $H_{2}O$, $CH_{3}$
    - Exposants : $OH^{-}$, $Fe^{3+}$
    - Plusieurs lignes dans un même bloc : OBLIGATOIREMENT $$\\begin{aligned} ... \\\\ ... \\end{aligned}$$ (ne JAMAIS écrire \\\\ ou & en dehors d'un environnement aligned/array/cases)
    - À l'intérieur de $...$ et $$...$$ : toujours le trait d'union ASCII "-" (jamais "–" ni "—")
 4. Structure : titres ##, listes avec -, termes importants en **gras**
-5. Sois précis, structuré et professionnel`;
+5. Sois précis, structuré et professionnel
+6. Quand on te demande de produire un document professionnel, commence directement par le contenu (titre, sections) sans préambule inutile.`;
 
 
 // ─────────────────────────────────────────────────
@@ -1680,7 +1759,7 @@ async function extractPdfText(data) {
       const page = await pdf.getPage(i);
       const content = await page.getTextContent();
       const text = content.items.map(item => item.str).join(' ');
-      if (text.trim()) pages.push(text.trim());
+      if (text.trim()) pages.push(`--- Page ${i}/${pdf.numPages} ---\n${text.trim()}`);
     }
     return pages.join('\n\n').trim() || null;
   } catch (e) {
@@ -1693,8 +1772,9 @@ el('fileInput').onchange = async e => {
   const files = [...e.target.files];
   for (const file of files) {
     const meta = SUPPORTED_TYPES[file.type] || guessMetaFromName(file.name);
-    const isImage = file.type.startsWith('image/');
-    const isPdf   = file.type === 'application/pdf';
+    const ext  = (file.name || '').split('.').pop().toLowerCase();
+    const isImage = file.type.startsWith('image/') || /^(jpg|jpeg|png|gif|webp|bmp|svg)$/.test(ext);
+    const isPdf   = file.type === 'application/pdf' || ext === 'pdf';
 
     // Lire en base64 (pour images et PDF)
     const data = await new Promise((res, rej) => {
@@ -1774,7 +1854,9 @@ function buildUserContent(text, files) {
   const parts = [];
   for (const f of files) {
     if (f.isImage) {
-      parts.push({ type: 'image', source: { type: 'base64', media_type: f.type, data: f.data } });
+      // Fallback MIME si le navigateur n'a pas détecté le type
+      const imgMime = f.type && f.type.startsWith('image/') ? f.type : 'image/png';
+      parts.push({ type: 'image', source: { type: 'base64', media_type: imgMime, data: f.data } });
     } else if (f.isPdf) {
       parts.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: f.data },
         title: f.name, _extractedText: f.extractedText || null });
@@ -1804,15 +1886,38 @@ PROVIDERS.forEach(p => { if (!(p in apiKeysByProvider)) apiKeysByProvider[p] = "
 // SAVE
 // ─────────────────────────────────────────────────
 function save() {
-  localStorage.setItem("projects",           JSON.stringify(S.projects));
-  localStorage.setItem("profiles",        JSON.stringify(S.profiles));
-  localStorage.setItem("activeProfiles",  JSON.stringify(S.activeProfiles || []));
-  localStorage.setItem("chats",              JSON.stringify(S.chats));
-  localStorage.setItem("activeChat",         S.activeChat    || "");
-  localStorage.setItem("activeProject",      S.activeProject || "");
-  localStorage.setItem("model",              S.model);
-  localStorage.setItem("params",             JSON.stringify(S.params));
-  localStorage.setItem("apiKeysByProvider",  JSON.stringify(apiKeysByProvider));
+  try {
+    // TOUJOURS sérialiser les chats SANS données binaires volumineuses
+    // Ceci évite : blocage du thread principal, localStorage saturé, sync GitHub qui explose
+    const lightChats = S.chats.map(chat => ({
+      ...chat,
+      messages: chat.messages.map(m => {
+        if (!Array.isArray(m.content)) return m;
+        return { ...m, content: m.content.map(b => {
+          if ((b.type === 'document' || b.type === 'image') && b.source?.data?.length > 50000) {
+            return { type: 'text', text: `[Fichier joint : ${b.title || b.type} — contenu envoyé au modèle, non stocké]` };
+          }
+          return b;
+        })};
+      })
+    }));
+    localStorage.setItem("projects",           JSON.stringify(S.projects));
+    localStorage.setItem("profiles",        JSON.stringify(S.profiles));
+    localStorage.setItem("activeProfiles",  JSON.stringify(S.activeProfiles || []));
+    localStorage.setItem("chats",              JSON.stringify(lightChats));
+    localStorage.setItem("activeChat",         S.activeChat    || "");
+    localStorage.setItem("activeProject",      S.activeProject || "");
+    localStorage.setItem("model",              S.model);
+    localStorage.setItem("params",             JSON.stringify(S.params));
+    localStorage.setItem("apiKeysByProvider",  JSON.stringify(apiKeysByProvider));
+  } catch (e) {
+    console.warn('[BrAInShift] ⚠ Sauvegarde échouée:', e.message);
+    try {
+      localStorage.setItem("activeChat",        S.activeChat    || "");
+      localStorage.setItem("model",             S.model);
+      localStorage.setItem("params",            JSON.stringify(S.params));
+    } catch(e2) {}
+  }
 }
 
 const activeChat = () => S.chats.find(c => c.id === S.activeChat);
@@ -2564,11 +2669,22 @@ function formatAssistantContent(text) {
 
   let html = marked.parse(text, { gfm: true, breaks: false });
 
-  // Boutons copier sur les blocs de code
-  html = html.replace(/<pre><code class="language-(\w+)">/g, (_, l) =>
-    `<div class="code-header"><span>${l}</span><button class="copy-code-btn" onclick="copyCodeBlock(this)">Copier</button></div><pre><code class="language-${l}">`);
+  // Boutons copier sur les blocs de code + bouton Artifact pour HTML/SVG/CSS
+  html = html.replace(/<pre><code class="language-(\w+)">/g, (_, l) => {
+    const isMarkdown = /^(markdown|md)$/i.test(l);
+    const isRenderable = /^(html|svg|htm|css|javascript|js|jsx|tsx|typescript|react|vue|mermaid)$/i.test(l);
+    let artifactBtn;
+    if (isMarkdown) {
+      artifactBtn = `<button class="copy-code-btn" onclick="openArtifactFromBtn(this, '${l}')" title="Ouvrir comme document professionnel" style="background:#2563eb33;border-color:#2563eb55;color:#93b4f4">📄 Document</button>`;
+    } else if (isRenderable) {
+      artifactBtn = `<button class="copy-code-btn" onclick="openArtifactFromBtn(this, '${l}')" title="Ouvrir dans le panneau Artifact">✦ Artifact</button>`;
+    } else {
+      artifactBtn = `<button class="copy-code-btn" onclick="openArtifactFromBtn(this, '${l}')" title="Ouvrir dans le panneau Artifact">✦ Voir</button>`;
+    }
+    return `<div class="code-header"><span>${l}</span><div style="display:flex;gap:6px">${artifactBtn}<button class="copy-code-btn" onclick="copyCodeBlock(this)">Copier</button></div></div><pre><code class="language-${l}">`;
+  });
   html = html.replace(/<pre><code>/g,
-    '<div class="code-header"><span>code</span><button class="copy-code-btn" onclick="copyCodeBlock(this)">Copier</button></div><pre><code>');
+    '<div class="code-header"><span>code</span><div style="display:flex;gap:6px"><button class="copy-code-btn" onclick="copyCodeBlock(this)">Copier</button></div></div><pre><code>');
 
   // Highlight.js
   if (typeof hljs !== 'undefined') {
@@ -2596,6 +2712,10 @@ function formatAssistantContent(text) {
     // Aperçu : 8 premières lignes
     const preview = raw.split('\n').slice(0, 8).join('\n');
 
+    const isMdBlock = /^(markdown|md)$/i.test(lang.toLowerCase());
+    const artifactLabel = isMdBlock ? '📄 Document' : '✦ Artifact';
+    const artifactStyle = isMdBlock ? ' style="background:#2563eb33;border-color:#2563eb55;color:#93b4f4"' : '';
+
     // Créer le bloc replié
     const wrapper = document.createElement('div');
     wrapper.className = 'collapsed-code';
@@ -2603,6 +2723,7 @@ function formatAssistantContent(text) {
       <div class="code-header">
         <span>${lang} · ${lineCount} lignes</span>
         <div style="display:flex;gap:6px">
+          <button class="copy-code-btn"${artifactStyle} onclick="openArtifactFromBtn(this, '${lang}')" title="${isMdBlock ? 'Ouvrir comme document professionnel' : 'Ouvrir dans le panneau Artifact'}">${artifactLabel}</button>
           <button class="copy-code-btn" onclick="this.closest('.collapsed-code').querySelector('details').open=!this.closest('.collapsed-code').querySelector('details').open;this.textContent=this.closest('.collapsed-code').querySelector('details').open?'Replier':'Déplier'">Déplier</button>
           <button class="copy-code-btn" onclick="copyCodeBlock(this)">Copier</button>
           <button class="copy-code-btn" onclick="downloadCodeBlock(this, '${filename}')">⬇ ${filename}</button>
@@ -2655,6 +2776,290 @@ function downloadFile(content, filename, mimeType) {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
+
+// ═══════════════════════════════════════════════════════════
+// PANNEAU ARTIFACT (type Claude Artifacts)
+// ═══════════════════════════════════════════════════════════
+
+const artifactPanel    = el('artifactPanel');
+const artifactResizer  = el('artifactResizer');
+const artifactIframe   = el('artifactIframe');
+const artifactCodeEl   = el('artifactCode');
+const artifactTitleEl  = el('artifactTitle');
+const artifactLangEl   = el('artifactLang');
+const artifactTabPreview = el('artifactTabPreview');
+const artifactTabCode    = el('artifactTabCode');
+let currentArtifact = { code: '', lang: '', title: '' };
+let artifactView = 'preview'; // 'preview' | 'code'
+
+/** Ouvre le panneau Artifact avec du code */
+function openArtifact(code, lang, title) {
+  currentArtifact = { code, lang: lang || 'code', title: title || `Artifact ${lang || ''}` };
+  artifactTitleEl.textContent = currentArtifact.title;
+  artifactLangEl.textContent  = currentArtifact.lang.toUpperCase();
+
+  // Code source (onglet Code)
+  if (typeof hljs !== 'undefined') {
+    const langClass = lang && hljs.getLanguage(lang) ? lang : 'plaintext';
+    artifactCodeEl.innerHTML = hljs.highlight(code, { language: langClass }).value;
+  } else {
+    artifactCodeEl.textContent = code;
+  }
+
+  // Preview (onglet Aperçu)
+  const isRenderable = /^(html|svg|htm)$/i.test(lang);
+  if (isRenderable) {
+    artifactIframe.srcdoc = code;
+    artifactTabPreview.style.display = '';
+    setArtifactView('preview');
+  } else if (/^(css)$/i.test(lang)) {
+    artifactIframe.srcdoc = `<!DOCTYPE html><html><head><style>${code}</style></head><body><div style="padding:20px;font-family:system-ui;color:#333"><h1>CSS Preview</h1><p>Le CSS est appliqué à cette page.</p><button>Bouton test</button><input placeholder="Input test"><ul><li>Item 1</li><li>Item 2</li></ul></div></body></html>`;
+    artifactTabPreview.style.display = '';
+    setArtifactView('preview');
+  } else if (/^(markdown|md)$/i.test(lang)) {
+    const rendered = typeof marked !== 'undefined' ? marked.parse(code) : code.replace(/\n/g, '<br>');
+    artifactIframe.srcdoc = `<!DOCTYPE html><html><head><style>body{font-family:system-ui;padding:24px;line-height:1.6;color:#1a1a1a;max-width:680px}pre{background:#f4f4f4;padding:12px;border-radius:6px;overflow-x:auto}code{background:#f0f0f0;padding:2px 5px;border-radius:3px}blockquote{border-left:3px solid #ccc;margin-left:0;padding-left:16px;color:#555}img{max-width:100%}table{border-collapse:collapse}th,td{border:1px solid #ddd;padding:8px}</style></head><body>${rendered}</body></html>`;
+    artifactTabPreview.style.display = '';
+    setArtifactView('preview');
+  } else if (/^(mermaid)$/i.test(lang)) {
+    artifactIframe.srcdoc = `<!DOCTYPE html><html><head><script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"><\/script></head><body><pre class="mermaid">${code.replace(/</g,'&lt;')}</pre><script>mermaid.initialize({startOnLoad:true,theme:'default'});<\/script></body></html>`;
+    artifactTabPreview.style.display = '';
+    setArtifactView('preview');
+  } else {
+    // Pas de preview pour les langages non rendus
+    artifactTabPreview.style.display = 'none';
+    setArtifactView('code');
+  }
+
+  // Reset du bouton télécharger (mode code, pas document)
+  el('artifactDownloadBtn').textContent = '⬇ Télécharger';
+  el('artifactDownloadBtn').onclick = defaultArtifactDownload;
+
+  artifactPanel.classList.add('open');
+  artifactResizer.classList.add('open');
+}
+
+/** Ferme le panneau */
+function closeArtifact() {
+  artifactPanel.classList.remove('open');
+  artifactResizer.classList.remove('open');
+  artifactIframe.srcdoc = '';
+  // Reset du bouton télécharger
+  el('artifactDownloadBtn').textContent = '⬇ Télécharger';
+  el('artifactDownloadBtn').onclick = defaultArtifactDownload;
+}
+
+/** Téléchargement par défaut (code source) */
+function defaultArtifactDownload() {
+  const extMap = {
+    html:'html', htm:'html', svg:'svg', css:'css', javascript:'js', js:'js',
+    jsx:'jsx', tsx:'tsx', typescript:'ts', python:'py', json:'json',
+    markdown:'md', md:'md', mermaid:'mmd', sql:'sql', bash:'sh', shell:'sh',
+    yaml:'yml', xml:'xml', react:'jsx', vue:'vue', code:'txt', document:'md'
+  };
+  const ext = extMap[currentArtifact.lang.toLowerCase()] || 'txt';
+  const filename = (currentArtifact.title.replace(/[^a-zA-Z0-9àâäéèêëïîôùûüÿç _-]/g, '').trim() || 'artifact') + '.' + ext;
+  downloadFile(currentArtifact.code, filename, 'text/plain');
+}
+
+/** Change l'onglet actif */
+function setArtifactView(view) {
+  artifactView = view;
+  if (view === 'preview') {
+    artifactIframe.style.display = '';
+    artifactCodeEl.style.display = 'none';
+    artifactTabPreview.classList.add('active');
+    artifactTabCode.classList.remove('active');
+  } else {
+    artifactIframe.style.display = 'none';
+    artifactCodeEl.style.display = '';
+    artifactTabPreview.classList.remove('active');
+    artifactTabCode.classList.add('active');
+  }
+}
+
+/** Extraire le code d'un bouton dans un code-header ou collapsed-code */
+function getCodeFromBtn(btn) {
+  const collapsed = btn.closest('.collapsed-code');
+  if (collapsed) {
+    const detailsCode = collapsed.querySelector('details code');
+    if (detailsCode) return detailsCode.textContent;
+    const preCode = collapsed.querySelector('pre code');
+    if (preCode) return preCode.textContent;
+  }
+  const header = btn.closest('.code-header');
+  if (header) {
+    const pre = header.nextElementSibling;
+    if (pre?.tagName === 'PRE') return pre.querySelector('code')?.textContent || pre.textContent;
+  }
+  return '';
+}
+
+/** Ouvrir un Artifact depuis un bouton dans un code-header */
+function openArtifactFromBtn(btn, lang) {
+  const code = getCodeFromBtn(btn);
+  if (!code) return;
+
+  // Markdown → ouvrir en mode document professionnel
+  if (/^(markdown|md)$/i.test(lang)) {
+    const titleMatch = code.match(/^#\s+(.+)/m) || code.match(/^##\s+(.+)/m);
+    const title = titleMatch ? titleMatch[1].replace(/[*_#]/g, '').trim() : 'Document';
+    return openDocumentArtifact(code, title);
+  }
+
+  // Autres langages → artifact code classique
+  let title = 'Artifact';
+  const titleMatch = code.match(/<title>([^<]+)<\/title>/i);
+  if (titleMatch) title = titleMatch[1];
+  else {
+    const h1Match = code.match(/<h1[^>]*>([^<]+)<\/h1>/i);
+    if (h1Match) title = h1Match[1];
+    else {
+      const commentMatch = code.match(/^(?:\/\/|#|\/\*|<!--)\s*(.+?)(?:\s*-->|\s*\*\/)?$/m);
+      if (commentMatch) title = commentMatch[1].slice(0, 50);
+    }
+  }
+  openArtifact(code, lang, title);
+}
+
+// ── Boutons du panneau ──
+el('artifactCloseBtn').onclick = closeArtifact;
+
+el('artifactCopyBtn').onclick = () => {
+  navigator.clipboard.writeText(currentArtifact.code);
+  el('artifactCopyBtn').textContent = '✓';
+  setTimeout(() => el('artifactCopyBtn').textContent = '📋', 2000);
+};
+
+el('artifactDownloadBtn').onclick = defaultArtifactDownload;
+
+el('artifactFullscreenBtn').onclick = () => {
+  if (artifactIframe.requestFullscreen) artifactIframe.requestFullscreen();
+  else if (artifactIframe.webkitRequestFullscreen) artifactIframe.webkitRequestFullscreen();
+};
+
+/** Ouvre le panneau Artifact en mode "document professionnel" (Markdown → HTML pro + .docx) */
+function openDocumentArtifact(markdown, title) {
+  const docTitle = title || 'Document';
+  currentArtifact = { code: markdown, lang: 'document', title: docTitle, isDocument: true };
+  artifactTitleEl.textContent = '📄 ' + docTitle;
+  artifactLangEl.textContent  = 'DOCUMENT';
+
+  // Rendu Markdown → HTML professionnel
+  const rendered = typeof marked !== 'undefined' ? marked.parse(markdown, { gfm: true, breaks: false }) : markdown.replace(/\n/g, '<br>');
+
+  const docHtml = `<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8"><title>${docTitle}</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', -apple-system, system-ui, sans-serif;
+    max-width: 780px; margin: 0 auto; padding: 48px 40px 60px;
+    line-height: 1.7; color: #1a1a2e; background: #fff;
+    font-size: 15px;
+  }
+  /* En-tête document */
+  body::before {
+    content: ''; display: block; height: 4px; margin-bottom: 32px;
+    background: linear-gradient(90deg, #4a9fd4, #7b68d4, #d46abf);
+    border-radius: 2px;
+  }
+  h1 { font-size: 26px; font-weight: 700; color: #0f172a; margin: 0 0 8px; line-height: 1.3; }
+  h2 { font-size: 20px; font-weight: 600; color: #1e293b; margin: 28px 0 12px;
+       padding-bottom: 6px; border-bottom: 2px solid #e2e8f0; }
+  h3 { font-size: 17px; font-weight: 600; color: #334155; margin: 22px 0 8px; }
+  h4 { font-size: 15px; font-weight: 600; color: #475569; margin: 18px 0 6px; }
+  p { margin: 0 0 14px; }
+  strong { font-weight: 600; color: #0f172a; }
+  em { color: #475569; }
+  ul, ol { margin: 8px 0 16px 24px; }
+  li { margin-bottom: 6px; line-height: 1.6; }
+  li::marker { color: #4a9fd4; }
+  blockquote {
+    border-left: 3px solid #4a9fd4; margin: 16px 0; padding: 12px 20px;
+    background: #f0f7ff; border-radius: 0 6px 6px 0; color: #334155;
+    font-style: italic;
+  }
+  blockquote p:last-child { margin-bottom: 0; }
+  code {
+    background: #f1f5f9; padding: 2px 6px; border-radius: 4px;
+    font-family: 'Menlo', monospace; font-size: 13px; color: #7c3aed;
+  }
+  pre {
+    background: #1e293b; color: #e2e8f0; padding: 16px 20px;
+    border-radius: 8px; overflow-x: auto; margin: 14px 0 18px;
+    font-family: 'Menlo', monospace; font-size: 13px; line-height: 1.5;
+  }
+  pre code { background: transparent; color: inherit; padding: 0; }
+  table {
+    width: 100%; border-collapse: collapse; margin: 14px 0 20px;
+    font-size: 14px;
+  }
+  th {
+    background: #f1f5f9; font-weight: 600; text-align: left;
+    padding: 10px 14px; border: 1px solid #e2e8f0; color: #1e293b;
+  }
+  td { padding: 9px 14px; border: 1px solid #e2e8f0; }
+  tr:nth-child(even) { background: #f8fafc; }
+  hr { border: none; border-top: 1px solid #e2e8f0; margin: 24px 0; }
+  a { color: #4a9fd4; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  /* Footer */
+  .doc-footer {
+    margin-top: 40px; padding-top: 16px; border-top: 1px solid #e2e8f0;
+    font-size: 11px; color: #94a3b8; text-align: center;
+  }
+</style></head>
+<body>
+${rendered}
+<div class="doc-footer">Généré par BrAInShift · ${new Date().toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric' })}</div>
+</body></html>`;
+
+  artifactIframe.srcdoc = docHtml;
+  artifactCodeEl.textContent = markdown;
+
+  // Afficher les onglets + ajouter un bouton .docx dans le header si pas déjà présent
+  artifactTabPreview.style.display = '';
+  setArtifactView('preview');
+
+  // Modifier le bouton télécharger pour proposer le .docx
+  el('artifactDownloadBtn').textContent = '⬇ Word (.docx)';
+  el('artifactDownloadBtn').onclick = () => {
+    generateDocxFromMarkdown(markdown, docTitle);
+  };
+
+  artifactPanel.classList.add('open');
+  artifactResizer.classList.add('open');
+}
+
+// ── Onglets ──
+artifactTabPreview.onclick = () => setArtifactView('preview');
+artifactTabCode.onclick    = () => setArtifactView('code');
+
+// ── Resizer Artifact ──
+(function initArtifactResizer() {
+  let startX, startW;
+  artifactResizer.addEventListener('mousedown', e => {
+    e.preventDefault();
+    startX = e.clientX;
+    startW = artifactPanel.getBoundingClientRect().width;
+    artifactResizer.classList.add('active');
+
+    const onMove = ev => {
+      const delta = startX - ev.clientX; // inverse : glisser à gauche = agrandir
+      const newW = Math.min(Math.max(startW + delta, 320), window.innerWidth * 0.7);
+      artifactPanel.style.width = newW + 'px';
+    };
+    const onUp = () => {
+      artifactResizer.classList.remove('active');
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+})();
 
 // ═══════════════════════════════════════════════════════════
 // EXPORT DOCX PROFESSIONNEL — Markdown → Word (.docx)
@@ -3253,7 +3658,15 @@ blockquote{border-left:3px solid #4abfbf;margin:10px 0;padding:8px 16px;color:#5
         }, 10);
       };
 
-      actions.append(copyBtn, regenBtn, exportBtn);
+      // Bouton "Voir en document" — ouvre l'Artifact en mode document pro
+      const docBtn = document.createElement("button");
+      docBtn.className = "msg-icon"; docBtn.textContent = "📄"; docBtn.title = "Aperçu document professionnel";
+      docBtn.onclick = () => {
+        const raw = typeof m.content === 'string' ? m.content : (m._text || '');
+        openDocumentArtifact(raw, c.title || 'Document');
+      };
+
+      actions.append(copyBtn, regenBtn, docBtn, exportBtn);
       foot.appendChild(actions);
     } else {
       const b = document.createElement("button");
@@ -3769,12 +4182,26 @@ async function callAnthropic(key, model, messages) {
   const hasPdf = messages.some(m =>
     Array.isArray(m.content) && m.content.some(b => b.type === 'document')
   );
+  // Nettoyer les blocs content : supprimer _extractedText (champ interne, non supporté par l'API)
+  const cleanMessages = messages
+    .filter(m => m.role === "user" || m.role === "assistant")
+    .map(m => {
+      if (!Array.isArray(m.content)) return { role: m.role, content: m.content };
+      const cleaned = m.content.map(b => {
+        if (b.type === 'document') {
+          // Ne garder que les champs officiels Anthropic : type, source, title
+          const block = { type: 'document', source: b.source };
+          if (b.title) block.title = b.title;
+          return block;
+        }
+        return b;
+      });
+      return { role: m.role, content: cleaned };
+    });
   const body = {
     model,
     system: getActiveSystemPrompt(),
-    messages: messages
-      .filter(m => m.role === "user" || m.role === "assistant")
-      .map(m => ({ role: m.role, content: m.content })),
+    messages: cleanMessages,
     ...buildRequestParams(model, "anthropic")
   };
 
@@ -4153,6 +4580,41 @@ async function send() {
     // On stocke provider ET modèle pour badge + sidebar
     c.messages.push({ role: "assistant", content: responseContent, provider, model: S.model });
 
+    // ── Auto-détection Artifact : ouvrir automatiquement ──
+    if (typeof responseContent === 'string') {
+      // 1) Bloc ```markdown → document professionnel (prioritaire)
+      const mdMatch = responseContent.match(/```markdown\s*\n([\s\S]+?)```/);
+      if (mdMatch && mdMatch[1].length > 300) {
+        const mdContent = mdMatch[1].trim();
+        const titleMatch = mdContent.match(/^#\s+(.+)/m) || mdContent.match(/^##\s+(.+)/m);
+        const docTitle = titleMatch ? titleMatch[1].replace(/[*_#]/g, '').trim() : c.title || 'Document';
+        setTimeout(() => openDocumentArtifact(mdContent, docTitle), 300);
+      }
+      // 2) Gros bloc HTML → artifact code
+      else {
+        const htmlMatch = responseContent.match(/```html\s*\n([\s\S]+?)```/);
+        if (htmlMatch && htmlMatch[1].length > 200 && /<!doctype|<html|<head|<body|<div/i.test(htmlMatch[1])) {
+          const code = htmlMatch[1].trim();
+          const titleMatch = code.match(/<title>([^<]+)<\/title>/i);
+          const title = titleMatch ? titleMatch[1] : 'HTML Artifact';
+          setTimeout(() => openArtifact(code, 'html', title), 300);
+        }
+        // 3) Fallback : réponse structurée + prompt contient mots-clés document
+        else {
+          const userPromptLower = (text || displayText || '').toLowerCase();
+          const isDocRequest = /\b(document|résumé|rapport|memo|lettre|synthèse|word|docx|télécharger|professionnel|fiche|compte[- ]rendu|note de synthèse)\b/i.test(userPromptLower);
+          const isStructured = responseContent.length > 800
+            && /^#{1,2}\s+.+/m.test(responseContent)
+            && (responseContent.match(/^#{1,3}\s+/gm) || []).length >= 3;
+          if (isDocRequest && isStructured) {
+            const titleMatch = responseContent.match(/^#\s+(.+)/m) || responseContent.match(/^##\s+(.+)/m);
+            const docTitle = titleMatch ? titleMatch[1].replace(/[*_#]/g, '').trim() : c.title || 'Document';
+            setTimeout(() => openDocumentArtifact(responseContent, docTitle), 300);
+          }
+        }
+      }
+    }
+
   } catch (e) {
     let errMsg = e.message;
     // ── Diagnostic enrichi pour "Failed to fetch" ──
@@ -4182,10 +4644,34 @@ async function send() {
     isWaitingResponse = false;
   }
 
+  // ── PURGE BASE64 : supprimer les données binaires volumineuses des messages stockés ──
+  // Le base64 n'est utile que pendant l'appel API. Après, on le remplace par un placeholder léger.
+  // Ça évite : localStorage saturé, JSON.stringify qui bloque le thread, GitHub sync qui explose.
+  for (const msg of c.messages) {
+    if (!Array.isArray(msg.content)) continue;
+    msg.content = msg.content.map(block => {
+      // PDF : garder le titre et le texte extrait, supprimer le base64
+      if (block.type === 'document' && block.source?.data) {
+        return {
+          type: 'text',
+          text: `[📄 Document PDF joint : ${block.title || 'fichier.pdf'}${block._extractedText ? '\n\n' + block._extractedText : ' — contenu envoyé au modèle'}]`
+        };
+      }
+      // Images > 100 KB : remplacer par un placeholder (la miniature suffit dans le chat)
+      if (block.type === 'image' && block.source?.data?.length > 100000) {
+        return {
+          type: 'text',
+          text: `[🖼 Image jointe — ${Math.round(block.source.data.length * 3/4/1024)} KB envoyés au modèle]`
+        };
+      }
+      return block;
+    });
+  }
+
   save();
   render();
-  // Auto-sync GitHub après chaque message
-  if (GH.autoSync && GH.token) ghPush().catch(()=>{});
+  // Auto-sync GitHub (silencieux, ne bloque pas l'UI)
+  if (GH.autoSync && GH.token) ghPushSilent().catch(e => console.warn('[BrAInShift] Auto-sync échoué:', e.message));
 }
 
 
@@ -4199,6 +4685,26 @@ function togglePromptPreview() {
   const prev = el("promptPreview");
   if (prev) prev.style.display = prev.style.display === "none" ? "block" : "none";
 }
+
+// Capacités plateforme — toujours ajoutées au system prompt, quel que soit le profil actif
+const PLATFORM_CAPABILITIES = `
+
+[CAPACITÉS DE LA PLATEFORME BrAInShift]
+- DOCUMENTS : Quand l'utilisateur demande un document, résumé, rapport, mémo, lettre, ou fichier Word/DOCX → RÈGLE OBLIGATOIRE :
+  1. Écris UNE SEULE phrase d'introduction dans le chat (ex: "Voici votre résumé professionnel :")
+  2. Place TOUT le contenu du document à l'intérieur d'un bloc \`\`\`markdown (triple backticks + "markdown")
+  3. Le contenu doit être du Markdown professionnel et structuré (titres #/##/###, listes, tableaux, **gras**)
+  4. La plateforme ouvrira automatiquement un panneau de prévisualisation à droite avec téléchargement Word (.docx)
+  5. Ne JAMAIS lister le contenu du document en dehors du bloc \`\`\`markdown. Ne JAMAIS dire "je ne peux pas créer de fichier".
+  Exemple de format :
+  Voici votre document :
+  \`\`\`markdown
+  # Titre du document
+  ## Section 1
+  Contenu...
+  \`\`\`
+- CODE & ARTIFACTS : Quand l'utilisateur demande du code (HTML, CSS, JS, Python, etc.) → mets-le dans des blocs \`\`\`langage. La plateforme affichera un panneau de prévisualisation interactif avec rendu live et téléchargement.
+- FICHIERS JOINTS : Tu peux lire et analyser les fichiers PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx) et images joints par l'utilisateur.`;
 
 function getActiveSystemPrompt() {
   let base = '';
@@ -4218,12 +4724,18 @@ Objectif : réponses précises, à jour, et sourcées.\n\n`;
   }
 
   const ids = S.activeProfiles || [];
-  if (!ids.length) return base + SYSTEM_PROMPT;
-  const prompts = ids
-    .map(id => S.profiles.find(p => p.id === id))
-    .filter(Boolean)
-    .map(p => `# ${p.icon || ''} ${p.name}\n${p.prompt}`);
-  return base + (prompts.length ? prompts.join('\n\n---\n\n') : SYSTEM_PROMPT);
+  let prompt;
+  if (!ids.length) {
+    prompt = base + SYSTEM_PROMPT;
+  } else {
+    const prompts = ids
+      .map(id => S.profiles.find(p => p.id === id))
+      .filter(Boolean)
+      .map(p => `# ${p.icon || ''} ${p.name}\n${p.prompt}`);
+    prompt = base + (prompts.length ? prompts.join('\n\n---\n\n') : SYSTEM_PROMPT);
+  }
+  // Toujours ajouter les capacités plateforme
+  return prompt + PLATFORM_CAPABILITIES;
 }
 
 function updateProfileChip() {
@@ -4422,8 +4934,21 @@ function ghStartTimedSync() {
 async function ghPushSilent() {
   if (!GH.token || !GH.owner || !GH.repo) return;
   const sha = await ghGetFileSha();
+  // Toujours purger les données binaires volumineuses avant l'envoi GitHub
+  const lightChats = S.chats.map(chat => ({
+    ...chat,
+    messages: chat.messages.map(m => {
+      if (!Array.isArray(m.content)) return m;
+      return { ...m, content: m.content.map(b => {
+        if ((b.type === 'document' || b.type === 'image') && b.source?.data?.length > 50000) {
+          return { type: 'text', text: `[Fichier joint : ${b.title || b.type} — non stocké]` };
+        }
+        return b;
+      })};
+    })
+  }));
   const data = {
-    chats: S.chats, projects: S.projects,
+    chats: lightChats, projects: S.projects,
     profiles: S.profiles, activeProfiles: S.activeProfiles || [],
     params: S.params, model: S.model,
     savedAt: new Date().toISOString(), version: 2
@@ -4441,52 +4966,53 @@ async function ghPushSilent() {
 /** Pull silencieux à l'ouverture — fusionne les données distantes sans toucher à l'UI GitHub */
 async function ghPullSilent() {
   if (!GH.token || !GH.owner || !GH.repo) return;
-  const url = `https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${GH.path}`;
-  const r = await fetch(url, { headers: ghHeaders() });
-  if (!r.ok) return; // 404 ou erreur → on ignore silencieusement
-  const d   = await r.json();
-  const raw = ghDecode(d.content);
-  if (!raw || !raw.chats) return;
+  try {
+    const result = await ghFetchFileContent();
+    if (!result.found || !result.data) return;
+    const raw = result.data;
+    if (!raw || !raw.chats) return;
 
-  // Fusionner intelligemment : on garde les conversations locales absentes du remote
-  // et on ajoute/met à jour celles du remote
-  const remoteChatsMap = new Map(raw.chats.map(c => [c.id, c]));
-  const localChatsMap  = new Map(S.chats.map(c => [c.id, c]));
+    // Fusionner intelligemment : on garde les conversations locales absentes du remote
+    // et on ajoute/met à jour celles du remote
+    const remoteChatsMap = new Map(raw.chats.map(c => [c.id, c]));
+    const localChatsMap  = new Map(S.chats.map(c => [c.id, c]));
 
-  // Merge : remote est la vérité pour les chats existants des deux côtés
-  // (le dernier push gagne), on ajoute les chats locaux-only
-  const merged = [...raw.chats];
-  for (const [id, localChat] of localChatsMap) {
-    if (!remoteChatsMap.has(id)) {
-      merged.push(localChat); // chat local pas encore pushé
+    // Merge : remote est la vérité pour les chats existants des deux côtés
+    // (le dernier push gagne), on ajoute les chats locaux-only
+    const merged = [...raw.chats];
+    for (const [id, localChat] of localChatsMap) {
+      if (!remoteChatsMap.has(id)) {
+        merged.push(localChat); // chat local pas encore pushé
+      }
     }
-  }
-  S.chats = merged;
+    S.chats = merged;
 
-  if (raw.projects) {
-    // Fusionner les projets aussi
-    const remoteProjMap = new Map(raw.projects.map(p => [p.id, p]));
-    const localProjMap  = new Map(S.projects.map(p => [p.id, p]));
-    const mergedProj = [...raw.projects];
-    for (const [id, lp] of localProjMap) {
-      if (!remoteProjMap.has(id)) mergedProj.push(lp);
+    if (raw.projects) {
+      const remoteProjMap = new Map(raw.projects.map(p => [p.id, p]));
+      const localProjMap  = new Map(S.projects.map(p => [p.id, p]));
+      const mergedProj = [...raw.projects];
+      for (const [id, lp] of localProjMap) {
+        if (!remoteProjMap.has(id)) mergedProj.push(lp);
+      }
+      S.projects = mergedProj;
     }
-    S.projects = mergedProj;
+    if (raw.profiles)       S.profiles       = raw.profiles;
+    if (raw.activeProfiles) S.activeProfiles  = raw.activeProfiles;
+    if (raw.params)         S.params         = { ...DEF, ...raw.params };
+    if (raw.model)          S.model          = raw.model;
+
+    if (!S.chats.find(c => c.id === S.activeChat))
+      S.activeChat = S.chats[0]?.id || null;
+
+    save();
+    renderModels();
+    renderProfiles();
+    updateProfileChip();
+    render();
+    console.log(`[BrAInShift] ✅ Pull silencieux OK — ${S.chats.length} conversations, ${S.projects.length} projets`);
+  } catch (e) {
+    console.warn('[BrAInShift] Pull silencieux échoué:', e.message);
   }
-  if (raw.profiles)       S.profiles       = raw.profiles;
-  if (raw.activeProfiles) S.activeProfiles  = raw.activeProfiles;
-  if (raw.params)         S.params         = { ...DEF, ...raw.params };
-  if (raw.model)          S.model          = raw.model;
-
-  if (!S.chats.find(c => c.id === S.activeChat))
-    S.activeChat = S.chats[0]?.id || null;
-
-  save();
-  renderModels();
-  renderProfiles();
-  updateProfileChip();
-  render();
-  console.log(`[BrAInShift] ✅ Pull silencieux OK — ${S.chats.length} conversations, ${S.projects.length} projets`);
 }
 
 function ghStatus(msg, type="") {
@@ -4511,10 +5037,46 @@ function ghEncode(obj) {
 
 /** Décode une chaîne base64 GitHub → objet JS */
 function ghDecode(b64) {
+  if (!b64) throw new Error("Contenu vide (fichier trop gros pour l'API Contents, utilisation du Blob API…)");
   const bin   = atob(b64.replace(/\s/g, ""));
   const bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
   return JSON.parse(new TextDecoder().decode(bytes));
+}
+
+/** Télécharge le contenu via l'API Git Blobs (supporte fichiers > 1 MB, jusqu'à 100 MB) */
+async function ghFetchBlob(sha) {
+  const url = `https://api.github.com/repos/${GH.owner}/${GH.repo}/git/blobs/${sha}`;
+  const r = await fetch(url, { headers: ghHeaders() });
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}));
+    throw new Error(`Blob GET ${r.status}: ${err.message || r.statusText}`);
+  }
+  const d = await r.json();
+  return ghDecode(d.content);
+}
+
+/** Télécharge le contenu d'un fichier GitHub — auto-fallback sur Blob API si > 1 MB */
+async function ghFetchFileContent() {
+  const url = `https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${GH.path}`;
+  const r = await fetch(url, { headers: ghHeaders() });
+  if (r.status === 404) return { found: false };
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}));
+    throw new Error(`GET ${r.status}: ${err.message || r.statusText}`);
+  }
+  const d = await r.json();
+  // Si content est présent (< 1 MB) → décodage direct
+  if (d.content) {
+    return { found: true, data: ghDecode(d.content), sha: d.sha };
+  }
+  // Fichier > 1 MB → fallback sur Blob API via le SHA
+  if (d.sha) {
+    console.log('[BrAInShift] Fichier > 1 MB — fallback Blob API (sha:', d.sha, ')');
+    const data = await ghFetchBlob(d.sha);
+    return { found: true, data, sha: d.sha };
+  }
+  throw new Error("Impossible de récupérer le contenu du fichier.");
 }
 
 /** Headers GitHub API */
@@ -4615,8 +5177,21 @@ async function ghPush() {
   el("ghPush").disabled = true;
   try {
     const sha  = await ghGetFileSha();
+    // Purger les données binaires volumineuses avant l'envoi
+    const lightChats = S.chats.map(chat => ({
+      ...chat,
+      messages: chat.messages.map(m => {
+        if (!Array.isArray(m.content)) return m;
+        return { ...m, content: m.content.map(b => {
+          if ((b.type === 'document' || b.type === 'image') && b.source?.data?.length > 50000) {
+            return { type: 'text', text: `[Fichier joint : ${b.title || b.type} — non stocké]` };
+          }
+          return b;
+        })};
+      })
+    }));
     const data = {
-      chats:         S.chats,
+      chats:         lightChats,
       projects:      S.projects,
       profiles:       S.profiles,
       activeProfiles: S.activeProfiles || [],
@@ -4655,18 +5230,12 @@ async function ghPull() {
   ghStatus("⏳ Pull en cours…", "warn");
   el("ghPull").disabled = true;
   try {
-    const url = `https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${GH.path}`;
-    const r = await fetch(url, { headers: ghHeaders() });
-    if (r.status === 404) {
+    const result = await ghFetchFileContent();
+    if (!result.found) {
       ghStatus("⚠ Aucun fichier trouvé. Faites d'abord un Push depuis cet ordinateur.", "warn");
       return;
     }
-    if (!r.ok) {
-      const err = await r.json().catch(() => ({}));
-      throw new Error(`GET ${r.status}: ${err.message || r.statusText}`);
-    }
-    const d   = await r.json();
-    const raw = ghDecode(d.content);
+    const raw = result.data;
 
     if (raw.chats)         S.chats         = raw.chats;
     if (raw.projects)      S.projects      = raw.projects;
@@ -5002,9 +5571,15 @@ function renderSearchResults(query) {
       input.select();
     }
     // Echap pour fermer
-    if (e.key === 'Escape' && results.classList.contains('open')) {
-      results.classList.remove('open');
-      input.blur();
+    if (e.key === 'Escape') {
+      if (results.classList.contains('open')) {
+        results.classList.remove('open');
+        input.blur();
+      }
+      // Fermer le panneau Artifact si ouvert
+      if (artifactPanel.classList.contains('open')) {
+        closeArtifact();
+      }
     }
   });
 
