@@ -2940,7 +2940,6 @@ function openArtifactFromBtn(btn, lang) {
     openDocumentArtifact(code, '📊 ' + title, 'pptx');
     el('artifactDownloadBtn').textContent = '⬇ PowerPoint (.pptx)';
     el('artifactDownloadBtn').onclick = () => generatePptxFromMarkdown(code, title);
-    generatePptxFromMarkdown(code, title);
     return;
   }
 
@@ -4897,11 +4896,8 @@ async function send() {
         // Ouvrir l'aperçu dans l'artifact + lancer le téléchargement PPTX
         setTimeout(() => {
           openDocumentArtifact(pptxContent, '📊 ' + pptxTitle, 'pptx');
-          // Changer le bouton télécharger pour PPTX
           el('artifactDownloadBtn').textContent = '⬇ PowerPoint (.pptx)';
           el('artifactDownloadBtn').onclick = () => generatePptxFromMarkdown(pptxContent, pptxTitle);
-          // Générer automatiquement le .pptx
-          generatePptxFromMarkdown(pptxContent, pptxTitle);
         }, 300);
       }
       // 1) Bloc ```markdown — MAIS vérifier si l'utilisateur voulait un PPTX
@@ -4932,7 +4928,6 @@ async function send() {
             openDocumentArtifact(mdContent, '📊 ' + docTitle, 'pptx');
             el('artifactDownloadBtn').textContent = '⬇ PowerPoint (.pptx)';
             el('artifactDownloadBtn').onclick = () => generatePptxFromMarkdown(mdContent, docTitle);
-            generatePptxFromMarkdown(mdContent, docTitle);
           }, 300);
         } else {
           // Document Word classique
@@ -4994,7 +4989,6 @@ async function send() {
                 openDocumentArtifact(responseContent, '📊 ' + docTitle, 'pptx');
                 el('artifactDownloadBtn').textContent = '⬇ PowerPoint (.pptx)';
                 el('artifactDownloadBtn').onclick = () => generatePptxFromMarkdown(responseContent, docTitle);
-                generatePptxFromMarkdown(responseContent, docTitle);
               }, 300);
             } else {
               // Document Word
