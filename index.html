@@ -4906,53 +4906,52 @@ async function ghPushSilent() {
 /** Pull silencieux à l'ouverture — fusionne les données distantes sans toucher à l'UI GitHub */
 async function ghPullSilent() {
   if (!GH.token || !GH.owner || !GH.repo) return;
-  try {
-    const result = await ghFetchFileContent();
-    if (!result.found || !result.data) return;
-    const raw = result.data;
-    if (!raw || !raw.chats) return;
+  const url = `https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${GH.path}`;
+  const r = await fetch(url, { headers: ghHeaders() });
+  if (!r.ok) return; // 404 ou erreur → on ignore silencieusement
+  const d   = await r.json();
+  const raw = ghDecode(d.content);
+  if (!raw || !raw.chats) return;
 
-    // Fusionner intelligemment : on garde les conversations locales absentes du remote
-    // et on ajoute/met à jour celles du remote
-    const remoteChatsMap = new Map(raw.chats.map(c => [c.id, c]));
-    const localChatsMap  = new Map(S.chats.map(c => [c.id, c]));
+  // Fusionner intelligemment : on garde les conversations locales absentes du remote
+  // et on ajoute/met à jour celles du remote
+  const remoteChatsMap = new Map(raw.chats.map(c => [c.id, c]));
+  const localChatsMap  = new Map(S.chats.map(c => [c.id, c]));
 
-    // Merge : remote est la vérité pour les chats existants des deux côtés
-    // (le dernier push gagne), on ajoute les chats locaux-only
-    const merged = [...raw.chats];
-    for (const [id, localChat] of localChatsMap) {
-      if (!remoteChatsMap.has(id)) {
-        merged.push(localChat); // chat local pas encore pushé
-      }
+  // Merge : remote est la vérité pour les chats existants des deux côtés
+  // (le dernier push gagne), on ajoute les chats locaux-only
+  const merged = [...raw.chats];
+  for (const [id, localChat] of localChatsMap) {
+    if (!remoteChatsMap.has(id)) {
+      merged.push(localChat); // chat local pas encore pushé
     }
-    S.chats = merged;
-
-    if (raw.projects) {
-      const remoteProjMap = new Map(raw.projects.map(p => [p.id, p]));
-      const localProjMap  = new Map(S.projects.map(p => [p.id, p]));
-      const mergedProj = [...raw.projects];
-      for (const [id, lp] of localProjMap) {
-        if (!remoteProjMap.has(id)) mergedProj.push(lp);
-      }
-      S.projects = mergedProj;
-    }
-    if (raw.profiles)       S.profiles       = raw.profiles;
-    if (raw.activeProfiles) S.activeProfiles  = raw.activeProfiles;
-    if (raw.params)         S.params         = { ...DEF, ...raw.params };
-    if (raw.model)          S.model          = raw.model;
-
-    if (!S.chats.find(c => c.id === S.activeChat))
-      S.activeChat = S.chats[0]?.id || null;
-
-    save();
-    renderModels();
-    renderProfiles();
-    updateProfileChip();
-    render();
-    console.log(`[BrAInShift] ✅ Pull silencieux OK — ${S.chats.length} conversations, ${S.projects.length} projets`);
-  } catch (e) {
-    console.warn('[BrAInShift] Pull silencieux échoué:', e.message);
   }
+  S.chats = merged;
+
+  if (raw.projects) {
+    // Fusionner les projets aussi
+    const remoteProjMap = new Map(raw.projects.map(p => [p.id, p]));
+    const localProjMap  = new Map(S.projects.map(p => [p.id, p]));
+    const mergedProj = [...raw.projects];
+    for (const [id, lp] of localProjMap) {
+      if (!remoteProjMap.has(id)) mergedProj.push(lp);
+    }
+    S.projects = mergedProj;
+  }
+  if (raw.profiles)       S.profiles       = raw.profiles;
+  if (raw.activeProfiles) S.activeProfiles  = raw.activeProfiles;
+  if (raw.params)         S.params         = { ...DEF, ...raw.params };
+  if (raw.model)          S.model          = raw.model;
+
+  if (!S.chats.find(c => c.id === S.activeChat))
+    S.activeChat = S.chats[0]?.id || null;
+
+  save();
+  renderModels();
+  renderProfiles();
+  updateProfileChip();
+  render();
+  console.log(`[BrAInShift] ✅ Pull silencieux OK — ${S.chats.length} conversations, ${S.projects.length} projets`);
 }
 
 function ghStatus(msg, type="") {
@@ -4977,46 +4976,10 @@ function ghEncode(obj) {
 
 /** Décode une chaîne base64 GitHub → objet JS */
 function ghDecode(b64) {
-  if (!b64) throw new Error("Contenu vide (fichier trop gros pour l'API Contents, utilisation du Blob API…)");
   const bin   = atob(b64.replace(/\s/g, ""));
   const bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
   return JSON.parse(new TextDecoder().decode(bytes));
-}
-
-/** Télécharge le contenu via l'API Git Blobs (supporte fichiers > 1 MB, jusqu'à 100 MB) */
-async function ghFetchBlob(sha) {
-  const url = `https://api.github.com/repos/${GH.owner}/${GH.repo}/git/blobs/${sha}`;
-  const r = await fetch(url, { headers: ghHeaders() });
-  if (!r.ok) {
-    const err = await r.json().catch(() => ({}));
-    throw new Error(`Blob GET ${r.status}: ${err.message || r.statusText}`);
-  }
-  const d = await r.json();
-  return ghDecode(d.content);
-}
-
-/** Télécharge le contenu d'un fichier GitHub — auto-fallback sur Blob API si > 1 MB */
-async function ghFetchFileContent() {
-  const url = `https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${GH.path}`;
-  const r = await fetch(url, { headers: ghHeaders() });
-  if (r.status === 404) return { found: false };
-  if (!r.ok) {
-    const err = await r.json().catch(() => ({}));
-    throw new Error(`GET ${r.status}: ${err.message || r.statusText}`);
-  }
-  const d = await r.json();
-  // Si content est présent (< 1 MB) → décodage direct
-  if (d.content) {
-    return { found: true, data: ghDecode(d.content), sha: d.sha };
-  }
-  // Fichier > 1 MB → fallback sur Blob API via le SHA
-  if (d.sha) {
-    console.log('[BrAInShift] Fichier > 1 MB — fallback Blob API (sha:', d.sha, ')');
-    const data = await ghFetchBlob(d.sha);
-    return { found: true, data, sha: d.sha };
-  }
-  throw new Error("Impossible de récupérer le contenu du fichier.");
 }
 
 /** Headers GitHub API */
@@ -5157,12 +5120,18 @@ async function ghPull() {
   ghStatus("⏳ Pull en cours…", "warn");
   el("ghPull").disabled = true;
   try {
-    const result = await ghFetchFileContent();
-    if (!result.found) {
+    const url = `https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${GH.path}`;
+    const r = await fetch(url, { headers: ghHeaders() });
+    if (r.status === 404) {
       ghStatus("⚠ Aucun fichier trouvé. Faites d'abord un Push depuis cet ordinateur.", "warn");
       return;
     }
-    const raw = result.data;
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      throw new Error(`GET ${r.status}: ${err.message || r.statusText}`);
+    }
+    const d   = await r.json();
+    const raw = ghDecode(d.content);
 
     if (raw.chats)         S.chats         = raw.chats;
     if (raw.projects)      S.projects      = raw.projects;
