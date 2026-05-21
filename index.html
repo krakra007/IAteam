@@ -3660,11 +3660,25 @@ blockquote{border-left:3px solid #4abfbf;margin:10px 0;padding:8px 16px;color:#5
 
       // Bouton "Voir en document" — ouvre l'Artifact en mode document pro
       const docBtn = document.createElement("button");
-      docBtn.className = "msg-icon"; docBtn.textContent = "📄"; docBtn.title = "Aperçu document professionnel";
-      docBtn.onclick = () => {
-        const raw = typeof m.content === 'string' ? m.content : (m._text || '');
-        openDocumentArtifact(raw, c.title || 'Document');
-      };
+      docBtn.className = "msg-icon";
+      // Si le message a un artifact sauvegardé, le bouton est mis en évidence
+      if (m._artifactContent) {
+        docBtn.textContent = "📄"; docBtn.title = "Rouvrir le document dans le panneau Artifact";
+        docBtn.style.cssText = "background:#2563eb33;border-radius:6px";
+        docBtn.onclick = () => {
+          if (m._artifactLang === 'html') {
+            openArtifact(m._artifactContent, 'html', m._artifactTitle || 'HTML Artifact');
+          } else {
+            openDocumentArtifact(m._artifactContent, m._artifactTitle || 'Document');
+          }
+        };
+      } else {
+        docBtn.textContent = "📄"; docBtn.title = "Aperçu document professionnel";
+        docBtn.onclick = () => {
+          const raw = typeof m.content === 'string' ? m.content : (m._text || '');
+          openDocumentArtifact(raw, c.title || 'Document');
+        };
+      }
 
       actions.append(copyBtn, regenBtn, docBtn, exportBtn);
       foot.appendChild(actions);
@@ -4588,6 +4602,17 @@ async function send() {
         const mdContent = mdMatch[1].trim();
         const titleMatch = mdContent.match(/^#\s+(.+)/m) || mdContent.match(/^##\s+(.+)/m);
         const docTitle = titleMatch ? titleMatch[1].replace(/[*_#]/g, '').trim() : c.title || 'Document';
+        // Remplacer le bloc markdown dans le chat par un badge compact
+        const lineCount = mdContent.split('\n').length;
+        const lastMsg = c.messages[c.messages.length - 1];
+        if (lastMsg && lastMsg.role === 'assistant') {
+          lastMsg.content = responseContent.replace(
+            /```markdown\s*\n[\s\S]+?```/,
+            `\n\n📄 **${docTitle}** — ${lineCount} lignes → *ouvert dans le panneau Artifact*\n`
+          );
+          lastMsg._artifactContent = mdContent;
+          lastMsg._artifactTitle = docTitle;
+        }
         setTimeout(() => openDocumentArtifact(mdContent, docTitle), 300);
       }
       // 2) Gros bloc HTML → artifact code
@@ -4597,6 +4622,18 @@ async function send() {
           const code = htmlMatch[1].trim();
           const titleMatch = code.match(/<title>([^<]+)<\/title>/i);
           const title = titleMatch ? titleMatch[1] : 'HTML Artifact';
+          // Remplacer le bloc HTML dans le chat par un badge compact
+          const lineCount = code.split('\n').length;
+          const lastMsg = c.messages[c.messages.length - 1];
+          if (lastMsg && lastMsg.role === 'assistant') {
+            lastMsg.content = responseContent.replace(
+              /```html\s*\n[\s\S]+?```/,
+              `\n\n🌐 **${title}** — ${lineCount} lignes → *ouvert dans le panneau Artifact*\n`
+            );
+            lastMsg._artifactContent = code;
+            lastMsg._artifactTitle = title;
+            lastMsg._artifactLang = 'html';
+          }
           setTimeout(() => openArtifact(code, 'html', title), 300);
         }
         // 3) Fallback : réponse structurée + prompt contient mots-clés document
@@ -4609,6 +4646,13 @@ async function send() {
           if (isDocRequest && isStructured) {
             const titleMatch = responseContent.match(/^#\s+(.+)/m) || responseContent.match(/^##\s+(.+)/m);
             const docTitle = titleMatch ? titleMatch[1].replace(/[*_#]/g, '').trim() : c.title || 'Document';
+            // Remplacer le contenu dans le chat
+            const lastMsg = c.messages[c.messages.length - 1];
+            if (lastMsg && lastMsg.role === 'assistant') {
+              lastMsg._artifactContent = responseContent;
+              lastMsg._artifactTitle = docTitle;
+              lastMsg.content = `📄 **${docTitle}** → *ouvert dans le panneau Artifact*`;
+            }
             setTimeout(() => openDocumentArtifact(responseContent, docTitle), 300);
           }
         }
