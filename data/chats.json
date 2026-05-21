@@ -49,6 +49,17 @@
           "content": "## Oui, vous avez raison — les clés **sont** stockées en local\n\nLes clés sont bien dans le `localStorage` du navigateur, c'est-à-dire **uniquement sur votre machine**. Elles ne sont jamais envoyées à un serveur tiers. Le code le confirme clairement :\n\n```javascript\nlocalStorage.setItem(\"apiKeysByProvider\", JSON.stringify(apiKeysByProvider));\n```\n\nPour un usage **personnel** (fichier ouvert en local ou sur votre propre domaine), **c'est tout à fait acceptable**. C'est d'ailleurs exactement le même fonctionnement que des outils comme TypingMind, OpenCat, ou d'autres clients API locaux.\n\n---\n\n## Le vrai risque que je voulais souligner\n\nCe n'est pas le `localStorage` en soi — c'est la **combinaison avec l'iframe Artifact** :\n\n```html\n<iframe sandbox=\"allow-scripts allow-same-origin allow-modals allow-forms allow-popups\">\n```\n\nLe problème : `allow-scripts` + `allow-same-origin` **ensemble** = le code exécuté dans l'iframe Artifact peut faire :\n\n```javascript\n// Du code dans un artifact malveillant pourrait faire :\nlocalStorage.getItem(\"apiKeysByProvider\")\n```\n\n**Scénario concret** :\n1. Vous demandez au modèle de générer une page HTML\n2. Le code s'ouvre dans le panneau Artifact (iframe)\n3. Si ce code contient un script caché, il peut **lire vos clés API** dans le `localStorage` parce que `allow-same-origin` lui donne accès au même domaine\n\n**Correction simple** — retirer `allow-same-origin` :\n\n```html\n<iframe sandbox=\"allow-scripts allow-modals allow-forms allow-popups\">\n```\n\nSans `allow-same-origin`, l'iframe est isolée dans une origine opaque et ne peut plus accéder au `localStorage` du parent. La plupart des previews HTML continueront à fonctionner normalement.\n\n---\n\n## Résumé\n\n| Aspect | Verdict |\n|---|---|\n| Clés stockées en local uniquement | ✅ Correct, aucun serveur distant |\n| Sécurité pour usage personnel | ✅ Parfaitement acceptable |\n| Risque iframe Artifact → accès aux clés | ⚠️ Réel mais facile à corriger |\n| Correction | Retirer `allow-same-origin` du sandbox |\n\nDonc pour clarifier : **votre approche de stockage local est bonne**, mon alerte portait spécifiquement sur le fait que le panneau Artifact pourrait contourner cette protection à cause d'un attribut `sandbox` trop permissif.",
           "provider": "ANTHROPIC",
           "model": "claude-opus-4-6"
+        },
+        {
+          "role": "user",
+          "content": "comment changer ceci",
+          "_text": "comment changer ceci"
+        },
+        {
+          "role": "assistant",
+          "content": "## Correction simple — une seule ligne à modifier\n\nCherchez cette ligne dans votre fichier HTML (elle apparaît une seule fois) :\n\n```html\n<iframe id=\"artifactIframe\" sandbox=\"allow-scripts allow-same-origin allow-modals allow-forms allow-popups\" title=\"Artifact preview\"></iframe>\n```\n\nRemplacez-la par :\n\n```html\n<iframe id=\"artifactIframe\" sandbox=\"allow-scripts allow-modals allow-forms allow-popups\" title=\"Artifact preview\"></iframe>\n```\n\n---\n\n## Ce qui change concrètement\n\n| | Avant | Après |\n|---|---|---|\n| **Exécuter du JS dans l'artifact** | ✅ Oui | ✅ Oui |\n| **Formulaires / popups** | ✅ Oui | ✅ Oui |\n| **Accès au `localStorage` parent** | ⚠️ **Oui** (dangereux) | 🔒 **Non** (bloqué) |\n| **Lire vos clés API** | ⚠️ **Possible** | 🔒 **Impossible** |\n\n---\n\n## Comment faire la modification\n\n**1. Ouvrez le fichier** `index brainshift 0521home.html` dans un éditeur de texte (VS Code, Notepad++, ou même le Bloc-notes)\n\n**2. Faites Ctrl+H** (Rechercher et Remplacer)\n\n- **Rechercher** : `allow-scripts allow-same-origin allow-modals`\n- **Remplacer par** : `allow-scripts allow-modals`\n\n**3. Sauvegardez** — c'est terminé.\n\n---\n\n## Note importante\n\nSi après cette modification un artifact spécifique ne fonctionne plus (très rare — par exemple un artifact qui charge des polices Google Fonts ou fait des appels `fetch`), vous pouvez ajouter `allow-same-origin` ponctuellement. Mais dans **99% des cas**, les previews HTML/CSS/JS marchent parfaitement sans.",
+          "provider": "ANTHROPIC",
+          "model": "claude-opus-4-6"
         }
       ]
     },
@@ -1414,6 +1425,6 @@
     "webSearch": true
   },
   "model": "claude-opus-4-6",
-  "savedAt": "2026-05-21T19:07:42.052Z",
+  "savedAt": "2026-05-21T19:08:40.733Z",
   "version": 2
 }
