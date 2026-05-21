@@ -1509,6 +1509,7 @@ const DEF = {
   // Réflexion étendue (Anthropic thinking)
   thinking: false,
   thinkingBudget: 10240,
+  thinkingEffort: 'high',
   showThinking: true,
   // Recherche web
   webSearch: false
@@ -3902,9 +3903,14 @@ function renderParams() {
       <div class="p-hint" style="margin-top:-8px;margin-bottom:10px">${caps.thinking ? 'Claude montre son raisonnement. Sonnet 4.5+.' : `Non supporté par ${provider === 'ANTHROPIC' ? 'ce modèle Claude' : provider}.`}</div>
 
       <div class="p-row" id="thinkingBudgetRow" style="display:${caps.thinking && P.thinking?'block':'none'}">
-        <div class="p-row-head"><label>Budget tokens (thinking)</label><span class="p-val" id="v_thinkbudget">${fmtInt(P.thinkingBudget)}</span></div>
-        <input type="range" id="r_thinkbudget" min="1024" max="65536" step="1024" value="${P.thinkingBudget}">
-        <div class="p-hint">Min 1 024. Déduit du max tokens.</div>
+        <div class="p-row-head"><label>Niveau d'effort</label><span class="p-val" id="v_thinkbudget">${P.thinkingEffort || 'high'}</span></div>
+        <select id="r_thinkeffort" style="width:100%;padding:6px 10px;background:#1e1e24;color:#e0e2e8;border:1px solid var(--line);border-radius:6px;font-size:13px">
+          <option value="low" ${P.thinkingEffort==='low'?'selected':''}>Low — rapide, thinking minimal</option>
+          <option value="medium" ${P.thinkingEffort==='medium'?'selected':''}>Medium — équilibré</option>
+          <option value="high" ${(!P.thinkingEffort||P.thinkingEffort==='high')?'selected':''}>High — recommandé</option>
+          <option value="max" ${P.thinkingEffort==='max'?'selected':''}>Max — réflexion maximale</option>
+        </select>
+        <div class="p-hint">Contrôle la profondeur de réflexion du modèle.</div>
       </div>
 
       <div class="p-toggle" id="showThinkingRow" style="display:${caps.thinking && P.thinking?'flex':'none'}">
@@ -3938,7 +3944,15 @@ function renderParams() {
   bindSlider('r_presence','v_presence','presence_penalty',   v => Number(v).toFixed(1));
   bindSlider('r_freq',    'v_freq',    'frequency_penalty',  v => Number(v).toFixed(1));
   bindSlider('r_maxt',    'v_maxt',    'max_tokens',         v => Number(v).toLocaleString('fr-FR'));
-  bindSlider('r_thinkbudget','v_thinkbudget','thinkingBudget',v => Number(v).toLocaleString('fr-FR'));
+  // Effort select pour thinking adaptatif
+  const effortSelect = document.getElementById('r_thinkeffort');
+  if (effortSelect) {
+    effortSelect.onchange = () => {
+      S.params.thinkingEffort = effortSelect.value;
+      document.getElementById('v_thinkbudget').textContent = effortSelect.value;
+      save();
+    };
+  }
 
   // ── Bindings toggles ─────────────────────────────
   function bindToggle(id, paramKey, onChange) {
@@ -4246,13 +4260,11 @@ async function callAnthropic(key, model, messages) {
     body.tools = [{ type: "web_search_20250305", name: "web_search", max_uses: 5 }];
   }
 
-  // Thinking (extended thinking)
+  // Thinking (extended thinking) — format adaptatif pour les modèles 4.6+
   if (S.params.thinking && /sonnet|opus/i.test(model)) {
-    const budget = S.params.thinkingBudget || 10240;
-    // max_tokens doit être > budget_tokens
-    if (body.max_tokens <= budget) body.max_tokens = budget + 4096;
-    body.thinking = { type: "enabled", budget_tokens: budget };
-    // Thinking nécessite temperature = 1 et pas de top_p
+    body.thinking = { type: "adaptive" };
+    body.output_config = { effort: S.params.thinkingEffort || "high" };
+    if (body.max_tokens < 16000) body.max_tokens = 16000;
     body.temperature = 1;
     delete body.top_p;
   }
@@ -4266,7 +4278,7 @@ async function callAnthropic(key, model, messages) {
   // Beta headers pour fonctionnalités avancées
   const betas = [];
   if (hasPdf) betas.push("pdfs-2024-09-25");
-  if (S.params.thinking && /sonnet|opus/i.test(model)) betas.push("interleaved-thinking-2025-05-14");
+  // Note : adaptive thinking active automatiquement interleaved thinking, pas besoin de beta header
   if (betas.length) headers["anthropic-beta"] = betas.join(",");
 
   const r = await fetchWithRetry("https://api.anthropic.com/v1/messages", {
