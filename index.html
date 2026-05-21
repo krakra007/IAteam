@@ -2846,8 +2846,14 @@ function openArtifact(code, lang, title) {
     setArtifactView('code');
   }
 
-  // Reset du bouton télécharger (mode code, pas document)
-  el('artifactDownloadBtn').textContent = '⬇ Télécharger';
+  // Bouton télécharger avec label spécifique au format
+  const dlLabels = {
+    html: '⬇ HTML (.html)', htm: '⬇ HTML (.html)', svg: '⬇ SVG (.svg)',
+    css: '⬇ CSS (.css)', javascript: '⬇ JS (.js)', js: '⬇ JS (.js)',
+    python: '⬇ Python (.py)', json: '⬇ JSON (.json)',
+    mermaid: '⬇ Mermaid (.mmd)', sql: '⬇ SQL (.sql)'
+  };
+  el('artifactDownloadBtn').textContent = dlLabels[lang?.toLowerCase()] || '⬇ Télécharger';
   el('artifactDownloadBtn').onclick = defaultArtifactDownload;
 
   artifactPanel.classList.add('open');
@@ -2872,9 +2878,14 @@ function defaultArtifactDownload() {
     markdown:'md', md:'md', mermaid:'mmd', sql:'sql', bash:'sh', shell:'sh',
     yaml:'yml', xml:'xml', react:'jsx', vue:'vue', code:'txt', document:'md'
   };
+  const mimeMap = {
+    html:'text/html', htm:'text/html', svg:'image/svg+xml', css:'text/css',
+    js:'text/javascript', json:'application/json', xml:'text/xml'
+  };
   const ext = extMap[currentArtifact.lang.toLowerCase()] || 'txt';
+  const mime = mimeMap[currentArtifact.lang.toLowerCase()] || 'text/plain';
   const filename = (currentArtifact.title.replace(/[^a-zA-Z0-9àâäéèêëïîôùûüÿç _-]/g, '').trim() || 'artifact') + '.' + ext;
-  downloadFile(currentArtifact.code, filename, 'text/plain');
+  downloadFile(currentArtifact.code, filename, mime);
 }
 
 /** Change l'onglet actif */
