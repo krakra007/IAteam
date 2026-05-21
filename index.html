@@ -2648,10 +2648,16 @@ function formatAssistantContent(text) {
 
   // Boutons copier sur les blocs de code + bouton Artifact pour HTML/SVG/CSS
   html = html.replace(/<pre><code class="language-(\w+)">/g, (_, l) => {
-    const isRenderable = /^(html|svg|htm|css|javascript|js|jsx|tsx|typescript|react|vue|mermaid|markdown|md)$/i.test(l);
-    const artifactBtn = isRenderable
-      ? `<button class="copy-code-btn" onclick="openArtifactFromBtn(this, '${l}')" title="Ouvrir dans le panneau Artifact">✦ Artifact</button>`
-      : `<button class="copy-code-btn" onclick="openArtifactFromBtn(this, '${l}')" title="Ouvrir dans le panneau Artifact">✦ Voir</button>`;
+    const isMarkdown = /^(markdown|md)$/i.test(l);
+    const isRenderable = /^(html|svg|htm|css|javascript|js|jsx|tsx|typescript|react|vue|mermaid)$/i.test(l);
+    let artifactBtn;
+    if (isMarkdown) {
+      artifactBtn = `<button class="copy-code-btn" onclick="openArtifactFromBtn(this, '${l}')" title="Ouvrir comme document professionnel" style="background:#2563eb33;border-color:#2563eb55;color:#93b4f4">📄 Document</button>`;
+    } else if (isRenderable) {
+      artifactBtn = `<button class="copy-code-btn" onclick="openArtifactFromBtn(this, '${l}')" title="Ouvrir dans le panneau Artifact">✦ Artifact</button>`;
+    } else {
+      artifactBtn = `<button class="copy-code-btn" onclick="openArtifactFromBtn(this, '${l}')" title="Ouvrir dans le panneau Artifact">✦ Voir</button>`;
+    }
     return `<div class="code-header"><span>${l}</span><div style="display:flex;gap:6px">${artifactBtn}<button class="copy-code-btn" onclick="copyCodeBlock(this)">Copier</button></div></div><pre><code class="language-${l}">`;
   });
   html = html.replace(/<pre><code>/g,
@@ -2683,6 +2689,10 @@ function formatAssistantContent(text) {
     // Aperçu : 8 premières lignes
     const preview = raw.split('\n').slice(0, 8).join('\n');
 
+    const isMdBlock = /^(markdown|md)$/i.test(lang.toLowerCase());
+    const artifactLabel = isMdBlock ? '📄 Document' : '✦ Artifact';
+    const artifactStyle = isMdBlock ? ' style="background:#2563eb33;border-color:#2563eb55;color:#93b4f4"' : '';
+
     // Créer le bloc replié
     const wrapper = document.createElement('div');
     wrapper.className = 'collapsed-code';
@@ -2690,7 +2700,7 @@ function formatAssistantContent(text) {
       <div class="code-header">
         <span>${lang} · ${lineCount} lignes</span>
         <div style="display:flex;gap:6px">
-          <button class="copy-code-btn" onclick="openArtifactFromBtn(this, '${lang}')" title="Ouvrir dans le panneau Artifact">✦ Artifact</button>
+          <button class="copy-code-btn"${artifactStyle} onclick="openArtifactFromBtn(this, '${lang}')" title="${isMdBlock ? 'Ouvrir comme document professionnel' : 'Ouvrir dans le panneau Artifact'}">${artifactLabel}</button>
           <button class="copy-code-btn" onclick="this.closest('.collapsed-code').querySelector('details').open=!this.closest('.collapsed-code').querySelector('details').open;this.textContent=this.closest('.collapsed-code').querySelector('details').open?'Replier':'Déplier'">Déplier</button>
           <button class="copy-code-btn" onclick="copyCodeBlock(this)">Copier</button>
           <button class="copy-code-btn" onclick="downloadCodeBlock(this, '${filename}')">⬇ ${filename}</button>
@@ -2866,7 +2876,15 @@ function getCodeFromBtn(btn) {
 function openArtifactFromBtn(btn, lang) {
   const code = getCodeFromBtn(btn);
   if (!code) return;
-  // Essayer de détecter un titre dans le code (title tag, h1, premier commentaire)
+
+  // Markdown → ouvrir en mode document professionnel
+  if (/^(markdown|md)$/i.test(lang)) {
+    const titleMatch = code.match(/^#\s+(.+)/m) || code.match(/^##\s+(.+)/m);
+    const title = titleMatch ? titleMatch[1].replace(/[*_#]/g, '').trim() : 'Document';
+    return openDocumentArtifact(code, title);
+  }
+
+  // Autres langages → artifact code classique
   let title = 'Artifact';
   const titleMatch = code.match(/<title>([^<]+)<\/title>/i);
   if (titleMatch) title = titleMatch[1];
@@ -4541,26 +4559,35 @@ async function send() {
 
     // ── Auto-détection Artifact : ouvrir automatiquement ──
     if (typeof responseContent === 'string') {
-      // 1) Gros bloc HTML → artifact code
-      const htmlMatch = responseContent.match(/```html\s*\n([\s\S]+?)```/);
-      if (htmlMatch && htmlMatch[1].length > 200 && /<!doctype|<html|<head|<body|<div/i.test(htmlMatch[1])) {
-        const code = htmlMatch[1].trim();
-        const titleMatch = code.match(/<title>([^<]+)<\/title>/i);
-        const title = titleMatch ? titleMatch[1] : 'HTML Artifact';
-        setTimeout(() => openArtifact(code, 'html', title), 300);
+      // 1) Bloc ```markdown → document professionnel (prioritaire)
+      const mdMatch = responseContent.match(/```markdown\s*\n([\s\S]+?)```/);
+      if (mdMatch && mdMatch[1].length > 300) {
+        const mdContent = mdMatch[1].trim();
+        const titleMatch = mdContent.match(/^#\s+(.+)/m) || mdContent.match(/^##\s+(.+)/m);
+        const docTitle = titleMatch ? titleMatch[1].replace(/[*_#]/g, '').trim() : c.title || 'Document';
+        setTimeout(() => openDocumentArtifact(mdContent, docTitle), 300);
       }
-      // 2) Réponse document pro → auto-ouvrir le panneau document
-      //    Si le prompt de l'utilisateur demandait un document/résumé/rapport + réponse structurée
+      // 2) Gros bloc HTML → artifact code
       else {
-        const userPromptLower = (text || displayText || '').toLowerCase();
-        const isDocRequest = /\b(document|résumé|rapport|memo|lettre|synthèse|word|docx|télécharger|professionnel|fiche|compte[- ]rendu|note de synthèse)\b/i.test(userPromptLower);
-        const isStructured = responseContent.length > 800
-          && /^#{1,2}\s+.+/m.test(responseContent)
-          && (responseContent.match(/^#{1,3}\s+/gm) || []).length >= 3;
-        if (isDocRequest && isStructured) {
-          const titleMatch = responseContent.match(/^#\s+(.+)/m) || responseContent.match(/^##\s+(.+)/m);
-          const docTitle = titleMatch ? titleMatch[1].replace(/[*_#]/g, '').trim() : c.title || 'Document';
-          setTimeout(() => openDocumentArtifact(responseContent, docTitle), 300);
+        const htmlMatch = responseContent.match(/```html\s*\n([\s\S]+?)```/);
+        if (htmlMatch && htmlMatch[1].length > 200 && /<!doctype|<html|<head|<body|<div/i.test(htmlMatch[1])) {
+          const code = htmlMatch[1].trim();
+          const titleMatch = code.match(/<title>([^<]+)<\/title>/i);
+          const title = titleMatch ? titleMatch[1] : 'HTML Artifact';
+          setTimeout(() => openArtifact(code, 'html', title), 300);
+        }
+        // 3) Fallback : réponse structurée + prompt contient mots-clés document
+        else {
+          const userPromptLower = (text || displayText || '').toLowerCase();
+          const isDocRequest = /\b(document|résumé|rapport|memo|lettre|synthèse|word|docx|télécharger|professionnel|fiche|compte[- ]rendu|note de synthèse)\b/i.test(userPromptLower);
+          const isStructured = responseContent.length > 800
+            && /^#{1,2}\s+.+/m.test(responseContent)
+            && (responseContent.match(/^#{1,3}\s+/gm) || []).length >= 3;
+          if (isDocRequest && isStructured) {
+            const titleMatch = responseContent.match(/^#\s+(.+)/m) || responseContent.match(/^##\s+(.+)/m);
+            const docTitle = titleMatch ? titleMatch[1].replace(/[*_#]/g, '').trim() : c.title || 'Document';
+            setTimeout(() => openDocumentArtifact(responseContent, docTitle), 300);
+          }
         }
       }
     }
@@ -4616,7 +4643,19 @@ function togglePromptPreview() {
 const PLATFORM_CAPABILITIES = `
 
 [CAPACITÉS DE LA PLATEFORME BrAInShift]
-- DOCUMENTS : Quand l'utilisateur demande un document, résumé, rapport, mémo, lettre, ou fichier Word/DOCX à télécharger → produis directement un contenu Markdown professionnel et structuré (avec titres #/##/###, listes, tableaux, gras, italique). La plateforme convertira automatiquement ta réponse en document Word (.docx) téléchargeable avec mise en forme professionnelle. Ne dis JAMAIS "je ne peux pas créer de fichier" ou "copiez-collez dans Word". Commence directement par le contenu du document.
+- DOCUMENTS : Quand l'utilisateur demande un document, résumé, rapport, mémo, lettre, ou fichier Word/DOCX → RÈGLE OBLIGATOIRE :
+  1. Écris UNE SEULE phrase d'introduction dans le chat (ex: "Voici votre résumé professionnel :")
+  2. Place TOUT le contenu du document à l'intérieur d'un bloc \`\`\`markdown (triple backticks + "markdown")
+  3. Le contenu doit être du Markdown professionnel et structuré (titres #/##/###, listes, tableaux, **gras**)
+  4. La plateforme ouvrira automatiquement un panneau de prévisualisation à droite avec téléchargement Word (.docx)
+  5. Ne JAMAIS lister le contenu du document en dehors du bloc \`\`\`markdown. Ne JAMAIS dire "je ne peux pas créer de fichier".
+  Exemple de format :
+  Voici votre document :
+  \`\`\`markdown
+  # Titre du document
+  ## Section 1
+  Contenu...
+  \`\`\`
 - CODE & ARTIFACTS : Quand l'utilisateur demande du code (HTML, CSS, JS, Python, etc.) → mets-le dans des blocs \`\`\`langage. La plateforme affichera un panneau de prévisualisation interactif avec rendu live et téléchargement.
 - FICHIERS JOINTS : Tu peux lire et analyser les fichiers PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx) et images joints par l'utilisateur.`;
 
