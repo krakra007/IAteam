@@ -2,7 +2,7 @@
   "chats": [
     {
       "id": "d39be615-857e-4cd5-af7a-22e56952f970",
-      "title": "je révise les amines dans mon cours de",
+      "title": "Les Amines",
       "projectId": "06407384-63b3-4383-b87c-6248d2482d0a",
       "messages": [
         {
@@ -1533,6 +1533,6 @@
     "webSearch": true
   },
   "model": "gemini-2.5-flash",
-  "savedAt": "2026-05-21T19:40:12.242Z",
+  "savedAt": "2026-05-21T19:45:12.335Z",
   "version": 2
 }
