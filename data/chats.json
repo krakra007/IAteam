@@ -82,6 +82,20 @@
           "content": "Parfait, c'est corrigé. 🔒\n\nVos clés API dans le `localStorage` sont maintenant **inaccessibles** depuis le panneau Artifact. Aucun code exécuté dans une preview HTML ne pourra les lire.\n\nTout le reste fonctionne exactement comme avant — les previews HTML, le JavaScript, les formulaires, les popups — rien ne change côté fonctionnel.\n\nSi vous avez d'autres questions sur BrAInShift ou souhaitez d'autres améliorations, n'hésitez pas !",
           "provider": "ANTHROPIC",
           "model": "claude-opus-4-6"
+        },
+        {
+          "role": "user",
+          "content": "oui dans le fichier index brainshift 0521home.html que j'ai déjà télécharger, je voulais modifier l'élément suivant. Imaginons que je demadne la création d'un fichier powerpoint. Le fichier est créé mais imédiatement il se lanche en téléchargement sans que j'appuie sur la touche de téléchargement. Modifier ceci.",
+          "_text": "oui dans le fichier index brainshift 0521home.html que j'ai déjà télécharger, je voulais modifier l'élément suivant. Imaginons que je demadne la création d'un fichier powerpoint. Le fichier est créé mais imédiatement il se lanche en téléchargement sans que j'appuie sur la touche de téléchargement. Modifier ceci."
+        },
+        {
+          "role": "assistant",
+          "content": "📊 **Correction du téléchargement automatique PPTX** — 3 slides → *PowerPoint généré*",
+          "provider": "ANTHROPIC",
+          "model": "claude-opus-4-6",
+          "_artifactContent": "## Correction du téléchargement automatique PPTX\n\nLe problème vient de la fonction `writeFile()` de pptxgenjs qui déclenche le téléchargement immédiatement. Il faut la remplacer par `write('blob')` qui prépare le fichier **sans le télécharger**.\n\nComme le JavaScript de votre fichier a été tronqué à 100 000 caractères, je ne peux pas voir le code exact. Voici comment procéder :\n\n---\n\n## Étape 1 — Trouver la ligne\n\nOuvrez le fichier dans un éditeur de texte et faites **Ctrl+F** pour chercher :\n\n```\nwriteFile\n```\n\nVous devriez trouver une ligne qui ressemble à quelque chose comme :\n\n```javascript\npptx.writeFile({ fileName: 'presentation.pptx' });\n```\n\nou\n\n```javascript\nawait pptx.writeFile('presentation.pptx');\n```\n\n---\n\n## Étape 2 — Me montrer le contexte\n\nPouvez-vous **copier-coller les 20-30 lignes autour** de ce `writeFile` ? Comme ça, je verrai exactement :\n\n- Comment le PPTX est généré\n- Comment le panneau Artifact est ouvert\n- Quel est le nom de la variable\n\nEt je vous donnerai le **remplacement exact** ligne par ligne, sans risque de casser quoi que ce soit.\n\n---\n\nCherchez `writeFile` dans le fichier et montrez-moi ce que vous trouvez ! 🔍",
+          "_artifactTitle": "Correction du téléchargement automatique PPTX",
+          "_artifactLang": "pptx"
         }
       ]
     },
@@ -1460,7 +1474,7 @@
     "showThinking": false,
     "webSearch": true
   },
-  "model": "gemini-2.5-flash",
-  "savedAt": "2026-05-21T19:18:16.069Z",
+  "model": "claude-opus-4-6",
+  "savedAt": "2026-05-21T19:19:16.504Z",
   "version": 2
 }
