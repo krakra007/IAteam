@@ -1,6 +1,12 @@
 {
   "chats": [
     {
+      "id": "25f20d2b-9773-40c7-b9cb-5c51c76be1b7",
+      "title": "Nouveau chat",
+      "projectId": "4a80a2bb-5a7f-49d2-b420-c20965d8067b",
+      "messages": []
+    },
+    {
       "id": "ba4712ee-c329-4f52-b753-b71db4dd49b7",
       "title": "Nouveau chat",
       "projectId": null,
@@ -1261,7 +1267,7 @@
     "showThinking": true,
     "webSearch": true
   },
-  "model": "gemini-3.5-flash",
-  "savedAt": "2026-05-21T15:31:35.748Z",
+  "model": "claude-sonnet-4-6",
+  "savedAt": "2026-05-21T15:36:37.817Z",
   "version": 2
 }
