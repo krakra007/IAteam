@@ -2926,7 +2926,7 @@ function openArtifactFromBtn(btn, lang) {
   if (/^(pptx)$/i.test(lang)) {
     const titleMatch = code.match(/^#\s+(.+)/m);
     const title = titleMatch ? titleMatch[1].replace(/[*_#]/g, '').trim() : 'Présentation';
-    openDocumentArtifact(code, '📊 ' + title);
+    openDocumentArtifact(code, '📊 ' + title, 'pptx');
     el('artifactDownloadBtn').textContent = '⬇ PowerPoint (.pptx)';
     el('artifactDownloadBtn').onclick = () => generatePptxFromMarkdown(code, title);
     generatePptxFromMarkdown(code, title);
@@ -2965,11 +2965,13 @@ el('artifactFullscreenBtn').onclick = () => {
 };
 
 /** Ouvre le panneau Artifact en mode "document professionnel" (Markdown → HTML pro + .docx) */
-function openDocumentArtifact(markdown, title) {
+function openDocumentArtifact(markdown, title, format) {
+  // format: 'word' (défaut) ou 'pptx'
+  const isPptx = format === 'pptx';
   const docTitle = title || 'Document';
-  currentArtifact = { code: markdown, lang: 'document', title: docTitle, isDocument: true };
-  artifactTitleEl.textContent = '📄 ' + docTitle;
-  artifactLangEl.textContent  = 'DOCUMENT';
+  currentArtifact = { code: markdown, lang: isPptx ? 'pptx' : 'document', title: docTitle, isDocument: true };
+  artifactTitleEl.textContent = (isPptx ? '📊 ' : '📄 ') + docTitle;
+  artifactLangEl.textContent  = isPptx ? 'POWERPOINT' : 'DOCUMENT';
 
   // Rendu Markdown → HTML professionnel
   const rendered = typeof marked !== 'undefined' ? marked.parse(markdown, { gfm: true, breaks: false }) : markdown.replace(/\n/g, '<br>');
@@ -3049,11 +3051,18 @@ ${rendered}
   artifactTabPreview.style.display = '';
   setArtifactView('preview');
 
-  // Modifier le bouton télécharger pour proposer le .docx
-  el('artifactDownloadBtn').textContent = '⬇ Word (.docx)';
-  el('artifactDownloadBtn').onclick = () => {
-    generateDocxFromMarkdown(markdown, docTitle);
-  };
+  // Modifier le bouton télécharger selon le format
+  if (isPptx) {
+    el('artifactDownloadBtn').textContent = '⬇ PowerPoint (.pptx)';
+    el('artifactDownloadBtn').onclick = () => {
+      generatePptxFromMarkdown(markdown, docTitle);
+    };
+  } else {
+    el('artifactDownloadBtn').textContent = '⬇ Word (.docx)';
+    el('artifactDownloadBtn').onclick = () => {
+      generateDocxFromMarkdown(markdown, docTitle);
+    };
+  }
 
   artifactPanel.classList.add('open');
   artifactResizer.classList.add('open');
@@ -3852,6 +3861,8 @@ blockquote{border-left:3px solid #4abfbf;margin:10px 0;padding:8px 16px;color:#5
         docBtn.onclick = () => {
           if (m._artifactLang === 'html') {
             openArtifact(m._artifactContent, 'html', m._artifactTitle || 'HTML Artifact');
+          } else if (m._artifactLang === 'pptx') {
+            openDocumentArtifact(m._artifactContent, m._artifactTitle || 'Présentation', 'pptx');
           } else {
             openDocumentArtifact(m._artifactContent, m._artifactTitle || 'Document');
           }
@@ -4828,7 +4839,7 @@ async function send() {
         }
         // Ouvrir l'aperçu dans l'artifact + lancer le téléchargement PPTX
         setTimeout(() => {
-          openDocumentArtifact(pptxContent, '📊 ' + pptxTitle);
+          openDocumentArtifact(pptxContent, '📊 ' + pptxTitle, 'pptx');
           // Changer le bouton télécharger pour PPTX
           el('artifactDownloadBtn').textContent = '⬇ PowerPoint (.pptx)';
           el('artifactDownloadBtn').onclick = () => generatePptxFromMarkdown(pptxContent, pptxTitle);
@@ -4861,7 +4872,7 @@ async function send() {
             lastMsg._artifactLang = 'pptx';
           }
           setTimeout(() => {
-            openDocumentArtifact(mdContent, '📊 ' + docTitle);
+            openDocumentArtifact(mdContent, '📊 ' + docTitle, 'pptx');
             el('artifactDownloadBtn').textContent = '⬇ PowerPoint (.pptx)';
             el('artifactDownloadBtn').onclick = () => generatePptxFromMarkdown(mdContent, docTitle);
             generatePptxFromMarkdown(mdContent, docTitle);
@@ -4923,7 +4934,7 @@ async function send() {
                 lastMsg.content = `📊 **${docTitle}** — ${slideCount} slides → *PowerPoint généré*`;
               }
               setTimeout(() => {
-                openDocumentArtifact(responseContent, '📊 ' + docTitle);
+                openDocumentArtifact(responseContent, '📊 ' + docTitle, 'pptx');
                 el('artifactDownloadBtn').textContent = '⬇ PowerPoint (.pptx)';
                 el('artifactDownloadBtn').onclick = () => generatePptxFromMarkdown(responseContent, docTitle);
                 generatePptxFromMarkdown(responseContent, docTitle);
