@@ -1207,6 +1207,57 @@
       "title": "Nouveau chat",
       "projectId": null,
       "messages": []
+    },
+    {
+      "id": "a0f788d5-2d27-4924-a62f-d732b71e359b",
+      "title": "test",
+      "projectId": null,
+      "messages": [
+        {
+          "role": "user",
+          "content": "test",
+          "_text": "test"
+        },
+        {
+          "role": "assistant",
+          "content": "Test reçu. Comment puis-je vous aider ?",
+          "provider": "OPENAI",
+          "model": "gpt-5.5-pro"
+        },
+        {
+          "role": "user",
+          "content": "test",
+          "_text": "test"
+        },
+        {
+          "role": "assistant",
+          "content": "Test reçu. Comment puis-je vous aider aujourd'hui ?",
+          "provider": "GROQ",
+          "model": "openai/gpt-oss-120b"
+        },
+        {
+          "role": "user",
+          "content": "test",
+          "_text": "test"
+        },
+        {
+          "role": "assistant",
+          "content": "❌ Erreur : [Anthropic invalid_request_error] \"thinking.type.enabled\" is not supported for this model. Use \"thinking.type.adaptive\" and \"output_config.effort\" to control thinking behavior.",
+          "provider": "ANTHROPIC",
+          "model": "claude-opus-4-7"
+        },
+        {
+          "role": "user",
+          "content": "test",
+          "_text": "test"
+        },
+        {
+          "role": "assistant",
+          "content": "❌ Erreur : [Anthropic invalid_request_error] \"thinking.type.enabled\" is not supported for this model. Use \"thinking.type.adaptive\" and \"output_config.effort\" to control thinking behavior.",
+          "provider": "ANTHROPIC",
+          "model": "claude-opus-4-7"
+        }
+      ]
     }
   ],
   "projects": [
@@ -1295,10 +1346,10 @@
     "streaming": false,
     "thinking": true,
     "thinkingBudget": 25600,
-    "showThinking": true,
+    "showThinking": false,
     "webSearch": true
   },
-  "model": "gpt-5.5-pro",
-  "savedAt": "2026-05-21T16:00:47.900Z",
+  "model": "claude-opus-4-7",
+  "savedAt": "2026-05-21T16:08:34.799Z",
   "version": 2
 }
