@@ -1,6 +1,12 @@
 {
   "chats": [
     {
+      "id": "ba4712ee-c329-4f52-b753-b71db4dd49b7",
+      "title": "Nouveau chat",
+      "projectId": null,
+      "messages": []
+    },
+    {
       "id": "7f9eb41d-0a93-4ea1-902b-abb0ee8abada",
       "title": "Contexte: Navigabilité, EASA, EMAER. \n",
       "projectId": null,
@@ -1256,6 +1262,6 @@
     "webSearch": true
   },
   "model": "gemini-3.5-flash",
-  "savedAt": "2026-05-21T15:31:11.849Z",
+  "savedAt": "2026-05-21T15:31:35.748Z",
   "version": 2
 }
