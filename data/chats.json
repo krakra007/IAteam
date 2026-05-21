@@ -31,6 +31,11 @@
           "role": "user",
           "content": "je voulais une présentation power point",
           "_text": "je voulais une présentation power point"
+        },
+        {
+          "role": "user",
+          "content": "je voulais une présentation power point",
+          "_text": "je voulais une présentation power point"
         }
       ]
     },
@@ -1147,6 +1152,12 @@
           "model": "gemini-2.5-pro"
         }
       ]
+    },
+    {
+      "id": "95e77398-5f27-4560-aeff-52eaee70cf87",
+      "title": "Nouveau chat",
+      "projectId": null,
+      "messages": []
     }
   ],
   "projects": [
@@ -1239,6 +1250,6 @@
     "webSearch": true
   },
   "model": "claude-sonnet-4-6",
-  "savedAt": "2026-05-21T15:49:23.834Z",
+  "savedAt": "2026-05-21T15:55:46.486Z",
   "version": 2
 }
