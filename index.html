@@ -1617,6 +1617,8 @@ const S = {
 
 const el = id => document.getElementById(id);
 let isWaitingResponse = false;
+let waitingStartTime = 0;
+let waitingTimerInterval = null;
 if (!CURATED_MODELS.includes(S.model)) S.model = CURATED_MODELS[0];
 
 const promptEl   = el("prompt");
@@ -1862,7 +1864,14 @@ function buildUserContent(text, files) {
         title: f.name, _extractedText: f.extractedText || null });
     } else if (f.extractedText) {
       // Fichier Office : texte extrait côté navigateur
-      parts.push({ type: 'text', text: `[${f.icon} Contenu du fichier "${f.name}" :]\n\n${f.extractedText}` });
+      // Limiter à ~100 000 caractères pour éviter les timeouts API
+      let txt = f.extractedText;
+      let truncNote = '';
+      if (txt.length > 100000) {
+        txt = txt.slice(0, 100000);
+        truncNote = `\n\n[⚠ Document tronqué : ${f.extractedText.length} → 100 000 caractères pour respecter les limites du modèle]`;
+      }
+      parts.push({ type: 'text', text: `[${f.icon} Contenu du fichier "${f.name}" :]\n\n${txt}${truncNote}` });
     } else {
       // Fichier non extractible
       parts.push({ type: 'text', text: `[Fichier joint : ${f.icon} ${f.name} — contenu non extractible. Veuillez copier-coller le texte.]` });
@@ -3700,7 +3709,9 @@ blockquote{border-left:3px solid #4abfbf;margin:10px 0;padding:8px 16px;color:#5
     const wrap = document.createElement("div");
     const typing = document.createElement("div");
     typing.className = "typing";
-    typing.innerHTML = '<span class="typing-spinner" aria-hidden="true"></span><span>Le modèle réfléchit…</span>';
+    const elapsed = waitingStartTime ? Math.round((Date.now() - waitingStartTime) / 1000) : 0;
+    const timeStr = elapsed > 3 ? ` (${elapsed}s)` : '';
+    typing.innerHTML = `<span class="typing-spinner" aria-hidden="true"></span><span>Le modèle réfléchit…${timeStr}</span>`;
     wrap.appendChild(typing);
     row.appendChild(wrap);
     box.appendChild(row);
@@ -4106,9 +4117,13 @@ function buildRequestParams(model, apiType) {
 // Backoff exponentiel : 1s → 2s → 4s (3 tentatives max)
 // ─────────────────────────────────────────────────────────────
 async function fetchWithRetry(url, options, maxRetries = 3) {
+  const TIMEOUT_MS = 120000; // 2 minutes max par tentative
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      const r = await fetch(url, options);
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+      const r = await fetch(url, { ...options, signal: controller.signal });
+      clearTimeout(timer);
       // 429 = rate limit, 529 = overloaded, 503 = service unavailable
       if ((r.status === 429 || r.status === 529 || r.status === 503) && attempt < maxRetries) {
         const retryAfter = r.headers.get('retry-after');
@@ -4119,6 +4134,13 @@ async function fetchWithRetry(url, options, maxRetries = 3) {
       }
       return r;
     } catch (e) {
+      if (e.name === 'AbortError') {
+        if (attempt < maxRetries) {
+          console.warn(`[BrAInShift] ⏳ Timeout (${TIMEOUT_MS/1000}s) — retry ${attempt + 1}/${maxRetries}…`);
+          continue;
+        }
+        throw new Error(`Timeout : le modèle n'a pas répondu en ${TIMEOUT_MS/1000}s. Le document est peut-être trop volumineux. Essayez avec un résumé plus court ou un modèle plus rapide.`);
+      }
       // Erreur réseau (Failed to fetch) — retry sauf dernière tentative
       if (attempt < maxRetries) {
         const wait = Math.pow(2, attempt) * 1000;
@@ -4544,6 +4566,10 @@ async function send() {
   promptEl.style.height = ''; // Reset auto-resize
   pendingFiles = []; renderFilePreview();
   isWaitingResponse   = true;
+  waitingStartTime    = Date.now();
+  // Rafraîchir le compteur toutes les secondes pendant l'attente
+  if (waitingTimerInterval) clearInterval(waitingTimerInterval);
+  waitingTimerInterval = setInterval(() => { if (isWaitingResponse) renderMessages(); }, 1000);
   render();
   // DEBUG — visible dans F12 → Console
   const _sp = getActiveSystemPrompt();
@@ -4686,6 +4712,8 @@ async function send() {
     showApiError(e.message);
   } finally {
     isWaitingResponse = false;
+    waitingStartTime = 0;
+    if (waitingTimerInterval) { clearInterval(waitingTimerInterval); waitingTimerInterval = null; }
   }
 
   // ── PURGE BASE64 : supprimer les données binaires volumineuses des messages stockés ──
