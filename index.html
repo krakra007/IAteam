@@ -2077,12 +2077,50 @@ async function testApiKey(provider, key) {
 // PROJETS & CONVERSATIONS
 // ─────────────────────────────────────────────────
 function ensureLandingBlankChat() {
+  // Nettoyer d'abord les doublons de chats vides "Nouveau chat"
+  // Garder au maximum 1 seul chat vide dans les conversations générales
+  const emptyGeneralChats = S.chats.filter(c =>
+    !c.projectId && c.title === "Nouveau chat" && Array.isArray(c.messages) && c.messages.length === 0
+  );
+  if (emptyGeneralChats.length > 1) {
+    // Garder le premier, supprimer les autres
+    const keepId = emptyGeneralChats[0].id;
+    S.chats = S.chats.filter(c =>
+      !(c.title === "Nouveau chat" && !c.projectId && Array.isArray(c.messages) && c.messages.length === 0 && c.id !== keepId)
+    );
+  }
+
+  // Aussi nettoyer les chats vides dans les projets
+  const projectIds = new Set(S.projects.map(p => p.id));
+  const emptyProjectChats = S.chats.filter(c =>
+    c.projectId && c.title === "Nouveau chat" && Array.isArray(c.messages) && c.messages.length === 0
+  );
+  // Garder max 1 chat vide par projet
+  const seenProjects = new Set();
+  for (const ec of emptyProjectChats) {
+    if (seenProjects.has(ec.projectId)) {
+      S.chats = S.chats.filter(c => c.id !== ec.id);
+    } else {
+      seenProjects.add(ec.projectId);
+    }
+  }
+
+  // Vérifier si un chat vide existe déjà — le réutiliser au lieu d'en créer un nouveau
+  const existing = S.chats.find(c =>
+    !c.projectId && c.title === "Nouveau chat" && Array.isArray(c.messages) && c.messages.length === 0
+  );
+  if (existing) {
+    S.activeChat = existing.id;
+    S.activeProject = null;
+    return;
+  }
+
+  // Créer un seul chat vide si aucun n'existe
   const c = activeChat();
-  // BUG CORRIGÉ : titre cohérent "Nouveau chat" partout
   if (c && Array.isArray(c.messages) && c.messages.length === 0) return;
   const id = crypto.randomUUID();
   S.chats.unshift({ id, title: "Nouveau chat", projectId: null, messages: [] });
-  S.activeChat    = id;
+  S.activeChat = id;
   S.activeProject = null;
 }
 
@@ -5409,6 +5447,8 @@ async function ghPullSilent() {
     updateProfileChip();
     render();
     console.log(`[BrAInShift] ✅ Pull silencieux OK — ${S.chats.length} conversations, ${S.projects.length} projets`);
+    // Nettoyer les chats vides dupliqués après la fusion
+    ensureLandingBlankChat();
   } catch (e) {
     console.warn('[BrAInShift] Pull silencieux échoué:', e.message);
   }
@@ -5646,6 +5686,8 @@ async function ghPull() {
     if (!S.chats.find(c => c.id === S.activeChat))
       S.activeChat = S.chats[0]?.id || null;
 
+    // Nettoyer les chats vides dupliqués après la fusion
+    ensureLandingBlankChat();
     save();
     renderModels();
     renderProfiles();
