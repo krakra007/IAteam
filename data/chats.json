@@ -1311,57 +1311,6 @@
       ]
     },
     {
-      "id": "a0f788d5-2d27-4924-a62f-d732b71e359b",
-      "title": "test",
-      "projectId": null,
-      "messages": [
-        {
-          "role": "user",
-          "content": "test",
-          "_text": "test"
-        },
-        {
-          "role": "assistant",
-          "content": "Test reçu. Comment puis-je vous aider ?",
-          "provider": "OPENAI",
-          "model": "gpt-5.5-pro"
-        },
-        {
-          "role": "user",
-          "content": "test",
-          "_text": "test"
-        },
-        {
-          "role": "assistant",
-          "content": "Test reçu. Comment puis-je vous aider aujourd'hui ?",
-          "provider": "GROQ",
-          "model": "openai/gpt-oss-120b"
-        },
-        {
-          "role": "user",
-          "content": "test",
-          "_text": "test"
-        },
-        {
-          "role": "assistant",
-          "content": "❌ Erreur : [Anthropic invalid_request_error] \"thinking.type.enabled\" is not supported for this model. Use \"thinking.type.adaptive\" and \"output_config.effort\" to control thinking behavior.",
-          "provider": "ANTHROPIC",
-          "model": "claude-opus-4-7"
-        },
-        {
-          "role": "user",
-          "content": "test",
-          "_text": "test"
-        },
-        {
-          "role": "assistant",
-          "content": "❌ Erreur : [Anthropic invalid_request_error] \"thinking.type.enabled\" is not supported for this model. Use \"thinking.type.adaptive\" and \"output_config.effort\" to control thinking behavior.",
-          "provider": "ANTHROPIC",
-          "model": "claude-opus-4-7"
-        }
-      ]
-    },
-    {
       "id": "258eb576-f401-4f38-b20a-ea63128360c6",
       "title": "il semble qu'il ait un fabricant de ca",
       "projectId": "4a80a2bb-5a7f-49d2-b420-c20965d8067b",
@@ -1484,7 +1433,7 @@
   ],
   "activeProfiles": [],
   "params": {
-    "temperature": 1,
+    "temperature": 0.2,
     "top_p": 0,
     "top_k": 0,
     "max_tokens": 38656,
@@ -1500,6 +1449,6 @@
     "webSearch": true
   },
   "model": "openai/gpt-oss-120b",
-  "savedAt": "2026-05-22T10:45:31.020Z",
+  "savedAt": "2026-05-22T10:48:49.122Z",
   "version": 2
 }
