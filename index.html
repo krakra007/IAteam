@@ -23,14 +23,31 @@
       background:var(--side);
       border-right:1px solid var(--line);
       padding:10px;
-      overflow:auto;
       height:100vh;
       width:var(--sidebar-w);
       min-width:160px;
       max-width:520px;
       flex-shrink:0;
       transition:width .18s ease, padding .18s ease, border .18s ease;
+      display:flex;
+      flex-direction:column;
+      overflow:hidden;
     }
+    /* Zone scrollable des projets + conversations */
+    .sidebar #chatList{
+      flex:1;
+      overflow-y:auto;
+      overflow-x:hidden;
+      min-height:0;
+      padding-right:2px;
+    }
+    /* Scrollbar fine et visible */
+    .sidebar #chatList::-webkit-scrollbar{width:6px}
+    .sidebar #chatList::-webkit-scrollbar-track{background:transparent}
+    .sidebar #chatList::-webkit-scrollbar-thumb{background:#3a3a4a;border-radius:3px}
+    .sidebar #chatList::-webkit-scrollbar-thumb:hover{background:#5a5a6a}
+    /* Firefox */
+    .sidebar #chatList{scrollbar-width:thin;scrollbar-color:#3a3a4a transparent}
     .app.sidebar-collapsed .sidebar{width:0;padding:0;border-right:0;overflow:hidden;min-width:0}
 
     /* ── Divider glissable ── */
@@ -716,6 +733,7 @@
       position:relative;
       padding:2px 0 6px;
       margin-bottom:4px;
+      flex-shrink:0;
     }
     .search-input-wrap{
       position:relative;display:flex;align-items:center;
@@ -5429,7 +5447,8 @@ async function ghPullSilent() {
       S.projects = mergedProj;
     }
     if (raw.profiles)       S.profiles       = raw.profiles;
-    if (raw.activeProfiles) S.activeProfiles  = raw.activeProfiles;
+    // Ne PAS restaurer activeProfiles depuis GitHub — on veut toujours aucun profil au démarrage
+    // if (raw.activeProfiles) S.activeProfiles = raw.activeProfiles;
     if (raw.params)         S.params         = { ...DEF, ...raw.params };
     if (raw.model)          S.model          = raw.model;
 
@@ -6158,18 +6177,48 @@ if (typeof marked !== "undefined") {
 buildColorPicker();
 initGithubPanel();
 
-// ── Pull automatique à l'ouverture (5 secondes après le chargement) ──
+// ── Pull automatique à l'ouverture ──
 // Permet de récupérer les conversations de l'autre machine via GitHub
-setTimeout(() => {
-  if (GH.token && GH.owner && GH.repo) {
-    console.log('[BrAInShift] ⏱ Pull automatique au démarrage…');
-    ghPullSilent().then(() => {
-      console.log('[BrAInShift] ✅ Pull au démarrage terminé');
-    }).catch(e => {
-      console.warn('[BrAInShift] ⚠ Pull au démarrage échoué:', e.message);
-    });
+function triggerAutoPull() {
+  if (!GH.token || !GH.owner || !GH.repo) return;
+  console.log('[BrAInShift] ⏱ Pull automatique…');
+  ghPullSilent().then(() => {
+    console.log('[BrAInShift] ✅ Pull automatique terminé');
+    // Re-forcer aucun profil actif après le pull
+    S.activeProfiles = [];
+    renderProfiles();
+    updateProfileChip();
+  }).catch(e => {
+    console.warn('[BrAInShift] ⚠ Pull automatique échoué:', e.message);
+  });
+}
+// Pull après 3 secondes au chargement
+setTimeout(triggerAutoPull, 3000);
+
+// iPad/Safari : bfcache restaure la page au lieu de la recharger
+// → re-trigger le Pull quand la page est restaurée
+window.addEventListener('pageshow', e => {
+  if (e.persisted) {
+    console.log('[BrAInShift] 📱 Page restaurée depuis le cache (iPad/Safari) — re-pull…');
+    S.activeProfiles = [];
+    renderProfiles();
+    updateProfileChip();
+    setTimeout(triggerAutoPull, 1000);
   }
-}, 5000);
+});
+
+// iPad/tablette : quand l'utilisateur revient sur l'onglet après une pause, re-pull
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    // Re-pull si ça fait plus de 2 minutes qu'on est parti
+    const now = Date.now();
+    if (!window._lastVisibleTime || (now - window._lastVisibleTime > 120000)) {
+      console.log('[BrAInShift] 👁 Retour sur la page — re-pull…');
+      triggerAutoPull();
+    }
+  }
+  window._lastVisibleTime = Date.now();
+});
 
   // KaTeX + marked : extensions enregistrées lors du 1er appel de formatAssistantContent
   // Si KaTeX n'est pas encore chargé, on attend puis on re-render une seule fois
@@ -6192,6 +6241,8 @@ el("peCancel").onclick       = closeProfileEditor;
 el("peDelete").onclick       = deleteActiveProfile;
 el("peName").addEventListener("keydown", e => { if (e.key === "Enter") saveProfileEditor(); });
 
+// Au démarrage : aucun profil système sélectionné
+S.activeProfiles = [];
 renderProfiles();
 updateProfileChip();
 
