@@ -2077,27 +2077,23 @@ async function testApiKey(provider, key) {
 // PROJETS & CONVERSATIONS
 // ─────────────────────────────────────────────────
 function ensureLandingBlankChat() {
-  // Nettoyer d'abord les doublons de chats vides "Nouveau chat"
-  // Garder au maximum 1 seul chat vide dans les conversations générales
+  // ── 1. Nettoyer les doublons de chats vides ──
+  // Garder max 1 seul "Nouveau chat" vide dans les conversations générales
   const emptyGeneralChats = S.chats.filter(c =>
     !c.projectId && c.title === "Nouveau chat" && Array.isArray(c.messages) && c.messages.length === 0
   );
   if (emptyGeneralChats.length > 1) {
-    // Garder le premier, supprimer les autres
     const keepId = emptyGeneralChats[0].id;
     S.chats = S.chats.filter(c =>
       !(c.title === "Nouveau chat" && !c.projectId && Array.isArray(c.messages) && c.messages.length === 0 && c.id !== keepId)
     );
   }
 
-  // Aussi nettoyer les chats vides dans les projets
-  const projectIds = new Set(S.projects.map(p => p.id));
-  const emptyProjectChats = S.chats.filter(c =>
-    c.projectId && c.title === "Nouveau chat" && Array.isArray(c.messages) && c.messages.length === 0
-  );
   // Garder max 1 chat vide par projet
   const seenProjects = new Set();
-  for (const ec of emptyProjectChats) {
+  for (const ec of S.chats.filter(c =>
+    c.projectId && c.title === "Nouveau chat" && Array.isArray(c.messages) && c.messages.length === 0
+  )) {
     if (seenProjects.has(ec.projectId)) {
       S.chats = S.chats.filter(c => c.id !== ec.id);
     } else {
@@ -2105,7 +2101,8 @@ function ensureLandingBlankChat() {
     }
   }
 
-  // Vérifier si un chat vide existe déjà — le réutiliser au lieu d'en créer un nouveau
+  // ── 2. Toujours ouvrir sur un chat vide ──
+  // Réutiliser s'il en existe déjà un
   const existing = S.chats.find(c =>
     !c.projectId && c.title === "Nouveau chat" && Array.isArray(c.messages) && c.messages.length === 0
   );
@@ -2115,9 +2112,7 @@ function ensureLandingBlankChat() {
     return;
   }
 
-  // Créer un seul chat vide si aucun n'existe
-  const c = activeChat();
-  if (c && Array.isArray(c.messages) && c.messages.length === 0) return;
+  // Sinon en créer un seul
   const id = crypto.randomUUID();
   S.chats.unshift({ id, title: "Nouveau chat", projectId: null, messages: [] });
   S.activeChat = id;
@@ -6211,8 +6206,9 @@ el("projectModalName").addEventListener("keydown", e => {
 el("projectModal").addEventListener("click", e => {
   if (e.target === el("projectModal")) el("projectModal").classList.remove("open");
 });
-if (!S.chats.length) createChat(null);
+// Au démarrage : toujours ouvrir sur un chat vide (sans en créer de doublons)
 ensureLandingBlankChat();
+save();
 renderApiKeys();
 renderModels();
 renderParams();
