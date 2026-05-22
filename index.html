@@ -1136,18 +1136,20 @@
     }
 
     /* ═══════════════════════════════════════════════════════════════
-       CORRECTIONS COMPATIBILITÉ iPAD — Responsive complet
+       CORRECTIONS COMPATIBILITÉ iPAD — Sans impact sur PC Desktop
        ═══════════════════════════════════════════════════════════════ */
 
-    /* 1. touch-action:manipulation sur tous les éléments interactifs
-        → élimine le délai 300ms sur tap iPad */
-    button, a, label,
-    .item, .profile-item, .search-result-item, .modal-swatch, .color-swatch,
-    .profile-btn, .msg-icon, .icon-btn, .copy, .artifact-btn, .artifact-tab,
-    .chat-menu-btn, .ctx-item, .ex-item, .code-artifact-btn,
-    .attach-btn, #sendBtn, .pe-btn, .gh-btn, .modal-btn,
-    input[type="range"], select, textarea {
-      touch-action: manipulation;
+    /* 1. touch-action:manipulation — uniquement sur tactile (≤1366px)
+        → élimine le délai 300ms sur tap iPad, sans aucun effet sur PC */
+    @media (max-width: 1366px) and (pointer: coarse) {
+      button, a, label,
+      .item, .profile-item, .search-result-item, .modal-swatch,
+      .profile-btn, .msg-icon, .icon-btn, .copy, .artifact-btn, .artifact-tab,
+      .chat-menu-btn, .ctx-item, .ex-item, .code-artifact-btn,
+      .attach-btn, #sendBtn, .pe-btn, .gh-btn, .modal-btn,
+      input[type="range"], select, textarea {
+        touch-action: manipulation;
+      }
     }
 
     /* 2. Supprimer les effets :hover sur les écrans TACTILES
@@ -1178,22 +1180,21 @@
       pre:hover .code-artifact-btn            { opacity: 0 !important; }
     }
 
-    /* 3. Rendre visibles les éléments cachés par :hover sur iPad */
-    @media (pointer: coarse) {
+    /* 3. Rendre visibles les éléments cachés par :hover — tablette uniquement */
+    @media (max-width: 1366px) and (pointer: coarse) {
       .chat-menu-btn      { opacity: 0.75; }
       .profile-btns       { opacity: 1; }
       .code-artifact-btn  { opacity: 0.85 !important; }
-      .thinking-block[open] summary { color: #9bb8ff; }
     }
 
-    /* 4. Safe-areas pour iPad (orientation portrait ET paysage) */
+    /* 4. Safe-areas pour iPad — tablette uniquement (pas PC Desktop) */
     @media (max-width: 1366px) and (pointer: coarse) {
       .top {
         padding-top: max(10px, env(safe-area-inset-top));
         padding-left:  max(14px, env(safe-area-inset-left));
         padding-right: max(14px, env(safe-area-inset-right));
       }
-      .input-area {
+      .composer {
         padding-bottom: max(8px, env(safe-area-inset-bottom));
         padding-left:   max(10px, env(safe-area-inset-left));
         padding-right:  max(10px, env(safe-area-inset-right));
@@ -1232,11 +1233,10 @@
       }
       .app:not(.sidebar-collapsed) .sidebar-backdrop { display: block; }
       .resizer { display: none; }
-      .main { min-width: 0; width: 100%; }
     }
 
-    /* 6. Font-size >= 16px partout sur tactile (évite zoom auto iOS) */
-    @media (pointer: coarse) {
+    /* 6. Font-size >= 16px sur tablette/mobile (évite zoom auto iOS) */
+    @media (max-width: 1024px) and (pointer: coarse) {
       textarea,
       input[type="text"],
       input[type="password"],
@@ -1247,14 +1247,14 @@
       }
     }
 
-    /* 7. Artifact panel trop étroit sur iPad portrait */
+    /* 7. Artifact panel masqué sur iPad portrait */
     @media (max-width: 1024px) and (orientation: portrait) {
       .artifact-panel.open { display: none !important; }
       .artifact-resizer.open { display: none !important; }
     }
 
-    /* 8. Boutons minimum 44x44px sur tactile (recommandation WCAG) */
-    @media (pointer: coarse) {
+    /* 8. Boutons min 44x44px — tablette uniquement (≤1024px), jamais sur PC */
+    @media (max-width: 1024px) and (pointer: coarse) {
       .icon-btn, .copy, .artifact-btn, .chat-menu-btn, .profile-btn {
         min-width: 44px;
         min-height: 44px;
@@ -1262,6 +1262,12 @@
         align-items: center;
         justify-content: center;
       }
+    }
+
+    /* 9. Garantie layout PC Desktop — aucune règle iPad ne doit s'appliquer */
+    @media (min-width: 1367px), (pointer: fine) {
+      .sidebar { position: relative !important; transform: none !important; }
+      .main    { width: auto !important; }
     }
 
   </style>
