@@ -1,6 +1,57 @@
 {
   "chats": [
     {
+      "id": "5fff138b-9c0c-4b5d-84b5-a717d5f768a5",
+      "title": "quelle est la présence du pyrole dans ",
+      "projectId": "06407384-63b3-4383-b87c-6248d2482d0a",
+      "messages": [
+        {
+          "role": "user",
+          "content": "quelle est la présence du pyrole dans le corps humain",
+          "_text": "quelle est la présence du pyrole dans le corps humain"
+        },
+        {
+          "role": "assistant",
+          "content": "**PYRROLE DANS LE CORPS HUMAIN**  \n---\n**SYNTHÈSE GLOBALE**  \n*Définition* : Molécule hétérocyclique aromatique de formule $$C_4H_5N$$, intégrée à de nombreux prosthétiques biologiques et métabolites endogènes.  \n\n| Entité Chimique | Rôle Spécifique | Résultat du Processus |\n| :--- | :--- | :--- |\n| $$C_4H_5N$$ (pyrrole) | Constituant du noyau **porphyrinique** (hème, chlorophylle, vitamine B12) | Permet le transport d’oxygène, la photosynthèse et les réactions de transfert d’électron |\n| Dérivés pyrroliques (ex. bilirubine, protoporphyrine) | Intermédiaires de la **dégradation des hèmes** | Élimination physiologique via le foie, coloration de la bile |\n| Résidus pyrroliques dans les protéines (ex. tryptophane) | Stabilisation de la conformation tridimensionnelle | Influence la reconnaissance ligand‑récepteur et la signalisation cellulaire |\n\n**DÉVELOPPEMENT MÉCANISTIQUE ÉTENDU**  \n\n• **Géométrie et Nuages Électroniques**  \n  - **Hybridation** : Les deux carbones adjacents à l’azote sont **$sp^2$**, l’azote est **$sp^2$** avec une paire **non liant** dans le plan de l’anneau.  \n  - **Densité Électronique** : La paire libre de l’azote exerce un effet **+M** (méson) qui renforce la délocalisation π, conférant une aromaticité stabilisée par six électrons π (règle de Hückel).\n\n• **Cinétique et Flux Électronique**  \n  - **Interaction Orbitalaire** : La **paire libre de l’azote** (Orbitale Haute Occupée) interagit avec les orbitales π* du cycle (Orbitale Basse Vacante), générant un flux continu de densité électronique autour de l’anneau.  \n  - **Équations** :  \n    $$\\Delta G^{\\ddagger}_{\\text{formation du complexe hémé}} = -\\;15\\; \\text{kJ·mol}^{-1}$$  \n    $$\\text{Nucleophile (Azote)}\\;:\\; \\text{HO (Orbitale Haute Occupée)} \\;\\longrightarrow\\; \\text{π* (Orbitale Basse Vacante)}$$  \n\n• **Biologie et Cancérologie**  \n  - **Application Cellulaire** : Le noyau pyrrolique de l’hème est indispensable à la **liaison du fer** et à la capacité d’oxygénation des globines ; il participe également à la **chaîne respiratoire** via les cytochromes.  \n  - **Implication Oncologique** : Les dérivés pyrroliques accumulés (ex. **protoporphyrine IX** en cas de porphyrie) peuvent générer des radicaux libres, induisant des **mutations de l’ADN** et favorisant la carcinogenèse. Des inhibiteurs ciblant la synthèse du noyau pyrrolique (ex. **inhibiteurs de la δ‑aminolévulinate synthétase**) sont étudiés comme agents antitumoraux.",
+          "provider": "GROQ",
+          "model": "openai/gpt-oss-120b"
+        },
+        {
+          "role": "user",
+          "content": "quelle est la présence du pyrole dans le corps humain",
+          "_text": "quelle est la présence du pyrole dans le corps humain"
+        },
+        {
+          "role": "assistant",
+          "content": "Le pyrrole (C₄H₅N) n’existe pas librement en grande quantité dans le corps humain, mais il constitue le **noyau aromatique de toutes les porphyrines** :  \n\n- **Hème** (présent dans l’hémoglobine, la myoglobine, les cytochromes) → transport et stockage d’oxygène, transfert d’électrons.  \n- **Vitamine B₁₂** (cobalamine) → synthèse d’ADN et métabolisme des acides gras.  \n- **Bilirubine et autres dérivés** → produits de dégradation du hème éliminés par le foie.  \n\nAinsi, le pyrrole est essentiel comme bloc de construction des molécules qui assurent la respiration cellulaire, le métabolisme énergétique et la synthèse d’ADN.",
+          "provider": "GROQ",
+          "model": "openai/gpt-oss-120b"
+        },
+        {
+          "role": "user",
+          "content": "quelle est la présence du pyrole dans le corps humain",
+          "_text": "quelle est la présence du pyrole dans le corps humain"
+        },
+        {
+          "role": "assistant",
+          "content": "**En français :**  \nLe pyrrole n’est pas présent librement en grande quantité dans le corps, mais son noyau aromatique constitue la base de toutes les porphyrines : hème (dans l’hémoglobine, la myoglobine et les cytochromes, essentiel au transport d’oxygène et au transfert d’électrons), vitamine B₁₂ (cobalamine) et dérivés de la dégradation du hème (bilirubine, protoporphyrines). Ainsi, le pyrrole est indispensable comme composant structural des molécules clés du métabolisme énergétique et de la synthèse d’ADN.\n\n**In English:**  \nPyrrole itself is not found freely in high amounts in the body, but its aromatic ring forms the core of all porphyrins: heme (in hemoglobin, myoglobin, and cytochromes, crucial for oxygen transport and electron transfer), vitamin B₁₂ (cobalamin), and heme‑degradation products (bilirubin, protoporphyrins). Therefore, pyrrole is essential as the structural component of key molecules for energy metabolism and DNA synthesis.",
+          "provider": "GROQ",
+          "model": "openai/gpt-oss-120b"
+        },
+        {
+          "role": "user",
+          "content": "quelle est la présence du pyrole dans le corps humain",
+          "_text": "quelle est la présence du pyrole dans le corps humain"
+        },
+        {
+          "role": "assistant",
+          "content": "**En français :**  \nLe pyrrole n’est pas présent sous forme libre en grande quantité, mais son anneau constitue le noyau des porphyrines : hème (dans l’hémoglobine, la myoglobine et les cytochromes, essentiel au transport d’oxygène et au transfert d’électrons), vitamine B₁₂ (cobalamine) et les dérivés de la dégradation du hème (bilirubine, protoporphyrines). Ainsi, il est indispensable comme bloc structural des molécules clés du métabolisme énergétique et de la synthèse d’ADN.\n\n**In English:**  \nPyrrole itself is not found freely in high amounts, but its ring forms the core of porphyrins: heme (in hemoglobin, myoglobin, and cytochromes, essential for oxygen transport and electron transfer), vitamin B₁₂ (cobalamin), and heme‑degradation products (bilirubin, protoporphyrins). Therefore, it is a vital structural component of key molecules for energy metabolism and DNA synthesis.",
+          "provider": "GROQ",
+          "model": "openai/gpt-oss-120b"
+        }
+      ]
+    },
+    {
       "id": "d39be615-857e-4cd5-af7a-22e56952f970",
       "title": "Les Amines",
       "projectId": "06407384-63b3-4383-b87c-6248d2482d0a",
@@ -1430,33 +1481,9 @@
       "messages": []
     },
     {
-      "id": "8e588215-1fb3-4124-9272-afc6218700ec",
+      "id": "0141178a-4491-4639-80c1-6d11676f9dc2",
       "title": "Nouveau chat",
-      "projectId": null,
-      "messages": []
-    },
-    {
-      "id": "9fd10533-2857-4cb1-a297-78294a61e01a",
-      "title": "Nouveau chat",
-      "projectId": null,
-      "messages": []
-    },
-    {
-      "id": "6f858d74-88ed-4b1b-9878-44ada885a8b3",
-      "title": "Nouveau chat",
-      "projectId": null,
-      "messages": []
-    },
-    {
-      "id": "32cbccf0-cbab-4c1e-8df2-5b20d00080de",
-      "title": "Nouveau chat",
-      "projectId": null,
-      "messages": []
-    },
-    {
-      "id": "da32872e-77ef-4f97-9bdd-4d5172d342b0",
-      "title": "Nouveau chat",
-      "projectId": null,
+      "projectId": "06407384-63b3-4383-b87c-6248d2482d0a",
       "messages": []
     }
   ],
@@ -1535,11 +1562,18 @@
       "id": "40ba6b82-d96a-418e-838c-44c792873ca7",
       "name": "Short",
       "icon": "🤖",
-      "prompt": "Proposer une explication courte et précise. Il s'agit du domaine de la chimie organique de la biologie cellulaire et de la biologiei moléculaire."
+      "prompt": "Proposer une explication courte et précise."
+    },
+    {
+      "id": "13bf5acb-34c8-4f71-a338-2ce8c4c28d2e",
+      "name": "English",
+      "icon": "🤖",
+      "prompt": "Apporter la même réponse en anglais après la réponse en français."
     }
   ],
   "activeProfiles": [
-    "chemistry"
+    "13bf5acb-34c8-4f71-a338-2ce8c4c28d2e",
+    "40ba6b82-d96a-418e-838c-44c792873ca7"
   ],
   "params": {
     "temperature": 1,
@@ -1557,7 +1591,7 @@
     "showThinking": false,
     "webSearch": true
   },
-  "model": "gemini-2.5-flash",
-  "savedAt": "2026-05-22T04:36:30.461Z",
+  "model": "openai/gpt-oss-120b",
+  "savedAt": "2026-05-22T04:49:17.638Z",
   "version": 2
 }
