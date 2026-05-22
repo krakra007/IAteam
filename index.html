@@ -1751,7 +1751,7 @@ const S = {
   activeProfiles: JSON.parse(localStorage.getItem("activeProfiles") || "[]"),
   activeChat:    localStorage.getItem("activeChat")    || null,
   activeProject: localStorage.getItem("activeProject") || null,
-  model:  localStorage.getItem("model") || "openai/gpt-oss-120b",
+  model:  "openai/gpt-oss-120b",  // ← Force modèle par défaut, ignore localStorage
   params: (() => {
     const raw = JSON.parse(localStorage.getItem("params") || "null");
     if (!raw) return { ...DEF };
@@ -6301,6 +6301,11 @@ document.addEventListener("click", e => {
 // ─────────────────────────────────────────────────
 // INIT
 // ─────────────────────────────────────────────────
+
+// FORCE: Modèle par défaut = openai/gpt-oss-120b (ignore localStorage)
+S.model = "openai/gpt-oss-120b";
+localStorage.setItem("model", "openai/gpt-oss-120b");
+
 // Configurer marked.js
 if (typeof marked !== "undefined") {
   marked.setOptions({ breaks: true, gfm: true });
