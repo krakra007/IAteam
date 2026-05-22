@@ -1487,14 +1487,32 @@
     },
     {
       "id": "258eb576-f401-4f38-b20a-ea63128360c6",
-      "title": "Nouveau chat",
+      "title": "il semble qu'il ait un fabricant de ca",
       "projectId": null,
-      "messages": []
+      "messages": [
+        {
+          "role": "user",
+          "content": "il semble qu'il ait un fabricant de carburant militaire aux Etats Unis mais je n'arrive pas à trrouver son orthographe  , il s'agit de Dr Pepper ou Dr Papper. Peux tu m'aider sur cette précision.",
+          "_text": "il semble qu'il ait un fabricant de carburant militaire aux Etats Unis mais je n'arrive pas à trrouver son orthographe  , il s'agit de Dr Pepper ou Dr Papper. Peux tu m'aider sur cette précision."
+        },
+        {
+          "role": "assistant",
+          "content": "Il semble y avoir une confusion. Le nom que vous mentionnez, **Dr Pepper**, est celui d'une marque de boisson gazeuse très connue, et non d'un fabricant de carburant militaire aux États-Unis. L'orthographe correcte est bien \"Dr Pepper\".\n\nLe Dr Pepper a eu quelques liens historiques avec l'armée, notamment en étant considéré comme \"nécessaire\" pendant la Seconde Guerre mondiale pour l'énergie des travailleurs d'usine, ou par la présence de camions Dr Pepper camouflés sur des bases militaires pour le réapprovisionnement des distributeurs automatiques. Cependant, il n'est pas impliqué dans la production de carburant.\n\nAux États-Unis, les carburants militaires sont principalement gérés et acquis par la Defense Logistics Agency (DLA Energy). Des entreprises énergétiques majeures comme Exxon Mobil Corporation, Chevron Corporation, BP plc, Shell et TotalEnergies fournissent des carburants d'aviation. Des partenaires commerciaux tels que World Kinect Corporation et Sunoco LP travaillent également avec le gouvernement américain pour fournir et stocker des carburants militaires.\n\n***\n\n**English Response:**\n\nIt appears there might be a confusion. The name you mentioned, **Dr Pepper**, is that of a well-known soft drink brand, and not a military fuel manufacturer in the United States. The correct spelling is indeed \"Dr Pepper\".\n\nDr Pepper has had some historical associations with the military, such as being deemed \"necessary\" during World War II for factory workers' energy, or having camouflaged Dr Pepper trucks on military bases for vending machine restocking. However, it is not involved in fuel production.\n\nIn the United States, military fuels are primarily managed and procured by the Defense Logistics Agency (DLA Energy). Major energy companies like Exxon Mobil Corporation, Chevron Corporation, BP plc, Shell, and TotalEnergies supply aviation fuels. Commercial partners such as World Kinect Corporation and Sunoco LP also work with the U.S. government to supply and store military fuels.\n\n---\n**Sources :**\n- [drpeppermuseum.com](https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHApi7ddt6MsIfXaKq5kkVd0MVDSUkgBrQ3k52Y21LHnRRTWst-YWQ1NEkdaboZF0ooJgycuvK9VBdW_9wYwRY1YtbLIEydlNiqI_NOJJx82oZO-o_9F0zzUuvhCdj38eJ8Ib1jx3fl5F5cNepOUbkQwhGXJQ05y3IFR6ac4v1P9toyO9I=)\n- [reddit.com](https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFMIEMSfwR88VDUTq9Zq8wOzuzTH8qXkpSn9V8KzrTkFKEp8cox9jVvRdZVDWI-PPU_wPkfQDKOikSkmNsmZWFgUbegCn9wQOw32svEreHgDbq7fNobdKpVIjpvVEouhHxg34Cndpckad-6XPr7n6KrJgiwAFn1Ej60Lo0JiKwum_JuqzhwJ56WeboxpSk5gr1bYdvPoSo-GC0TECDry2SvMlte7chym_Q=)\n- [pilotcompany.com](https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHwYCKcn-soXDNTjOzErPacKCWQNhn_tVwOnM5tMkDFj92oQQXSmkNOSwlvxcG00Zx36b5WmUHUM4zuMDMpQRi-ggTSCYkYLmaD4pe1EOiJIrXggtY=)\n- [ebay.com](https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHu5ySDgCNuC1gAEdQuip0PtEjgqmowsLE6mqDWNhIbmYwMvjqdEo1D-pw8vk3Z_GGz6zRZ1aqgd3d2Ip0-DpS8aoE2j2CEQSsJeAwluSXPxNzv3xOkMgVGH6mHaTDTAqM=)\n- [stocktitan.net](https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFTo9qEwXQozckMw-aqkBxksuhzIvUlsOvJqvqrdf__uey4_T9DR0YLvWoA0bhYO_DVTgcH-SjcB9Zk66YXW6EttyO9f89i6b8anwTSGfacnTOi4IhqPjkq4YcJs54QLyoQLd3FgyIgiulJDboQ4xMOrf0ftVT1em2Y0urHCwwZEV-a4VOTlPZR4mUWRVd4PsFsVvoFfwa-hk_Jx60w5C_5nIgZ9EhFv1sdQw2JohQxjyo=)\n- [dla.mil](https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQEy-7KKEu6o9hTHc8UYOxltCuDc7A97vkSN_Jzb1B4_b5QIYHhisJjkMEkoN9hUahxEm1gBFHpkUY8RdhHBaCj4R0FT5sI_CG5Myi_bISJbyNs1g2cSJAYO2IrqPlxXjg==)\n- [marketsandmarkets.com](https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQGnbf2Q15vG1ytfV_iGHpjGEMt5J7PqENq241561CiKiwxyb1dsGZQyy_iihxPGL1B-KMofEBV6lyoVJxHOWZraxBmzLJgBxeJbrNZMWwDI9FEqwHXXpz-Bxp-OZDD8UUDoa6JzVz-hXBo_dhd1GeXuCZqD-JBE7a4Y-HYRbrlIK9LS02BU)\n- [world-kinect.com](https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQEsJ5HJNGwAp6W2dZwnaraheRT24CHSwwgbQAq5cZt4MINVL8HNy2fchh9-OWyE0SQ43eNNNzZ583xIOj5GZ_eIe3FJ2_LxEsRYBQlXa9c10b1o4EtGVa6s_kdEdoPpOm4XlERYvO4IOSS911adDFJzvvAYDiIB1r8FtSka2tcF)\n- [sunocolp.com](https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHxyi5zUMpB0UIi6PET4Gv5bZAxmtL--JB0qBtalOVfeWh7nzXSL6ALI4g45ErCJnplGFf2QyEqpVUtVn6_SVVk1fKQQoAYhsi27CtZREpSiiw0sYsMoMXe1EKJgH29C1HBzBtE2K57-Th0PKHbfw==)\n",
+          "provider": "GOOGLE GEMINI",
+          "model": "gemini-2.5-flash"
+        }
+      ]
     },
     {
       "id": "0141178a-4491-4639-80c1-6d11676f9dc2",
       "title": "Nouveau chat",
       "projectId": "06407384-63b3-4383-b87c-6248d2482d0a",
+      "messages": []
+    },
+    {
+      "id": "ca9e97ce-5dfc-4dc8-ad35-c507777f9474",
+      "title": "Nouveau chat",
+      "projectId": "4a80a2bb-5a7f-49d2-b420-c20965d8067b",
       "messages": []
     }
   ],
@@ -1583,8 +1601,7 @@
     }
   ],
   "activeProfiles": [
-    "13bf5acb-34c8-4f71-a338-2ce8c4c28d2e",
-    "40ba6b82-d96a-418e-838c-44c792873ca7"
+    "13bf5acb-34c8-4f71-a338-2ce8c4c28d2e"
   ],
   "params": {
     "temperature": 1,
@@ -1602,7 +1619,7 @@
     "showThinking": false,
     "webSearch": true
   },
-  "model": "openai/gpt-oss-120b",
-  "savedAt": "2026-05-22T04:54:17.786Z",
+  "model": "gemini-2.5-flash",
+  "savedAt": "2026-05-22T08:25:03.143Z",
   "version": 2
 }
