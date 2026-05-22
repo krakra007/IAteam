@@ -1751,7 +1751,7 @@ const S = {
   activeProfiles: JSON.parse(localStorage.getItem("activeProfiles") || "[]"),
   activeChat:    localStorage.getItem("activeChat")    || null,
   activeProject: localStorage.getItem("activeProject") || null,
-  model:  localStorage.getItem("model") || CURATED_MODELS[0],
+  model:  localStorage.getItem("model") || "openai/gpt-oss-120b",
   params: (() => {
     const raw = JSON.parse(localStorage.getItem("params") || "null");
     if (!raw) return { ...DEF };
@@ -1768,7 +1768,7 @@ const el = id => document.getElementById(id);
 let isWaitingResponse = false;
 let waitingStartTime = 0;
 let waitingTimerInterval = null;
-if (!CURATED_MODELS.includes(S.model)) S.model = CURATED_MODELS[0];
+if (!CURATED_MODELS.includes(S.model)) S.model = "openai/gpt-oss-120b";
 
 const promptEl   = el("prompt");
 
@@ -6184,9 +6184,11 @@ const appEl = document.querySelector(".app");
 if (localStorage.getItem("sidebarCollapsed") === "1") appEl.classList.add("sidebar-collapsed");
 
 el("toggleSidebarBtn").onclick = () => {
-  appEl.classList.toggle("sidebar-collapsed");
-  localStorage.setItem("sidebarCollapsed",
-    appEl.classList.contains("sidebar-collapsed") ? "1" : "0");
+  const collapsed = appEl.classList.toggle("sidebar-collapsed");
+  localStorage.setItem("sidebarCollapsed", collapsed ? "1" : "0");
+  // Effacer le style width inline pour que le CSS width:0 prenne effet
+  const sb = document.querySelector('.sidebar');
+  if (sb && collapsed) sb.style.width = '';
 };
 
 el("modelSelect").onchange = e => { S.model = e.target.value; save(); renderParams(); };
@@ -6288,9 +6290,9 @@ document.addEventListener("click", e => {
     localStorage.setItem("sidebarWidth", sidebar.offsetWidth);
   });
 
-  // Restaurer largeur
+  // Restaurer largeur (seulement si la sidebar n'est pas collapsed)
   const saved = localStorage.getItem("sidebarWidth");
-  if(saved && !isNaN(saved)){
+  if(saved && !isNaN(saved) && !appEl.classList.contains('sidebar-collapsed')){
     const w = Math.min(520, Math.max(160, +saved));
     sidebar.style.width = w + "px";
     document.documentElement.style.setProperty("--sidebar-w", w + "px");
