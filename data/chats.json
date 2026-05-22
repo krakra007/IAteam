@@ -1432,6 +1432,12 @@
       "title": "Nouveau chat",
       "projectId": "4a80a2bb-5a7f-49d2-b420-c20965d8067b",
       "messages": []
+    },
+    {
+      "id": "db57d9c2-eeb6-4cf7-866c-82df75ffc6c7",
+      "title": "Nouveau chat",
+      "projectId": null,
+      "messages": []
     }
   ],
   "projects": [
@@ -1518,9 +1524,7 @@
       "prompt": "Apporter la même réponse en anglais après la réponse en français."
     }
   ],
-  "activeProfiles": [
-    "13bf5acb-34c8-4f71-a338-2ce8c4c28d2e"
-  ],
+  "activeProfiles": [],
   "params": {
     "temperature": 1,
     "top_p": 0,
@@ -1538,6 +1542,6 @@
     "webSearch": true
   },
   "model": "gemini-2.5-flash",
-  "savedAt": "2026-05-22T08:45:03.248Z",
+  "savedAt": "2026-05-22T08:50:55.165Z",
   "version": 2
 }
