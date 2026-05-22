@@ -1135,6 +1135,135 @@
       }
     }
 
+    /* ═══════════════════════════════════════════════════════════════
+       CORRECTIONS COMPATIBILITÉ iPAD — Responsive complet
+       ═══════════════════════════════════════════════════════════════ */
+
+    /* 1. touch-action:manipulation sur tous les éléments interactifs
+        → élimine le délai 300ms sur tap iPad */
+    button, a, label,
+    .item, .profile-item, .search-result-item, .modal-swatch, .color-swatch,
+    .profile-btn, .msg-icon, .icon-btn, .copy, .artifact-btn, .artifact-tab,
+    .chat-menu-btn, .ctx-item, .ex-item, .code-artifact-btn,
+    .attach-btn, #sendBtn, .pe-btn, .gh-btn, .modal-btn,
+    input[type="range"], select, textarea {
+      touch-action: manipulation;
+    }
+
+    /* 2. Supprimer les effets :hover sur les écrans TACTILES
+        → évite l'état "collé" après le tap sur iPad */
+    @media (hover: none) {
+      .item:hover                             { background: transparent !important; }
+      .item.active                            { background: #2b2b2b; }
+      .icon-btn:hover                         { opacity: 0.75 !important; color: var(--muted2) !important; }
+      .profile-item:hover                     { background: transparent !important; }
+      .profile-item.active                    { background: #1e2a3a; }
+      .profile-btn:hover                      { background: transparent !important; color: var(--muted2) !important; }
+      .search-result-item:hover               { background: transparent !important; }
+      .chat-ctx-menu .ctx-item:hover          { background: transparent !important; }
+      .chat-ctx-menu .ctx-item.danger:hover   { background: transparent !important; }
+      .export-menu .ex-item:hover             { background: transparent !important; }
+      .copy:hover                             { background: transparent !important; color: #aeb4be !important; }
+      .artifact-tab:hover                     { color: #8b8fa3 !important; }
+      .gh-btn:hover                           { background: transparent !important; }
+      .modal-btn.confirm:hover                { background: #1f6feb !important; }
+      .pe-btn:hover                           { background: #ffffff0d !important; }
+      .pe-btn.primary:hover                   { background: #1f6feb !important; }
+      .pe-btn.danger:hover                    { background: transparent !important; }
+      .key-test-btn:hover                     { background: #ffffff0d !important; color: var(--muted) !important; }
+      .save-keys-btn:hover                    { background: #1f6feb !important; }
+      .active-profile-chip:hover              { background: #1f6feb18 !important; }
+      .modal-swatch:hover                     { transform: none !important; }
+      .artifact-btn:hover                     { background: transparent !important; }
+      pre:hover .code-artifact-btn            { opacity: 0 !important; }
+    }
+
+    /* 3. Rendre visibles les éléments cachés par :hover sur iPad */
+    @media (pointer: coarse) {
+      .chat-menu-btn      { opacity: 0.75; }
+      .profile-btns       { opacity: 1; }
+      .code-artifact-btn  { opacity: 0.85 !important; }
+      .thinking-block[open] summary { color: #9bb8ff; }
+    }
+
+    /* 4. Safe-areas pour iPad (orientation portrait ET paysage) */
+    @media (max-width: 1366px) and (pointer: coarse) {
+      .top {
+        padding-top: max(10px, env(safe-area-inset-top));
+        padding-left:  max(14px, env(safe-area-inset-left));
+        padding-right: max(14px, env(safe-area-inset-right));
+      }
+      .input-area {
+        padding-bottom: max(8px, env(safe-area-inset-bottom));
+        padding-left:   max(10px, env(safe-area-inset-left));
+        padding-right:  max(10px, env(safe-area-inset-right));
+      }
+      .sidebar {
+        padding-top: max(10px, env(safe-area-inset-top));
+        padding-left: max(10px, env(safe-area-inset-left));
+      }
+    }
+
+    /* 5. Fix iPad Pro/Air en mode paysage (>1024px) — sidebar en overlay */
+    @media (min-width: 1025px) and (max-width: 1366px) and (pointer: coarse) and (orientation: landscape) {
+      .sidebar {
+        position: fixed;
+        left: 0; top: 0;
+        height: 100vh; height: 100dvh;
+        z-index: 50;
+        width: 280px !important;
+        min-width: 0;
+        max-width: 85vw;
+        box-shadow: 4px 0 24px rgba(0,0,0,.5);
+        transform: translateX(0);
+        transition: transform .22s cubic-bezier(.4,0,.2,1);
+      }
+      .app.sidebar-collapsed .sidebar {
+        transform: translateX(-100%);
+        width: 280px !important;
+        padding: 10px;
+        border-right: 1px solid var(--line);
+      }
+      .sidebar-backdrop {
+        display: none;
+        position: fixed; inset: 0;
+        background: rgba(0,0,0,.35);
+        z-index: 49;
+      }
+      .app:not(.sidebar-collapsed) .sidebar-backdrop { display: block; }
+      .resizer { display: none; }
+      .main { min-width: 0; width: 100%; }
+    }
+
+    /* 6. Font-size >= 16px partout sur tactile (évite zoom auto iOS) */
+    @media (pointer: coarse) {
+      textarea,
+      input[type="text"],
+      input[type="password"],
+      input[type="email"],
+      input[type="search"],
+      select {
+        font-size: 16px !important;
+      }
+    }
+
+    /* 7. Artifact panel trop étroit sur iPad portrait */
+    @media (max-width: 1024px) and (orientation: portrait) {
+      .artifact-panel.open { display: none !important; }
+      .artifact-resizer.open { display: none !important; }
+    }
+
+    /* 8. Boutons minimum 44x44px sur tactile (recommandation WCAG) */
+    @media (pointer: coarse) {
+      .icon-btn, .copy, .artifact-btn, .chat-menu-btn, .profile-btn {
+        min-width: 44px;
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+    }
+
   </style>
   <!-- marked.js + highlight.js + KaTeX — stack pro comme IA-Genius -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
@@ -6271,7 +6400,11 @@ loadModelsFromApi();
 // Ce code ne modifie le comportement QUE sur écran ≤ 1024px.
 // ═══════════════════════════════════════════════════════
 (function initResponsive() {
-  const isTablet = () => window.innerWidth <= 1024;
+  const isTablet = () => {
+    return window.innerWidth <= 1366 ||
+           /iPad/.test(navigator.userAgent) ||
+           (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+  };
 
   // ── Auto-collapse sidebar sur tablette au démarrage ──
   if (isTablet()) {
