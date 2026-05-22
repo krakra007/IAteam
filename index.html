@@ -288,7 +288,7 @@
     .main.home-mode .composer{margin:auto 0 28vh;border-top:none;background:transparent}
     /* home-hero styles moved to BrAInShift section */
     .composer-wrap{transition:max-width .2s ease}
-    .main.home-mode .composer-wrap{max-width:980px;width:min(94vw,980px);display:block}
+    .main.home-mode .composer-wrap{max-width:980px;width:min(94%,980px);display:block}
     .main.home-mode textarea{width:100%;min-height:64px;max-height:200px;height:64px;border-radius:28px;padding:18px 108px 18px 20px;overflow-y:auto}
     .textarea-wrap{position:relative;width:100%}
     .composer-box{width:100%}
@@ -1264,10 +1264,10 @@
       }
     }
 
-    /* 9. Garantie layout PC Desktop — aucune règle iPad ne doit s'appliquer */
-    @media (min-width: 1367px), (pointer: fine) {
-      .sidebar { position: relative !important; transform: none !important; }
-      .main    { width: auto !important; }
+    /* 9. Garantie layout PC Desktop — seulement grands écrans non-tactiles */
+    @media (min-width: 1025px) and (pointer: fine) {
+      .sidebar { position: relative; transform: none; }
+      .app.sidebar-collapsed .sidebar { transform: none; width: 0; }
     }
 
   </style>
@@ -6414,9 +6414,11 @@ loadModelsFromApi();
 // ═══════════════════════════════════════════════════════
 (function initResponsive() {
   const isTablet = () => {
-    return window.innerWidth <= 1366 ||
-           /iPad/.test(navigator.userAgent) ||
-           (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+    // iPad détecté par user-agent (portrait ET paysage, toute résolution)
+    const isIPad = /iPad/.test(navigator.userAgent) ||
+                   (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+    // Petit écran ≤ 1024px OU iPad détecté → jamais un PC standard
+    return window.innerWidth <= 1024 || isIPad;
   };
 
   // ── Auto-collapse sidebar sur tablette au démarrage ──
