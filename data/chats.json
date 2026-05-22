@@ -48,6 +48,17 @@
           "content": "**En français :**  \nLe pyrrole n’est pas présent sous forme libre en grande quantité, mais son anneau constitue le noyau des porphyrines : hème (dans l’hémoglobine, la myoglobine et les cytochromes, essentiel au transport d’oxygène et au transfert d’électrons), vitamine B₁₂ (cobalamine) et les dérivés de la dégradation du hème (bilirubine, protoporphyrines). Ainsi, il est indispensable comme bloc structural des molécules clés du métabolisme énergétique et de la synthèse d’ADN.\n\n**In English:**  \nPyrrole itself is not found freely in high amounts, but its ring forms the core of porphyrins: heme (in hemoglobin, myoglobin, and cytochromes, essential for oxygen transport and electron transfer), vitamin B₁₂ (cobalamin), and heme‑degradation products (bilirubin, protoporphyrins). Therefore, it is a vital structural component of key molecules for energy metabolism and DNA synthesis.",
           "provider": "GROQ",
           "model": "openai/gpt-oss-120b"
+        },
+        {
+          "role": "user",
+          "content": "expliquer la structure chimique de la pyridine",
+          "_text": "expliquer la structure chimique de la pyridine"
+        },
+        {
+          "role": "assistant",
+          "content": "**En français – Structure chimique de la pyridine**  \nLa pyridine est une molécule hétérocyclique aromatique de formule **C₅H₅N**. Elle possède un anneau à six membres composé de cinq atomes de carbone et d’un atome d’azote sp², disposés de façon alternée comme dans le benzène. L’azote apporte une paire d’électrons non liants qui participe au système π, conservant ainsi l’aromaticité (6 électrons π, règle de Hückel). Cette paire libre rend la pyridine basique (pKa ≈ 5,2) et capable de former des liaisons de coordination avec des métaux.  \n\n**In English – Chemical structure of pyridine**  \nPyridine is a six‑membered aromatic heterocycle with the formula **C₅H₅N**. It consists of five sp²‑hybridized carbon atoms and one sp²‑hybridized nitrogen atom arranged alternately in a planar ring, analogous to benzene. The nitrogen contributes a non‑bonding lone pair that participates in the π‑system, preserving aromaticity (6 π‑electrons, Hückel’s rule). This lone pair also makes pyridine basic (pKa ≈ 5.2) and able to coordinate metal ions.",
+          "provider": "GROQ",
+          "model": "openai/gpt-oss-120b"
         }
       ]
     },
@@ -1592,6 +1603,6 @@
     "webSearch": true
   },
   "model": "openai/gpt-oss-120b",
-  "savedAt": "2026-05-22T04:49:17.638Z",
+  "savedAt": "2026-05-22T04:54:17.786Z",
   "version": 2
 }
