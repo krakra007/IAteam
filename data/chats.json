@@ -1,6 +1,24 @@
 {
   "chats": [
     {
+      "id": "586005cb-b58b-40e3-b5ab-2d6e40e6a4c8",
+      "title": "peux tu me donner les différences entr",
+      "projectId": "06407384-63b3-4383-b87c-6248d2482d0a",
+      "messages": [
+        {
+          "role": "user",
+          "content": "peux tu me donner les différences entre la hydrolyse et la hydratation en chimie organique",
+          "_text": "peux tu me donner les différences entre la hydrolyse et la hydratation en chimie organique"
+        },
+        {
+          "role": "assistant",
+          "content": "## Hydrolyse vs Hydratation en chimie organique\n\nCes deux réactions impliquent l'eau ($H_2O$) mais diffèrent par leur **objectif**, leur **mécanisme** et les **produits** formés.\n\n### 1. Hydrolyse\n\n**Définition** : Coupure d'une liaison covalente par une molécule d'eau. L'eau se scinde en $H^+$ et $OH^-$, qui s'ajoutent de part et d'autre de la liaison rompue.\n\n**Mécanisme général** :\n$$\\text{R}-X + H_2O \\rightarrow \\text{R}-OH + HX$$\n\n**Exemples typiques** :\n- Hydrolyse d'un ester (saponification) :\n  $$\\text{RCOOR'} + H_2O \\rightleftharpoons \\text{RCOOH} + \\text{R'OH}$$\n- Hydrolyse d'un halogénoalcane (substitution nucléophile) :\n  $$CH_3CH_2Br + H_2O \\rightarrow CH_3CH_2OH + HBr$$\n- Hydrolyse d'un amide :\n  $$\\text{RCONH}_2 + H_2O \\rightarrow \\text{RCOOH} + NH_3$$\n\n**Caractéristique** : La liaison rompue est **covalente** (C–X, C–O, C–N, etc.). L'eau agit comme **réactif nucléophile** (attaque sur un centre électrophile) ou comme agent d'**addition-élimination** sur un carbonyle.\n\n---\n\n### 2. Hydratation\n\n**Définition** : Addition d'une molécule d'eau sur une **liaison multiple** (généralement $C=C$, $C \\equiv C$, $C=O$). L'eau s'ajoute sans coupure préalable de liaison dans le substrat.\n\n**Mécanisme général** (exemple d'une alcène) :\n$$R_2C=CR_2 + H_2O \\xrightarrow{H^+} R_2C(OH)-C(R_2)H$$\n\n**Exemples typiques** :\n- Hydratation d'un alcène (catalyse acide) :\n  $$CH_2=CH_2 + H_2O \\xrightarrow{H_3PO_4} CH_3CH_2OH$$\n- Hydratation d'un alcyne (catalyse $Hg^{2+}$) :\n  $$HC \\equiv CH + H_2O \\rightarrow CH_3CHO$$\n- Hydratation d'un aldéhyde/cétone (formation d'un hydrate, réversible) :\n  $$R_2C=O + H_2O \\rightleftharpoons R_2C(OH)_2$$\n\n**Caractéristique** : La liaison multiple (pi) est **ouverte** ; l'eau s'additionne **sans rompre d'autre liaison** dans la molécule. Le produit contient généralement un groupe hydroxyle ($-OH$) supplémentaire.\n\n---\n\n### 3. Tableau comparatif\n\n| Critère | Hydrolyse | Hydratation |\n|---------|-----------|-------------|\n| **Substrat** | Composé possédant une liaison covalente labile (ester, halogénure, amide, etc.) | Composé insaturé (alcène, alcyne, carbonyle) |\n| **Liaison touchée** | Liaison simple σ (C–X, C–O, C–N) | Liaison multiple π (C=C, C≡C, C=O) |\n| **Rôle de l'eau** | Se scinde en H⁺ et OH⁻ ; chaque fragment attaque un atome différent | Molécule d'eau entière s'additionne en deux étapes (H⁺ puis H₂O ou OH⁻) |\n| **Produits** | Deux fragments : un alcool ou acide + un composé contenant le groupe partant (HX, NH₃, etc.) | Un seul produit : un alcool (si alcène ou alcyne) ou un diol geminal (si carbonyle) |\n| **Réversibilité** | Souvent réversible (ex. estérification/hydrolyse) | Souvent réversible pour les carbonyles ; généralement non réversible pour les alcènes dans les conditions standard |\n| **Exemple emblématique** | Hydrolyse de l'ester $\\text{RCOOR'} + H_2O$ | Hydratation de l'éthylène $CH_2=CH_2 + H_2O$ |\n\n---\n\n### 4. Point clé à retenir\n\n- **Hydrolyse** = **coupure** d'une liaison par l'eau.\n- **Hydratation** = **addition** d'eau sur une liaison multiple.\n\nLes deux utilisent de l'eau, mais l'hydrolyse **rompt** une liaison existante (le substrat est saturé), tandis que l'hydratation **ouvre** une liaison multiple (le substrat est insaturé).",
+          "provider": "DEEPSEEK",
+          "model": "deepseek-v4-flash"
+        }
+      ]
+    },
+    {
       "id": "5fff138b-9c0c-4b5d-84b5-a717d5f768a5",
       "title": "quelle est la présence du pyrole dans ",
       "projectId": "06407384-63b3-4383-b87c-6248d2482d0a",
@@ -1499,7 +1517,7 @@
     "showThinking": false,
     "webSearch": true
   },
-  "model": "openai/gpt-oss-120b",
-  "savedAt": "2026-05-23T05:28:26.448Z",
+  "model": "deepseek-v4-flash",
+  "savedAt": "2026-05-23T05:33:26.734Z",
   "version": 2
 }
