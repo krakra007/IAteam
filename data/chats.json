@@ -2,7 +2,7 @@
   "chats": [
     {
       "id": "586005cb-b58b-40e3-b5ab-2d6e40e6a4c8",
-      "title": "peux tu me donner les différences entr",
+      "title": "Quick Q&A",
       "projectId": "06407384-63b3-4383-b87c-6248d2482d0a",
       "messages": [
         {
@@ -1518,6 +1518,6 @@
     "webSearch": true
   },
   "model": "deepseek-v4-flash",
-  "savedAt": "2026-05-23T05:33:26.734Z",
+  "savedAt": "2026-05-23T05:38:26.542Z",
   "version": 2
 }
