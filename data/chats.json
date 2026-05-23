@@ -1,6 +1,26 @@
 {
   "chats": [
     {
+      "id": "90f5cc65-d830-467c-b1a9-ba4171bfb367",
+      "title": "Peux tu me faire une descriptoin pédag",
+      "projectId": "06407384-63b3-4383-b87c-6248d2482d0a",
+      "messages": [
+        {
+          "role": "user",
+          "content": "Peux tu me faire une descriptoin pédagogique des glucides sous forme de cours",
+          "_text": "Peux tu me faire une descriptoin pédagogique des glucides sous forme de cours"
+        },
+        {
+          "role": "assistant",
+          "content": "Voici votre cours structuré sur les glucides :\n\n\n\n📄 **Les Glucides : Structure, Classification et Rôles Biologiques** — 75 lignes → *ouvert dans le panneau Artifact*\n",
+          "provider": "DEEPSEEK",
+          "model": "deepseek-v4-pro",
+          "_artifactContent": "# Les Glucides : Structure, Classification et Rôles Biologiques\n\n## 1. Introduction\n- Les **glucides** (sucres ou hydrates de carbone) sont des biomolécules organiques constituées de carbone, d’hydrogène et d’oxygène.\n- Formule brute générale (souvent) : $C_n(H_2O)_p$, avec $n \\ge 3$.\n- Ils jouent des rôles majeurs : **source d’énergie**, **réserve énergétique**, **éléments de structure**, **signaux de reconnaissance cellulaire**.\n\n## 2. Classification des glucides\nOn distingue :\n\n### 2.1. Les **oses** (monosaccharides)\n- Les plus simples, non hydrolysables.\n- Caractérisés par :\n  - une chaîne carbonée linéaire (3 à 7 carbones) avec une **fonction carbonyle** (aldéhyde ou cétone) et des **groupes hydroxyle** $(–OH)$.\n  - une forme cyclique majoritaire en solution (furanose ou pyranose).\n- Exemples :\n  - Trioses : $C_3H_6O_3$ (glycéraldéhyde, dihydroxyacétone)\n  - Pentoses : $C_5H_{10}O_5$ (ribose, désoxyribose)\n  - Hexoses : $C_6H_{12}O_6$ (glucose, fructose, galactose)\n\n### 2.2. Les **osides**\n- Molécules formées par l’association de deux ou plusieurs oses (ou dérivés d’oses) via une **liaison osidique**.\n- On distingue :\n  - **Holosides** : constitués exclusivement d’oses.\n    - **Diholosides** (2 oses) : saccharose, lactose, maltose.\n    - **Polyosides** (nombreux oses) : amidon, glycogène, cellulose.\n  - **Hétérosides** : un ose (ou un oligoside) lié à une partie **non glucidique** (aglycone) : nucléosides, flavonoïdes.\n\n## 3. Structures et conformations essentielles\n\n### 3.1. Oses : linéaire et cyclique\n- En solution, un ose existe sous deux formes anomères (α et β) issues de la cyclisation de la chaîne ouverte.\n- La liaison osidique bloque l’anomère impliqué.\n\n### 3.2. Principaux diholosides\n| Diholoside | Composition                     | Liaison osidique   |\n|------------|---------------------------------|--------------------|\n| Saccharose | Glucose + Fructose              | α1→2β              |\n| Lactose    | Galactose + Glucose             | β1→4               |\n| Maltose    | Glucose + Glucose               | α1→4               |\n\n- La liaison osidique explique leurs propriétés réductrices ou non :\n  - **Saccharose** est un sucre non réducteur (les deux carbones anomériques sont engagés dans la liaison).\n  - **Lactose** et **maltose** sont réducteurs (un carbone anomérique libre subsiste).\n\n### 3.3. Polyosides de réserve et de structure\n- **Amidon** : mélange d’amylose (linéaire, liaisons α1→4) et d’amylopectine (ramifiée, α1→6). Source de glucose dans les végétaux.\n- **Glycogène** : analogue de l’amylopectine chez les animaux, encore plus ramifié.\n- **Cellulose** : chaînes linéaires de glucose liées en β1→4. Rôle structural (parois végétales), non digestible par l’homme.\n\n## 4. Propriétés physico-chimiques clés\n- **Solubilité** : les oses et diholosides sont très solubles dans l’eau ; les polyosides sont plutôt insolubles ou forment des colloïdes.\n- **Pouvoir rotatoire** : dû à la présence de carbones asymétriques ; mesuré par polarimétrie.\n- **Réactions de réduction** : les sucres réducteurs (possédant un aldéhyde ou une cétone libre) réduisent le cuivre (II) en milieu alcalin (liqueur de Fehling).\n- **Sucres réducteurs et non réducteurs** déterminent les tests d’identification.\n\n## 5. Importance biologique et nutritionnelle\n- **Source d’énergie** : $1 \\,g$ de glucide fournit environ $4 \\,kcal$. Le glucose est le principal carburant cellulaire (glycolyse, cycle de Krebs).\n- **Régulation glycémique** : l’insuline et le glucagon maintiennent la glycémie autour de $1 \\,g/L$.\n- **Fibres alimentaires** : polyosides non digestibles (cellulose, hémicelluloses) améliorent le transit et modulent l’absorption des nutriments.\n- **Glycobiologie** : les oligosaccharides de surface (glycocalyx) interviennent dans la reconnaissance intercellulaire, l’adhésion bactérienne, la réponse immunitaire.\n\n## 6. Schéma général (représentation symbolique)\n$$\\text{Monosaccharides} \\rightarrow \\text{Oligosaccharides} \\rightarrow \\text{Polysaccharides}$$\n$$\\text{Oses} \\xrightarrow{\\text{liaison osidique}} \\text{Diholosides} \\xrightarrow{\\text{polymérisation}} \\text{Polyosides}$$\n\n- Fonctions biologiques : énergétique → structurale → signalisation.\n\n## 7. Pour résumer\n- Les glucides se classent en **oses**, **oligosides** et **polyosides**.\n- La **liaison osidique** est l’élément structural clé de la diversité des osides.\n- Leur métabolisme est central (stockage glycogène, mobilisation en cas de besoin).\n- Leur étude croise chimie organique, biochimie et nutrition.\n\nCe cours couvre l’essentiel des notions fondamentales sur les glucides. Des approfondissements sur la stéréochimie (série L et D), les dérivés d’oses (acides uroniques, osamines) ou les glycoprotéines peuvent compléter cet enseignement.",
+          "_artifactTitle": "Les Glucides : Structure, Classification et Rôles Biologiques"
+        }
+      ]
+    },
+    {
       "id": "cad4b21f-de01-40d6-af72-faf7a7cc17f7",
       "title": "Nouveau chat",
       "projectId": null,
@@ -1487,7 +1507,7 @@
     "showThinking": false,
     "webSearch": true
   },
-  "model": "deepseek-v4-flash",
-  "savedAt": "2026-05-23T18:20:00.864Z",
+  "model": "deepseek-v4-pro",
+  "savedAt": "2026-05-23T18:22:40.051Z",
   "version": 2
 }
