@@ -48,9 +48,21 @@
     },
     {
       "id": "cad4b21f-de01-40d6-af72-faf7a7cc17f7",
-      "title": "Nouveau chat",
+      "title": "comment agissent les enzimes impliquée",
       "projectId": null,
-      "messages": []
+      "messages": [
+        {
+          "role": "user",
+          "content": "comment agissent les enzimes impliquées dans la transcription de l'ADN. Peux tu les énumérer?",
+          "_text": "comment agissent les enzimes impliquées dans la transcription de l'ADN. Peux tu les énumérer?"
+        },
+        {
+          "role": "assistant",
+          "content": "## Enzymes majeures de la transcription de l’ADN\n\n- **ARN polymérase (ARN Pol II chez les eucaryotes)**  \n  - Catalyse la synthèse de l’ARN messager (ARNm) à partir du brin matrice d’ADN.  \n  - S’attache au promoteur, déroule localement l’ADN et incorpore les nucléotides complémentaires (5’→3’) selon la séquence du brin matrice.\n\n- **Hélicase (activité hélicase de TFIIH)**  \n  - Déroule la double hélice d’ADN en ouvrant la bulle de transcription, permettant à l’ARN polymérase d’accéder aux brins d’ADN.  \n  - Utilise l’hydrolyse de l’ATP pour fournir l’énergie nécessaire au déroulement.\n\n- **Topoisomérase (généralement Topoisomérase I ou II)**  \n  - Relâche les contraintes de superenroulement générées en amont et en aval de la bulle de transcription.  \n  - Coupe momentanément l’ADN, permet la rotation, puis recolle les brins.\n\n- **Cofacteur de capping (capping enzyme)**  \n  - Ajoute une coiffe 7‑méthyl‑guanosine à l’extrémité 5’ de l’ARNm naissant, protégeant l’ARN contre la dégradation et favorisant son exportation nucléaire.\n\n- **Poly(A) polymérase**  \n  - Allonge l’extrémité 3’ de l’ARNm avec une queue poly‑A, indispensable à la stabilité de l’ARN et à sa traduction.\n\n- **ARN nucléase (ex. RNase II, XRN2)**  \n  - Assure la dégradation des transcrits aberrants ou des interférences transcriptionnelles, participant ainsi au contrôle de la qualité de l’ARN.\n\n- **Spliceosome (complexe contenant des ribonucléases et des ATP‑ases)**  \n  - Bien que n’étant pas une « enzyme unique », il comprend des **ribonucléases** qui reconnaissent et clivent les introns, puis liguent les exons pour produire un ARNm mature.\n\n- **Facteurs de terminaison (ex. facteur de terminaison de l’ARN Pol I, facteur de terminaison de l’ARN Pol II)**  \n  - Induisent la libération de l’ARN polymérase et du transcrit de l’ADN, souvent en catalysant la formation d’une structure en épingle à cheveux ou en recrutant des protéines de clivage endonucléasique.\n\n**Résumé** : La transcription repose sur l’ARN polymérase pour la synthèse de l’ARN, soutenue par des enzymes de remodelage de l’ADN (hélicase, topoisomérase), des enzymes de maturation de l’ARN (capping enzyme, poly(A) polymérase, spliceosome) et des enzymes de contrôle/terminaison (ARN nucléase, facteurs de terminaison). Ces activités sont coordonnées spatialement et temporellement pour assurer la production précise d’ARN fonctionnel.",
+          "provider": "GROQ",
+          "model": "openai/gpt-oss-120b"
+        }
+      ]
     },
     {
       "id": "586005cb-b58b-40e3-b5ab-2d6e40e6a4c8",
@@ -1615,6 +1627,6 @@
     "webSearch": true
   },
   "model": "openai/gpt-oss-120b",
-  "savedAt": "2026-05-24T18:17:37.006Z",
+  "savedAt": "2026-05-24T18:18:00.421Z",
   "version": 2
 }
