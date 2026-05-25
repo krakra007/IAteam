@@ -4977,44 +4977,61 @@ async function callGroq(key, model, messages) {
 }
 
 // ─────────────────────────────────────────────────
-// 🎨 GÉNÉRATION D'IMAGES — OpenAI gpt-image-2
-// Détection automatique + appel API
+// 🎨 GÉNÉRATION D'IMAGES — Gemini Image Preview
+// Même logique qu'IAGenius : clé Gemini, pas OpenAI
 // ─────────────────────────────────────────────────
 
 function isImageGenerationRequest(text) {
   if (!text) return false;
-  const lower = text.toLowerCase();
-  // Keywords: draw, design, diagram, sketch, architecture, flowchart, chart, visual, etc.
-  return /\b(dessine|draw|design|schéma|schema|diagram|diagramme|esquisse|sketch|architectural|architecture|flowchart|flow\s+chart|graphique|chart|visual|imagine|crée|create|génère|generate|diagramm)\b/i.test(lower);
+  // Opt-out explicite
+  if (/\b(texte\s*seul|text\s*only|no-image|pas.*image)\b/i.test(text)) return false;
+  // Verbes visuels directs → toujours une image
+  if (/\b(dessine|dessiner|illustre|illustrer|draw|sketch)\b/i.test(text)) return true;
+  // Verbe d'action + nom visuel dans les 40 caractères suivants
+  if (/\b(g[eé]n[eè]re|cr[eé]e|fais|montre|fabrique|produis|generate|create|make|show)\b.{0,40}\b(image|photo|illustration|dessin|picture|drawing|logo|icon[eê]?|affiche|poster|avatar|portrait|sc[eè]ne|paysage|visuel|sch[eé]ma|diagramme|graphique|infographie)\b/i.test(text)) return true;
+  // Nom visuel + "de/du/d'/des/of"
+  if (/\b(image|photo|illustration|dessin|picture|drawing) (de|du|d'|des|of|about)\b/i.test(text)) return true;
+  return false;
 }
 
-async function callOpenAIImages(apiKey, prompt) {
-  // Appel à OpenAI Images API avec gpt-image-2 (modèle flagship mai 2026)
+async function callGeminiImages(apiKey, prompt) {
+  // gemini-3.1-flash-image-preview : seul modèle Gemini supportant la génération d'images
   const body = {
-    model: "gpt-image-2",
-    prompt: prompt,
-    n: 1,
-    size: "1024x1024",
-    quality: "high",
-    output_format: "png"
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    generationConfig: {
+      responseModalities: ['TEXT', 'IMAGE']
+    }
   };
 
-  const r = await fetchWithRetry("https://api.openai.com/v1/images/generations", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": "Bearer " + apiKey
-    },
-    body: JSON.stringify(body)
-  });
+  const r = await fetchWithRetry(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }
+  );
 
   const d = await r.json();
-  if (d.error) throw new Error(`[OpenAI Images] ${d.error.message}`);
+  if (d.error) throw new Error(`[Gemini Image] ${d.error.message}`);
 
-  // gpt-image-2 retourne toujours du base64 (pas d'URL CDN)
-  const b64 = d.data?.[0]?.b64_json;
-  if (!b64) return null;
-  return `data:image/png;base64,${b64}`;
+  const parts = d.candidates?.[0]?.content?.parts || [];
+  if (!parts.length) throw new Error('[Gemini Image] Aucune réponse reçue.');
+
+  let textContent = '';
+  let imageHtml = '';
+  for (const part of parts) {
+    if (part.text) textContent += part.text;
+    const inlineData = part.inlineData || part.inline_data;
+    if (inlineData) {
+      const mime = inlineData.mimeType || inlineData.mime_type || 'image/png';
+      imageHtml += `\n\n![Image générée](data:${mime};base64,${inlineData.data})`;
+    }
+  }
+
+  if (!imageHtml) throw new Error('[Gemini Image] Aucune image retournée. Le modèle a peut-être répondu en texte seul.');
+
+  return (textContent ? textContent + '\n\n' : '') + imageHtml.trim();
 }
 
 // ─────────────────────────────────────────────────
@@ -5067,38 +5084,42 @@ async function send() {
   try {
     let responseContent;
 
-    // 🎨 DÉTECTION AUTO : demande d'image/schéma → API Images OpenAI
+    // 🎨 DÉTECTION AUTO : demande d'image → Gemini Image (quelle que soit le modèle chat actif)
     if (isImageGenerationRequest(text)) {
-      const openaiKey = (apiKeysByProvider["OPENAI"] || "").trim();
-      if (!openaiKey) {
-        showApiError(`🎨 Pour générer une image, veuillez configurer votre clé OpenAI (🔑 Settings).`);
+      const geminiKey = (apiKeysByProvider["GOOGLE GEMINI"] || "").trim();
+      if (!geminiKey) {
+        console.warn('[BrAInShift] 🎨 Clé Google Gemini manquante pour génération d\'image');
+        showApiError(`🎨 Pour générer une image, configurez votre clé Google Gemini (🔑 Settings).`);
         isWaitingResponse = false;
         if (waitingTimerInterval) clearInterval(waitingTimerInterval);
         render();
         return;
       }
 
-      const imageUrl = await callOpenAIImages(openaiKey, text);
-      if (!imageUrl) {
-        throw new Error("Impossible de générer l'image. Vérifiez votre quota OpenAI.");
+      try {
+        console.log('[BrAInShift] 🎨 Génération image via gemini-3.1-flash-image-preview...');
+        responseContent = await callGeminiImages(geminiKey, text);
+
+        c.messages.push({
+          role: "assistant",
+          content: responseContent,
+          provider: "GOOGLE GEMINI",
+          model: "gemini-3.1-flash-image-preview",
+          _isImage: true
+        });
+
+        isWaitingResponse = false;
+        if (waitingTimerInterval) clearInterval(waitingTimerInterval);
+        render();
+        return;
+      } catch (err) {
+        console.error('[BrAInShift] 🎨 Erreur génération image:', err.message);
+        showApiError(`🎨 Erreur image : ${err.message}`);
+        isWaitingResponse = false;
+        if (waitingTimerInterval) clearInterval(waitingTimerInterval);
+        render();
+        return;
       }
-
-      // Créer un message avec l'image générée (data URL base64 — clic-droit pour sauvegarder)
-      responseContent = `🎨 **Image générée par gpt-image-2**\n\n![Generated Image](${imageUrl})\n\n*Clic-droit sur l'image → "Enregistrer l'image" pour la télécharger.*`;
-
-      // Stocker la réponse avec métadonnées
-      c.messages.push({
-        role: "assistant",
-        content: responseContent,
-        provider: "OPENAI",
-        model: "gpt-image-2",
-        _isImage: true
-      });
-
-      isWaitingResponse = false;
-      if (waitingTimerInterval) clearInterval(waitingTimerInterval);
-      render();
-      return;
     }
 
     if (provider === "ANTHROPIC") {
