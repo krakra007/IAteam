@@ -5014,7 +5014,8 @@ async function callOpenAIImages(apiKey, prompt) {
     prompt: frenchPrompt,
     n: 1,
     size: "1024x1024",
-    quality: "high"
+    quality: "high",
+    response_format: "b64_json"
   };
 
   const r = await fetchWithRetry("https://api.openai.com/v1/images/generations", {
