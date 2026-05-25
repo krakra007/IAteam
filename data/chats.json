@@ -1541,6 +1541,24 @@
           "model": "openai/gpt-oss-120b"
         }
       ]
+    },
+    {
+      "id": "4cda2bf4-499c-4a54-b842-bb373cdaed78",
+      "title": "dessine le groupe acetal dans un sucre",
+      "projectId": null,
+      "messages": [
+        {
+          "role": "user",
+          "content": "dessine le groupe acetal dans un sucre",
+          "_text": "dessine le groupe acetal dans un sucre"
+        },
+        {
+          "role": "assistant",
+          "content": "❌ Erreur : [OpenAI Images] Invalid value: 'hd'. Supported values are: 'low', 'medium', 'high', and 'auto'.",
+          "provider": "GROQ",
+          "model": "openai/gpt-oss-120b"
+        }
+      ]
     }
   ],
   "projects": [
@@ -1645,6 +1663,6 @@
     "webSearch": true
   },
   "model": "openai/gpt-oss-120b",
-  "savedAt": "2026-05-25T13:43:32.116Z",
+  "savedAt": "2026-05-25T13:45:50.120Z",
   "version": 2
 }
