@@ -1526,9 +1526,21 @@
     },
     {
       "id": "bf99c1e8-81d8-4425-8b4a-55e5841056cd",
-      "title": "Nouveau chat",
+      "title": "dessine le groupe acetal dans un sucre",
       "projectId": null,
-      "messages": []
+      "messages": [
+        {
+          "role": "user",
+          "content": "dessine le groupe acetal dans un sucre",
+          "_text": "dessine le groupe acetal dans un sucre"
+        },
+        {
+          "role": "assistant",
+          "content": "❌ Erreur : [OpenAI Images] Unknown parameter: 'style'.",
+          "provider": "GROQ",
+          "model": "openai/gpt-oss-120b"
+        }
+      ]
     }
   ],
   "projects": [
@@ -1633,6 +1645,6 @@
     "webSearch": true
   },
   "model": "openai/gpt-oss-120b",
-  "savedAt": "2026-05-25T13:42:00.062Z",
+  "savedAt": "2026-05-25T13:43:32.116Z",
   "version": 2
 }
