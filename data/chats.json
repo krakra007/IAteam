@@ -17,6 +17,17 @@
           "model": "openai/gpt-oss-120b",
           "_artifactContent": "## Règles absolues à respecter\n\n- **Aucun** usage de balises HTML (`<span>`, `<div>`, etc.).\n- **Aucune** classe CSS (`chem-eq`, `math-block`, …).\n- **Équations** (chimie & math) uniquement en notation LaTeX :\n  - Bloc display : `$$CH_3Br + OH^- \\rightarrow CH_3OH + Br^-$$`\n  - Inline : la constante $k$ dépend de $T$\n  - Indices : $H_{2}O$, $CH_{3}$\n  - Exposants : $OH^{-}$, $Fe^{3+}$\n  - Plusieurs lignes :",
           "_artifactTitle": "Règles absolues à respecter"
+        },
+        {
+          "role": "user",
+          "content": "dessin en français pour le réplication",
+          "_text": "dessin en français pour le réplication"
+        },
+        {
+          "role": "assistant",
+          "content": "Voici votre dessin en français pour la réplication :\n\n```latex\n\\begin{tikzpicture}[scale=0.9, every node/.style={font=\\small}]\n% Double hélice d’ADN (représentée par deux lignes parallèles)\n\\draw[thick] (0,0) -- (10,0);\n\\draw[thick] (0,-1) -- (10,-1);\n\n% Origine de réplication\n\\node[above] at (2,0) {Origine};\n\n% Fourche de réplication\n\\draw[->, thick, blue] (2,0) -- (2,2);\n\\draw[->, thick, blue] (2,-1) -- (2,-3);\n\\node[above] at (2,2) {Fourche de réplication};\n\n% Brin directeur (leading strand)\n\\draw[->, thick, red] (2,0) -- (8,0);\n\\node[above] at (5,0.3) {Brin directeur};\n\n% Brin discontinu (lagging strand)\n\\draw[->, thick, red, dashed] (2,-1) -- (8,-1);\n\\node[below] at (5,-1.3) {Brin discontinu};\n\n% Primase (synthèse des amorces)\n\\foreach \\x in {2.5,4,5.5,7}\n{\n  \\draw[orange, thick] (\\x,0.2) -- (\\x,0.6);\n  \\node[above] at (\\x,0.6) {Primase};\n}\n\n% ADN polymérase (élongation)\n\\foreach \\x in {3,5,6.5}\n{\n  \\draw[green, thick] (\\x,0) -- (\\x,0.2);\n  \\node[above] at (\\x,0.2) {ADN polymérase};\n}\n\n% Ligase (liaison des fragments d’Okazaki)\n\\draw[magenta, thick] (7.5,-1) -- (7.5,-1.3);\n\\node[below] at (7.5,-1.3) {Ligase};\n\\end{tikzpicture}\n```",
+          "provider": "GROQ",
+          "model": "openai/gpt-oss-120b"
         }
       ]
     },
@@ -1554,6 +1565,6 @@
     "webSearch": true
   },
   "model": "openai/gpt-oss-120b",
-  "savedAt": "2026-05-25T15:25:24.424Z",
+  "savedAt": "2026-05-25T15:25:49.344Z",
   "version": 2
 }
