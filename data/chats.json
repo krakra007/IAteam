@@ -1523,6 +1523,12 @@
           "model": "deepseek-v4-flash"
         }
       ]
+    },
+    {
+      "id": "bf99c1e8-81d8-4425-8b4a-55e5841056cd",
+      "title": "Nouveau chat",
+      "projectId": null,
+      "messages": []
     }
   ],
   "projects": [
@@ -1627,6 +1633,6 @@
     "webSearch": true
   },
   "model": "openai/gpt-oss-120b",
-  "savedAt": "2026-05-25T13:23:36.104Z",
+  "savedAt": "2026-05-25T13:31:59.932Z",
   "version": 2
 }
