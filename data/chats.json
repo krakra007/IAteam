@@ -1,6 +1,12 @@
 {
   "chats": [
     {
+      "id": "d944f9f6-fea1-4782-bd3b-528419d89643",
+      "title": "Nouveau chat",
+      "projectId": null,
+      "messages": []
+    },
+    {
       "id": "9bede99c-5018-4b72-bfad-67118fbec1a4",
       "title": "dessiner le groupe acétal dans un sucr",
       "projectId": null,
@@ -1496,6 +1502,6 @@
     "webSearch": true
   },
   "model": "openai/gpt-oss-120b",
-  "savedAt": "2026-05-25T15:06:18.943Z",
+  "savedAt": "2026-05-25T15:07:22.545Z",
   "version": 2
 }
