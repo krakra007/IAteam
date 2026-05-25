@@ -4995,7 +4995,8 @@ async function callOpenAIImages(apiKey, prompt) {
     prompt: prompt,
     n: 1,
     size: "1024x1024",
-    quality: "hd"
+    quality: "high",
+    output_format: "png"
   };
 
   const r = await fetchWithRetry("https://api.openai.com/v1/images/generations", {
@@ -5010,8 +5011,10 @@ async function callOpenAIImages(apiKey, prompt) {
   const d = await r.json();
   if (d.error) throw new Error(`[OpenAI Images] ${d.error.message}`);
 
-  // Retourner l'URL de l'image générée
-  return d.data?.[0]?.url || null;
+  // gpt-image-2 retourne toujours du base64 (pas d'URL CDN)
+  const b64 = d.data?.[0]?.b64_json;
+  if (!b64) return null;
+  return `data:image/png;base64,${b64}`;
 }
 
 // ─────────────────────────────────────────────────
@@ -5080,8 +5083,8 @@ async function send() {
         throw new Error("Impossible de générer l'image. Vérifiez votre quota OpenAI.");
       }
 
-      // Créer un message avec l'image générée
-      responseContent = `🎨 **Image générée par gpt-image-2**\n\n![Generated Image](${imageUrl})\n\n[📥 Télécharger l'image](${imageUrl})`;
+      // Créer un message avec l'image générée (data URL base64 — clic-droit pour sauvegarder)
+      responseContent = `🎨 **Image générée par gpt-image-2**\n\n![Generated Image](${imageUrl})\n\n*Clic-droit sur l'image → "Enregistrer l'image" pour la télécharger.*`;
 
       // Stocker la réponse avec métadonnées
       c.messages.push({
