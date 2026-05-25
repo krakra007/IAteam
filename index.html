@@ -639,6 +639,7 @@
     /* ════ Rendu Markdown professionnel (inspiré IA-Genius) ════ */
     .assistant-body{font-size:18px;line-height:1.65;color:var(--text);word-wrap:break-word;overflow-wrap:break-word}
     .assistant-body p{margin:0 0 12px}
+    .assistant-body img{max-width:min(100%,520px);max-height:420px;object-fit:contain;border-radius:10px;display:block;margin:10px 0;box-shadow:0 2px 12px #0004}
     .assistant-body p:last-child{margin-bottom:0}
     .assistant-body strong{font-weight:700;color:#f0eeeb}
     .assistant-body em{font-style:italic;color:#d0cec8}
@@ -1758,7 +1759,7 @@ const S = {
   activeProfiles: JSON.parse(localStorage.getItem("activeProfiles") || "[]"),
   activeChat:    localStorage.getItem("activeChat")    || null,
   activeProject: localStorage.getItem("activeProject") || null,
-  model:  "openai/gpt-oss-120b",  // ← Force modèle par défaut, ignore localStorage
+  model:  "claude-sonnet-4-6",  // ← Force modèle par défaut (aligne avec IAGenius)
   params: (() => {
     const raw = JSON.parse(localStorage.getItem("params") || "null");
     if (!raw) return { ...DEF };
@@ -1775,7 +1776,7 @@ const el = id => document.getElementById(id);
 let isWaitingResponse = false;
 let waitingStartTime = 0;
 let waitingTimerInterval = null;
-if (!CURATED_MODELS.includes(S.model)) S.model = "openai/gpt-oss-120b";
+if (!CURATED_MODELS.includes(S.model)) S.model = "claude-sonnet-4-6";
 
 const promptEl   = el("prompt");
 
@@ -6406,9 +6407,9 @@ document.addEventListener("click", e => {
 // INIT
 // ─────────────────────────────────────────────────
 
-// FORCE: Modèle par défaut = openai/gpt-oss-120b (ignore localStorage)
-S.model = "openai/gpt-oss-120b";
-localStorage.setItem("model", "openai/gpt-oss-120b");
+// FORCE: Modèle par défaut = claude-sonnet-4-6 (ignore localStorage, aligne avec IAGenius)
+S.model = "claude-sonnet-4-6";
+localStorage.setItem("model", "claude-sonnet-4-6");
 
 // Configurer marked.js
 if (typeof marked !== "undefined") {
