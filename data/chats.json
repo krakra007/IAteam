@@ -1,6 +1,26 @@
 {
   "chats": [
     {
+      "id": "8807a42a-cd9d-44e4-9d2a-1d7f93729ebe",
+      "title": "Refaire en français",
+      "projectId": null,
+      "messages": [
+        {
+          "role": "user",
+          "content": "Refaire en français",
+          "_text": "Refaire en français"
+        },
+        {
+          "role": "assistant",
+          "content": "Voici votre document professionnel :\n\n\n\n📄 **Règles absolues à respecter** — 10 lignes → *ouvert dans le panneau Artifact*\n\n    $$\\begin{aligned}\n    a &= b + c \\\\\n    d &= e - f\n    \\end{aligned}$$\n    ```\n  - Toujours le tiret ASCII `-` dans les formules.\n- **Structure** du texte :\n  - Titres avec `##`\n  - Listes à puces avec `-`\n  - Termes importants en **gras**\n- **Professionnalisme** : être précis, structuré et clair.\n- **Documents Word** : \n  1. Une phrase d’introduction unique.\n  2. Tout le contenu du document placé dans un bloc ````markdown````.\n  3. Utiliser uniquement le markdown (titres, listes, tableaux, **gras**).\n  4. La plateforme génère automatiquement le fichier *.docx*.\n- **Présentations PowerPoint** :\n  1. Une phrase d’introduction unique.\n  2. Contenu placé dans un bloc ````pptx````.\n  3. Structure obligatoire :\n     - `# Titre de la présentation` (slide titre)\n     - `## Slide 2 — Titre de la slide`\n       - Point clé 1\n       - Point clé 2\n         - Sous‑point détaillé\n     - `## Slide 3 — Autre sujet`\n       - …\n  4. La plateforme crée le fichier *.pptx* téléchargeable.\n- **Code & artefacts** : placer le code dans des blocs ```langage``` (HTML, CSS, JS, Python, …) pour prévisualisation et téléchargement.\n- **Fichiers joints** : possibilité de lire/analyser PDF, DOCX, XLSX, PPTX et images fournis par l’utilisateur.\n```",
+          "provider": "GROQ",
+          "model": "openai/gpt-oss-120b",
+          "_artifactContent": "## Règles absolues à respecter\n\n- **Aucun** usage de balises HTML (`<span>`, `<div>`, etc.).\n- **Aucune** classe CSS (`chem-eq`, `math-block`, …).\n- **Équations** (chimie & math) uniquement en notation LaTeX :\n  - Bloc display : `$$CH_3Br + OH^- \\rightarrow CH_3OH + Br^-$$`\n  - Inline : la constante $k$ dépend de $T$\n  - Indices : $H_{2}O$, $CH_{3}$\n  - Exposants : $OH^{-}$, $Fe^{3+}$\n  - Plusieurs lignes :",
+          "_artifactTitle": "Règles absolues à respecter"
+        }
+      ]
+    },
+    {
       "id": "c2758592-16db-4411-bdbf-b21eda6f5792",
       "title": "dessiner le groupe acétal dans un sucr",
       "projectId": null,
@@ -1534,6 +1554,6 @@
     "webSearch": true
   },
   "model": "openai/gpt-oss-120b",
-  "savedAt": "2026-05-25T15:23:02.839Z",
+  "savedAt": "2026-05-25T15:25:24.424Z",
   "version": 2
 }
