@@ -4978,8 +4978,8 @@ async function callGroq(key, model, messages) {
 }
 
 // ─────────────────────────────────────────────────
-// 🎨 GÉNÉRATION D'IMAGES — OpenAI gpt-image-2
-// Prompt forcé en français pour cohérence
+// 🎨 GÉNÉRATION D'IMAGES — Gemini Image Preview
+// Modèle : gemini-3.1-flash-image-preview
 // ─────────────────────────────────────────────────
 
 function isImageGenerationRequest(text) {
@@ -4995,45 +4995,44 @@ function isImageGenerationRequest(text) {
   return false;
 }
 
-async function callOpenAIImages(apiKey, prompt) {
-  // Force le prompt en français pour cohérence avec l'interface
-  // Traduction simple : si le prompt est en anglais, le traduire
-  let frenchPrompt = prompt;
-
-  // Si le prompt commence par du texte anglais sans accents français typiques
-  if (!/[éèêëàâäùûüôöçñ]/i.test(prompt) && /^(draw|sketch|illustrate|generate|create|make|show)/i.test(prompt)) {
-    // Ajouter une indication pour que gpt-image-2 produise en style français/européen
-    frenchPrompt = prompt + " (style français, clarté européenne)";
-  } else if (!frenchPrompt.includes("français") && !frenchPrompt.includes("France")) {
-    // Si c'est déjà en français, garder tel quel
-    frenchPrompt = prompt;
-  }
-
+async function callGeminiImages(apiKey, prompt) {
+  // gemini-3.1-flash-image-preview : seul modèle Gemini supportant la génération d'images
   const body = {
-    model: "gpt-image-2",
-    prompt: frenchPrompt,
-    n: 1,
-    size: "1024x1024",
-    quality: "high",
-    response_format: "b64_json"
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    generationConfig: {
+      responseModalities: ['TEXT', 'IMAGE']
+    }
   };
 
-  const r = await fetchWithRetry("https://api.openai.com/v1/images/generations", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": "Bearer " + apiKey
-    },
-    body: JSON.stringify(body)
-  });
+  const r = await fetchWithRetry(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }
+  );
 
   const d = await r.json();
-  if (d.error) throw new Error(`[OpenAI Images] ${d.error.message}`);
+  if (d.error) throw new Error(`[Gemini Image] ${d.error.message}`);
 
-  const b64 = d.data?.[0]?.b64_json;
-  if (!b64) throw new Error('[OpenAI Images] Aucune image retournée.');
+  const parts = d.candidates?.[0]?.content?.parts || [];
+  if (!parts.length) throw new Error('[Gemini Image] Aucune réponse reçue.');
 
-  return `data:image/png;base64,${b64}`;
+  let textContent = '';
+  let imageHtml = '';
+  for (const part of parts) {
+    if (part.text) textContent += part.text;
+    const inlineData = part.inlineData || part.inline_data;
+    if (inlineData) {
+      const mime = inlineData.mimeType || inlineData.mime_type || 'image/png';
+      imageHtml += `\n\n![Image générée](data:${mime};base64,${inlineData.data})`;
+    }
+  }
+
+  if (!imageHtml) throw new Error('[Gemini Image] Aucune image retournée. Le modèle a peut-être répondu en texte seul.');
+
+  return (textContent ? textContent + '\n\n' : '') + imageHtml.trim();
 }
 
 // ─────────────────────────────────────────────────
@@ -5086,12 +5085,12 @@ async function send() {
   try {
     let responseContent;
 
-    // 🎨 DÉTECTION AUTO : demande d'image → OpenAI gpt-image-2 (quelle que soit le modèle chat actif)
+    // 🎨 DÉTECTION AUTO : demande d'image → Gemini Image (quelle que soit le modèle chat actif)
     if (isImageGenerationRequest(text)) {
-      const openaiKey = (apiKeysByProvider["OPENAI"] || "").trim();
-      if (!openaiKey) {
-        console.warn('[BrAInShift] 🎨 Clé OpenAI manquante pour génération d\'image');
-        showApiError(`🎨 Pour générer une image, configurez votre clé OpenAI (🔑 Settings).`);
+      const geminiKey = (apiKeysByProvider["GOOGLE GEMINI"] || "").trim();
+      if (!geminiKey) {
+        console.warn('[BrAInShift] 🎨 Clé Google Gemini manquante pour génération d\'image');
+        showApiError(`🎨 Pour générer une image, configurez votre clé Google Gemini (🔑 Settings).`);
         isWaitingResponse = false;
         if (waitingTimerInterval) clearInterval(waitingTimerInterval);
         render();
@@ -5099,16 +5098,14 @@ async function send() {
       }
 
       try {
-        console.log('[BrAInShift] 🎨 Génération image via gpt-image-2 (OpenAI)...');
-        const imageUrl = await callOpenAIImages(openaiKey, text);
-
-        responseContent = `🎨 **Image générée par gpt-image-2**\n\n![Image générée](${imageUrl})\n\n*Clic-droit sur l'image → "Enregistrer l'image" pour la télécharger.*`;
+        console.log('[BrAInShift] 🎨 Génération image via gemini-3.1-flash-image-preview...');
+        responseContent = await callGeminiImages(geminiKey, text);
 
         c.messages.push({
           role: "assistant",
           content: responseContent,
-          provider: "OPENAI",
-          model: "gpt-image-2",
+          provider: "GOOGLE GEMINI",
+          model: "gemini-3.1-flash-image-preview",
           _isImage: true
         });
 
