@@ -1569,6 +1569,12 @@
           "role": "user",
           "content": "dessine le groupe acetal dans un sucre",
           "_text": "dessine le groupe acetal dans un sucre"
+        },
+        {
+          "role": "assistant",
+          "content": "❌ Erreur : Timeout : le modèle n'a pas répondu en 120s. Le document est peut-être trop volumineux. Essayez avec un résumé plus court ou un modèle plus rapide.",
+          "provider": "GROQ",
+          "model": "openai/gpt-oss-120b"
         }
       ]
     }
@@ -1675,6 +1681,6 @@
     "webSearch": true
   },
   "model": "openai/gpt-oss-120b",
-  "savedAt": "2026-05-25T13:55:17.887Z",
+  "savedAt": "2026-05-25T13:58:31.891Z",
   "version": 2
 }
