@@ -1,6 +1,23 @@
 {
   "chats": [
     {
+      "id": "9df6f9b9-f44d-4c27-b9e5-5c7a67aec26d",
+      "title": "dessiner le groupe acétal dans un sucr",
+      "projectId": null,
+      "messages": [
+        {
+          "role": "user",
+          "content": "dessiner le groupe acétal dans un sucre",
+          "_text": "dessiner le groupe acétal dans un sucre"
+        },
+        {
+          "role": "user",
+          "content": "dessiner le groupe acétal dans un sucre",
+          "_text": "dessiner le groupe acétal dans un sucre"
+        }
+      ]
+    },
+    {
       "id": "8807a42a-cd9d-44e4-9d2a-1d7f93729ebe",
       "title": "Refaire en français",
       "projectId": null,
@@ -1565,6 +1582,6 @@
     "webSearch": true
   },
   "model": "openai/gpt-oss-120b",
-  "savedAt": "2026-05-25T15:28:02.675Z",
+  "savedAt": "2026-05-25T15:35:27.795Z",
   "version": 2
 }
