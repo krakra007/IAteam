@@ -1,6 +1,18 @@
 {
   "chats": [
     {
+      "id": "0d7b174c-e530-42b8-9d11-4ceed5c09f74",
+      "title": "Dessiner le réplication de l'ADN dans ",
+      "projectId": null,
+      "messages": [
+        {
+          "role": "user",
+          "content": "Dessiner le réplication de l'ADN dans une cellule eucaryote",
+          "_text": "Dessiner le réplication de l'ADN dans une cellule eucaryote"
+        }
+      ]
+    },
+    {
       "id": "9df6f9b9-f44d-4c27-b9e5-5c7a67aec26d",
       "title": "dessiner le groupe acétal dans un sucr",
       "projectId": null,
@@ -1582,6 +1594,6 @@
     "webSearch": true
   },
   "model": "openai/gpt-oss-120b",
-  "savedAt": "2026-05-25T15:35:27.795Z",
+  "savedAt": "2026-05-25T15:43:25.786Z",
   "version": 2
 }
