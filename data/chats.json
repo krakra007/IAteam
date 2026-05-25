@@ -1,6 +1,12 @@
 {
   "chats": [
     {
+      "id": "9bede99c-5018-4b72-bfad-67118fbec1a4",
+      "title": "Nouveau chat",
+      "projectId": null,
+      "messages": []
+    },
+    {
       "id": "90f5cc65-d830-467c-b1a9-ba4171bfb367",
       "title": "Peux tu me faire une descriptoin pédag",
       "projectId": "06407384-63b3-4383-b87c-6248d2482d0a",
@@ -1681,6 +1687,6 @@
     "webSearch": true
   },
   "model": "openai/gpt-oss-120b",
-  "savedAt": "2026-05-25T14:20:18.044Z",
+  "savedAt": "2026-05-25T14:25:18.239Z",
   "version": 2
 }
