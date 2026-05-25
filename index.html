@@ -4995,8 +4995,7 @@ async function callOpenAIImages(apiKey, prompt) {
     prompt: prompt,
     n: 1,
     size: "1024x1024",
-    quality: "hd",
-    style: "natural"
+    quality: "hd"
   };
 
   const r = await fetchWithRetry("https://api.openai.com/v1/images/generations", {
