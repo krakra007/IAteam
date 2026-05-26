@@ -5191,30 +5191,21 @@ async function send() {
           el('artifactDownloadBtn').onclick = () => generatePptxFromMarkdown(pptxContent, pptxTitle);
         }, 300);
       }
-      // 1) Bloc ```markdown — ouvrir en document SEULEMENT si l'utilisateur a demandé un fichier
+      // 1) Bloc ```markdown → NE JAMAIS auto-ouvrir.
+      // Le bouton 📄 sous le message permet d'ouvrir manuellement.
+      // Seuls les blocs ```pptx (si demandé) et ```html s'ouvrent automatiquement.
       else {
       const userPromptLower = (text || displayText || '').toLowerCase();
       const isPptxRequest = /\b(power\s*point|pptx|présentation|presentation|diaporama|slides?|diapositives?)\b/i.test(userPromptLower);
+      const isExplicitNoFile = /\b(ne\s+pas|pas\s+de|répondre?\s+ici|sans\s+fichier)\b/i.test(userPromptLower);
 
-      // Détection STRICTE de demande de fichier : l'utilisateur doit EXPLICITEMENT vouloir créer/produire un fichier
-      const isFileCreationRequest = /\b(créer?\s+(un|le|ce)?\s*(document|fichier|rapport|word|docx)|produire?\s+(un|le)?\s*(document|fichier|rapport)|génère[rz]?\s+(un|le)?\s*(document|fichier|rapport)|fichier\s+word|document\s+word|\.docx|document\s+à\s+télécharger|document\s+professionnel\s+word|document\s+téléchargeable)\b/i.test(userPromptLower);
-
-      // Détection de refus explicite : l'utilisateur ne veut PAS de fichier
-      const isExplicitNoFile = /\b(ne\s+pas\s+créer|pas\s+de\s+(fichier|document|word)|répondre?\s+(ici|dans\s+(la|le)\s*(fenêtre|chat|dialogue))|sans\s+(fichier|document|word)|pas\s+besoin\s+de\s+(fichier|document))\b/i.test(userPromptLower);
-
-      // Matcher les blocs ```markdown (complets OU tronqués si max_tokens atteint)
-      let mdMatch = responseContent.match(/```markdown\s*\n([\s\S]+?)```/);
-      if (!mdMatch) {
-        const truncMatch = responseContent.match(/```markdown\s*\n([\s\S]{300,})/);
-        if (truncMatch) mdMatch = truncMatch;
-      }
-      if (mdMatch && mdMatch[1].length > 300) {
-        const mdContent = mdMatch[1].trim();
-        const titleMatch = mdContent.match(/^#\s+(.+)/m) || mdContent.match(/^##\s+(.+)/m);
-        const docTitle = titleMatch ? titleMatch[1].replace(/[*_#]/g, '').trim() : c.title || 'Document';
-
-        if (isPptxRequest && !isExplicitNoFile) {
-          // L'utilisateur voulait un PPTX → convertir le markdown en PowerPoint
+      // Si l'utilisateur voulait un PowerPoint et qu'il y a un bloc markdown → convertir en PPTX
+      if (isPptxRequest && !isExplicitNoFile) {
+        let mdMatch = responseContent.match(/```markdown\s*\n([\s\S]+?)```/) || responseContent.match(/```markdown\s*\n([\s\S]{300,})/);
+        if (mdMatch && mdMatch[1].length > 300) {
+          const mdContent = mdMatch[1].trim();
+          const titleMatch = mdContent.match(/^#\s+(.+)/m) || mdContent.match(/^##\s+(.+)/m);
+          const docTitle = titleMatch ? titleMatch[1].replace(/[*_#]/g, '').trim() : c.title || 'Présentation';
           const slideCount = (mdContent.match(/^##\s+/gm) || []).length + (mdContent.match(/^#\s+/m) ? 1 : 0);
           const lastMsg = c.messages[c.messages.length - 1];
           if (lastMsg && lastMsg.role === 'assistant') {
@@ -5231,25 +5222,10 @@ async function send() {
             el('artifactDownloadBtn').textContent = '⬇ PowerPoint (.pptx)';
             el('artifactDownloadBtn').onclick = () => generatePptxFromMarkdown(mdContent, docTitle);
           }, 300);
-        } else if (isFileCreationRequest && !isExplicitNoFile) {
-          // L'utilisateur a demandé explicitement un fichier Word
-          const lineCount = mdContent.split('\n').length;
-          const lastMsg = c.messages[c.messages.length - 1];
-          if (lastMsg && lastMsg.role === 'assistant') {
-            lastMsg.content = responseContent.replace(
-              /```markdown\s*\n[\s\S]+?(?:```|$)/,
-              `\n\n📄 **${docTitle}** — ${lineCount} lignes → *ouvert dans le panneau Artifact*\n`
-            );
-            lastMsg._artifactContent = mdContent;
-            lastMsg._artifactTitle = docTitle;
-          }
-          setTimeout(() => openDocumentArtifact(mdContent, docTitle), 300);
         }
-        // Sinon : le modèle a mis du ```markdown mais l'utilisateur n'a PAS demandé de fichier
-        // → on ne fait RIEN, le bloc markdown s'affiche normalement dans le chat
-        // → le bouton 📄 reste disponible pour ouvrir manuellement
       }
-      // 2) Gros bloc HTML → artifact code
+
+      // 2) Gros bloc HTML → artifact code (toujours auto-ouvert, c'est du preview web)
       else {
         const htmlMatch = responseContent.match(/```html\s*\n([\s\S]+?)```/);
         if (htmlMatch && htmlMatch[1].length > 200 && /<!doctype|<html|<head|<body|<div/i.test(htmlMatch[1])) {
