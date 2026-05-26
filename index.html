@@ -271,6 +271,7 @@
     .badge-deepseek{background:#4a6cf722;color:#7b9cf7;border:1px solid #4a6cf744}
     .badge-gemini{background:#4285f422;color:#7baaf7;border:1px solid #4285f444}
     .badge-groq{background:#f5501622;color:#f55016;border:1px solid #f5501644}
+    .badge-mistral{background:#ff720022;color:#ff7200;border:1px solid #ff720044}
 
     /* ── Typing ── */
     .typing{display:flex;align-items:center;gap:8px;color:#b8bec8;font-size:14px}
@@ -1315,7 +1316,7 @@
       <div class="search-results" id="searchResults"></div>
     </div>
     <div id="chatList"></div>
-    <div style="padding:6px 8px;font-size:9px;color:#4a4a5a;text-align:center;flex-shrink:0">BrAInShift v4.2</div>
+    <div style="padding:6px 8px;font-size:9px;color:#4a4a5a;text-align:center;flex-shrink:0">BrAInShift v4.4</div>
   </aside>
   <div class="resizer" id="resizer"></div>
 
@@ -1647,6 +1648,18 @@ const MODEL_GROUPS = [
       "llama-3.3-70b-versatile",   // Meta, généraliste
       "llama-3.1-8b-instant"       // Meta, ultra-rapide
     ]
+  },
+  // ── Mistral AI ─────────────────────────────────────
+  // Source : docs.mistral.ai — mai 2026
+  // API compatible OpenAI (Chat Completions)
+  // Endpoint : https://api.mistral.ai/v1/chat/completions
+  {
+    label: "Mistral AI",
+    models: [
+      "mistral-small-latest",     // Small 4 — 119B MoE, $0.15/M in, reasoning configurable
+      "mistral-large-latest",     // Large 3 — flagship, plus puissant, $2/M in
+      "codestral-latest"          // Codestral — spécialisé code, fill-in-the-middle
+    ]
   }
 ];
 
@@ -1777,7 +1790,7 @@ const el = id => document.getElementById(id);
 let isWaitingResponse = false;
 let waitingStartTime = 0;
 let waitingTimerInterval = null;
-if (!CURATED_MODELS.includes(S.model)) S.model = "claude-sonnet-4-6";
+if (!CURATED_MODELS.includes(S.model)) S.model = "gemini-2.5-flash";
 
 const promptEl   = el("prompt");
 
@@ -2009,6 +2022,102 @@ function renderFilePreview() {
 }
 
 /** Construit le contenu multimodal d'un message user avec fichiers */
+// ── Génération intelligente de titre de conversation ──
+function generateSmartTitle(text) {
+  if (!text || text.length < 3) return 'Conversation';
+  let t = text.trim();
+  
+  // 1. Supprimer les formules de politesse en début
+  t = t.replace(/^(bonjour|salut|hello|hi|hey|coucou|bonsoir)\s*[,!.]?\s*/i, '');
+
+  // 2. Supprimer les instructions de format en fin
+  t = t.replace(/\.\s*(ne\s+pas\s+créer[^.]*|pas\s+de\s+fichier[^.]*|répondre?\s+(ici|dans)[^.]*|sans\s+fichier[^.]*|merci[^.]*)$/i, '');
+  t = t.replace(/\s*(merci|s[''']il\s+(te|vous)\s+pla[iî]t|svp|stp)\s*[.!]?\s*$/i, '');
+
+  // 3. Découper en phrases
+  const sentences = t.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 5);
+
+  // 4. Chercher la meilleure phrase pour le titre (priorité aux questions)
+  let best = t;
+  if (sentences.length > 1) {
+    // Priorité : phrase interrogative (avec ? ou commençant par mot interrogatif)
+    const question = sentences.find(s => /\?/.test(s)) ||
+      sentences.find(s => /^(quelle?s?|comment|pourquoi|où|quand|combien|qu[''']est[- ]ce)\b/i.test(s.trim()));
+    if (question) {
+      best = question.trim();
+    } else {
+      // Sinon : phrase la plus courte qui contient un verbe d'action
+      const actionSentence = sentences.find(s => 
+        /\b(définir|expliquer|résumer|analyser|comparer|créer|lire|décrire|faire|concevoir|produire|lister|écrire|trouver)\b/i.test(s)
+      );
+      best = (actionSentence || sentences[0]).trim();
+    }
+  }
+
+  // 5. Nettoyer les "peux-tu", "pouvez-vous" etc.
+  best = best.replace(/^(peux[- ]?tu\s+me\s+|pouvez[- ]?vous\s+me\s+)/i, '');
+  best = best.replace(/^(peux[- ]?tu\s+|pouvez[- ]?vous\s+|pourr(ais|iez)[- ]?(tu|vous)\s+)/i, '');
+  best = best.replace(/^(est[- ]ce que tu (peux|pourrais)\s+)/i, '');
+  best = best.replace(/^(je\s+(veux|voudrais|souhaite)\s+(que\s+tu\s+)?)/i, '');
+  
+  // 6. Supprimer les préambules contextuels
+  best = best.replace(/^en\s+(te\s+basant|utilisant|t[''']appuyant|vous\s+basant)\s+sur[^,]{0,100},?\s*/i, '');
+  best = best.replace(/^à\s+partir\s+(de|du|des|d['''])[^,]{0,80},?\s*/i, '');
+
+  // 7. Transformer les verbes à l'infinitif en noms pour un titre correct en français
+  const verbToNoun = [
+    [/^résumer\s+(le|la|les|l[''']|un|une|ce|cette|des|du|mon|son)?\s*/i, 'Résumé '],
+    [/^faire\s+(un|le|ce)?\s*résumé\s*(de|du|des|d['''])?\s*/i, 'Résumé '],
+    [/^définir\s+(ce\s+qu[e'']?\s*)?/i, 'Définition '],
+    [/^expliquer?\s+(moi\s+)?(ce\s+qu[e'']?\s*|comment\s+)?/i, 'Explication '],
+    [/^analyser?\s+(le|la|les|l[''']|un|une|ce|cette)?\s*/i, 'Analyse '],
+    [/^comparer?\s+(le|la|les|l[''']|un|une|ce|cette)?\s*/i, 'Comparaison '],
+    [/^créer?\s+(un|une|le|la|des)?\s*/i, 'Création '],
+    [/^lire\s+(le|la|les|ce|un|une|l[''']|et\s+)?\s*/i, 'Lecture '],
+    [/^décrire?\s+(le|la|les|ce|un|une)?\s*/i, 'Description '],
+    [/^concevoir?\s+(un|une|le|la)?\s*/i, 'Conception '],
+    [/^produire?\s+(un|une|le|la)?\s*/i, 'Production '],
+    [/^lister?\s+(les|des|le|la)?\s*/i, 'Liste '],
+    [/^présenter?\s+(les|des|le|la|un|une)?\s*/i, 'Présentation '],
+    [/^identifier?\s+(les|des|le|la)?\s*/i, 'Identification '],
+    [/^calculer?\s+(le|la|les)?\s*/i, 'Calcul '],
+    [/^trouver?\s+(les|des|le|la|un|une)?\s*/i, 'Recherche '],
+    [/^faire\s+(une?\s+)?(présentation|analyse|comparaison|description|synthèse|étude)\s*(de|du|des|d['''])?\s*/i, (m, _1, noun) => noun.charAt(0).toUpperCase() + noun.slice(1) + ' '],
+  ];
+  for (const [re, replacement] of verbToNoun) {
+    if (re.test(best)) {
+      best = best.replace(re, typeof replacement === 'function' ? replacement : replacement);
+      break;
+    }
+  }
+  // Nettoyer les mots résiduels après la transformation
+  best = best.replace(/^\s*(moi|nous|me)\s+/i, '');
+  best = best.replace(/\s*(et\s+)?(faire|lister|identifier|produire)\s+.*$/i, '');
+  // Ajouter "de" si le titre commence par un nom suivi d'un article
+  best = best.replace(/^(Résumé|Explication|Analyse|Comparaison|Description|Définition|Conception|Identification|Création|Lecture|Liste|Calcul|Recherche|Présentation|Production)\s+(la|le|les|l[''']|du|des|un|une)\s/i, 
+    (_, noun, art) => noun + ' de ' + art + ' ');
+  // Supprimer "?" en fin de titre
+  best = best.replace(/\s*\?\s*$/, '');
+
+  // 8. Supprimer les préambules contextuels restants
+  best = best.replace(/^en\s+(utilisant|te\s+basant|t[''']appuyant|vous\s+basant)\s+(sur\s+)?(le|la|les|l[''']|ce|un|une)?\s*[^,]{0,60},?\s*/i, '');
+
+  // 9. Nettoyer et formater
+  best = best.replace(/^[,.:;!?\s-]+/, '').trim();
+  if (best.length > 0) best = best.charAt(0).toUpperCase() + best.slice(1);
+
+  // 10. Couper à ~55 caractères sur une frontière de mot
+  if (best.length > 55) {
+    best = best.slice(0, 55);
+    const ls = best.lastIndexOf(' ');
+    if (ls > 20) best = best.slice(0, ls);
+    best += '…';
+  }
+  best = best.replace(/[.\s]+$/, '').trim();
+
+  return best.length > 2 ? best : 'Conversation';
+}
+
 function buildUserContent(text, files) {
   if (!files || !files.length) return text;
   const parts = [];
@@ -2044,7 +2153,7 @@ const apiErrorEl = el("apiError");
 // ─────────────────────────────────────────────────
 // CLÉS API — 4 fournisseurs
 // ─────────────────────────────────────────────────
-const PROVIDERS = ["ANTHROPIC", "OPENAI", "DEEPSEEK", "GOOGLE GEMINI", "GROQ"];
+const PROVIDERS = ["ANTHROPIC", "OPENAI", "DEEPSEEK", "GOOGLE GEMINI", "GROQ", "MISTRAL"];
 const providerKeysEl = el("providerKeys");
 const apiKeysByProvider = JSON.parse(localStorage.getItem("apiKeysByProvider") || "{}");
 PROVIDERS.forEach(p => { if (!(p in apiKeysByProvider)) apiKeysByProvider[p] = ""; });
@@ -2097,6 +2206,7 @@ function inferProviderFromModel(model) {
   if (m.startsWith("claude"))   return "ANTHROPIC";
   if (m.startsWith("gemini"))   return "GOOGLE GEMINI";
   if (m.startsWith("deepseek")) return "DEEPSEEK";
+  if (m.startsWith("mistral") || m.startsWith("codestral")) return "MISTRAL";
   // Groq models — détection par préfixe de famille ou nom connu
   const GROQ_MODELS = MODEL_GROUPS.find(g => g.label.includes("Groq"))?.models || [];
   if (GROQ_MODELS.includes(model)) return "GROQ";
@@ -2109,7 +2219,8 @@ function providerBadgeHtml(provider) {
     "OPENAI":       ["badge-openai",    "OpenAI"],
     "DEEPSEEK":     ["badge-deepseek",  "DeepSeek"],
     "GOOGLE GEMINI":["badge-gemini",    "Gemini"],
-    "GROQ":          ["badge-groq",      "Groq"]
+    "GROQ":         ["badge-groq",      "Groq"],
+    "MISTRAL":      ["badge-mistral",   "Mistral"]
   };
   const [cls, label] = map[provider] || ["badge-openai", provider];
   return `<span class="provider-badge ${cls}">${label}</span>`;
@@ -3250,9 +3361,10 @@ function openDocumentArtifact(markdown, title, format) {
     font-size: 15px;
   }
   body::before {
-    content: ''; display: block; height: 4px; margin-bottom: 32px;
-    background: linear-gradient(90deg, #4a9fd4, #7b68d4, #d46abf);
-    border-radius: 2px;
+    content: 'BrAInShift'; display: block; text-align: right;
+    font-style: italic; font-size: 12px; color: #4a9fd4; font-family: 'Inter', sans-serif;
+    padding-bottom: 8px; margin-bottom: 24px;
+    border-bottom: 2px solid #e2e8f0;
   }
   h1 { font-size: 26px; font-weight: 700; color: #0f172a; margin: 0 0 8px; line-height: 1.3; }
   h2 { font-size: 20px; font-weight: 600; color: #1e293b; margin: 28px 0 12px;
@@ -3867,9 +3979,7 @@ async function generateDocxFromMarkdown(rawMarkdown, chatTitle) {
             alignment: AlignmentType.RIGHT,
             border: { bottom: { style: BorderStyle.SINGLE, size: 2, color: COL.accent, space: 4 } },
             children: [
-              new TextRun({ text: 'BrAInShift', font: 'Calibri Light', size: 16, color: COL.accent }),
-              new TextRun({ text: '  —  ', font: 'Calibri Light', size: 16, color: COL.lightLine }),
-              new TextRun({ text: docTitle, font: 'Calibri Light', size: 16, color: COL.grey, italics: true }),
+              new TextRun({ text: 'BrAInShift', font: 'Calibri Light', size: 16, color: COL.accent, italics: true }),
             ]
           })]
         })
@@ -4251,6 +4361,11 @@ function renderParams() {
     caps.temperature = true;
     caps.top_p       = true;
     // Groq : penalties NON supportées sur la plupart des modèles
+  } else if (provider === 'MISTRAL') {
+    caps.temperature = true;
+    caps.tempMax     = 1.5;      // Mistral: max 1.5
+    caps.top_p       = true;
+    // Mistral : pas de penalties, pas de top_k, pas de web search API native
   }
 
   // Helpers UI
@@ -4539,6 +4654,15 @@ function buildRequestParams(model, apiType) {
     if (valid(topP, 0, 1) && topP > 0) out.top_p = topP;
     if (freqP !== 0 && valid(freqP, -2, 2)) out.frequency_penalty = freqP;
     if (presP !== 0 && valid(presP, -2, 2)) out.presence_penalty  = presP;
+    return out;
+  }
+
+  // ── Mistral AI ──────────────────────────────────────────────
+  // max_tokens, temperature, top_p. PAS de penalties.
+  if (apiType === "mistral") {
+    const out = { max_tokens: maxT, ...stop };
+    if (valid(temp, 0, 1.5)) out.temperature = temp;
+    if (valid(topP, 0, 1) && topP > 0) out.top_p = topP;
     return out;
   }
 
@@ -5060,8 +5184,8 @@ async function send() {
   const displayText = text || filesToSend.map(f=>f.name).join(', ');
   c.messages.push({ role: "user", content: msgContent, _text: displayText });
 
-  // BUG CORRIGÉ : titre cohérent ("Nouveau chat" dans les deux endroits)
-  if (c.title === "Nouveau chat") c.title = displayText.slice(0, 38);
+  // Titre intelligent basé sur le contenu du prompt
+  if (c.title === "Nouveau chat") c.title = generateSmartTitle(displayText);
 
   promptEl.value      = "";
   promptEl.style.height = ''; // Reset auto-resize
@@ -5132,6 +5256,13 @@ async function send() {
 
     } else if (provider === "GROQ") {
       responseContent = await callGroq(key, S.model, c.messages);
+
+    } else if (provider === "MISTRAL") {
+      // Mistral AI — API compatible OpenAI (Chat Completions)
+      responseContent = await callOpenAICompatible(
+        "https://api.mistral.ai/v1/chat/completions",
+        key, S.model, c.messages, "mistral"
+      );
 
     } else if (provider === "DEEPSEEK") {
       // BUG CORRIGÉ : endpoint DeepSeek propre + apiType dédié (max_tokens au lieu de max_completion_tokens)
@@ -5276,7 +5407,8 @@ async function send() {
         "OPENAI": "api.openai.com",
         "DEEPSEEK": "api.deepseek.com",
         "GOOGLE GEMINI": "generativelanguage.googleapis.com",
-        "GROQ": "api.groq.com"
+        "GROQ": "api.groq.com",
+        "MISTRAL": "api.mistral.ai"
       };
       const host = providerUrls[provider] || '?';
       hints.push(`Vérifiez que ${host} est accessible (ouvrez https://${host} dans un nouvel onglet).`);
@@ -6377,9 +6509,9 @@ document.addEventListener("click", e => {
 // INIT
 // ─────────────────────────────────────────────────
 
-// FORCE: Modèle par défaut = claude-sonnet-4-6 (ignore localStorage, aligne avec IAGenius)
-S.model = "claude-sonnet-4-6";
-localStorage.setItem("model", "claude-sonnet-4-6");
+// FORCE: Modèle par défaut = gemini-2.5-flash (économique, bon en sciences)
+S.model = "gemini-2.5-flash";
+localStorage.setItem("model", "gemini-2.5-flash");
 
 // Configurer marked.js
 if (typeof marked !== "undefined") {
