@@ -5160,13 +5160,15 @@ async function send() {
 
     // ── Auto-détection Artifact : ouvrir automatiquement ──
     if (typeof responseContent === 'string') {
-      // 0) Bloc ```pptx → génération PowerPoint automatique
+      // 0) Bloc ```pptx → génération PowerPoint automatique (sauf si refus explicite)
+      const userPromptForPptxCheck = (text || displayText || '').toLowerCase();
+      const isExplicitNoFilePptx = /\b(ne\s+pas\s+créer|pas\s+de\s+(fichier|document|pptx|power)|répondre?\s+(ici|dans))\b/i.test(userPromptForPptxCheck);
       let pptxMatch = responseContent.match(/```pptx\s*\n([\s\S]+?)```/);
       if (!pptxMatch) {
         const truncPptx = responseContent.match(/```pptx\s*\n([\s\S]{100,})/);
         if (truncPptx) pptxMatch = truncPptx;
       }
-      if (pptxMatch && pptxMatch[1].length > 100) {
+      if (pptxMatch && pptxMatch[1].length > 100 && !isExplicitNoFilePptx) {
         const pptxContent = pptxMatch[1].trim();
         const titleMatch = pptxContent.match(/^#\s+(.+)/m);
         const pptxTitle = titleMatch ? titleMatch[1].replace(/[*_#]/g, '').trim() : c.title || 'Présentation';
@@ -5189,15 +5191,20 @@ async function send() {
           el('artifactDownloadBtn').onclick = () => generatePptxFromMarkdown(pptxContent, pptxTitle);
         }, 300);
       }
-      // 1) Bloc ```markdown — MAIS vérifier si l'utilisateur voulait un PPTX
+      // 1) Bloc ```markdown — ouvrir en document SEULEMENT si l'utilisateur a demandé un fichier
       else {
       const userPromptLower = (text || displayText || '').toLowerCase();
       const isPptxRequest = /\b(power\s*point|pptx|présentation|presentation|diaporama|slides?|diapositives?)\b/i.test(userPromptLower);
 
+      // Détection STRICTE de demande de fichier : l'utilisateur doit EXPLICITEMENT vouloir créer/produire un fichier
+      const isFileCreationRequest = /\b(créer?\s+(un|le|ce)?\s*(document|fichier|rapport|word|docx)|produire?\s+(un|le)?\s*(document|fichier|rapport)|génère[rz]?\s+(un|le)?\s*(document|fichier|rapport)|fichier\s+word|document\s+word|\.docx|document\s+à\s+télécharger|document\s+professionnel\s+word|document\s+téléchargeable)\b/i.test(userPromptLower);
+
+      // Détection de refus explicite : l'utilisateur ne veut PAS de fichier
+      const isExplicitNoFile = /\b(ne\s+pas\s+créer|pas\s+de\s+(fichier|document|word)|répondre?\s+(ici|dans\s+(la|le)\s*(fenêtre|chat|dialogue))|sans\s+(fichier|document|word)|pas\s+besoin\s+de\s+(fichier|document))\b/i.test(userPromptLower);
+
       // Matcher les blocs ```markdown (complets OU tronqués si max_tokens atteint)
       let mdMatch = responseContent.match(/```markdown\s*\n([\s\S]+?)```/);
       if (!mdMatch) {
-        // Bloc tronqué : ouvert mais jamais fermé (max_tokens atteint)
         const truncMatch = responseContent.match(/```markdown\s*\n([\s\S]{300,})/);
         if (truncMatch) mdMatch = truncMatch;
       }
@@ -5206,7 +5213,7 @@ async function send() {
         const titleMatch = mdContent.match(/^#\s+(.+)/m) || mdContent.match(/^##\s+(.+)/m);
         const docTitle = titleMatch ? titleMatch[1].replace(/[*_#]/g, '').trim() : c.title || 'Document';
 
-        if (isPptxRequest) {
+        if (isPptxRequest && !isExplicitNoFile) {
           // L'utilisateur voulait un PPTX → convertir le markdown en PowerPoint
           const slideCount = (mdContent.match(/^##\s+/gm) || []).length + (mdContent.match(/^#\s+/m) ? 1 : 0);
           const lastMsg = c.messages[c.messages.length - 1];
@@ -5224,8 +5231,8 @@ async function send() {
             el('artifactDownloadBtn').textContent = '⬇ PowerPoint (.pptx)';
             el('artifactDownloadBtn').onclick = () => generatePptxFromMarkdown(mdContent, docTitle);
           }, 300);
-        } else {
-          // Document Word classique
+        } else if (isFileCreationRequest && !isExplicitNoFile) {
+          // L'utilisateur a demandé explicitement un fichier Word
           const lineCount = mdContent.split('\n').length;
           const lastMsg = c.messages[c.messages.length - 1];
           if (lastMsg && lastMsg.role === 'assistant') {
@@ -5238,6 +5245,9 @@ async function send() {
           }
           setTimeout(() => openDocumentArtifact(mdContent, docTitle), 300);
         }
+        // Sinon : le modèle a mis du ```markdown mais l'utilisateur n'a PAS demandé de fichier
+        // → on ne fait RIEN, le bloc markdown s'affiche normalement dans le chat
+        // → le bouton 📄 reste disponible pour ouvrir manuellement
       }
       // 2) Gros bloc HTML → artifact code
       else {
@@ -5344,20 +5354,27 @@ function togglePromptPreview() {
 // Capacités plateforme — toujours ajoutées au system prompt, quel que soit le profil actif
 const PLATFORM_CAPABILITIES = `
 
-[CAPACITÉS DE LA PLATEFORME BrAInShift]
-- DOCUMENTS WORD : UNIQUEMENT quand l'utilisateur demande EXPLICITEMENT de créer un fichier, un document téléchargeable, un .docx, un rapport formel, ou utilise les mots "fichier Word", "document à télécharger", "document professionnel", "produis un document", "génère un rapport" :
-  1. Écris UNE SEULE phrase d'introduction dans le chat
-  2. Place TOUT le contenu dans un bloc \`\`\`markdown
+[CAPACITÉS DE LA PLATEFORME BrAInShift — RÈGLES STRICTES]
+
+RÈGLE CRITIQUE SUR LES BLOCS \`\`\`markdown :
+- N'utilise JAMAIS de bloc \`\`\`markdown pour formater une réponse normale.
+- Le bloc \`\`\`markdown est EXCLUSIVEMENT réservé à la CRÉATION DE FICHIER WORD.
+- Tu ne dois l'utiliser QUE si l'utilisateur dit explicitement : "créer un document", "produire un fichier Word", "générer un rapport Word", "document téléchargeable", "fichier .docx".
+- Si l'utilisateur demande de "résumer", "analyser", "expliquer", "définir", "comparer", "lire" → tu réponds NORMALEMENT dans le chat avec du texte formaté (titres ##, listes -, **gras**), SANS bloc \`\`\`markdown.
+- En cas de doute → NE PAS utiliser de bloc \`\`\`markdown. Répondre dans le chat.
+
+- DOCUMENTS WORD : UNIQUEMENT sur demande explicite de CRÉER un fichier/document Word :
+  1. Écris UNE phrase d'introduction
+  2. Place le contenu dans un bloc \`\`\`markdown
   3. La plateforme ouvrira un panneau avec téléchargement Word (.docx)
-  IMPORTANT : Si l'utilisateur demande simplement de "résumer", "analyser", "expliquer", "lire" un document → réponds NORMALEMENT dans le chat, SANS bloc \`\`\`markdown. Le bloc markdown est RÉSERVÉ aux cas où l'utilisateur veut un FICHIER en sortie.
 
-- PRÉSENTATIONS POWERPOINT : UNIQUEMENT quand l'utilisateur demande explicitement une présentation, un PowerPoint, un PPTX, un diaporama, ou des slides :
-  1. Écris UNE SEULE phrase d'introduction
+- PRÉSENTATIONS POWERPOINT : UNIQUEMENT sur demande explicite de présentation/PowerPoint/slides :
+  1. Écris UNE phrase d'introduction
   2. Place le contenu dans un bloc \`\`\`pptx
-  3. Structure : # Titre → ## Slide N — Titre → - Bullets → - Sous-bullets
+  3. Structure : # Titre → ## Slide N — Titre → - Bullets
 
-- CODE & ARTIFACTS : Quand l'utilisateur demande du code → blocs \`\`\`langage. Panneau de prévisualisation interactif avec téléchargement.
-- FICHIERS JOINTS : Tu peux lire et analyser les fichiers PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx) et images joints.`;
+- CODE & ARTIFACTS : Pour du code → blocs \`\`\`langage.
+- FICHIERS JOINTS : Tu peux lire et analyser PDF, Word, Excel, PowerPoint et images joints.`;
 
 function getActiveSystemPrompt() {
   let base = '';
