@@ -1315,6 +1315,7 @@
       <div class="search-results" id="searchResults"></div>
     </div>
     <div id="chatList"></div>
+    <div style="padding:6px 8px;font-size:9px;color:#4a4a5a;text-align:center;flex-shrink:0">BrAInShift v4.2</div>
   </aside>
   <div class="resizer" id="resizer"></div>
 
@@ -5158,9 +5159,16 @@ async function send() {
     // On stocke provider ET modèle pour badge + sidebar
     c.messages.push({ role: "assistant", content: responseContent, provider, model: S.model });
 
-    // ── Auto-détection Artifact : ouvrir automatiquement ──
+    // ── Auto-détection Artifact v4 — JAMAIS auto-ouvrir markdown ──
+    console.log('[BrAInShift Artifact v4] Détection en cours…');
     if (typeof responseContent === 'string') {
-      // 0) Bloc ```pptx → génération PowerPoint automatique (sauf si refus explicite)
+      const hasMarkdownBlock = /```markdown/i.test(responseContent);
+      const hasPptxBlock = /```pptx/i.test(responseContent);
+      const hasHtmlBlock = /```html/i.test(responseContent);
+      console.log('[BrAInShift Artifact v4] Blocs détectés:', { hasMarkdownBlock, hasPptxBlock, hasHtmlBlock });
+      if (hasMarkdownBlock) console.log('[BrAInShift Artifact v4] ⚠ Bloc markdown détecté → IGNORÉ (jamais auto-ouvert)');
+
+      // 0) Bloc ```pptx → PowerPoint (sauf refus explicite)
       const userPromptForPptxCheck = (text || displayText || '').toLowerCase();
       const isExplicitNoFilePptx = /\b(ne\s+pas\s+créer|pas\s+de\s+(fichier|document|pptx|power)|répondre?\s+(ici|dans))\b/i.test(userPromptForPptxCheck);
       let pptxMatch = responseContent.match(/```pptx\s*\n([\s\S]+?)```/);
