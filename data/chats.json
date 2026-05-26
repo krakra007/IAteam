@@ -1395,23 +1395,9 @@
     },
     {
       "id": "ac437c6a-1f80-4d04-a693-bb4b10687b67",
-      "title": "Peux tu en te basant sur des informati",
+      "title": "Nouveau chat",
       "projectId": null,
-      "messages": [
-        {
-          "role": "user",
-          "content": "Peux tu en te basant sur des informations existantes dans les entreprises technologiques de l'aéronautique definir ce que représente un document retour d'expérience et un document leçons apprises. Quelle est la relation et la dépendance entre ces deux documents. Ne pas créer un fichier word mais répondre ici dans la fenetre.",
-          "_text": "Peux tu en te basant sur des informations existantes dans les entreprises technologiques de l'aéronautique definir ce que représente un document retour d'expérience et un document leçons apprises. Quelle est la relation et la dépendance entre ces deux documents. Ne pas créer un fichier word mais répondre ici dans la fenetre."
-        },
-        {
-          "role": "assistant",
-          "content": "📄 **Document retour d'expérience (Rex)** → *ouvert dans le panneau Artifact*",
-          "provider": "GROQ",
-          "model": "openai/gpt-oss-120b",
-          "_artifactContent": "## Document **retour d'expérience** (Rex)\n\n- **Objet** : Capitaliser sur les faits vécus lors d’un projet, d’une mission ou d’un incident afin de :\n  - Décrire les actions réalisées, les décisions prises et les résultats obtenus.  \n  - Identifier les points forts et les points de friction rencontrés sur le terrain.  \n- **Contenu typique** :\n  - Contexte du projet (objectifs, périmètre, parties prenantes).  \n  - Chronologie des événements clés.  \n  - Analyse des écarts entre les prévisions et la réalité opérationnelle.  \n  - Évaluations quantitatives (ex. : respect des délais, coûts réels vs budget).  \n  - Recommandations immédiates pour corriger ou améliorer le processus en cours.  \n- **Usage** : Diffusé aux équipes opérationnelles et aux managers pour ajuster rapidement les actions en cours et préparer les phases suivantes du programme.\n\n## Document **leçons apprises** (Lessons Learned)\n\n- **Objet** : Formaliser les enseignements tirés d’un projet ou d’un événement afin d’enrichir le **référentiel de connaissances** de l’entreprise.  \n- **Contenu typique** :\n  - Synthèse des succès à reproduire et des échecs à éviter.  \n  - Principes directeurs (best‑practice) et « anti‑patterns ».  \n  - Impact sur les processus, les outils, les exigences de certification, etc.  \n  - Actions de suivi (mise à jour de procédures, formation, modifications de standards).  \n- **Usage** : Réservé à la **gestion du savoir** (knowledge management) : il alimente les bases de données internes, les formations et les revues de conception futures.\n\n## Relation et dépendance entre les deux documents\n\n- **Flux séquentiel** : le **retour d’expérience** est produit **immédiatement** après ou pendant la phase opérationnelle ; le **document leçons apprises** est élaboré **ensuite**, en s’appuyant sur le Rex.  \n- **Complémentarité** :\n  - Le Rex fournit les **données brutes** (faits, chiffres, chronologie).  \n  - Le document leçons apprises transforme ces données en **enseignements généraux** applicables à d’autres programmes.  \n- **Dépendance** :\n  - Sans Rex complet et fiable, les leçons apprises risquent d’être **incomplètes** ou **biaisées**.  \n  - La qualité du Rex influence directement la pertinence et la valeur ajoutée du référentiel de leçons apprises.  \n- **Boucle de rétroaction** : les leçons apprises sont réutilisées dans les projets suivants, où elles alimentent de nouveaux retours d’expérience, créant ainsi une **spirale d’amélioration continue**.  \n\n---\n\n**En résumé** : le *retour d’expérience* est le **rapport de terrain** détaillé d’un projet, tandis que les *leçons apprises* sont le **document de capitalisation** qui extrait et généralise les enseignements de ce rapport pour enrichir le patrimoine de connaissances de l’entreprise aéronautique. Leur interdépendance constitue le socle de la gestion du savoir et de l’amélioration continue.",
-          "_artifactTitle": "Document retour d'expérience (Rex)"
-        }
-      ]
+      "messages": []
     }
   ],
   "projects": [
@@ -1516,6 +1502,6 @@
     "webSearch": true
   },
   "model": "openai/gpt-oss-120b",
-  "savedAt": "2026-05-26T11:54:47.970Z",
+  "savedAt": "2026-05-26T11:58:52.174Z",
   "version": 2
 }
