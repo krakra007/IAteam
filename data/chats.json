@@ -1421,6 +1421,12 @@
           "model": "openai/gpt-oss-120b"
         }
       ]
+    },
+    {
+      "id": "ab74a66b-da74-4e0f-8132-0f610dc35d73",
+      "title": "Nouveau chat",
+      "projectId": null,
+      "messages": []
     }
   ],
   "projects": [
@@ -1507,9 +1513,7 @@
       "prompt": "Apporter la même réponse en anglais après la réponse en français."
     }
   ],
-  "activeProfiles": [
-    "chemistry"
-  ],
+  "activeProfiles": [],
   "params": {
     "temperature": 0.2,
     "top_p": 0,
@@ -1527,6 +1531,6 @@
     "webSearch": true
   },
   "model": "openai/gpt-oss-120b",
-  "savedAt": "2026-05-26T19:49:52.937Z",
+  "savedAt": "2026-05-26T19:58:38.972Z",
   "version": 2
 }
