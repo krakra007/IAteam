@@ -1655,7 +1655,7 @@ const DEF = {
   temperature: 1.0,
   top_p: 1,
   top_k: 0,
-  max_tokens: 16128,
+  max_tokens: 32000,
   frequency_penalty: 0,
   presence_penalty: 0,
   stop: "",
@@ -5161,7 +5161,11 @@ async function send() {
     // ── Auto-détection Artifact : ouvrir automatiquement ──
     if (typeof responseContent === 'string') {
       // 0) Bloc ```pptx → génération PowerPoint automatique
-      const pptxMatch = responseContent.match(/```pptx\s*\n([\s\S]+?)```/);
+      let pptxMatch = responseContent.match(/```pptx\s*\n([\s\S]+?)```/);
+      if (!pptxMatch) {
+        const truncPptx = responseContent.match(/```pptx\s*\n([\s\S]{100,})/);
+        if (truncPptx) pptxMatch = truncPptx;
+      }
       if (pptxMatch && pptxMatch[1].length > 100) {
         const pptxContent = pptxMatch[1].trim();
         const titleMatch = pptxContent.match(/^#\s+(.+)/m);
@@ -5171,7 +5175,7 @@ async function send() {
         const lastMsg = c.messages[c.messages.length - 1];
         if (lastMsg && lastMsg.role === 'assistant') {
           lastMsg.content = responseContent.replace(
-            /```pptx\s*\n[\s\S]+?```/,
+            /```pptx\s*\n[\s\S]+?(?:```|$)/,
             `\n\n📊 **${pptxTitle}** — ${slideCount} slides → *PowerPoint généré et téléchargé*\n`
           );
           lastMsg._artifactContent = pptxContent;
@@ -5190,7 +5194,13 @@ async function send() {
       const userPromptLower = (text || displayText || '').toLowerCase();
       const isPptxRequest = /\b(power\s*point|pptx|présentation|presentation|diaporama|slides?|diapositives?)\b/i.test(userPromptLower);
 
-      const mdMatch = responseContent.match(/```markdown\s*\n([\s\S]+?)```/);
+      // Matcher les blocs ```markdown (complets OU tronqués si max_tokens atteint)
+      let mdMatch = responseContent.match(/```markdown\s*\n([\s\S]+?)```/);
+      if (!mdMatch) {
+        // Bloc tronqué : ouvert mais jamais fermé (max_tokens atteint)
+        const truncMatch = responseContent.match(/```markdown\s*\n([\s\S]{300,})/);
+        if (truncMatch) mdMatch = truncMatch;
+      }
       if (mdMatch && mdMatch[1].length > 300) {
         const mdContent = mdMatch[1].trim();
         const titleMatch = mdContent.match(/^#\s+(.+)/m) || mdContent.match(/^##\s+(.+)/m);
@@ -5202,7 +5212,7 @@ async function send() {
           const lastMsg = c.messages[c.messages.length - 1];
           if (lastMsg && lastMsg.role === 'assistant') {
             lastMsg.content = responseContent.replace(
-              /```markdown\s*\n[\s\S]+?```/,
+              /```markdown\s*\n[\s\S]+?(?:```|$)/,
               `\n\n📊 **${docTitle}** — ${slideCount} slides → *PowerPoint généré*\n`
             );
             lastMsg._artifactContent = mdContent;
@@ -5220,7 +5230,7 @@ async function send() {
           const lastMsg = c.messages[c.messages.length - 1];
           if (lastMsg && lastMsg.role === 'assistant') {
             lastMsg.content = responseContent.replace(
-              /```markdown\s*\n[\s\S]+?```/,
+              /```markdown\s*\n[\s\S]+?(?:```|$)/,
               `\n\n📄 **${docTitle}** — ${lineCount} lignes → *ouvert dans le panneau Artifact*\n`
             );
             lastMsg._artifactContent = mdContent;
@@ -5250,43 +5260,11 @@ async function send() {
           }
           setTimeout(() => openArtifact(code, 'html', title), 300);
         }
-        // 3) Fallback : réponse structurée + prompt contient mots-clés
-        else {
-          const isDocRequest = /\b(document|résumé|rapport|memo|lettre|synthèse|word|docx|télécharger|professionnel|fiche|compte[- ]rendu|note de synthèse)\b/i.test(userPromptLower);
-          const isStructured = responseContent.length > 800
-            && /^#{1,2}\s+.+/m.test(responseContent)
-            && (responseContent.match(/^#{1,3}\s+/gm) || []).length >= 3;
-          if (isStructured && (isPptxRequest || isDocRequest)) {
-            const titleMatch = responseContent.match(/^#\s+(.+)/m) || responseContent.match(/^##\s+(.+)/m);
-            const docTitle = titleMatch ? titleMatch[1].replace(/[*_#]/g, '').trim() : c.title || 'Document';
-            const lastMsg = c.messages[c.messages.length - 1];
-
-            if (isPptxRequest) {
-              // PowerPoint demandé → générer PPTX
-              const slideCount = (responseContent.match(/^##\s+/gm) || []).length + (responseContent.match(/^#\s+/m) ? 1 : 0);
-              if (lastMsg && lastMsg.role === 'assistant') {
-                lastMsg._artifactContent = responseContent;
-                lastMsg._artifactTitle = docTitle;
-                lastMsg._artifactLang = 'pptx';
-                lastMsg.content = `📊 **${docTitle}** — ${slideCount} slides → *PowerPoint généré*`;
-              }
-              setTimeout(() => {
-                openDocumentArtifact(responseContent, '📊 ' + docTitle, 'pptx');
-                el('artifactDownloadBtn').textContent = '⬇ PowerPoint (.pptx)';
-                el('artifactDownloadBtn').onclick = () => generatePptxFromMarkdown(responseContent, docTitle);
-              }, 300);
-            } else {
-              // Document Word
-              if (lastMsg && lastMsg.role === 'assistant') {
-                lastMsg._artifactContent = responseContent;
-                lastMsg._artifactTitle = docTitle;
-                lastMsg.content = `📄 **${docTitle}** → *ouvert dans le panneau Artifact*`;
-              }
-              setTimeout(() => openDocumentArtifact(responseContent, docTitle), 300);
-            }
-          }
+        // 3) Pas de bloc code spécial → on ne force PAS l'artifact.
+        // L'utilisateur peut toujours cliquer 📄 sous le message pour l'ouvrir en document.
+        // Ceci évite l'ouverture intempestive quand on pose une question normale
+        // contenant des mots comme "résumé", "document", etc.
         }
-      }
       } // fin else pptx
     }
 
@@ -5367,28 +5345,19 @@ function togglePromptPreview() {
 const PLATFORM_CAPABILITIES = `
 
 [CAPACITÉS DE LA PLATEFORME BrAInShift]
-- DOCUMENTS WORD : Quand l'utilisateur demande un document, résumé, rapport, mémo, lettre, ou fichier Word/DOCX → RÈGLE OBLIGATOIRE :
-  1. Écris UNE SEULE phrase d'introduction dans le chat (ex: "Voici votre résumé professionnel :")
-  2. Place TOUT le contenu du document à l'intérieur d'un bloc \`\`\`markdown
-  3. Le contenu doit être du Markdown professionnel et structuré (titres #/##/###, listes, tableaux, **gras**)
-  4. La plateforme ouvrira automatiquement un panneau de prévisualisation avec téléchargement Word (.docx)
-  5. Ne JAMAIS lister le contenu en dehors du bloc. Ne JAMAIS dire "je ne peux pas créer de fichier".
+- DOCUMENTS WORD : UNIQUEMENT quand l'utilisateur demande EXPLICITEMENT de créer un fichier, un document téléchargeable, un .docx, un rapport formel, ou utilise les mots "fichier Word", "document à télécharger", "document professionnel", "produis un document", "génère un rapport" :
+  1. Écris UNE SEULE phrase d'introduction dans le chat
+  2. Place TOUT le contenu dans un bloc \`\`\`markdown
+  3. La plateforme ouvrira un panneau avec téléchargement Word (.docx)
+  IMPORTANT : Si l'utilisateur demande simplement de "résumer", "analyser", "expliquer", "lire" un document → réponds NORMALEMENT dans le chat, SANS bloc \`\`\`markdown. Le bloc markdown est RÉSERVÉ aux cas où l'utilisateur veut un FICHIER en sortie.
 
-- PRÉSENTATIONS POWERPOINT : Quand l'utilisateur demande une présentation, un PowerPoint, un PPTX, un diaporama, ou des slides :
-  1. Écris UNE SEULE phrase d'introduction (ex: "Voici votre présentation professionnelle :")
-  2. Place le contenu dans un bloc \`\`\`pptx (triple backticks + "pptx")
-  3. Structure OBLIGATOIRE à respecter :
-     # Titre de la présentation (= slide de titre)
-     ## Slide 2 — Titre de la slide (= nouvelle slide de contenu)
-     - Point clé 1
-     - Point clé 2
-       - Sous-point détaillé
-     ## Slide 3 — Autre sujet
-     - Contenu...
-  4. La plateforme générera automatiquement un fichier .pptx professionnel téléchargeable.
+- PRÉSENTATIONS POWERPOINT : UNIQUEMENT quand l'utilisateur demande explicitement une présentation, un PowerPoint, un PPTX, un diaporama, ou des slides :
+  1. Écris UNE SEULE phrase d'introduction
+  2. Place le contenu dans un bloc \`\`\`pptx
+  3. Structure : # Titre → ## Slide N — Titre → - Bullets → - Sous-bullets
 
-- CODE & ARTIFACTS : Quand l'utilisateur demande du code (HTML, CSS, JS, Python, etc.) → mets-le dans des blocs \`\`\`langage. La plateforme affichera un panneau de prévisualisation interactif avec rendu live et téléchargement.
-- FICHIERS JOINTS : Tu peux lire et analyser les fichiers PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx) et images joints par l'utilisateur.`;
+- CODE & ARTIFACTS : Quand l'utilisateur demande du code → blocs \`\`\`langage. Panneau de prévisualisation interactif avec téléchargement.
+- FICHIERS JOINTS : Tu peux lire et analyser les fichiers PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx) et images joints.`;
 
 function getActiveSystemPrompt() {
   let base = '';
