@@ -681,7 +681,8 @@
     }
 
     /* ════ Rendu Markdown professionnel (inspiré IA-Genius) ════ */
-    .assistant-body{font-size:18px;line-height:1.65;color:var(--text);word-wrap:break-word;overflow-wrap:break-word}
+    .assistant-body{font-size:18px;line-height:1.65;color:var(--text);word-wrap:break-word;overflow-wrap:break-word;user-select:text;-webkit-user-select:text}
+    .msg.user .msg-text{user-select:text;-webkit-user-select:text}
     .assistant-body p{margin:0 0 12px}
     .assistant-body img{max-width:min(100%,520px);max-height:420px;object-fit:contain;border-radius:10px;display:block;margin:10px 0;box-shadow:0 2px 12px #0004}
     .assistant-body p:last-child{margin-bottom:0}
@@ -5913,43 +5914,72 @@ async function ghPushSilent() {
 async function ghPullSilent() {
   if (!GH.token || !GH.owner || !GH.repo) return;
   try {
+    // ═══ ÉTAPE 1 : PUSH D'ABORD pour sauvegarder les changements locaux ═══
+    try {
+      await ghPushSilent();
+      console.log('[BrAInShift] ✅ Push préventif OK (avant pull)');
+    } catch(pe) {
+      console.warn('[BrAInShift] ⚠ Push préventif échoué:', pe.message, '— on continue le pull');
+    }
+
+    // ═══ ÉTAPE 2 : PULL depuis GitHub ═══
     const result = await ghFetchFileContent();
     if (!result.found || !result.data) return;
     const raw = result.data;
     if (!raw || !raw.chats) return;
 
-    // Fusionner intelligemment : on garde les conversations locales absentes du remote
-    // et on ajoute/met à jour celles du remote
+    // ═══ ÉTAPE 3 : FUSION INTELLIGENTE ═══
+    // Règle : pour chaque chat, garder la version qui a le PLUS de messages
+    // (= la plus à jour). Si égalité, garder le local (priorité aux changements en cours).
     const remoteChatsMap = new Map(raw.chats.map(c => [c.id, c]));
     const localChatsMap  = new Map(S.chats.map(c => [c.id, c]));
 
-    // Merge : remote est la vérité pour les chats existants des deux côtés
-    // (le dernier push gagne), on ajoute les chats locaux-only
-    const merged = [...raw.chats];
-    for (const [id, localChat] of localChatsMap) {
-      if (!remoteChatsMap.has(id)) {
-        merged.push(localChat); // chat local pas encore pushé
+    const merged = [];
+    const allIds = new Set([...remoteChatsMap.keys(), ...localChatsMap.keys()]);
+
+    for (const id of allIds) {
+      const local  = localChatsMap.get(id);
+      const remote = remoteChatsMap.get(id);
+
+      if (local && !remote) {
+        // Chat local uniquement (pas encore pushé) → GARDER
+        merged.push(local);
+      } else if (remote && !local) {
+        // Chat remote uniquement (créé sur une autre machine) → AJOUTER
+        merged.push(remote);
+      } else {
+        // Chat existe des deux côtés → garder celui avec le plus de messages
+        const localLen  = Array.isArray(local.messages) ? local.messages.length : 0;
+        const remoteLen = Array.isArray(remote.messages) ? remote.messages.length : 0;
+        if (localLen >= remoteLen) {
+          // Local a autant ou plus de messages → GARDER LOCAL (priorité aux changements en cours)
+          merged.push(local);
+        } else {
+          // Remote a plus de messages → PRENDRE REMOTE (mis à jour depuis une autre machine)
+          merged.push(remote);
+        }
       }
     }
     S.chats = merged;
 
+    // Projets : même logique — ne jamais perdre un projet local
     if (raw.projects) {
       const remoteProjMap = new Map(raw.projects.map(p => [p.id, p]));
       const localProjMap  = new Map(S.projects.map(p => [p.id, p]));
-      const mergedProj = [...raw.projects];
-      for (const [id, lp] of localProjMap) {
-        if (!remoteProjMap.has(id)) mergedProj.push(lp);
+      const mergedProj = [];
+      const allProjIds = new Set([...remoteProjMap.keys(), ...localProjMap.keys()]);
+      for (const id of allProjIds) {
+        const local = localProjMap.get(id);
+        const remote = remoteProjMap.get(id);
+        // Garder le local s'il existe (il peut avoir des chats assignés en local)
+        mergedProj.push(local || remote);
       }
       S.projects = mergedProj;
     }
     if (raw.profiles)       S.profiles       = raw.profiles;
     if (raw.favoriteModels) S.favoriteModels = raw.favoriteModels;
-    // Ne PAS restaurer activeProfiles depuis GitHub — on veut toujours aucun profil au démarrage
-    // if (raw.activeProfiles) S.activeProfiles = raw.activeProfiles;
     if (raw.params)         S.params         = { ...DEF, ...raw.params };
     if (raw.model)          S.model          = raw.model;
-    // Toujours forcer le modèle par défaut au démarrage (le pull silent ne doit pas changer le modèle)
-    // Sauf si l'utilisateur a déjà changé manuellement pendant cette session
     if (!window._userChangedModel) {
       S.model = "gemini-2.5-flash";
     }
@@ -5963,8 +5993,15 @@ async function ghPullSilent() {
     updateProfileChip();
     render();
     console.log(`[BrAInShift] ✅ Pull silencieux OK — ${S.chats.length} conversations, ${S.projects.length} projets`);
-    // Nettoyer les chats vides dupliqués après la fusion
     ensureLandingBlankChat();
+
+    // ═══ ÉTAPE 4 : RE-PUSH après fusion pour que GitHub ait la version fusionnée ═══
+    try {
+      await ghPushSilent();
+      console.log('[BrAInShift] ✅ Re-push post-fusion OK');
+    } catch(pe) {
+      console.warn('[BrAInShift] ⚠ Re-push post-fusion échoué:', pe.message);
+    }
   } catch (e) {
     console.warn('[BrAInShift] Pull silencieux échoué:', e.message);
   }
@@ -6583,6 +6620,81 @@ promptEl.addEventListener("keydown", e => {
   if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
 });
 
+// ── Collage depuis le presse-papiers (images, fichiers, texte) ──
+promptEl.addEventListener("paste", async e => {
+  const items = [...(e.clipboardData?.items || [])];
+  const files = [];
+  
+  for (const item of items) {
+    // Image collée (capture d'écran, copie d'image)
+    if (item.type.startsWith("image/")) {
+      e.preventDefault();
+      const blob = item.getAsFile();
+      if (!blob) continue;
+      const data = await new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onload = () => res(r.result.split(",")[1]);
+        r.onerror = rej;
+        r.readAsDataURL(blob);
+      });
+      pendingFiles.push({
+        name: `capture_${Date.now()}.png`,
+        type: blob.type,
+        data,
+        isImage: true,
+        isPdf: false,
+        icon: '🖼'
+      });
+      files.push(blob);
+    }
+    // Fichier collé (certains navigateurs supportent le collage de fichiers)
+    else if (item.kind === "file") {
+      const file = item.getAsFile();
+      if (file) {
+        // Déclencher le même handler que l'input file
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        el('fileInput').files = dt.files;
+        el('fileInput').dispatchEvent(new Event('change'));
+      }
+    }
+    // Texte → le textarea gère nativement, on ne fait rien
+  }
+  
+  if (files.length) {
+    renderFilePreview();
+    autoResizePrompt();
+    console.log(`[BrAInShift] 📋 ${files.length} image(s) collée(s) depuis le presse-papiers`);
+  }
+});
+
+// ── Glisser-déposer de fichiers sur la zone de saisie ──
+const composerBox = document.querySelector('.composer-box');
+if (composerBox) {
+  ['dragenter','dragover'].forEach(ev => {
+    composerBox.addEventListener(ev, e => {
+      e.preventDefault();
+      composerBox.style.outline = '2px dashed #3b82f6';
+      composerBox.style.outlineOffset = '-2px';
+    });
+  });
+  ['dragleave','drop'].forEach(ev => {
+    composerBox.addEventListener(ev, e => {
+      composerBox.style.outline = '';
+      composerBox.style.outlineOffset = '';
+    });
+  });
+  composerBox.addEventListener('drop', e => {
+    e.preventDefault();
+    if (e.dataTransfer?.files?.length) {
+      const dt = new DataTransfer();
+      [...e.dataTransfer.files].forEach(f => dt.items.add(f));
+      el('fileInput').files = dt.files;
+      el('fileInput').dispatchEvent(new Event('change'));
+    }
+  });
+}
+
 // Clés API
 el("apiKeyBtn").onclick   = () => el("apiKeyPanel").classList.toggle("open");
 el("saveApiKeyBtn").onclick = async () => {
@@ -6707,32 +6819,50 @@ function triggerAutoPull() {
     console.warn('[BrAInShift] ⚠ Pull automatique échoué:', e.message);
   });
 }
-// Pull après 3 secondes au chargement
-setTimeout(triggerAutoPull, 3000);
+// Pull après 5 secondes au chargement (laissons le temps à la page de se stabiliser)
+setTimeout(triggerAutoPull, 5000);
 
 // iPad/Safari : bfcache restaure la page au lieu de la recharger
-// → re-trigger le Pull quand la page est restaurée
 window.addEventListener('pageshow', e => {
   if (e.persisted) {
-    console.log('[BrAInShift] 📱 Page restaurée depuis le cache (iPad/Safari) — re-pull…');
+    console.log('[BrAInShift] 📱 Page restaurée depuis le cache (iPad/Safari) — sync…');
     S.activeProfiles = [];
     renderProfiles();
     updateProfileChip();
-    setTimeout(triggerAutoPull, 1000);
+    setTimeout(triggerAutoPull, 2000);
   }
 });
 
-// iPad/tablette : quand l'utilisateur revient sur l'onglet après une pause, re-pull
+// Retour sur l'onglet après une pause → sync (push + pull)
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
-    // Re-pull si ça fait plus de 2 minutes qu'on est parti
     const now = Date.now();
-    if (!window._lastVisibleTime || (now - window._lastVisibleTime > 120000)) {
-      console.log('[BrAInShift] 👁 Retour sur la page — re-pull…');
+    // Re-sync si ça fait plus de 5 minutes qu'on est parti (au lieu de 2)
+    if (!window._lastVisibleTime || (now - window._lastVisibleTime > 300000)) {
+      console.log('[BrAInShift] 👁 Retour sur la page (>5 min) — sync…');
       triggerAutoPull();
+    }
+  } else {
+    // Quitte l'onglet → PUSH immédiatement pour ne rien perdre
+    if (GH.autoSync && GH.token) {
+      console.log('[BrAInShift] 💾 Onglet caché — push préventif…');
+      ghPushSilent().catch(() => {});
     }
   }
   window._lastVisibleTime = Date.now();
+});
+
+// Fermeture de la page → push de dernière chance
+window.addEventListener('beforeunload', () => {
+  if (GH.autoSync && GH.token) {
+    // Utiliser sendBeacon pour un push fiable même pendant la fermeture
+    // Fallback: push synchrone
+    try {
+      save(); // Au minimum, sauver dans localStorage
+      // Push async — le navigateur fera de son mieux
+      ghPushSilent().catch(() => {});
+    } catch(e) {}
+  }
 });
 
   // KaTeX + marked : extensions enregistrées lors du 1er appel de formatAssistantContent
