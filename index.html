@@ -2469,7 +2469,11 @@ function createChat(projectId = null) {
   S.chats.unshift({ id, title: "Nouveau chat", projectId, messages: [] });
   S.activeChat    = id;
   S.activeProject = projectId || null;
-  save(); render();
+  // Nouveau chat → remettre le modèle par défaut si l'utilisateur n'a pas changé manuellement
+  if (!window._userChangedModel) {
+    S.model = "gemini-2.5-flash";
+  }
+  save(); render(); renderModels();
 }
 
 function renameChat(id) {
@@ -4552,7 +4556,7 @@ function updateActiveModelChip() {
   const lastMsg = c ? [...(c.messages||[])].reverse().find(m => m.role==="assistant" && m.model) : null;
   const providerColors = {
     "ANTHROPIC":"#c8621a","OPENAI":"#10a37f","DEEPSEEK":"#7b9cf7",
-    "GOOGLE GEMINI":"#7baaf7","GROQ":"#f55016"
+    "GOOGLE GEMINI":"#7baaf7","GROQ":"#f55016","MISTRAL":"#ff7200"
   };
   if (lastMsg && lastMsg.model) {
     const col = providerColors[lastMsg.provider] || "#9ca3af";
@@ -6055,6 +6059,8 @@ async function ghPull() {
     if (raw.activeProfiles)  S.activeProfiles  = raw.activeProfiles;
     if (raw.params)        S.params        = { ...DEF, ...raw.params };
     if (raw.model)         S.model         = raw.model;
+    // Toujours forcer le modèle par défaut après un pull
+    if (!window._userChangedModel) S.model = "gemini-2.5-flash";
 
     if (!S.chats.find(c => c.id === S.activeChat))
       S.activeChat = S.chats[0]?.id || null;
