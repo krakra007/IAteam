@@ -165,7 +165,39 @@
     .top{display:flex;justify-content:space-between;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--top);position:sticky;top:0;z-index:5}
     .btn{border:1px solid var(--line);background:transparent;color:var(--text);padding:8px 10px;border-radius:8px;cursor:pointer}
     select,input{background:#222;border:1px solid var(--line);color:var(--text);border-radius:8px;padding:8px;font-family:inherit}
-    #modelSelect{min-width:180px;max-width:260px}
+    #modelSelect{display:none}
+    .model-dropdown{position:relative}
+    .model-dd-btn{
+      background:#1e1e24;border:1px solid var(--line);border-radius:8px;
+      color:#e0e2e8;font-size:13px;padding:6px 12px;cursor:pointer;
+      display:flex;align-items:center;gap:6px;min-width:180px;max-width:280px;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    }
+    .model-dd-btn:hover{border-color:#555}
+    .model-dd-panel{
+      display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:999;
+      background:#1a1a22;border:1px solid var(--line);border-radius:10px;
+      min-width:300px;max-width:380px;max-height:420px;overflow-y:auto;overflow-x:hidden;
+      box-shadow:0 8px 32px rgba(0,0,0,.5);padding:6px 0;
+    }
+    .model-dd-panel.open{display:block}
+    .model-dd-panel::-webkit-scrollbar{width:6px}
+    .model-dd-panel::-webkit-scrollbar-thumb{background:#3a3a4a;border-radius:3px}
+    .model-dd-group{padding:6px 12px 2px;font-size:11px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+    .model-dd-item{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:6px 12px;font-size:13px;color:#c9d0db;cursor:pointer;gap:6px;
+    }
+    .model-dd-item:hover{background:#ffffff0d}
+    .model-dd-item.active{background:#2563eb22;color:#93b4f4}
+    .model-dd-item .model-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .model-dd-dots{
+      opacity:0;font-size:14px;color:#6b7280;cursor:pointer;padding:2px 4px;border-radius:4px;
+      flex-shrink:0;transition:opacity .15s;
+    }
+    .model-dd-item:hover .model-dd-dots{opacity:1}
+    .model-dd-dots:hover{background:#ffffff15;color:#e0e2e8}
+    .model-dd-sep{height:1px;background:var(--line);margin:4px 10px}
 
     /* ── Messages ── */
     .messages{flex:1;overflow:auto;padding:26px 12px;display:flex;flex-direction:column;gap:18px;min-height:0}
@@ -884,7 +916,8 @@
       /* ── Barre du haut : compacte ── */
       .top { padding: 8px 10px; gap: 6px; }
       .top .btn { min-width: 44px; min-height: 44px; font-size: 18px; }
-      #modelSelect { font-size: 13px; max-width: 160px; }
+      #modelSelect { display:none }
+      .model-dd-btn { font-size: 13px; max-width: 160px; }
 
       /* ── Panneaux dropdown : pleine largeur ── */
       .params {
@@ -965,11 +998,13 @@
         font-size: 16px;
         min-width: 40px; min-height: 40px;
       }
-      #modelSelect {
+      .model-dd-btn {
         max-width: 100px;
         font-size: 11px;
         padding: 6px 4px;
+        min-width: 80px;
       }
+      .model-dd-panel { min-width: 260px; }
 
       /* ── Chip profil : icône seule, masquer le texte ── */
       .active-profile-chip #chipProfileName { display: none; }
@@ -1335,7 +1370,10 @@
     <div class="top">
       <div style="display:flex;gap:8px;align-items:center">
         <button class="btn" id="toggleSidebarBtn" title="Ouvrir/Fermer la barre latérale">☰</button>
-        <select id="modelSelect"></select>
+        <div class="model-dropdown" id="modelDropdown">
+          <button class="model-dd-btn" id="modelDdBtn"><span id="modelDdLabel">gemini-2.5-flash</span> <span style="opacity:.5">▾</span></button>
+          <div class="model-dd-panel" id="modelDdPanel"></div>
+        </div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;position:relative">
         <!-- Chip profil actif -->
@@ -1580,14 +1618,6 @@ Exemple pour la chimie :
 // fictifs (gpt-5.5 etc.) marqués clairement
 // ─────────────────────────────────────────────────
 const MODEL_GROUPS = [
-  // ── Raccourcis : modèles les plus utilisés ──────
-  {
-    label: "⭐ Les plus utilisés",
-    models: [
-      "openai/gpt-oss-120b",    // Groq, gratuit, rapide
-      "claude-sonnet-4-6"       // Anthropic, meilleur rapport qualité/prix
-    ]
-  },
   // ── Anthropic Claude ──────────────────────────────
   // Source : docs.anthropic.com — mai 2026
   {
@@ -1790,6 +1820,7 @@ const S = {
     }
   ],
   activeProfiles: JSON.parse(localStorage.getItem("activeProfiles") || "[]"),
+  favoriteModels: JSON.parse(localStorage.getItem("favoriteModels") || '["openai/gpt-oss-120b","claude-sonnet-4-6"]'),
   activeChat:    localStorage.getItem("activeChat")    || null,
   activeProject: localStorage.getItem("activeProject") || null,
   model:  "claude-sonnet-4-6",  // ← Force modèle par défaut (aligne avec IAGenius)
@@ -2205,6 +2236,7 @@ function save() {
     localStorage.setItem("model",              S.model);
     localStorage.setItem("params",             JSON.stringify(S.params));
     localStorage.setItem("apiKeysByProvider",  JSON.stringify(apiKeysByProvider));
+    localStorage.setItem("favoriteModels",     JSON.stringify(S.favoriteModels || []));
   } catch (e) {
     console.warn('[BrAInShift] ⚠ Sauvegarde échouée:', e.message);
     try {
@@ -4296,14 +4328,112 @@ blockquote{border-left:3px solid #4abfbf;margin:10px 0;padding:8px 16px;color:#5
 // SÉLECTEUR MODÈLES
 // ─────────────────────────────────────────────────
 function renderModels() {
-  const sel = el("modelSelect");
-  sel.innerHTML = MODEL_GROUPS.map(group => {
-    const opts = group.models
-      .map(m => `<option value="${m}" ${m === S.model ? "selected" : ""}>${m}</option>`)
-      .join("");
-    return `<optgroup label="${group.label}">${opts}</optgroup>`;
-  }).join("");
+  const panel = el("modelDdPanel");
+  const label = el("modelDdLabel");
+  label.textContent = S.model;
+  
+  const favs = S.favoriteModels || [];
+  let html = '';
+  
+  // ── Groupe favoris ──
+  if (favs.length) {
+    html += '<div class="model-dd-group">⭐ Les plus utilisés</div>';
+    favs.forEach(m => {
+      const isActive = m === S.model ? ' active' : '';
+      html += `<div class="model-dd-item${isActive}" data-model="${m}">
+        <span class="model-name">${m}</span>
+        <span class="model-dd-dots" data-fav-remove="${m}" title="Retirer des favoris">✕</span>
+      </div>`;
+    });
+    html += '<div class="model-dd-sep"></div>';
+  }
+  
+  // ── Groupes par fournisseur ──
+  MODEL_GROUPS.forEach(group => {
+    html += `<div class="model-dd-group">${group.label}</div>`;
+    group.models.forEach(m => {
+      const isActive = m === S.model ? ' active' : '';
+      const isFav = favs.includes(m);
+      const dots = isFav
+        ? `<span class="model-dd-dots" data-fav-remove="${m}" title="Retirer des favoris" style="color:#f59e42">★</span>`
+        : `<span class="model-dd-dots" data-fav-add="${m}" title="Ajouter aux favoris">⋯</span>`;
+      html += `<div class="model-dd-item${isActive}" data-model="${m}">
+        <span class="model-name">${m}</span>
+        ${dots}
+      </div>`;
+    });
+  });
+  
+  panel.innerHTML = html;
+  
+  // ── Événements ──
+  // Clic sur un modèle → le sélectionner
+  panel.querySelectorAll('[data-model]').forEach(item => {
+    item.addEventListener('click', e => {
+      // Ignore si on clique sur les dots
+      if (e.target.closest('[data-fav-add]') || e.target.closest('[data-fav-remove]')) return;
+      S.model = item.dataset.model;
+      window._userChangedModel = true;
+      save(); renderParams(); renderModels();
+      closeModelDropdown();
+    });
+  });
+  
+  // Ajouter aux favoris
+  panel.querySelectorAll('[data-fav-add]').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const m = btn.dataset.favAdd;
+      if (!S.favoriteModels.includes(m)) {
+        S.favoriteModels.push(m);
+        localStorage.setItem("favoriteModels", JSON.stringify(S.favoriteModels));
+        save();
+        renderModels();
+      }
+    });
+  });
+  
+  // Retirer des favoris
+  panel.querySelectorAll('[data-fav-remove]').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const m = btn.dataset.favRemove;
+      S.favoriteModels = S.favoriteModels.filter(x => x !== m);
+      localStorage.setItem("favoriteModels", JSON.stringify(S.favoriteModels));
+      save();
+      renderModels();
+    });
+  });
 }
+
+function openModelDropdown() {
+  const panel = el("modelDdPanel");
+  panel.classList.add("open");
+  panel.scrollTop = 0; // Toujours scroller en haut
+}
+
+function closeModelDropdown() {
+  el("modelDdPanel").classList.remove("open");
+}
+
+// Toggle dropdown
+el("modelDdBtn").addEventListener("click", e => {
+  e.stopPropagation();
+  const panel = el("modelDdPanel");
+  if (panel.classList.contains("open")) {
+    closeModelDropdown();
+  } else {
+    renderModels(); // Refresh avant d'ouvrir
+    openModelDropdown();
+  }
+});
+
+// Fermer en cliquant ailleurs
+document.addEventListener("click", e => {
+  if (!el("modelDropdown").contains(e.target)) {
+    closeModelDropdown();
+  }
+});
 
 async function loadModelsFromApi() {
   const key = (apiKeysByProvider["OPENAI"] || "").trim();
@@ -5766,7 +5896,7 @@ async function ghPushSilent() {
   const data = {
     chats: lightChats, projects: S.projects,
     profiles: S.profiles, activeProfiles: S.activeProfiles || [],
-    params: S.params, model: S.model,
+    params: S.params, model: S.model, favoriteModels: S.favoriteModels || [],
     savedAt: new Date().toISOString(), version: 2
   };
   const content = ghEncode(data);
@@ -5813,6 +5943,7 @@ async function ghPullSilent() {
       S.projects = mergedProj;
     }
     if (raw.profiles)       S.profiles       = raw.profiles;
+    if (raw.favoriteModels) S.favoriteModels = raw.favoriteModels;
     // Ne PAS restaurer activeProfiles depuis GitHub — on veut toujours aucun profil au démarrage
     // if (raw.activeProfiles) S.activeProfiles = raw.activeProfiles;
     if (raw.params)         S.params         = { ...DEF, ...raw.params };
@@ -6021,6 +6152,7 @@ async function ghPush() {
       activeProfiles: S.activeProfiles || [],
       params:        S.params,
       model:         S.model,
+      favoriteModels: S.favoriteModels || [],
       savedAt:       new Date().toISOString(),
       version:       2
     };
@@ -6064,6 +6196,7 @@ async function ghPull() {
     if (raw.chats)         S.chats         = raw.chats;
     if (raw.projects)      S.projects      = raw.projects;
     if (raw.profiles)        S.profiles       = raw.profiles;
+    if (raw.favoriteModels)  S.favoriteModels = raw.favoriteModels;
     if (raw.activeProfiles)  S.activeProfiles  = raw.activeProfiles;
     if (raw.params)        S.params        = { ...DEF, ...raw.params };
     if (raw.model)         S.model         = raw.model;
@@ -6435,7 +6568,7 @@ el("toggleSidebarBtn").onclick = () => {
   if (sb && collapsed) sb.style.width = '';
 };
 
-el("modelSelect").onchange = e => { S.model = e.target.value; window._userChangedModel = true; save(); renderParams(); };
+// Model select géré par le dropdown custom (voir renderModels)
 el("paramsBtn").onclick    = () => el("paramsPanel").classList.toggle("open");
 
 // Auto-resize du textarea (s'agrandit avec le texte, se réduit quand vidé)
