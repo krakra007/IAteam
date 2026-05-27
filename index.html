@@ -276,13 +276,14 @@
     /* ── Typing ── */
     .typing{display:flex;align-items:center;gap:10px;color:#b8bec8;font-size:14px;padding:8px 0}
     .typing-brain{
-      width:28px;height:28px;
+      width:34px;height:34px;
       animation:brainSpin 2s ease-in-out infinite;
-      filter:drop-shadow(0 0 6px rgba(99,144,245,0.4));
+      filter:drop-shadow(0 0 8px rgba(99,144,245,0.5));
+      border-radius:50%;
     }
     @keyframes brainSpin{
       0%{transform:rotateY(0deg) scale(1)}
-      50%{transform:rotateY(180deg) scale(1.05)}
+      50%{transform:rotateY(180deg) scale(1.08)}
       100%{transform:rotateY(360deg) scale(1)}
     }
     .typing-time{font-size:12px;color:#6b7280;font-variant-numeric:tabular-nums}
@@ -4269,29 +4270,7 @@ blockquote{border-left:3px solid #4abfbf;margin:10px 0;padding:8px 16px;color:#5
     typing.className = "typing";
     const elapsed = waitingStartTime ? Math.round((Date.now() - waitingStartTime) / 1000) : 0;
     const timeStr = elapsed > 3 ? `<span class="typing-time">${elapsed}s</span>` : '';
-    typing.innerHTML = `<svg class="typing-brain" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id="brainGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" style="stop-color:#6390f5"/>
-          <stop offset="50%" style="stop-color:#a78bfa"/>
-          <stop offset="100%" style="stop-color:#f59e42"/>
-        </linearGradient>
-      </defs>
-      <g fill="none" stroke="url(#brainGrad)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-        <!-- Contour du cerveau -->
-        <path d="M50 15 C30 15 18 28 18 42 C18 52 22 58 22 58 C18 62 16 68 20 76 C24 84 34 88 42 86 C44 88 47 90 50 90 C53 90 56 88 58 86 C66 88 76 84 80 76 C84 68 82 62 78 58 C78 58 82 52 82 42 C82 28 70 15 50 15Z"/>
-        <!-- Sillon central -->
-        <path d="M50 20 C50 20 50 85 50 85"/>
-        <!-- Sillons gauches -->
-        <path d="M50 35 C42 35 30 38 25 45"/>
-        <path d="M50 52 C44 52 32 55 24 62"/>
-        <path d="M50 68 C44 68 36 72 32 78"/>
-        <!-- Sillons droits -->
-        <path d="M50 35 C58 35 70 38 75 45"/>
-        <path d="M50 52 C56 52 68 55 76 62"/>
-        <path d="M50 68 C56 68 64 72 68 78"/>
-      </g>
-    </svg>${timeStr}`;
+    typing.innerHTML = `<img class="typing-brain" src="data:image/jpeg;base64,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" alt="BrAInShift réfléchit" />${timeStr}`;
     wrap.appendChild(typing);
     row.appendChild(wrap);
     box.appendChild(row);
