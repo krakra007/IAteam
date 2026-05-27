@@ -1530,7 +1530,7 @@
     "showThinking": false,
     "webSearch": true
   },
-  "model": "gemini-2.5-flash",
-  "savedAt": "2026-05-27T04:33:50.224Z",
+  "model": "openai/gpt-oss-120b",
+  "savedAt": "2026-05-27T04:35:37.541Z",
   "version": 2
 }
