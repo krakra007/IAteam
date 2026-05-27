@@ -274,8 +274,18 @@
     .badge-mistral{background:#ff720022;color:#ff7200;border:1px solid #ff720044}
 
     /* ── Typing ── */
-    .typing{display:flex;align-items:center;gap:8px;color:#b8bec8;font-size:14px}
-    .typing-spinner{width:14px;height:14px;border:2px solid #4b5563;border-top-color:#d1d5db;border-radius:50%;animation:spin 0.8s linear infinite}
+    .typing{display:flex;align-items:center;gap:10px;color:#b8bec8;font-size:14px;padding:8px 0}
+    .typing-brain{
+      width:28px;height:28px;
+      animation:brainSpin 2s ease-in-out infinite;
+      filter:drop-shadow(0 0 6px rgba(99,144,245,0.4));
+    }
+    @keyframes brainSpin{
+      0%{transform:rotateY(0deg) scale(1)}
+      50%{transform:rotateY(180deg) scale(1.05)}
+      100%{transform:rotateY(360deg) scale(1)}
+    }
+    .typing-time{font-size:12px;color:#6b7280;font-variant-numeric:tabular-nums}
     @keyframes spin{to{transform:rotate(360deg)}}
 
     /* ── Composer ── */
@@ -4258,8 +4268,30 @@ blockquote{border-left:3px solid #4abfbf;margin:10px 0;padding:8px 16px;color:#5
     const typing = document.createElement("div");
     typing.className = "typing";
     const elapsed = waitingStartTime ? Math.round((Date.now() - waitingStartTime) / 1000) : 0;
-    const timeStr = elapsed > 3 ? ` (${elapsed}s)` : '';
-    typing.innerHTML = `<span class="typing-spinner" aria-hidden="true"></span><span>Le modèle réfléchit…${timeStr}</span>`;
+    const timeStr = elapsed > 3 ? `<span class="typing-time">${elapsed}s</span>` : '';
+    typing.innerHTML = `<svg class="typing-brain" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="brainGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:#6390f5"/>
+          <stop offset="50%" style="stop-color:#a78bfa"/>
+          <stop offset="100%" style="stop-color:#f59e42"/>
+        </linearGradient>
+      </defs>
+      <g fill="none" stroke="url(#brainGrad)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+        <!-- Contour du cerveau -->
+        <path d="M50 15 C30 15 18 28 18 42 C18 52 22 58 22 58 C18 62 16 68 20 76 C24 84 34 88 42 86 C44 88 47 90 50 90 C53 90 56 88 58 86 C66 88 76 84 80 76 C84 68 82 62 78 58 C78 58 82 52 82 42 C82 28 70 15 50 15Z"/>
+        <!-- Sillon central -->
+        <path d="M50 20 C50 20 50 85 50 85"/>
+        <!-- Sillons gauches -->
+        <path d="M50 35 C42 35 30 38 25 45"/>
+        <path d="M50 52 C44 52 32 55 24 62"/>
+        <path d="M50 68 C44 68 36 72 32 78"/>
+        <!-- Sillons droits -->
+        <path d="M50 35 C58 35 70 38 75 45"/>
+        <path d="M50 52 C56 52 68 55 76 62"/>
+        <path d="M50 68 C56 68 64 72 68 78"/>
+      </g>
+    </svg>${timeStr}`;
     wrap.appendChild(typing);
     row.appendChild(wrap);
     box.appendChild(row);
