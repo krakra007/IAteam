@@ -1396,7 +1396,7 @@
     {
       "id": "ac437c6a-1f80-4d04-a693-bb4b10687b67",
       "title": "décrire la fonction cétone",
-      "projectId": null,
+      "projectId": "06407384-63b3-4383-b87c-6248d2482d0a",
       "messages": [
         {
           "role": "user",
@@ -1530,7 +1530,11 @@
     "showThinking": false,
     "webSearch": true
   },
-  "model": "openai/gpt-oss-120b",
-  "savedAt": "2026-05-27T10:30:04.825Z",
+  "model": "gemini-2.5-flash",
+  "favoriteModels": [
+    "openai/gpt-oss-120b",
+    "claude-sonnet-4-6"
+  ],
+  "savedAt": "2026-05-27T10:32:33.134Z",
   "version": 2
 }
