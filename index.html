@@ -1580,6 +1580,14 @@ Exemple pour la chimie :
 // fictifs (gpt-5.5 etc.) marqués clairement
 // ─────────────────────────────────────────────────
 const MODEL_GROUPS = [
+  // ── Raccourcis : modèles les plus utilisés ──────
+  {
+    label: "⭐ Les plus utilisés",
+    models: [
+      "openai/gpt-oss-120b",    // Groq, gratuit, rapide
+      "claude-sonnet-4-6"       // Anthropic, meilleur rapport qualité/prix
+    ]
+  },
   // ── Anthropic Claude ──────────────────────────────
   // Source : docs.anthropic.com — mai 2026
   {
