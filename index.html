@@ -2238,7 +2238,8 @@ function renderApiKeys() {
     "OPENAI":       { color:"#10a37f", icon:"🟢", placeholder:"sk-proj-..." },
     "DEEPSEEK":     { color:"#7b9cf7", icon:"🔵", placeholder:"sk-..." },
     "GOOGLE GEMINI":{ color:"#7baaf7", icon:"🔷", placeholder:"AIza..." },
-    "GROQ":         { color:"#f55016", icon:"🔴", placeholder:"gsk_..." }
+    "GROQ":         { color:"#f55016", icon:"🔴", placeholder:"gsk_..." },
+    "MISTRAL":      { color:"#ff7200", icon:"🟧", placeholder:"mistral-..." }
   };
 
   container.innerHTML = "";
@@ -2329,6 +2330,12 @@ async function testApiKey(provider, key) {
       msg = ok ? "Clé valide ✓" : `Erreur ${r.status}`;
     } else if (provider === "GROQ") {
       const r = await fetch("https://api.groq.com/openai/v1/models", {
+        headers: { "Authorization": "Bearer " + key }
+      });
+      ok = r.status === 200;
+      msg = ok ? "Clé valide ✓" : `Erreur ${r.status}`;
+    } else if (provider === "MISTRAL") {
+      const r = await fetch("https://api.mistral.ai/v1/models", {
         headers: { "Authorization": "Bearer " + key }
       });
       ok = r.status === 200;
@@ -5787,6 +5794,11 @@ async function ghPullSilent() {
     // if (raw.activeProfiles) S.activeProfiles = raw.activeProfiles;
     if (raw.params)         S.params         = { ...DEF, ...raw.params };
     if (raw.model)          S.model          = raw.model;
+    // Toujours forcer le modèle par défaut au démarrage (le pull silent ne doit pas changer le modèle)
+    // Sauf si l'utilisateur a déjà changé manuellement pendant cette session
+    if (!window._userChangedModel) {
+      S.model = "gemini-2.5-flash";
+    }
 
     if (!S.chats.find(c => c.id === S.activeChat))
       S.activeChat = S.chats[0]?.id || null;
@@ -6398,7 +6410,7 @@ el("toggleSidebarBtn").onclick = () => {
   if (sb && collapsed) sb.style.width = '';
 };
 
-el("modelSelect").onchange = e => { S.model = e.target.value; save(); renderParams(); };
+el("modelSelect").onchange = e => { S.model = e.target.value; window._userChangedModel = true; save(); renderParams(); };
 el("paramsBtn").onclick    = () => el("paramsPanel").classList.toggle("open");
 
 // Auto-resize du textarea (s'agrandit avec le texte, se réduit quand vidé)
@@ -6531,6 +6543,8 @@ function triggerAutoPull() {
     S.activeProfiles = [];
     renderProfiles();
     updateProfileChip();
+    // Re-syncer le sélecteur de modèle
+    renderModels();
   }).catch(e => {
     console.warn('[BrAInShift] ⚠ Pull automatique échoué:', e.message);
   });
