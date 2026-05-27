@@ -1530,11 +1530,7 @@
     "showThinking": false,
     "webSearch": true
   },
-  "model": "gemini-2.5-flash",
-  "favoriteModels": [
-    "openai/gpt-oss-120b",
-    "claude-sonnet-4-6"
-  ],
-  "savedAt": "2026-05-27T13:07:32.885Z",
+  "model": "openai/gpt-oss-120b",
+  "savedAt": "2026-05-27T13:10:04.511Z",
   "version": 2
 }
