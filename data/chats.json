@@ -1424,9 +1424,21 @@
     },
     {
       "id": "ab74a66b-da74-4e0f-8132-0f610dc35d73",
-      "title": "Nouveau chat",
+      "title": "Explication de les sucres de la série D",
       "projectId": null,
-      "messages": []
+      "messages": [
+        {
+          "role": "user",
+          "content": "expliquer les sucres de la série D",
+          "_text": "expliquer les sucres de la série D"
+        },
+        {
+          "role": "assistant",
+          "content": "## Les sucres de la série D  \n\n### Définition générale  \n- Les **sucres de la série D** sont des monosaccharides dont la configuration absolue du carbone asymétrique le plus éloigné du groupe carbonyle (C‑n) correspond à celle du **$D$‑glycéraldéhyde**.  \n- Cette désignation ne dépend pas du sens de rotation du plan polarisé (dextro‑ ou lévogyre) mais uniquement de la **configuration stéréochimique**.  \n\n### Règle de détermination du type D / L  \n1. **Dessiner la projection de Fischer** du sucre.  \n2. Identifier le **carbone le plus à droite** (ou à gauche selon la convention) parmi les carbones asymétriques les plus distants du groupe carbonyle.  \n3. Si le groupe hydroxyle ($\\mathrm{-OH}$) de ce carbone est **à droite**, le sucre appartient à la **série D** ; s’il est à gauche, il appartient à la **série L**.  \n\n> **Exemple** : pour le glucose, la projection de Fischer montre un $\\mathrm{-OH}$ à droite sur le carbone 5 → **$D$‑glucose**.  \n\n### Principaux sucres de la série D  \n\n| Nom commun | Formule brute | Type | Nombre de carbones | Exemple de projection de Fischer |\n|------------|---------------|------|--------------------|-----------------------------------|\n| **$D$‑glucose** | $C_{6}H_{12}O_{6}$ | Aldohexose | 6 | $$\\begin{aligned} &\\mathrm{CHO}\\\\ &\\vert\\\\ &\\mathrm{HO\\!-\\!CH_{2}}\\\\ &\\vert\\\\ &\\mathrm{H\\!-\\!C\\!-\\!OH}\\\\ &\\vert\\\\ &\\mathrm{HO\\!-\\!C\\!-\\!H}\\\\ &\\vert\\\\ &\\mathrm{H\\!-\\!C\\!-\\!OH}\\\\ &\\vert\\\\ &\\mathrm{CH_{2}OH} \\end{aligned}$$ |\n| **$D$‑galactose** | $C_{6}H_{12}O_{6}$ | Aldohexose | 6 | Identique à $D$‑glucose sauf inversion du $\\mathrm{-OH}$ au carbone 4 |\n| **$D$‑mannose** | $C_{6}H_{12}O_{6}$ | Aldohexose | 6 | Inversion du $\\mathrm{-OH}$ au carbone 2 par rapport à $D$‑glucose |\n| **$D$‑ribose** | $C_{5}H_{10}O_{5}$ | Aldopentose | 5 | $\\mathrm{-OH}$ à droite sur les carbones 3 et 4 |\n| **$D$‑xylose** | $C_{5}H_{10}O_{5}$ | Aldopentose | 5 | $\\mathrm{-OH}$ à droite sur le carbone 3, à gauche sur le carbone 4 |\n| **$D$‑arabinose** | $C_{5}H_{10}O_{5}$ | Aldopentose | 5 | Inversion du $\\mathrm{-OH}$ au carbone 2 par rapport à $D$‑ribose |\n| **$D$‑fructose** | $C_{6}H_{12}O_{6}$ | Ketohexose | 6 | Projection de Haworth montre le groupe carbonyle en C‑2, $\\mathrm{-OH}$ à droite sur le carbone 5 |\n\n### Caractéristiques physico‑chimiques  \n\n- **Solubilité** : très solubles dans l’eau grâce aux multiples groupes hydroxyle.  \n- **Optique** : la plupart des sucres $D$ sont **dextrogyres** ($+$) mais ce n’est pas une règle absolue ; la désignation $D/L$ reste indépendante de la rotation.  \n- **Réactivité** :  \n  - **Réduction** : les aldoses ($D$‑glucose, $D$‑galactose, $D$‑mannose, $D$‑ribose…) sont des **réducteurs** car le groupe aldéhyde peut être oxydé.  \n  - **Isomérisation** : en solution aqueuse, les aldoses $D$ peuvent cycliser pour former des **hémicérolides** (α‑ et β‑anomères).  \n\n### Importance biologique  \n\n- **Métabolisme** : $D$‑glucose est la principale source d’énergie dans les cellules (glycolyse, cycle de Krebs).  \n- **ARN** : les pentoses $D$‑ribose et $D$‑désoxyribose constituent le squelette des acides nucléiques.  \n- **Glycoprotéines et glycolipides** : les résidus $D$‑galactose et $D$‑mannose sont fréquents dans les chaînes oligosaccharidiques de surface cellulaire.  \n\n### Résumé des points clés  \n\n- **$D$** désigne la configuration du carbone le plus distant du groupe carbonyle (identique à $D$‑glycéraldéhyde).  \n- La **projection de Fischer** permet de classer rapidement un sucre en $D$ ou $L$.  \n- Les sucres $D$ comprennent les aldoses et les cétones les plus courants (glucose, galactose, mannose, ribose, xylose, fructose, …).  \n- Leur rôle central dans la **bioénergétique** et la **structure des biopolymères** en fait des molécules essentielles à la vie.  ",
+          "provider": "GROQ",
+          "model": "openai/gpt-oss-120b"
+        }
+      ]
     },
     {
       "id": "c4f8ddbe-d1d7-4bd6-a38e-5751e46995ab",
@@ -1554,7 +1566,11 @@
     "showThinking": false,
     "webSearch": true
   },
-  "model": "gemini-2.5-flash",
-  "savedAt": "2026-05-27T05:16:51.441Z",
+  "model": "openai/gpt-oss-120b",
+  "favoriteModels": [
+    "openai/gpt-oss-120b",
+    "claude-sonnet-4-6"
+  ],
+  "savedAt": "2026-05-27T05:17:40.816Z",
   "version": 2
 }
