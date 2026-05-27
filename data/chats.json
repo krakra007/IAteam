@@ -1,6 +1,12 @@
 {
   "chats": [
     {
+      "id": "c33ca0d6-26aa-4366-ae77-44412b900bb1",
+      "title": "Nouveau chat",
+      "projectId": null,
+      "messages": []
+    },
+    {
       "id": "08c7dbc3-ac9d-4e7d-800d-650fbabca9d6",
       "title": "dessiner  le groupe carbonyl",
       "projectId": "06407384-63b3-4383-b87c-6248d2482d0a",
@@ -1536,9 +1542,7 @@
       "prompt": "Apporter la même réponse en anglais après la réponse en français."
     }
   ],
-  "activeProfiles": [
-    "chemistry"
-  ],
+  "activeProfiles": [],
   "params": {
     "temperature": 0.2,
     "top_p": 0,
@@ -1556,6 +1560,6 @@
     "webSearch": true
   },
   "model": "gemini-2.5-flash",
-  "savedAt": "2026-05-27T04:48:09.036Z",
+  "savedAt": "2026-05-27T04:53:08.992Z",
   "version": 2
 }
