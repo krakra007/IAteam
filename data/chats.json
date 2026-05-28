@@ -1430,7 +1430,7 @@
     },
     {
       "id": "ab74a66b-da74-4e0f-8132-0f610dc35d73",
-      "title": "C'est quoi le BSRI en parlant de la DGA en France",
+      "title": "BRSI",
       "projectId": "4a80a2bb-5a7f-49d2-b420-c20965d8067b",
       "messages": [
         {
@@ -1648,6 +1648,6 @@
     "openai/gpt-oss-120b",
     "claude-sonnet-4-6"
   ],
-  "savedAt": "2026-05-28T07:19:19.403Z",
+  "savedAt": "2026-05-28T07:20:48.804Z",
   "version": 2
 }
