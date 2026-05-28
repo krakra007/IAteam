@@ -1367,7 +1367,7 @@
       <div class="search-results" id="searchResults"></div>
     </div>
     <div id="chatList"></div>
-    <div style="padding:6px 8px;font-size:9px;color:#4a4a5a;text-align:center;flex-shrink:0">BrAInShift v4.7</div>
+    <div style="padding:6px 8px;font-size:9px;color:#4a4a5a;text-align:center;flex-shrink:0">BrAInShift v4.8</div>
   </aside>
   <div class="resizer" id="resizer"></div>
 
@@ -1705,15 +1705,32 @@ const MODEL_GROUPS = [
     ]
   },
   // ── Mistral AI ─────────────────────────────────────
-  // Source : docs.mistral.ai — mai 2026
+  // Source : docs.mistral.ai/models/overview — mai 2026
   // API compatible OpenAI (Chat Completions)
   // Endpoint : https://api.mistral.ai/v1/chat/completions
   {
-    label: "Mistral AI",
+    label: "Mistral AI — Frontier",
     models: [
-      "mistral-small-latest",     // Small 4 — 119B MoE, $0.15/M in, reasoning configurable
-      "mistral-large-latest",     // Large 3 — flagship, plus puissant, $2/M in
-      "codestral-latest"          // Codestral — spécialisé code, fill-in-the-middle
+      "mistral-medium-latest",    // 🆕 Medium 3.5 (avr 2026) — 128B dense, 256K ctx, vision, $1.5/M in
+      "mistral-small-latest",     // Small 4 (mars 2026) — 119B MoE, reasoning configurable, $0.15/M in
+      "mistral-large-latest",     // Large 3 (déc 2025) — 675B MoE, flagship open-weight, $2/M in
+    ]
+  },
+  {
+    label: "Mistral AI — Spécialistes",
+    models: [
+      "codestral-latest",          // Codestral 25.08 — code completion + FIM, $0.30/M in
+      "devstral-small-latest",     // Devstral Small 2 — 24B, agents code, Apache 2.0
+      "magistral-medium-latest",   // Magistral Medium 1.2 — reasoning avancé, $2/M in
+      "mistral-medium-3-1-latest", // Medium 3.1 (août 2025) — multimodal, legacy flagship
+    ]
+  },
+  {
+    label: "Mistral AI — Compact",
+    models: [
+      "ministral-3b-latest",      // Ministral 3B — tiny, vision, $0.04/M in
+      "ministral-8b-latest",      // Ministral 8B — efficace, vision, $0.10/M in
+      "open-mistral-nemo",        // Nemo 12B — multilingue, open-source
     ]
   }
 ];
@@ -2264,7 +2281,7 @@ function inferProviderFromModel(model) {
   if (m.startsWith("claude"))   return "ANTHROPIC";
   if (m.startsWith("gemini"))   return "GOOGLE GEMINI";
   if (m.startsWith("deepseek")) return "DEEPSEEK";
-  if (m.startsWith("mistral") || m.startsWith("codestral")) return "MISTRAL";
+  if (m.startsWith("mistral") || m.startsWith("codestral") || m.startsWith("devstral") || m.startsWith("magistral") || m.startsWith("ministral") || m.startsWith("open-mistral")) return "MISTRAL";
   // Groq models — détection par préfixe de famille ou nom connu
   const GROQ_MODELS = MODEL_GROUPS.find(g => g.label.includes("Groq"))?.models || [];
   if (GROQ_MODELS.includes(model)) return "GROQ";
