@@ -1,6 +1,12 @@
 {
   "chats": [
     {
+      "id": "26973dd5-3a82-41b9-b898-01dd143b359e",
+      "title": "Nouveau chat",
+      "projectId": null,
+      "messages": []
+    },
+    {
       "id": "08c7dbc3-ac9d-4e7d-800d-650fbabca9d6",
       "title": "dessiner  le groupe carbonyl",
       "projectId": "06407384-63b3-4383-b87c-6248d2482d0a",
@@ -1394,6 +1400,35 @@
       "messages": []
     },
     {
+      "id": "ac437c6a-1f80-4d04-a693-bb4b10687b67",
+      "title": "décrire la fonction cétone",
+      "projectId": null,
+      "messages": [
+        {
+          "role": "user",
+          "content": "décrire la fonction cétone",
+          "_text": "décrire la fonction cétone"
+        },
+        {
+          "role": "assistant",
+          "content": "## Fonction cétone\n\n- **Définition**  \n  Une cétone est un composé organique contenant un groupe carbonyle ($C=O$) lié à deux atomes de carbone. La fonction cétone se représente généralement par la formule générale :\n\n  $$R_1-CO-R_2$$\n\n  où $R_1$ et $R_2$ sont des chaînes carbonées (aliphatiques ou aromatiques) ou des groupes substitués.\n\n- **Nomenclature**  \n  - Le nom de la cétone se forme en remplaçant le suffixe *-ane* du nom de l’hydrocarbure parent par *-one*.  \n  - Le numéro du carbone portant le groupe carbonyle est indiqué lorsqu’il y a plusieurs positions possibles (ex. : 2‑pentanone).  \n  - Si la cétone est la fonction principale d’une chaîne cyclique, le suffixe *-one* est ajouté au nom du cycle (ex. : cyclohexanone).\n\n- **Propriétés physiques**  \n  - **Polarité** : le groupe carbonyle est polaire, ce qui rend les cétones généralement solubles dans l’eau à petite chaîne et très solubles dans les solvants organiques polaires (éthanol, acétone).  \n  - **Point d’ébullition** : augmente avec la taille de la chaîne carbonée en raison des forces de Van der Waals.  \n  - **Odeur** : plusieurs cétones (ex. : l’acétone) possèdent une odeur caractéristique, souvent décrite comme « fruitée » ou « solvante ».\n\n- **Réactivité chimique**  \n  - **Addition nucléophile** : le carbone du groupe carbonyle est électrophile et subit des attaques nucléophiles, donnant des alcools après protonation.  \n  - **Réduction** : les cétones peuvent être réduites en alcools secondaires avec des agents réducteurs tels que le NaBH$_4$ ou le LiAlH$_4$.  \n  - **Oxydation** : les cétones sont généralement résistantes à l’oxydation, mais peuvent être converties en acides carboxyliques sous conditions sévères (ex. : oxydation de la pinacolone).  \n  - **Formation d’enolates** : sous base forte, les cétones forment des énolates, intermédiaires clés en chimie organique (ex. : aldolisation).\n\n- **Exemples courants**  \n  - **Acétone** ($CH_3-CO-CH_3$) : solvant industriel largement utilisé.  \n  - **Cyclohexanone** ($C_6H_{10}O$) : précurseur de la nylon‑6.  \n  - **Benzaldéhyde** ($C_6H_5-CO-CH_3$) : utilisé en parfumerie et comme intermédiaire chimique.  \n  - **2‑Butanone** (méthyléthylcétone, $CH_3-CO-CH_2-CH_3$) : solvant dans les revêtements.\n\n- **Applications**  \n  - **Solvants** : l’acétone et la méthyléthylcétone sont des solvants de choix pour le nettoyage et la dissolution de résines.  \n  - **Synthèse organique** : les cétones servent de points d’ancrage pour la construction de molécules plus complexes (ex. : synthèse de médicaments, polymères).  \n  - **Industrie pharmaceutique** : de nombreuses molécules actives contiennent la fonction cétone, influençant leur activité biologique et leur métabolisme.  \n\n**En résumé**, la fonction cétone, caractérisée par le groupe carbonyle lié à deux carbones ($R_1-CO-R_2$), joue un rôle central en chimie organique grâce à sa polarité, sa réactivité envers les nucléophiles et sa capacité à former des dérivés utiles dans de multiples domaines industriels et scientifiques.",
+          "provider": "GROQ",
+          "model": "openai/gpt-oss-120b"
+        },
+        {
+          "role": "user",
+          "content": "décrire la fonction cétone",
+          "_text": "décrire la fonction cétone"
+        },
+        {
+          "role": "assistant",
+          "content": "## CÉTONE\n---\n**SYNTHÈSE GLOBALE**  \n*Définition* : Fonction organique caractérisée par la présence d’un groupe carbonyle ($C=O$) lié à deux atomes de carbone, décrite par la formule générale $$R_1-CO-R_2$$ où $R_1$ et $R_2$ sont des fragments carbonés.\n\n| Entité Chimique | Rôle Spécifique | Résultat du Processus |\n| :--- | :--- | :--- |\n| Groupe carbonyle | Centre électrophile du groupe cétone | Activation du carbone carbonyle envers les nucléophiles |\n| Atome d’oxygène carbonyle | Nucléofuge via ses doublets non liants | Stabilisation de la charge négative dans les intermédiaires |\n| Chaînes carbonées $R_1$, $R_2$ | Fournissent l’environnement inductif et mésomère | Modulation de la réactivité et de la polarité globale |\n\n**DÉVELOPPEMENT MÉCANISTIQUE ÉTENDU**  \n\n• **Géométrie et Nuages Électroniques**  \n  - **Hybridation** : Le carbone du groupe carbonyle adopte une hybridation $sp^2$, conduisant à une géométrie plane trigonal avec des angles d’environ $120^\\circ$.  \n  - **Densité Électronique** : L’oxygène possède deux doublets non liants (Orbitale Haute Occupée) qui exercent un effet mésomère $-I$ et $-M$, augmentant la polarisation du lien $C=O$.\n\n• **Cinétique et Flux Électronique**  \n  - **Interaction Orbitalaire** : Le flux d’électrons s’opère du doublet non liant de l’oxygène (Orbitale Haute Occupée) vers l’orbitale $p$ vacante du carbone carbonyle (Orbitale Basse Vacante), formant un état de transition caractérisé par $$\\Delta G^{\\ddagger}= \\Delta H^{\\ddagger} - T\\Delta S^{\\ddagger}$$.  \n  - **Équations** : Pour une addition nucléophile générique $Nu^-$, la réaction s’écrit $$R_1-CO-R_2 + Nu^- \\;\\longrightarrow\\; R_1-C(O^-)(Nu)-R_2 \\;\\xrightarrow{\\text{protonation}}\\; R_1-C(OH)(Nu)-R_2$$.\n\n• **Biologie et Cancérologie**  \n  - **Application Cellulaire** : Les cétones interviennent dans le métabolisme des corps cétoniques ($acétoacétate$, $β$‑hydroxybutyrate) qui servent de sources d’énergie alternatives lors du jeûne ou du diabète.  \n  - **Implication Oncologique** : La réorganisation du métabolisme tumoral (effet Warburg) augmente la production de cétones et de dérivés carbonylés, lesquels peuvent modifier les protéines via des adductions de type Schiff, affectant la signalisation cellulaire et favorisant la progression tumorale.  \n\n---",
+          "provider": "GROQ",
+          "model": "openai/gpt-oss-120b"
+        }
+      ]
+    },
+    {
       "id": "ab74a66b-da74-4e0f-8132-0f610dc35d73",
       "title": "C'est quoi le BSRI en parlant de la DGA en France",
       "projectId": "4a80a2bb-5a7f-49d2-b420-c20965d8067b",
@@ -1608,11 +1643,11 @@
     "showThinking": false,
     "webSearch": true
   },
-  "model": "claude-sonnet-4-6",
+  "model": "gemini-2.5-flash",
   "favoriteModels": [
     "openai/gpt-oss-120b",
     "claude-sonnet-4-6"
   ],
-  "savedAt": "2026-05-28T07:03:03.294Z",
+  "savedAt": "2026-05-28T07:03:56.689Z",
   "version": 2
 }
