@@ -376,6 +376,9 @@
     #sendBtn.send-circle{width:38px;height:38px;border-radius:999px;background:#fff;color:#111;border:none;display:inline-flex;align-items:center;justify-content:center;padding:0}
     #sendBtn.send-circle svg{width:18px;height:18px;stroke:#111;stroke-width:3.2;fill:none;stroke-linecap:round;stroke-linejoin:round}
     #sendBtn.send-circle:hover{background:#e8e8e8}
+    #stopBtn{display:none;width:38px;height:38px;border-radius:999px;background:#ef4444;color:#fff;border:none;cursor:pointer;align-items:center;justify-content:center;padding:0;font-size:16px;animation:stopPulse 1.5s ease-in-out infinite}
+    #stopBtn.visible{display:inline-flex}
+    @keyframes stopPulse{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.4)}50%{box-shadow:0 0 0 8px rgba(239,68,68,0)}}
 
     /* ── Erreur API ── */
     .api-error{background:#7f1d1d;color:#fca5a5;padding:10px 16px;font-size:13px;border-radius:8px;margin:8px auto;max-width:900px;display:none}
@@ -1364,7 +1367,7 @@
       <div class="search-results" id="searchResults"></div>
     </div>
     <div id="chatList"></div>
-    <div style="padding:6px 8px;font-size:9px;color:#4a4a5a;text-align:center;flex-shrink:0">BrAInShift v4.6</div>
+    <div style="padding:6px 8px;font-size:9px;color:#4a4a5a;text-align:center;flex-shrink:0">BrAInShift v4.7</div>
   </aside>
   <div class="resizer" id="resizer"></div>
 
@@ -1565,6 +1568,7 @@ Exemple pour la chimie :
             <path d="M6.5 11.5 12 6l5.5 5.5"></path>
           </svg>
         </button>
+        <button id="stopBtn" title="Arrêter la génération">■</button>
         </div><!-- /textarea-wrap -->
       </div></div>
     </div>
@@ -1842,6 +1846,7 @@ const el = id => document.getElementById(id);
 let isWaitingResponse = false;
 let waitingStartTime = 0;
 let waitingTimerInterval = null;
+let _currentAbortController = null; // Controller global pour annuler les requêtes
 if (!CURATED_MODELS.includes(S.model)) S.model = "gemini-2.5-flash";
 
 const promptEl   = el("prompt");
@@ -4855,13 +4860,17 @@ function buildRequestParams(model, apiType) {
 // Backoff exponentiel : 1s → 2s → 4s (3 tentatives max)
 // ─────────────────────────────────────────────────────────────
 async function fetchWithRetry(url, options, maxRetries = 3) {
-  const TIMEOUT_MS = 120000; // 2 minutes max par tentative
+  // Timeout adapté : 60s pour Anthropic (Edge coupe avant), 120s pour les autres
+  const isAnthropic = url.includes('api.anthropic.com');
+  const TIMEOUT_MS = isAnthropic ? 60000 : 120000;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       const controller = new AbortController();
+      _currentAbortController = controller; // Stocker pour le bouton Stop
       const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
       const r = await fetch(url, { ...options, signal: controller.signal });
       clearTimeout(timer);
+      _currentAbortController = null;
       // 429 = rate limit, 529 = overloaded, 503 = service unavailable
       if ((r.status === 429 || r.status === 529 || r.status === 503) && attempt < maxRetries) {
         const retryAfter = r.headers.get('retry-after');
@@ -4872,12 +4881,18 @@ async function fetchWithRetry(url, options, maxRetries = 3) {
       }
       return r;
     } catch (e) {
+      _currentAbortController = null;
       if (e.name === 'AbortError') {
+        // Vérifier si c'est un abort manuel (bouton Stop) ou un timeout
+        if (window._userAborted) {
+          window._userAborted = false;
+          throw new Error('⏹ Génération annulée.');
+        }
         if (attempt < maxRetries) {
           console.warn(`[BrAInShift] ⏳ Timeout (${TIMEOUT_MS/1000}s) — retry ${attempt + 1}/${maxRetries}…`);
           continue;
         }
-        throw new Error(`Timeout : le modèle n'a pas répondu en ${TIMEOUT_MS/1000}s. Le document est peut-être trop volumineux. Essayez avec un résumé plus court ou un modèle plus rapide.`);
+        throw new Error(`Timeout : le modèle n'a pas répondu en ${TIMEOUT_MS/1000}s. ${isAnthropic ? 'Anthropic sur Edge est souvent bloqué — essayez un autre modèle.' : 'Réessayez.'}`);
       }
       // Erreur réseau (Failed to fetch) — retry sauf dernière tentative
       if (attempt < maxRetries) {
@@ -5009,7 +5024,7 @@ async function callAnthropic(key, model, messages) {
     method: "POST",
     headers,
     body: JSON.stringify(body)
-  });
+  }, 1); // 1 seul retry pour Anthropic (Edge bloque souvent → ne pas gaspiller les tokens)
 
   const d = await r.json();
 
@@ -5363,6 +5378,9 @@ async function send() {
   pendingFiles = []; renderFilePreview();
   isWaitingResponse   = true;
   waitingStartTime    = Date.now();
+  // Afficher le bouton Stop, masquer le bouton Send
+  el('sendBtn').style.display = 'none';
+  el('stopBtn').classList.add('visible');
   // Rafraîchir le compteur toutes les secondes pendant l'attente
   if (waitingTimerInterval) clearInterval(waitingTimerInterval);
   waitingTimerInterval = setInterval(() => { if (isWaitingResponse) renderMessages(); }, 1000);
@@ -5616,6 +5634,10 @@ async function send() {
     isWaitingResponse = false;
     waitingStartTime = 0;
     if (waitingTimerInterval) { clearInterval(waitingTimerInterval); waitingTimerInterval = null; }
+    // Restaurer le bouton Send, masquer Stop
+    el('sendBtn').style.display = '';
+    el('stopBtn').classList.remove('visible');
+    _currentAbortController = null;
   }
 
   // ── PURGE BASE64 : supprimer les données binaires volumineuses des messages stockés ──
@@ -6625,6 +6647,13 @@ function renderSearchResults(query) {
 // ÉVÉNEMENTS
 // ─────────────────────────────────────────────────
 el("sendBtn").onclick = send;
+el("stopBtn").onclick = () => {
+  if (_currentAbortController) {
+    window._userAborted = true;
+    _currentAbortController.abort();
+    console.log('[BrAInShift] ⏹ Requête annulée par l\'utilisateur');
+  }
+};
 
 const appEl = document.querySelector(".app");
 if (localStorage.getItem("sidebarCollapsed") === "1") appEl.classList.add("sidebar-collapsed");
