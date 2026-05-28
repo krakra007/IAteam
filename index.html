@@ -1364,7 +1364,7 @@
       <div class="search-results" id="searchResults"></div>
     </div>
     <div id="chatList"></div>
-    <div style="padding:6px 8px;font-size:9px;color:#4a4a5a;text-align:center;flex-shrink:0">BrAInShift v4.5</div>
+    <div style="padding:6px 8px;font-size:9px;color:#4a4a5a;text-align:center;flex-shrink:0">BrAInShift v4.6</div>
   </aside>
   <div class="resizer" id="resizer"></div>
 
@@ -5501,12 +5501,24 @@ async function send() {
           el('artifactDownloadBtn').onclick = () => generatePptxFromMarkdown(pptxContent, pptxTitle);
         }, 300);
       }
-      // 1) Bloc ```markdown → auto-ouvrir SEULEMENT si demande explicite de document Word
+      // 1) Bloc ```markdown → auto-ouvrir selon contexte
       else {
       const userPromptLower = (text || displayText || '').toLowerCase();
       const isPptxRequest = /\b(power\s*point|pptx|présentation|presentation|diaporama|slides?|diapositives?)\b/i.test(userPromptLower);
       const isExplicitNoFile = /\b(ne\s+pas\s+créer|pas\s+de\s+(fichier|document|word)|répondre?\s+(ici|dans\s+(la|le)\s*(fenêtre|chat|dialogue))|sans\s+(fichier|document))\b/i.test(userPromptLower);
       const isWordRequest = /\b(document\s+word|fichier\s+word|\.docx|créer?\s+(un|le|ce|mon)?\s*(document|fichier|rapport)|produire?\s+(un|le)?\s*(document|fichier|rapport)|génère[rz]?\s+(un|le)?\s*(document|fichier|rapport)|document\s+(professionnel|téléchargeable)|document\s+à\s+télécharger)\b/i.test(userPromptLower);
+
+      // ── MÉMOIRE DE CONTEXTE : si un artifact a déjà été produit dans cette conversation,
+      // tout nouveau bloc markdown/pptx s'ouvre automatiquement dans le même format ──
+      let prevArtifactLang = null;
+      for (const msg of c.messages) {
+        if (msg._artifactLang) prevArtifactLang = msg._artifactLang;    // 'pptx', 'html'
+        else if (msg._artifactContent) prevArtifactLang = 'document';   // word
+      }
+      const isConversationInDocMode = prevArtifactLang === 'document' || prevArtifactLang === 'pptx';
+      if (isConversationInDocMode) {
+        console.log(`[BrAInShift Artifact v4] 📌 Contexte conversation : artifact précédent détecté (${prevArtifactLang}) → mode continuation`);
+      }
 
       let mdMatch = responseContent.match(/```markdown\s*\n([\s\S]+?)```/) || responseContent.match(/```markdown\s*\n([\s\S]{300,})/);
 
@@ -5515,7 +5527,11 @@ async function send() {
         const titleMatch = mdContent.match(/^#\s+(.+)/m) || mdContent.match(/^##\s+(.+)/m);
         const docTitle = titleMatch ? titleMatch[1].replace(/[*_#]/g, '').trim() : c.title || 'Document';
 
-        if (isPptxRequest && !isExplicitNoFile) {
+        // Déterminer le format : PPTX ou Word ?
+        const shouldPptx = (isPptxRequest || prevArtifactLang === 'pptx') && !isExplicitNoFile;
+        const shouldWord = (isWordRequest || isConversationInDocMode) && !isExplicitNoFile && !shouldPptx;
+
+        if (shouldPptx) {
           // → PowerPoint
           const slideCount = (mdContent.match(/^##\s+/gm) || []).length + (mdContent.match(/^#\s+/m) ? 1 : 0);
           const lastMsg = c.messages[c.messages.length - 1];
@@ -5528,8 +5544,8 @@ async function send() {
             el('artifactDownloadBtn').textContent = '⬇ PowerPoint (.pptx)';
             el('artifactDownloadBtn').onclick = () => generatePptxFromMarkdown(mdContent, docTitle);
           }, 300);
-        } else if (isWordRequest && !isExplicitNoFile) {
-          // → Document Word (demande explicite)
+        } else if (shouldWord) {
+          // → Document Word (demande explicite OU continuation de conversation document)
           const lineCount = mdContent.split('\n').length;
           const lastMsg = c.messages[c.messages.length - 1];
           if (lastMsg && lastMsg.role === 'assistant') {
@@ -5538,7 +5554,7 @@ async function send() {
           }
           setTimeout(() => openDocumentArtifact(mdContent, docTitle), 300);
         }
-        // Sinon (pas de demande explicite) → le bloc reste dans le chat, bouton 📄 disponible
+        // Sinon (première demande sans mot-clé explicite) → le bloc reste dans le chat
       }
 
       // 2) Gros bloc HTML → artifact code (toujours auto-ouvert, c'est du preview web)
