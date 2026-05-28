@@ -1,6 +1,12 @@
 {
   "chats": [
     {
+      "id": "e628ccd0-6283-472d-acb9-e49ae47d552c",
+      "title": "Nouveau chat",
+      "projectId": null,
+      "messages": []
+    },
+    {
       "id": "7a4656a8-77f2-478b-9e58-e22d9b3be5c5",
       "title": "Nouveau chat",
       "projectId": "06407384-63b3-4383-b87c-6248d2482d0a",
@@ -1442,12 +1448,6 @@
       ]
     },
     {
-      "id": "0141178a-4491-4639-80c1-6d11676f9dc2",
-      "title": "Nouveau chat",
-      "projectId": "06407384-63b3-4383-b87c-6248d2482d0a",
-      "messages": []
-    },
-    {
       "id": "ca9e97ce-5dfc-4dc8-ad35-c507777f9474",
       "title": "Nouveau chat",
       "projectId": "4a80a2bb-5a7f-49d2-b420-c20965d8067b",
@@ -1702,6 +1702,6 @@
     "openai/gpt-oss-120b",
     "claude-sonnet-4-6"
   ],
-  "savedAt": "2026-05-28T13:12:31.187Z",
+  "savedAt": "2026-05-28T13:12:36.715Z",
   "version": 2
 }
