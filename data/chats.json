@@ -1579,9 +1579,23 @@
           "content": "## ⚠️ Aucun document détecté\n\nJe ne vois **aucun fichier joint** à votre message. Vous mentionnez \"le document suivant\", mais aucun fichier n'a été partagé dans cette conversation.\n\nPourriez-vous **joindre le document** que vous souhaitez que j'analyse ? La plateforme BrAInShift me permet de lire et analyser les formats suivants :\n\n- 📄 **PDF**\n- 📝 **Word** (.docx)\n- 📊 **Excel** (.xlsx)\n- 📑 **PowerPoint** (.pptx)\n- 🖼️ **Images** (PNG, JPG, etc.)\n\nUne fois le document partagé, je pourrai répondre rigoureusement à vos trois axes d'analyse :\n\n1. Les règles **interdisant le déclassement** d'un composant utilisé dans une turbine à gaz (ex. TR40 / applications missiles Safran Power Units)\n2. Les règles et voies permettant de **ne pas qualifier un composant** de \"spécialement conçu pour application militaire\"\n3. Une analyse ciblée sur la notion de **\"spécialement conçu\"**, avec citation des extraits originaux en italique",
           "provider": "ANTHROPIC",
           "model": "claude-sonnet-4-6"
+        },
+        {
+          "role": "user",
+          "content": [
+            {
+              "type": "text",
+              "text": "[Fichier joint : Guide du classement ML_V2_oct25.pdf — non stocké]"
+            },
+            {
+              "type": "text",
+              "text": "Peux tu analyser le document suivant en étant très rigouereux. Trois éléments m'interessent. \n******Quelles sont les règles qui ne permettent pas un déclassement d'un objet dans le cadre d'un composant utilisé dans une turbine à gaz de la société Safran Power Units tel que TR40 par exemple. Turbine utilisé pour des moteurs mettant en mouvement des missiles. \n******Quelles sont les règles et les voies qui nous permettent de ne pas considérer un composant comme n'étant pas considérés comme spécialement conçue pour application militaire.\n******Se concentrer sur la partie spécialement conçu dans le document que tu va créer.\n****** après chaque analyse citer la partie originale du document qui est à la base de cette analyse en italique et à la ligne."
+            }
+          ],
+          "_text": "Peux tu analyser le document suivant en étant très rigouereux. Trois éléments m'interessent. \n******Quelles sont les règles qui ne permettent pas un déclassement d'un objet dans le cadre d'un composant utilisé dans une turbine à gaz de la société Safran Power Units tel que TR40 par exemple. Turbine utilisé pour des moteurs mettant en mouvement des missiles. \n******Quelles sont les règles et les voies qui nous permettent de ne pas considérer un composant comme n'étant pas considérés comme spécialement conçue pour application militaire.\n******Se concentrer sur la partie spécialement conçu dans le document que tu va créer.\n****** après chaque analyse citer la partie originale du document qui est à la base de cette analyse en italique et à la ligne."
         }
       ],
-      "_lastActivity": 1779983208553
+      "_lastActivity": 1779983235503
     },
     {
       "id": "26973dd5-3a82-41b9-b898-01dd143b359e",
@@ -1795,6 +1809,6 @@
     "openai/gpt-oss-120b",
     "claude-sonnet-4-6"
   ],
-  "savedAt": "2026-05-28T15:46:57.160Z",
+  "savedAt": "2026-05-28T15:47:24.189Z",
   "version": 2
 }
