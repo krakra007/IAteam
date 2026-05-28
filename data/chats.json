@@ -1599,9 +1599,20 @@
           "content": "❌ Erreur : Timeout : le modèle n'a pas répondu en 60s. Anthropic sur Edge est souvent bloqué — essayez un autre modèle.",
           "provider": "ANTHROPIC",
           "model": "claude-sonnet-4-6"
+        },
+        {
+          "role": "user",
+          "content": "Peux tu analyser le document suivant en étant très rigouereux. Trois éléments m'interessent. \n******Quelles sont les règles qui ne permettent pas un déclassement d'un objet dans le cadre d'un composant utilisé dans une turbine à gaz de la société Safran Power Units tel que TR40 par exemple. Turbine utilisé pour des moteurs mettant en mouvement des missiles. \n******Quelles sont les règles et les voies qui nous permettent de ne pas considérer un composant comme n'étant pas considérés comme spécialement conçue pour application militaire.\n******Se concentrer sur la partie spécialement conçu dans le document que tu va créer.\n****** après chaque analyse citer la partie originale du document qui est à la base de cette analyse en italique et à la ligne.",
+          "_text": "Peux tu analyser le document suivant en étant très rigouereux. Trois éléments m'interessent. \n******Quelles sont les règles qui ne permettent pas un déclassement d'un objet dans le cadre d'un composant utilisé dans une turbine à gaz de la société Safran Power Units tel que TR40 par exemple. Turbine utilisé pour des moteurs mettant en mouvement des missiles. \n******Quelles sont les règles et les voies qui nous permettent de ne pas considérer un composant comme n'étant pas considérés comme spécialement conçue pour application militaire.\n******Se concentrer sur la partie spécialement conçu dans le document que tu va créer.\n****** après chaque analyse citer la partie originale du document qui est à la base de cette analyse en italique et à la ligne."
+        },
+        {
+          "role": "assistant",
+          "content": "❌ Erreur : [OpenAI API] Unsupported parameter: 'temperature' is not supported with this model.",
+          "provider": "OPENAI",
+          "model": "gpt-5.5"
         }
       ],
-      "_lastActivity": 1779983235503
+      "_lastActivity": 1779983425315
     },
     {
       "id": "26973dd5-3a82-41b9-b898-01dd143b359e",
@@ -1810,11 +1821,11 @@
     "showThinking": false,
     "webSearch": true
   },
-  "model": "claude-sonnet-4-6",
+  "model": "gpt-5.5",
   "favoriteModels": [
     "openai/gpt-oss-120b",
     "claude-sonnet-4-6"
   ],
-  "savedAt": "2026-05-28T15:50:07.661Z",
+  "savedAt": "2026-05-28T15:50:27.168Z",
   "version": 2
 }
