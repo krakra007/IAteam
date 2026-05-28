@@ -1395,9 +1395,21 @@
     },
     {
       "id": "ab74a66b-da74-4e0f-8132-0f610dc35d73",
-      "title": "Nouveau chat",
+      "title": "C'est quoi le BSRI en parlant de la DGA en France",
       "projectId": null,
-      "messages": []
+      "messages": [
+        {
+          "role": "user",
+          "content": "C'est quoi le BSRI en parlant de la DGA en France",
+          "_text": "C'est quoi le BSRI en parlant de la DGA en France"
+        },
+        {
+          "role": "assistant",
+          "content": "Le terme \"BSRI\" en parlant de la Direction générale de l'armement (DGA) en France fait référence au **Bureau de la Sécurité des Réseaux et des Systèmes d'Information**.\n\nCe bureau est une composante du **Service de la Sécurité de Défense et des Systèmes d'Information (SSDI)** de la DGA. Le SSDI est un service crucial au sein de la DGA, dont les attributions principales sont les suivantes :\n\n*   **Mettre en œuvre et faire appliquer la réglementation** en matière de protection du secret de la défense nationale.\n*   Assurer la **sécurité des systèmes d'information**.\n*   Protéger le **patrimoine scientifique et technologique sensible national**.\n*   Garantir la **sécurité des points et réseaux sensibles**.\n*   Assurer la sécurité des **informations classifiées d'origine étrangère** placées sous la protection de la DGA.\n*   Prononcer les décisions d'**habilitation aux informations classifiées** et d'accès à la sécurité des systèmes d'information.\n\nEn tant que partie intégrante du SSDI, le BSRI est donc spécifiquement chargé des aspects liés à la sécurité des réseaux et des systèmes d'information au sein de la DGA, contribuant ainsi à la protection des informations sensibles et classifiées de la défense française.\n\n---\n**Sources :**\n- [defense.gouv.fr](https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQEcyJafKLkSPk8z1n2BGqfb-BCsth5p3FpeCEaYGWhsa2puQUdc53cAoDEeWnuv7qJ7HlkPhLqYlTB8TjpeIHzV4oofUtfHETYUs_5sfU9VtvbaGKcwrJwIjVDijVw2OOgjYcN2deV3dS0IemnjYOoDkHAxsXid4ddnrWHlb2zVXHlYirLcAVy0ULXbT8diYGFJyfOu97NFHzso5UJnqa1XskBQH6BmR3jxB_G3iPzVNUBy0Is=)\n- [defense.gouv.fr](https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQEOtCEP3O-lGQ0nwucsKmfzLFU4rsjyBrVkU3_AUY4ip-bJOCB0YUygc6XRaPirbHzxXIHdTXslWp4ejrSiTpxqgvkHrmPCfsg0WM6q4H2ZD0irUW0nieiQFZ4snPIRwU-JLNBW_lRft6MWK2aRjnWVL6Lb0YZ0sV_s86h1PzxTgekxldL5ru_rs07G6UE=)\n- [defense.gouv.fr](https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQGUM9VJmmL5aUaf59826dSU7aDwhTqt1pXgaTK79KZgKXEQPfkhqXPL9qrPBv4tnV5_MLkQp--eWNgNHVIjCzrIlfwzRcWTlIYfJ2oubO-D8yZQWZMdCrYHpXk5yfrDGnZ-VJnooLE5h5wwLej1uwU9CXCYolmqv7EbFmS6qASmTKSVQ8XwINngG5eqmeypTL96firr8rSwDVwPQK0DuWSAh7pTh0GfR6tFl_7Em4NI80M_046r-y5Y3w==)\n",
+          "provider": "GOOGLE GEMINI",
+          "model": "gemini-2.5-flash"
+        }
+      ]
     },
     {
       "id": "e2b251c6-2a62-417a-8277-b5fa87207822",
@@ -1557,6 +1569,6 @@
     "openai/gpt-oss-120b",
     "claude-sonnet-4-6"
   ],
-  "savedAt": "2026-05-28T05:20:59.283Z",
+  "savedAt": "2026-05-28T05:21:12.991Z",
   "version": 2
 }
