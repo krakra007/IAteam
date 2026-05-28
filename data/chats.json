@@ -29,6 +29,12 @@
           "role": "user",
           "content": "Peux tu analyser le document suivant en étant très rigouereux. Trois éléments m'interessent. \n******Quelles sont les règles qui ne permettent pas un déclassement d'un objet dans le cadre d'un composant utilisé dans une turbine à gaz de la société Safran Power Units tel que TR40 par exemple. Turbine utilisé pour des moteurs mettant en mouvement des missiles. \n******Quelles sont les règles et les voies qui nous permettent de ne pas considérer un composant comme n'étant pas considérés comme spécialement conçue pour application militaire.\n******Se concentrer sur la partie spécialement conçu dans le document que tu va créer.\n****** après chaque analyse citer la partie originale du document qui est à la base de cette analyse en italique et à la ligne.",
           "_text": "Peux tu analyser le document suivant en étant très rigouereux. Trois éléments m'interessent. \n******Quelles sont les règles qui ne permettent pas un déclassement d'un objet dans le cadre d'un composant utilisé dans une turbine à gaz de la société Safran Power Units tel que TR40 par exemple. Turbine utilisé pour des moteurs mettant en mouvement des missiles. \n******Quelles sont les règles et les voies qui nous permettent de ne pas considérer un composant comme n'étant pas considérés comme spécialement conçue pour application militaire.\n******Se concentrer sur la partie spécialement conçu dans le document que tu va créer.\n****** après chaque analyse citer la partie originale du document qui est à la base de cette analyse en italique et à la ligne."
+        },
+        {
+          "role": "assistant",
+          "content": "❌ Erreur : Échec réseau (ANTHROPIC — api.anthropic.com)\n\nLa requête réseau a échoué avant d'atteindre le serveur API.\n\nCauses possibles : ad-blocker/extension navigateur, VPN, pare-feu, proxy entreprise, ou API temporairement injoignable.\n\nVérifiez que api.anthropic.com est accessible (ouvrez https://api.anthropic.com dans un nouvel onglet).\n\nEssayez aussi : désactivez temporairement vos extensions navigateur, ou testez dans un onglet de navigation privée.",
+          "provider": "ANTHROPIC",
+          "model": "claude-sonnet-4-6"
         }
       ],
       "_lastActivity": 1779982722504
@@ -1771,11 +1777,11 @@
     "showThinking": false,
     "webSearch": true
   },
-  "model": "claude-sonnet-4-6",
+  "model": "gemini-2.5-flash",
   "favoriteModels": [
     "openai/gpt-oss-120b",
     "claude-sonnet-4-6"
   ],
-  "savedAt": "2026-05-28T15:43:14.361Z",
+  "savedAt": "2026-05-28T15:43:42.666Z",
   "version": 2
 }
