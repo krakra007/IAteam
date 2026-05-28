@@ -1649,7 +1649,7 @@
   ],
   "activeProfiles": [],
   "params": {
-    "temperature": 0.2,
+    "temperature": 0.3,
     "top_p": 0,
     "top_k": 0,
     "max_tokens": 38656,
@@ -1669,6 +1669,6 @@
     "openai/gpt-oss-120b",
     "claude-sonnet-4-6"
   ],
-  "savedAt": "2026-05-28T12:50:48.690Z",
+  "savedAt": "2026-05-28T12:52:21.094Z",
   "version": 2
 }
