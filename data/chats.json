@@ -2,9 +2,24 @@
   "chats": [
     {
       "id": "26973dd5-3a82-41b9-b898-01dd143b359e",
-      "title": "Nouveau chat",
+      "title": "Comment le guide propose de procéder pour ne pas…",
       "projectId": null,
-      "messages": []
+      "messages": [
+        {
+          "role": "user",
+          "content": [
+            {
+              "type": "text",
+              "text": "[Fichier joint : Guide du classement ML_V2_oct25.pdf — non stocké]"
+            },
+            {
+              "type": "text",
+              "text": "Peux tu analyser le document joint puis préciser dans une première partie les règles imposées au classement en matière d'export control. \n*****Dans une seconde partie, analyser les voies de déclassement possibles. Comment le guide propose de procéder pour ne pas classer en ML un composant. \n****Pour présenter ceci, créer un document word et utiliser la forme suivante: Donner les interprétation puis proposer sous format italique après chaque interprétation, le document orignal du texte. Soit précis dans l'utilisation du texte original."
+            }
+          ],
+          "_text": "Peux tu analyser le document joint puis préciser dans une première partie les règles imposées au classement en matière d'export control. \n*****Dans une seconde partie, analyser les voies de déclassement possibles. Comment le guide propose de procéder pour ne pas classer en ML un composant. \n****Pour présenter ceci, créer un document word et utiliser la forme suivante: Donner les interprétation puis proposer sous format italique après chaque interprétation, le document orignal du texte. Soit précis dans l'utilisation du texte original."
+        }
+      ]
     },
     {
       "id": "08c7dbc3-ac9d-4e7d-800d-650fbabca9d6",
@@ -1640,7 +1655,7 @@
     "thinking": true,
     "thinkingBudget": 25600,
     "thinkingEffort": "high",
-    "showThinking": false,
+    "showThinking": true,
     "webSearch": true
   },
   "model": "gemini-2.5-flash",
@@ -1648,6 +1663,6 @@
     "openai/gpt-oss-120b",
     "claude-sonnet-4-6"
   ],
-  "savedAt": "2026-05-28T12:45:48.645Z",
+  "savedAt": "2026-05-28T12:47:53.942Z",
   "version": 2
 }
