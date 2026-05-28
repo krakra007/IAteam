@@ -1692,11 +1692,11 @@
     "showThinking": true,
     "webSearch": true
   },
-  "model": "gemini-2.5-flash",
+  "model": "claude-sonnet-4-6",
   "favoriteModels": [
     "openai/gpt-oss-120b",
     "claude-sonnet-4-6"
   ],
-  "savedAt": "2026-05-28T13:00:48.640Z",
+  "savedAt": "2026-05-28T13:01:46.049Z",
   "version": 2
 }
