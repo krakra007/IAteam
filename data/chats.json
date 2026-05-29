@@ -3710,13 +3710,13 @@
     "showThinking": false,
     "webSearch": true
   },
-  "model": "gpt-5.4",
+  "model": "gemini-2.5-flash",
   "favoriteModels": [
     "openai/gpt-oss-120b",
     "claude-sonnet-4-6",
     "gemini-3.5-flash",
     "mistral-small-latest"
   ],
-  "savedAt": "2026-05-29T16:03:11.935Z",
+  "savedAt": "2026-05-29T16:04:03.014Z",
   "version": 2
 }
