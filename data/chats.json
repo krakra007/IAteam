@@ -1995,9 +1995,20 @@
           "content": "{\"candidates\":[{\"content\":{\"role\":\"model\"},\"finishReason\":\"STOP\",\"index\":0,\"groundingMetadata\":{\"webSearchQueries\":[\"Guide DGA V2.0 Section 3 page 11 \\\"Les fonctionnalités et les performances opérationnelles caractérisent le matériel avant sa forme, son apparence ou sa couleur.\\\"\",\"Guide du classement ML V2.0 (T-2025/826) Section 3 page 11\"]}}],\"usageMetadata\":{\"promptTokenCount\":11674,\"candidatesTokenCount\":76,\"totalTokenCount\":23646,\"cachedContentTokenCount\":10842,\"promptTokensDetails\":[{\"modality\":\"TEXT\",\"tokenCount\":11416},{\"modality\":\"IMAGE\",\"tokenCount\":258}],\"cacheTokensDetails\":[{\"modality\":\"TEXT\",\"tokenCount\":10603},{\"modality\":\"IMAGE\",\"tokenCount\":239}],\"toolUsePromptTokenCount\":11823,\"toolUsePromptTokensDetails\":[{\"modality\":\"TEXT\",\"tokenCount\":11565},{\"modality\":\"IMAGE\",\"tokenCount\":258}],\"thoughtsTokenCount\":73,\"serviceTier\":\"standard\"},\"modelVersion\":\"gemini-2.5-flash\",\"responseId\":\"5FwZaszlCo2UkdUPztquoAg\"}",
           "provider": "GOOGLE GEMINI",
           "model": "gemini-2.5-flash"
+        },
+        {
+          "role": "user",
+          "content": "refaire sans me sortir ces codes latex",
+          "_text": "refaire sans me sortir ces codes latex"
+        },
+        {
+          "role": "assistant",
+          "content": "{\"candidates\":[{\"content\":{\"role\":\"model\"},\"finishReason\":\"STOP\",\"index\":0,\"groundingMetadata\":{\"webSearchQueries\":[\"Guide DGA V2.0 Section 3 page 11 \\\"Les fonctionnalités et les performances opérationnelles caractérisent le matériel avant sa forme, son apparence ou sa couleur.\\\"\",\"Guide du classement ML V2.0 (T-2025/826) Section 3\"]}}],\"usageMetadata\":{\"promptTokenCount\":11968,\"candidatesTokenCount\":72,\"totalTokenCount\":24328,\"cachedContentTokenCount\":11647,\"promptTokensDetails\":[{\"modality\":\"TEXT\",\"tokenCount\":11710},{\"modality\":\"IMAGE\",\"tokenCount\":258}],\"cacheTokensDetails\":[{\"modality\":\"IMAGE\",\"tokenCount\":251},{\"modality\":\"TEXT\",\"tokenCount\":11396}],\"toolUsePromptTokenCount\":12164,\"toolUsePromptTokensDetails\":[{\"modality\":\"TEXT\",\"tokenCount\":11906},{\"modality\":\"IMAGE\",\"tokenCount\":258}],\"thoughtsTokenCount\":124,\"serviceTier\":\"standard\"},\"modelVersion\":\"gemini-2.5-flash\",\"responseId\":\"fl0ZaqvcEsP-xN8P6I2gIA\"}",
+          "provider": "GOOGLE GEMINI",
+          "model": "gemini-2.5-flash"
         }
       ],
-      "_lastActivity": 1780047075966
+      "_lastActivity": 1780047230034
     },
     {
       "id": "880409ad-0b3d-4238-b42d-71d05cf1172a",
@@ -2324,6 +2335,6 @@
     "claude-sonnet-4-6",
     "gemini-3.5-flash"
   ],
-  "savedAt": "2026-05-29T09:33:34.887Z",
+  "savedAt": "2026-05-29T09:33:54.099Z",
   "version": 2
 }
