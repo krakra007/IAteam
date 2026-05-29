@@ -2129,9 +2129,20 @@
           "content": "Voici le paragraphe complet du *Guide DGA V2.0 — Section 3, p. 10* avec le texte original en *italique* et la référence :\n\n---\n\n**Extrait du Guide DGA V2.0 — Section 3, p. 10**\n*Ce sont les travaux préparatoires (spécification de besoin, développement, conception, qualification) qui déterminent le caractère « spécialement conçu ».*\n\n*Détail :*\n*Modifier la dénomination commerciale, transférer une référence d’un catalogue « défense » vers un catalogue « civil » ou réécrire la documentation marketing ne constitue en rien un fondement de déclassement si la définition technique (référence pièce, spécifications, cahier des charges) demeure identique.*\n\n*Illustration :*\n*Un équipement développé à partir d’un cahier des charges militaire reste classé ML, quelle que soit la désignation retenue au catalogue. Le critère déterminant est la finalité recherchée lors de la conception, non le libellé figurant dans la documentation commerciale.*\n\n**Source :**\n*Guide du classement ML V2.0 (T-2025/826) — Section 3, page 10*",
           "provider": "MISTRAL",
           "model": "mistral-small-latest"
+        },
+        {
+          "role": "user",
+          "content": "Page suivante, j'avais annoncé comme principe: \"Un composant dont la référence ne permet l’intégration que sur la version militaire d’un matériel reste classé, même s’il présente une ressemblance fonctionnelle avec un article du commerce.\" QUel titre et quel partie du texte évoquer?",
+          "_text": "Page suivante, j'avais annoncé comme principe: \"Un composant dont la référence ne permet l’intégration que sur la version militaire d’un matériel reste classé, même s’il présente une ressemblance fonctionnelle avec un article du commerce.\" QUel titre et quel partie du texte évoquer?"
+        },
+        {
+          "role": "assistant",
+          "content": "### **Titre pour votre slide :**\n**\"Référence exclusive et classement ML : l'intégration militaire prime\"**\n\n---\n\n### **Texte cité du Guide DGA V2.0 — Section 3, p. 11-12**\n*Un composant dont la référence ne permet l’intégration que sur la version militaire d’un matériel reste classé, même s’il présente une ressemblance fonctionnelle avec un article du commerce.*\n\n*Détail :*\n*Le fait qu’un composant soit répandu dans l’industrie ou disponible chez un fournisseur généraliste ne suffit pas à le déclasser si sa définition technique le destine exclusivement à un matériel classé. C’est l’exclusivité d’intégration qui prime, non la banalité de la pièce.*\n\n*Illustration :*\n*Contre-exemple du guide (ex. 3, p. 12) : un roulement dont la référence permet le montage aussi bien sur la version militaire que sur la version civile d’un aéronef, attesté par un certificat, n’est pas classé.*\n\n*À retenir :*\n*Confondre « composant courant » et « composant non classé » constitue une erreur d’analyse fréquente.*\n\n**Source :**\n*Guide du classement ML V2.0 (T-2025/826) — Section 3, pages 11-12*",
+          "provider": "MISTRAL",
+          "model": "mistral-small-latest"
         }
       ],
-      "_lastActivity": 1780049765055
+      "_lastActivity": 1780050978137
     },
     {
       "id": "880409ad-0b3d-4238-b42d-71d05cf1172a",
@@ -2458,6 +2469,6 @@
     "claude-sonnet-4-6",
     "gemini-3.5-flash"
   ],
-  "savedAt": "2026-05-29T10:33:34.771Z",
+  "savedAt": "2026-05-29T10:36:20.645Z",
   "version": 2
 }
