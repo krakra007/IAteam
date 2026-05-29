@@ -1,6 +1,13 @@
 {
   "chats": [
     {
+      "id": "0f923a7e-2a4a-4307-b532-67595f72624b",
+      "title": "Nouveau chat",
+      "projectId": null,
+      "messages": [],
+      "_lastActivity": 1780055840490
+    },
+    {
       "id": "b0dd0dc6-5e4f-4c7b-9fcf-fc1178cfbaf2",
       "title": "Mais je volais la modifier et je vais la",
       "projectId": "4a80a2bb-5a7f-49d2-b420-c20965d8067b",
@@ -2546,6 +2553,6 @@
     "claude-sonnet-4-6",
     "gemini-3.5-flash"
   ],
-  "savedAt": "2026-05-29T11:57:16.180Z",
+  "savedAt": "2026-05-29T11:57:20.503Z",
   "version": 2
 }
