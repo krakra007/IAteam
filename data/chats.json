@@ -489,7 +489,8 @@
         }
       ],
       "_lastActivity": 1780069811395,
-      "_forkedFrom": "193046a3-0052-48cc-a173-20545faba4ba"
+      "_forkedFrom": "193046a3-0052-48cc-a173-20545faba4ba",
+      "_starred": true
     },
     {
       "id": "193046a3-0052-48cc-a173-20545faba4ba",
@@ -3647,13 +3648,13 @@
     "showThinking": false,
     "webSearch": true
   },
-  "model": "mistral-small-latest",
+  "model": "claude-sonnet-4-6",
   "favoriteModels": [
     "openai/gpt-oss-120b",
     "claude-sonnet-4-6",
     "gemini-3.5-flash",
     "mistral-small-latest"
   ],
-  "savedAt": "2026-05-29T15:50:23.306Z",
+  "savedAt": "2026-05-29T15:53:57.024Z",
   "version": 2
 }
