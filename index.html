@@ -159,6 +159,11 @@
       white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
       margin-top:1px;line-height:1.2;
     }
+    .chat-star{
+      flex-shrink:0;font-size:13px;cursor:pointer;padding:2px;opacity:0;transition:opacity .15s;color:#6b7280;
+    }
+    .item:hover .chat-star{opacity:1}
+    .chat-star.starred{opacity:1;color:#f59e42}
     .chat-name-wrap{flex:1;overflow:hidden;display:flex;flex-direction:column;justify-content:center}
 
     /* ── Barre de haut ── */
@@ -1367,7 +1372,7 @@
       <div class="search-results" id="searchResults"></div>
     </div>
     <div id="chatList"></div>
-    <div style="padding:6px 8px;font-size:9px;color:#4a4a5a;text-align:center;flex-shrink:0">BrAInShift v4.8</div>
+    <div style="padding:6px 8px;font-size:9px;color:#4a4a5a;text-align:center;flex-shrink:0">BrAInShift v4.9</div>
   </aside>
   <div class="resizer" id="resizer"></div>
 
@@ -2559,24 +2564,59 @@ function chatRow(c, indent = false) {
   const d = document.createElement("div");
   d.className = "item" + (c.id === S.activeChat ? " active" : "");
   if (indent) d.style.marginLeft = "18px";
-  const lastMsg = [...(c.messages || [])].reverse().find(m => m.role === "assistant" && m.model);
-  const modelTag = lastMsg ? `<span class='chat-model-tag'>${lastMsg.model}</span>` : "";
+  
+  // Date de dernière activité
+  const ts = c._lastActivity || Date.now();
+  const dateStr = formatChatDate(ts);
+  const dateTag = `<span class='chat-model-tag'>${dateStr}</span>`;
+  
+  // Étoile (visible pour les chats dans un projet)
+  const isStarred = !!c._starred;
+  const starClass = isStarred ? 'chat-star starred' : 'chat-star';
+  const starHtml = c.projectId ? `<span class='${starClass}' data-a='star' title='${isStarred ? "Désépingler" : "Épingler en haut"}'>★</span>` : '';
+
   d.innerHTML = `
+    ${starHtml}
     <div class='chat-name-wrap'>
       <span class='name' title='${c.title}'>${c.title}</span>
-      ${modelTag}
+      ${dateTag}
     </div>
     <button class='chat-menu-btn' data-a='menu' title='Options'>⋯</button>
   `;
   d.onclick = e => {
-    if (e.target.dataset.a === "menu") {
+    const a = e.target.dataset.a;
+    if (a === "menu") {
       e.stopPropagation();
       openChatContextMenu(c.id, e.target);
+      return;
+    }
+    if (a === "star") {
+      e.stopPropagation();
+      c._starred = !c._starred;
+      save(); render();
       return;
     }
     S.activeChat = c.id; save(); render();
   };
   return d;
+}
+
+/** Formate un timestamp en date lisible relative */
+function formatChatDate(ts) {
+  const d = new Date(ts);
+  const now = new Date();
+  const diff = now - d;
+  const days = Math.floor(diff / 86400000);
+  if (days === 0) {
+    // Aujourd'hui → heure
+    return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  } else if (days === 1) {
+    return 'Hier';
+  } else if (days < 7) {
+    return d.toLocaleDateString('fr-FR', { weekday: 'long' });
+  } else {
+    return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+  }
 }
 
 // ── Menu contextuel "⋯" pour les conversations ──
@@ -2597,7 +2637,12 @@ function openChatContextMenu(chatId, anchor) {
   _ctxMenuEl = menu;
 
   // Renommer
+  const isStarred = !!chat._starred;
+  const starLabel = chat.projectId
+    ? (isStarred ? '☆ Désépingler' : '★ Épingler en haut')
+    : '';
   menu.innerHTML = `
+    ${chat.projectId ? `<div class="ctx-item" data-action="star">${starLabel}</div>` : ''}
     <div class="ctx-item" data-action="rename">✎ Renommer</div>
     <div class="ctx-divider"></div>
     <div class="ctx-item" data-action="move-header" style="cursor:default;color:#888;font-size:11px;text-transform:uppercase;letter-spacing:.05em;padding:6px 14px 4px">↗ Déplacer vers…</div>
@@ -2646,6 +2691,11 @@ function openChatContextMenu(chatId, anchor) {
     const action = e.target.closest('[data-action]')?.dataset.action;
     if (action === 'rename') { closeChatContextMenu(); renameChat(chatId); }
     else if (action === 'delete') { closeChatContextMenu(); deleteChat(chatId); }
+    else if (action === 'star') {
+      closeChatContextMenu();
+      chat._starred = !chat._starred;
+      save(); render();
+    }
   };
 
   // Positionnement
@@ -2777,9 +2827,15 @@ function renderChats() {
     };
     w.appendChild(h);
 
-    // Afficher les chats du projet seulement s'il est déplié (triés par récence)
+    // Afficher les chats du projet seulement s'il est déplié
+    // Tri : étoilées en haut (épinglées), puis par récence
     if (!isCollapsed) {
-      projectChats.forEach(c => w.appendChild(chatRow(c, true)));
+      const sorted = [...projectChats].sort((a, b) => {
+        if (a._starred && !b._starred) return -1;
+        if (!a._starred && b._starred) return 1;
+        return (b._lastActivity || 0) - (a._lastActivity || 0);
+      });
+      sorted.forEach(c => w.appendChild(chatRow(c, true)));
     }
   });
 
