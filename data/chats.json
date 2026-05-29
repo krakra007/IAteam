@@ -2195,9 +2195,20 @@
           "content": "Voici des suggestions de titres plus discrets mais toujours pertinents pour votre slide :\n\n---\n\n### **Options de titres :**\n1. **\"Technologie simple et classement ML : les limites\"**\n2. **\"Quand la simplicité technique ne suffit pas\"**\n3. **\"Technologie et intégration militaire : un équilibre délicat\"**\n4. **\"Simplicité technique vs. classification ML\"**\n5. **\"L'impact de la technologie sur le classement ML\"**\n\n---\n### **Recommandation :**\nSi vous souhaitez un titre **neutre et professionnel**, je vous conseille :\n**\"Technologie simple et classement ML : les limites\"**\n\nCe titre met en avant l'idée que **la simplicité technologique ne suffit pas** à éviter un classement ML si le composant est conçu pour une intégration militaire exclusive.",
           "provider": "MISTRAL",
           "model": "mistral-small-latest"
+        },
+        {
+          "role": "user",
+          "content": "ej préfère qu'on comprenne de quoi il s'agit",
+          "_text": "ej préfère qu'on comprenne de quoi il s'agit"
+        },
+        {
+          "role": "assistant",
+          "content": "Voici des titres **clairs et explicites**, tout en restant professionnels et adaptés à une présentation :\n\n---\n\n### **Options de titres :**\n1. **\"Un composant simple peut-il rester classé ML ?\"**\n2. **\"Technologie simple ≠ déclassement ML automatique\"**\n3. **\"Quand la simplicité technique ne suffit pas pour éviter le classement ML\"**\n4. **\"Technologie simple et intégration militaire : un paradoxe ?\"**\n5. **\"La simplicité technique face au classement ML\"**\n\n---\n### **Recommandation :**\nSi vous voulez un titre **direct et compréhensible**, je vous conseille :\n**\"Technologie simple ≠ déclassement ML automatique\"**\n\nCe titre est **clair, percutant et explicite** : il indique immédiatement que la simplicité technique ne garantit pas un déclassement ML, surtout si le composant est conçu pour une intégration militaire exclusive.",
+          "provider": "MISTRAL",
+          "model": "mistral-small-latest"
         }
       ],
-      "_lastActivity": 1780052967312
+      "_lastActivity": 1780053246036
     },
     {
       "id": "880409ad-0b3d-4238-b42d-71d05cf1172a",
@@ -2524,6 +2535,6 @@
     "claude-sonnet-4-6",
     "gemini-3.5-flash"
   ],
-  "savedAt": "2026-05-29T11:13:34.703Z",
+  "savedAt": "2026-05-29T11:14:08.302Z",
   "version": 2
 }
