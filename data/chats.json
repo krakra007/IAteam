@@ -2298,9 +2298,14 @@
           "content": "## **Synthèse : Les 4 erreurs critiques à éviter pour un classement ML conforme**\n\n### **1. Se fier à l’apparence ou à la présentation**\n*Un composant classé ML reste classé même s’il est présenté sous un emballage neutre ou dans un catalogue commercial.*\n→ **Le classement dépend des performances techniques, pas de l’apparence.**\n\n### **2. Compter sur une simple redésignation commerciale**\n*Changer le nom ou le catalogue d’un produit ne suffit pas à le déclasser si sa définition technique et son usage militaire restent identiques.*\n→ **Seuls les travaux préparatoires (conception, qualification) déterminent le classement ML.**\n\n### **3. Ignorer l’exclusivité d’intégration militaire**\n*Un composant dont la référence est exclusive à un matériel militaire reste classé ML, même s’il ressemble à un article commercial.*\n→ **L’exclusivité d’intégration prime sur la ressemblance fonctionnelle.**\n\n### **4. Sous-estimer la simplicité technique**\n*Un composant simple peut rester classé ML s’il a été spécialement conçu pour une intégration militaire exclusive.*\n→ **La simplicité technique ne suffit pas : l’usage militaire est déterminant.**\n\n---\n**Message clé :**\nLe classement ML repose sur **l’usage militaire et la conception technique**, jamais sur la présentation ou la simplicité. Toute démarche de déclassement doit être **technique, documentée et validée par le BRSI**.",
           "provider": "MISTRAL",
           "model": "mistral-small-latest"
+        },
+        {
+          "role": "user",
+          "content": "Questoin générale, le gudie parle t on de la possibilité de remonter aux performance système par un composant simple à fonction unique; Le suejt est il évoqué?",
+          "_text": "Questoin générale, le gudie parle t on de la possibilité de remonter aux performance système par un composant simple à fonction unique; Le suejt est il évoqué?"
         }
       ],
-      "_lastActivity": 1780058384948,
+      "_lastActivity": 1780060410735,
       "_starred": true
     },
     {
@@ -2629,6 +2634,6 @@
     "gemini-3.5-flash",
     "mistral-small-latest"
   ],
-  "savedAt": "2026-05-29T13:08:34.420Z",
+  "savedAt": "2026-05-29T13:13:34.606Z",
   "version": 2
 }
