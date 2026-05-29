@@ -478,7 +478,8 @@
         }
       ],
       "_lastActivity": 1780069600707,
-      "_forkedFrom": "c3292ba1-99d4-4986-aa0d-d0e67e152872"
+      "_forkedFrom": "c3292ba1-99d4-4986-aa0d-d0e67e152872",
+      "_starred": true
     },
     {
       "id": "327ede3d-e12b-4cce-8454-2b8c81019e49",
@@ -3162,6 +3163,6 @@
     "gemini-3.5-flash",
     "mistral-small-latest"
   ],
-  "savedAt": "2026-05-29T15:48:42.917Z",
+  "savedAt": "2026-05-29T15:48:53.573Z",
   "version": 2
 }
