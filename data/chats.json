@@ -1,6 +1,13 @@
 {
   "chats": [
     {
+      "id": "327ede3d-e12b-4cce-8454-2b8c81019e49",
+      "title": "Nouveau chat",
+      "projectId": null,
+      "messages": [],
+      "_lastActivity": 1780068829434
+    },
+    {
       "id": "0f923a7e-2a4a-4307-b532-67595f72624b",
       "title": "Faisons sur un slide de synthse à prasent une page de…",
       "projectId": null,
@@ -2662,6 +2669,6 @@
     "gemini-3.5-flash",
     "mistral-small-latest"
   ],
-  "savedAt": "2026-05-29T15:33:43.174Z",
+  "savedAt": "2026-05-29T15:33:49.446Z",
   "version": 2
 }
