@@ -2247,9 +2247,20 @@
           "content": "## **Synthèse : Les 7 erreurs à éviter pour un classement ML conforme**\n\n### **1. Forme, apparence ou couleur**\n*Un composant classé ML reste classé même s’il est présenté sous un emballage neutre ou dans un catalogue commercial.*\n→ **Le classement dépend des performances techniques, pas de l’apparence.**\n\n### **2. Redésignation commerciale**\n*Changer le nom ou le catalogue d’un produit ne suffit pas à le déclasser si sa définition technique et son usage militaire restent identiques.*\n→ **Seuls les travaux préparatoires (conception, qualification) déterminent le classement ML.**\n\n### **3. Disponibilité dans le commerce**\n*Un composant dont la référence est exclusive à un matériel militaire reste classé ML, même s’il ressemble à un article commercial.*\n→ **L’exclusivité d’intégration prime sur la ressemblance fonctionnelle.**\n\n### **4. Faible niveau technologique**\n*Un composant simple peut rester classé ML s’il a été spécialement conçu pour une intégration militaire exclusive.*\n→ **La simplicité technique ne suffit pas : l’usage militaire est déterminant.**\n\n### **5. Fractionnement d’un ensemble classé**\n*« Et leurs composants spécialement conçus » implique que le classement s’applique à toute l’arborescence produit, jusqu’aux composants les plus élémentaires.*\n→ **Décomposer un ensemble classé pour éviter le classement ML est interdit.**\n\n### **6. Application erronée des Lignes directrices UE**\n*L’exception « composant simple » suppose une fonction unique et l’absence de technologie militaire dans le processus de fabrication.*\n→ **Les critères sont cumulatifs et stricts : une double fonction exclut l’exception.**\n\n### **7. Autodéclaration sans validation DGA**\n*Le BRSI (DGA) est l’autorité nationale de classement. Une autodéclaration sans validation expose à des sanctions pénales.*\n→ **Toute démarche de déclassement doit être soumise au BRSI.**\n\n---\n**À retenir :**\nToute démarche de déclassement fondée sur l’un de ces arguments sera rejetée par le BRSI et peut exposer l’entreprise à des sanctions pénales. Le fondement de tout déclassement doit être **technique et documenté** — jamais formel ou commercial.",
           "provider": "MISTRAL",
           "model": "mistral-small-latest"
+        },
+        {
+          "role": "user",
+          "content": "J'en ai que 4 moi",
+          "_text": "J'en ai que 4 moi"
+        },
+        {
+          "role": "assistant",
+          "content": "Voici une synthèse adaptée à vos **4 principes** uniquement, avec une structure claire et professionnelle :\n\n---\n\n## **Synthèse : Les 4 principes clés du classement ML**\n\n### **1. Forme, apparence ou couleur**\n*Un composant classé ML reste classé même s’il est présenté sous un emballage neutre ou dans un catalogue commercial.*\n→ **Le classement dépend des performances techniques, pas de l’apparence.**\n\n### **2. Redésignation commerciale**\n*Changer le nom ou le catalogue d’un produit ne suffit pas à le déclasser si sa définition technique et son usage militaire restent identiques.*\n→ **Seuls les travaux préparatoires (conception, qualification) déterminent le classement ML.**\n\n### **3. Disponibilité dans le commerce**\n*Un composant dont la référence est exclusive à un matériel militaire reste classé ML, même s’il ressemble à un article commercial.*\n→ **L’exclusivité d’intégration prime sur la ressemblance fonctionnelle.**\n\n### **4. Faible niveau technologique**\n*Un composant simple peut rester classé ML s’il a été spécialement conçu pour une intégration militaire exclusive.*\n→ **La simplicité technique ne suffit pas : l’usage militaire est déterminant.**\n\n---\n**À retenir :**\nLe classement ML repose sur **l’usage militaire et la conception technique**, pas sur la présentation ou la simplicité. Toute démarche de déclassement doit être **technique, documentée et validée par le BRSI**.",
+          "provider": "MISTRAL",
+          "model": "mistral-small-latest"
         }
       ],
-      "_lastActivity": 1780056014713,
+      "_lastActivity": 1780056303581,
       "_starred": true
     },
     {
@@ -2578,6 +2589,6 @@
     "gemini-3.5-flash",
     "mistral-small-latest"
   ],
-  "savedAt": "2026-05-29T12:03:34.574Z",
+  "savedAt": "2026-05-29T12:05:06.460Z",
   "version": 2
 }
