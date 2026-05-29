@@ -2118,9 +2118,20 @@
           "content": "Voici le texte cité de façon précise du *Guide DGA V2.0 — Section 3, p. 10*, avec le texte original en *italique* et la référence :\n\n---\n\n**Extrait du Guide DGA V2.0 — Section 3, p. 10**\n*Ce sont les travaux préparatoires (spécification de besoin, développement, conception, qualification) qui déterminent le caractère « spécialement conçu ».*\n\n**Source :**\n*Guide du classement ML V2.0 (T-2025/826) — Section 3, page 10*",
           "provider": "MISTRAL",
           "model": "mistral-small-latest"
+        },
+        {
+          "role": "user",
+          "content": "donner plus de texte",
+          "_text": "donner plus de texte"
+        },
+        {
+          "role": "assistant",
+          "content": "Voici le paragraphe complet du *Guide DGA V2.0 — Section 3, p. 10* avec le texte original en *italique* et la référence :\n\n---\n\n**Extrait du Guide DGA V2.0 — Section 3, p. 10**\n*Ce sont les travaux préparatoires (spécification de besoin, développement, conception, qualification) qui déterminent le caractère « spécialement conçu ».*\n\n*Détail :*\n*Modifier la dénomination commerciale, transférer une référence d’un catalogue « défense » vers un catalogue « civil » ou réécrire la documentation marketing ne constitue en rien un fondement de déclassement si la définition technique (référence pièce, spécifications, cahier des charges) demeure identique.*\n\n*Illustration :*\n*Un équipement développé à partir d’un cahier des charges militaire reste classé ML, quelle que soit la désignation retenue au catalogue. Le critère déterminant est la finalité recherchée lors de la conception, non le libellé figurant dans la documentation commerciale.*\n\n**Source :**\n*Guide du classement ML V2.0 (T-2025/826) — Section 3, page 10*",
+          "provider": "MISTRAL",
+          "model": "mistral-small-latest"
         }
       ],
-      "_lastActivity": 1780049752839
+      "_lastActivity": 1780049765055
     },
     {
       "id": "880409ad-0b3d-4238-b42d-71d05cf1172a",
@@ -2447,6 +2458,6 @@
     "claude-sonnet-4-6",
     "gemini-3.5-flash"
   ],
-  "savedAt": "2026-05-29T10:15:54.735Z",
+  "savedAt": "2026-05-29T10:16:07.381Z",
   "version": 2
 }
