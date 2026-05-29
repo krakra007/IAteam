@@ -1574,7 +1574,7 @@
     {
       "id": "e628ccd0-6283-472d-acb9-e49ae47d552c",
       "title": "Analyse document suivant en étant très rigouereux",
-      "projectId": null,
+      "projectId": "4a80a2bb-5a7f-49d2-b420-c20965d8067b",
       "messages": [
         {
           "role": "user",
@@ -1751,12 +1751,13 @@
           "model": "gemini-3.5-flash"
         }
       ],
-      "_lastActivity": 1779985603857
+      "_lastActivity": 1779985603857,
+      "_starred": true
     },
     {
       "id": "26973dd5-3a82-41b9-b898-01dd143b359e",
       "title": "Comment le guide propose de procéder pour ne pas…",
-      "projectId": null,
+      "projectId": "4a80a2bb-5a7f-49d2-b420-c20965d8067b",
       "messages": [
         {
           "role": "user",
@@ -1966,6 +1967,6 @@
     "claude-sonnet-4-6",
     "gemini-3.5-flash"
   ],
-  "savedAt": "2026-05-29T05:03:06.117Z",
+  "savedAt": "2026-05-29T05:05:30.512Z",
   "version": 2
 }
