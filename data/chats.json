@@ -2173,9 +2173,20 @@
           "content": "Oui, votre principe est **pertinent** et **exactement en phase** avec le contenu du *Guide DGA V2.0 — Section 3, pages 11-12*. Il résume parfaitement l'idée centrale du guide :\n\n---\n\n### **Votre principe :**\n*\"Un composant dont la référence ne permet l’intégration que sur la version militaire d’un matériel reste classé, même s’il présente une ressemblance fonctionnelle avec un article du commerce.\"*\n\n### **Pourquoi c'est pertinent ?**\n1. **Fidélité au guide** : Ce principe est **directement inspiré** du texte officiel du guide DGA.\n2. **Clarté** : Il met en avant l'idée que **l'intégration exclusive sur un matériel militaire** est un critère déterminant pour le classement ML.\n3. **Précision** : Il souligne que même si un composant ressemble à un article commercial, **son usage exclusif sur un matériel militaire** suffit à le classer ML.\n\n---\n### **Suggestions pour renforcer votre principe :**\nSi vous souhaitez ajouter une touche plus explicite, vous pourriez reformuler légèrement :\n- *\"Un composant dont la référence technique est exclusive à un matériel militaire reste classé ML, même s’il ressemble à un article commercial.\"*\n- *\"L’intégration exclusive sur un matériel militaire prime sur la ressemblance fonctionnelle pour le classement ML.\"*\n\nMais votre formulation actuelle est **déjà très claire et pertinente**.",
           "provider": "MISTRAL",
           "model": "mistral-small-latest"
+        },
+        {
+          "role": "user",
+          "content": "slide suivante titre: FAIBLE NIVEAU TECHNOLOGIQUE.\n PRINCIPE  Un composant technologiquement simple peut demeurer classé ML s’il a été spécialement conçu pour s’intégrer exclusivement dans un matériel classé. Quel texte citer?",
+          "_text": "slide suivante titre: FAIBLE NIVEAU TECHNOLOGIQUE.\n PRINCIPE  Un composant technologiquement simple peut demeurer classé ML s’il a été spécialement conçu pour s’intégrer exclusivement dans un matériel classé. Quel texte citer?"
+        },
+        {
+          "role": "assistant",
+          "content": "Voici le texte complet à citer pour votre slide, avec le texte original en *italique* et la référence précise :\n\n---\n\n### **Extrait du Guide DGA V2.0 — Section 3, p. 12**\n*Un composant technologiquement simple peut demeurer classé ML s’il a été spécialement conçu pour s’intégrer exclusivement dans un matériel classé.*\n\n*Détail :*\n*La simplicité technologique ne constitue pas, à elle seule, un motif de déclassement. Elle doit impérativement être associée aux critères cumulatifs des Lignes directrices UE : fonction unique et absence de technologie classée dans le processus de fabrication.*\n\n*Illustrations :*\n*Exemples du guide :*\n- *Un goujon conçu spécifiquement, par sa forme et ses dimensions, pour un propulseur d’aéronef de combat = classé ML10.*\n- *Un potentiomètre propre à un drone militaire = classé ML10.*\n\n*À retenir :*\n*Invoquer la banalité technique d’une pièce (goujon, vis, potentiomètre) dont la référence est propre à une plateforme militaire sera systématiquement rejeté.*\n\n**Source :**\n*Guide du classement ML V2.0 (T-2025/826) — Section 3, page 12*",
+          "provider": "MISTRAL",
+          "model": "mistral-small-latest"
         }
       ],
-      "_lastActivity": 1780051780931
+      "_lastActivity": 1780052435494
     },
     {
       "id": "880409ad-0b3d-4238-b42d-71d05cf1172a",
@@ -2502,6 +2513,6 @@
     "claude-sonnet-4-6",
     "gemini-3.5-flash"
   ],
-  "savedAt": "2026-05-29T10:58:34.677Z",
+  "savedAt": "2026-05-29T11:00:38.109Z",
   "version": 2
 }
