@@ -2303,9 +2303,26 @@
           "role": "user",
           "content": "Questoin générale, le gudie parle t on de la possibilité de remonter aux performance système par un composant simple à fonction unique; Le suejt est il évoqué?",
           "_text": "Questoin générale, le gudie parle t on de la possibilité de remonter aux performance système par un composant simple à fonction unique; Le suejt est il évoqué?"
+        },
+        {
+          "role": "assistant",
+          "content": "Oui, le *Guide DGA V2.0* aborde indirectement cette question, notamment dans le cadre de l’**exception pour composants simples** (Lignes directrices UE, Annexe 2, §1). Voici les éléments clés :\n\n---\n\n### **1. Principe général**\nLe guide souligne que **l’exception « composant simple »** (fonction unique + absence de technologie militaire dans le processus de fabrication) ne s’applique **pas** si le composant permet de remonter aux performances sensibles du système militaire.\n\n---\n\n### **2. Exemples et contre-exemples**\n- **Cas où l’exception est refusée** :\n  Le guide cite des composants comme :\n  - *Boulons explosifs* (leur forme révèle une fonction militaire spécifique).\n  - *Connecteurs étanches pour grandes profondeurs* (leur conception est liée à des environnements militaires).\n  - *Transistors durcis aux rayonnements* (leur technologie est militaire).\n  → **Ces composants, bien que simples, ne peuvent pas être déclassés** car ils révèlent des performances ou des capacités militaires.\n\n- **Cas où l’exception est possible** :\n  Un composant comme une *vis standard* ou un *câble électrique générique* peut être déclassé s’il est :\n  - **Purement fonctionnel** (pas de fonction additionnelle liée à l’environnement militaire).\n  - **Sans technologie militaire** dans sa fabrication.\n  → **Il ne permet pas de remonter aux performances du système.**\n\n---\n\n### **3. Critère de remontée aux performances**\nLe guide insiste sur le fait que **si un composant simple permet de déduire une performance militaire** (par exemple, sa géométrie révèle un taux de compression, une résistance spécifique, ou une capacité opérationnelle), alors :\n- **L’exception ne s’applique pas.**\n- **Le composant reste classé ML.**\n\n---\n\n### **4. Référence précise**\n**Source :**\n*Guide DGA V2.0 — Section 3, p. 12*\n*Lignes directrices UE — Annexe 2, §1, Notes 1 et 2*\n\n---\n### **En résumé :**\n- **Un composant simple à fonction unique peut être déclassé** **uniquement s’il ne permet pas de remonter aux performances du système militaire.**\n- **Si sa conception ou sa fonction révèle une capacité militaire**, il reste classé ML, même s’il est techniquement simple.",
+          "provider": "MISTRAL",
+          "model": "mistral-small-latest"
+        },
+        {
+          "role": "user",
+          "content": "site moi le texte qui parle de ça",
+          "_text": "site moi le texte qui parle de ça"
+        },
+        {
+          "role": "assistant",
+          "content": "Voici les extraits **exacts** du *Guide DGA V2.0* qui abordent la question de la **remontée aux performances système via un composant simple** :\n\n---\n\n### **1. Lignes directrices UE — Annexe 2, §1 (Notes 1 et 2)**\n*L’exception « composant simple » suppose la réunion de deux conditions cumulatives :*\n- *fonction unique*\n- *absence de technologie militaire spécifique dans le processus de fabrication.*\n\n*Dès lors qu’un composant remplit une double fonction — sa fonction nominale assortie d’une capacité liée à l’environnement opérationnel militaire — il ne saurait bénéficier de cette exception.*\n*La Note 2 des Lignes directrices énumère des contre-exemples précis :*\n- *boulons explosifs*\n- *connecteurs étanches pour grandes profondeurs*\n- *transistors durcis aux rayonnements*\n- *filtres passe-bas infrarouge pour viseurs*\n\n*Tous sont exclus de l’exception « composant simple » car leur conception ou leur fonction révèle des performances ou des capacités militaires.*\n\n**Source :**\n*Lignes directrices UE — Annexe 2, §1, Notes 1 et 2*\n\n---\n\n### **2. Guide DGA V2.0 — Section 3, p. 12**\n*La simplicité technologique ne constitue pas, à elle seule, un motif de déclassement. Elle doit impérativement être associée aux critères cumulatifs des Lignes directrices UE : fonction unique et absence de technologie classée dans le processus de fabrication.*\n\n*Exemples du guide :*\n- *Un goujon conçu spécifiquement pour un propulseur d’aéronef de combat = classé ML10.*\n- *Un potentiomètre propre à un drone militaire = classé ML10.*\n\n*À retenir :*\n*Invoquer la banalité technique d’une pièce (goujon, vis, potentiomètre) dont la référence est propre à une plateforme militaire sera systématiquement rejeté.*\n\n**Source :**\n*Guide DGA V2.0 — Section 3, p. 12*\n\n---\n### **En résumé :**\nLe guide précise que **si un composant simple permet de remonter aux performances ou capacités militaires du système** (par exemple, sa géométrie, sa fonction ou sa technologie révèle une capacité opérationnelle militaire), alors **l’exception ne s’applique pas** et le composant reste classé ML.",
+          "provider": "MISTRAL",
+          "model": "mistral-small-latest"
         }
       ],
-      "_lastActivity": 1780060410735,
+      "_lastActivity": 1780060455892,
       "_starred": true
     },
     {
@@ -2634,6 +2651,6 @@
     "gemini-3.5-flash",
     "mistral-small-latest"
   ],
-  "savedAt": "2026-05-29T13:13:34.606Z",
+  "savedAt": "2026-05-29T13:14:20.017Z",
   "version": 2
 }
