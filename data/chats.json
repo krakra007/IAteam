@@ -2107,9 +2107,20 @@
           "content": "Voici des suggestions de titres plus précis et percutants pour votre slide, tout en restant fidèles au contenu :\n\n---\n\n### **Options de titres :**\n1. **\"Redésignation commerciale : un argument insuffisant pour le déclassement ML\"**\n2. **\"Pourquoi la redésignation commerciale ne suffit pas à déclasser un produit ML ?\"**\n3. **\"Le critère de conception : ce qui compte vraiment pour le classement ML\"**\n4. **\"Redésignation commerciale vs. classification ML : ce que dit le guide DGA\"**\n5. **\"L’importance des travaux préparatoires dans le classement ML\"**\n\n---\n### **Recommandation :**\nSi vous souhaitez un titre **direct et explicite**, je vous conseille :\n**\"Redésignation commerciale : un argument insuffisant pour le déclassement ML\"**\n\nCela met en avant l’idée centrale de votre slide : **la redésignation commerciale ne suffit pas à modifier le classement ML d'un produit**.",
           "provider": "MISTRAL",
           "model": "mistral-small-latest"
+        },
+        {
+          "role": "user",
+          "content": "J'ai mis L’importance des travaux préparatoires dans le classement ML. alors quel texte cité de façon précise du Guide?",
+          "_text": "J'ai mis L’importance des travaux préparatoires dans le classement ML. alors quel texte cité de façon précise du Guide?"
+        },
+        {
+          "role": "assistant",
+          "content": "Voici le texte cité de façon précise du *Guide DGA V2.0 — Section 3, p. 10*, avec le texte original en *italique* et la référence :\n\n---\n\n**Extrait du Guide DGA V2.0 — Section 3, p. 10**\n*Ce sont les travaux préparatoires (spécification de besoin, développement, conception, qualification) qui déterminent le caractère « spécialement conçu ».*\n\n**Source :**\n*Guide du classement ML V2.0 (T-2025/826) — Section 3, page 10*",
+          "provider": "MISTRAL",
+          "model": "mistral-small-latest"
         }
       ],
-      "_lastActivity": 1780049600739
+      "_lastActivity": 1780049752839
     },
     {
       "id": "880409ad-0b3d-4238-b42d-71d05cf1172a",
@@ -2436,6 +2447,6 @@
     "claude-sonnet-4-6",
     "gemini-3.5-flash"
   ],
-  "savedAt": "2026-05-29T10:13:34.731Z",
+  "savedAt": "2026-05-29T10:15:54.735Z",
   "version": 2
 }
