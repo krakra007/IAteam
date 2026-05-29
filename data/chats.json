@@ -2074,9 +2074,20 @@
           "content": "Voici la citation exacte du texte du guide, avec le texte original en *italique* et la référence complète :\n\n---\n\n**Citation du Guide DGA V2.0 — Section 3, p. 11**\n*\"Les fonctionnalités et les performances opérationnelles caractérisent le matériel avant sa forme, son apparence ou sa couleur.\"*\n\n**Source :**\n*Guide du classement ML V2.0 (T-2025/826) — Section 3, page 11*",
           "provider": "MISTRAL",
           "model": "mistral-small-latest"
+        },
+        {
+          "role": "user",
+          "content": "élargie la citaiton au pararaphe global",
+          "_text": "élargie la citaiton au pararaphe global"
+        },
+        {
+          "role": "assistant",
+          "content": "Voici le paragraphe complet du *Guide DGA V2.0 — Section 3, p. 11* avec le texte original en *italique* et la référence :\n\n---\n\n**Extrait du Guide DGA V2.0 — Section 3, p. 11**\n*Les fonctionnalités et les performances opérationnelles caractérisent le matériel avant sa forme, son apparence ou sa couleur.*\n\n*Détail :*\n*Ni le conditionnement, ni la couleur, ni la présentation extérieure d’un composant ne modifient sa nature. Un composant classé ML demeure classé même s’il est livré dépourvu de toute marque militaire, sous un emballage neutre ou dans un catalogue commercial distinct.*\n\n**Source :**\n*Guide du classement ML V2.0 (T-2025/826) — Section 3, page 11*",
+          "provider": "MISTRAL",
+          "model": "mistral-small-latest"
         }
       ],
-      "_lastActivity": 1780049227310
+      "_lastActivity": 1780049247424
     },
     {
       "id": "880409ad-0b3d-4238-b42d-71d05cf1172a",
@@ -2403,6 +2414,6 @@
     "claude-sonnet-4-6",
     "gemini-3.5-flash"
   ],
-  "savedAt": "2026-05-29T10:07:09.033Z",
+  "savedAt": "2026-05-29T10:07:29.336Z",
   "version": 2
 }
