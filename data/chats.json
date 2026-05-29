@@ -1922,12 +1922,12 @@
     "showThinking": false,
     "webSearch": true
   },
-  "model": "magistral-medium-latest",
+  "model": "gemini-2.5-flash",
   "favoriteModels": [
     "openai/gpt-oss-120b",
     "claude-sonnet-4-6",
     "gemini-3.5-flash"
   ],
-  "savedAt": "2026-05-29T05:32:30.005Z",
+  "savedAt": "2026-05-29T05:32:42.873Z",
   "version": 2
 }
