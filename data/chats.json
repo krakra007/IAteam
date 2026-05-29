@@ -2063,9 +2063,20 @@
           "content": "Le titre **\"Fonctionnalités et performances opérationnelles\"** est **approprié** pour votre slide, car il correspond directement au principe clé du *Guide DGA V2.0 — Section 3, p. 11*.\n\n### Suggestions pour renforcer la clarté :\nSi vous souhaitez ajouter une touche plus explicite, vous pourriez utiliser :\n- **\"Fonctionnalités et performances opérationnelles : le critère de classement ML\"**\n- **\"Pourquoi la forme et l’apparence ne suffisent pas pour le classement ML ?\"**\n\nMais votre titre actuel est déjà **correct et précis**.",
           "provider": "MISTRAL",
           "model": "mistral-small-latest"
+        },
+        {
+          "role": "user",
+          "content": "et donc la citation du texte du guide sera?",
+          "_text": "et donc la citation du texte du guide sera?"
+        },
+        {
+          "role": "assistant",
+          "content": "Voici la citation exacte du texte du guide, avec le texte original en *italique* et la référence complète :\n\n---\n\n**Citation du Guide DGA V2.0 — Section 3, p. 11**\n*\"Les fonctionnalités et les performances opérationnelles caractérisent le matériel avant sa forme, son apparence ou sa couleur.\"*\n\n**Source :**\n*Guide du classement ML V2.0 (T-2025/826) — Section 3, page 11*",
+          "provider": "MISTRAL",
+          "model": "mistral-small-latest"
         }
       ],
-      "_lastActivity": 1780049096079
+      "_lastActivity": 1780049227310
     },
     {
       "id": "880409ad-0b3d-4238-b42d-71d05cf1172a",
@@ -2392,6 +2403,6 @@
     "claude-sonnet-4-6",
     "gemini-3.5-flash"
   ],
-  "savedAt": "2026-05-29T10:04:57.922Z",
+  "savedAt": "2026-05-29T10:07:09.033Z",
   "version": 2
 }
