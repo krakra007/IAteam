@@ -2085,9 +2085,20 @@
           "content": "Voici le paragraphe complet du *Guide DGA V2.0 — Section 3, p. 11* avec le texte original en *italique* et la référence :\n\n---\n\n**Extrait du Guide DGA V2.0 — Section 3, p. 11**\n*Les fonctionnalités et les performances opérationnelles caractérisent le matériel avant sa forme, son apparence ou sa couleur.*\n\n*Détail :*\n*Ni le conditionnement, ni la couleur, ni la présentation extérieure d’un composant ne modifient sa nature. Un composant classé ML demeure classé même s’il est livré dépourvu de toute marque militaire, sous un emballage neutre ou dans un catalogue commercial distinct.*\n\n**Source :**\n*Guide du classement ML V2.0 (T-2025/826) — Section 3, page 11*",
           "provider": "MISTRAL",
           "model": "mistral-small-latest"
+        },
+        {
+          "role": "user",
+          "content": "sur la page 3 javais mis le titre rédimensionnement commercial avec le principe: Ce sont les travaux préparatoires (spécification de besoin, développement, conception, qualification) qui déterminent le caractère «spécialement conçu ».",
+          "_text": "sur la page 3 javais mis le titre rédimensionnement commercial avec le principe: Ce sont les travaux préparatoires (spécification de besoin, développement, conception, qualification) qui déterminent le caractère «spécialement conçu »."
+        },
+        {
+          "role": "assistant",
+          "content": "Voici la reformulation de votre slide avec le titre **\"Redésignation commerciale\"**, en incluant le texte original en *italique* et en simplifiant pour une présentation claire :\n\n---\n\n## **Redésignation commerciale**\n\n### **Principe**\n*Ce sont les travaux préparatoires (spécification de besoin, développement, conception, qualification) qui déterminent le caractère « spécialement conçu ».*\n\nEn clair : Ce n’est pas le nom commercial ou la présentation marketing qui définit si un produit est classé ML, mais **son processus de conception et son usage prévu**.\n\n### **Détail**\n*Modifier la dénomination commerciale, transférer une référence d’un catalogue « défense » vers un catalogue « civil » ou réécrire la documentation marketing ne constitue en rien un fondement de déclassement si la définition technique (référence pièce, spécifications, cahier des charges) demeure identique.*\n\nEn clair : Changer le nom ou le catalogue d’un produit ne suffit pas à le déclasser. **Seule la définition technique et l’usage militaire déterminent son classement ML**.\n\n### **Illustration**\n*Exemple : un équipement développé à partir d’un cahier des charges militaire reste classé ML, quelle que soit la désignation retenue au catalogue.*\n\nEn clair : Un produit conçu pour un usage militaire reste classé ML, même s’il est vendu sous une référence civile.\n\n**Source :**\n*Guide DGA V2.0 — Section 3, p. 10*",
+          "provider": "MISTRAL",
+          "model": "mistral-small-latest"
         }
       ],
-      "_lastActivity": 1780049247424
+      "_lastActivity": 1780049576462
     },
     {
       "id": "880409ad-0b3d-4238-b42d-71d05cf1172a",
@@ -2414,6 +2425,6 @@
     "claude-sonnet-4-6",
     "gemini-3.5-flash"
   ],
-  "savedAt": "2026-05-29T10:08:34.802Z",
+  "savedAt": "2026-05-29T10:12:59.503Z",
   "version": 2
 }
