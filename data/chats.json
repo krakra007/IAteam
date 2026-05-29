@@ -1905,10 +1905,22 @@
     },
     {
       "id": "c3292ba1-99d4-4986-aa0d-d0e67e152872",
-      "title": "Nouveau chat",
+      "title": "Conversation",
       "projectId": null,
-      "messages": [],
-      "_lastActivity": 1780037288281
+      "messages": [
+        {
+          "role": "user",
+          "content": "peux tu refaire en précisant le texte original en italique pour l'inclure dans ma présenation que je vais simiplicier clairement",
+          "_text": "peux tu refaire en précisant le texte original en italique pour l'inclure dans ma présenation que je vais simiplicier clairement"
+        },
+        {
+          "role": "assistant",
+          "content": "Pour que je puisse reformuler votre texte en précisant l'original en italique et en le simplifiant pour votre présentation, pourriez-vous me fournir le texte original que vous souhaitez que je retravaille ?",
+          "provider": "GOOGLE GEMINI",
+          "model": "gemini-2.5-flash"
+        }
+      ],
+      "_lastActivity": 1780046194800
     },
     {
       "id": "880409ad-0b3d-4238-b42d-71d05cf1172a",
@@ -2235,6 +2247,6 @@
     "claude-sonnet-4-6",
     "gemini-3.5-flash"
   ],
-  "savedAt": "2026-05-29T09:15:29.711Z",
+  "savedAt": "2026-05-29T09:16:36.454Z",
   "version": 2
 }
