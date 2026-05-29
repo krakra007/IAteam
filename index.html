@@ -1372,7 +1372,7 @@
       <div class="search-results" id="searchResults"></div>
     </div>
     <div id="chatList"></div>
-    <div style="padding:6px 8px;font-size:9px;color:#4a4a5a;text-align:center;flex-shrink:0">BrAInShift v5.0</div>
+    <div style="padding:6px 8px;font-size:9px;color:#4a4a5a;text-align:center;flex-shrink:0">BrAInShift v5.1</div>
   </aside>
   <div class="resizer" id="resizer"></div>
 
@@ -2558,6 +2558,35 @@ function deleteChat(id) {
   S.chats = S.chats.filter(c => c.id !== id);
   if (S.activeChat === id) S.activeChat = S.chats[0]?.id || null;
   save(); render();
+}
+
+/** Fork Chat : crée un nouveau chat avec tous les messages jusqu'à msgIdx inclus */
+function forkChatFromHere(chatId, msgIdx) {
+  const original = S.chats.find(c => c.id === chatId);
+  if (!original) return;
+
+  // Copier les messages du début jusqu'à msgIdx inclus (deep copy)
+  const forkedMessages = JSON.parse(JSON.stringify(original.messages.slice(0, msgIdx + 1)));
+
+  // Créer le nouveau chat
+  const newId = crypto.randomUUID();
+  const forkTitle = '⑂ ' + (original.title || 'Fork');
+  S.chats.unshift({
+    id: newId,
+    title: forkTitle,
+    projectId: original.projectId, // Garder dans le même projet
+    messages: forkedMessages,
+    _lastActivity: Date.now(),
+    _forkedFrom: chatId // Traçabilité
+  });
+
+  // Ouvrir le nouveau chat
+  S.activeChat = newId;
+  S.activeProject = original.projectId || null;
+  save(); render(); renderModels();
+
+  // Notification discrète
+  console.log(`[BrAInShift] ⑂ Fork créé : "${forkTitle}" avec ${forkedMessages.length} messages`);
 }
 
 function chatRow(c, indent = false) {
@@ -4187,7 +4216,7 @@ function renderMessages() {
   const c = activeChat();
   if (!c) return;
 
-  c.messages.forEach(m => {
+  c.messages.forEach((m, msgIdx) => {
     const row  = document.createElement("div");
     row.className = "msg-row " + m.role;
 
@@ -4386,7 +4415,13 @@ blockquote{border-left:3px solid #4abfbf;margin:10px 0;padding:8px 16px;color:#5
         };
       }
 
-      actions.append(copyBtn, regenBtn, docBtn, exportBtn);
+      // Bouton Fork — dupliquer la conversation jusqu'ici dans un nouveau chat
+      const forkBtn = document.createElement("button");
+      forkBtn.className = "msg-icon"; forkBtn.title = "Fork : continuer dans un nouveau chat à partir d'ici";
+      forkBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><path d="M18 9v1a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V9"/><path d="M12 12v3"/></svg>`;
+      forkBtn.onclick = () => forkChatFromHere(c.id, msgIdx);
+
+      actions.append(copyBtn, regenBtn, forkBtn, docBtn, exportBtn);
       foot.appendChild(actions);
     } else {
       const b = document.createElement("button");
