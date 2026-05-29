@@ -1372,7 +1372,7 @@
       <div class="search-results" id="searchResults"></div>
     </div>
     <div id="chatList"></div>
-    <div style="padding:6px 8px;font-size:9px;color:#4a4a5a;text-align:center;flex-shrink:0">BrAInShift v4.9</div>
+    <div style="padding:6px 8px;font-size:9px;color:#4a4a5a;text-align:center;flex-shrink:0">BrAInShift v5.0</div>
   </aside>
   <div class="resizer" id="resizer"></div>
 
@@ -2565,10 +2565,16 @@ function chatRow(c, indent = false) {
   d.className = "item" + (c.id === S.activeChat ? " active" : "");
   if (indent) d.style.marginLeft = "18px";
   
-  // Date de dernière activité
-  const ts = c._lastActivity || Date.now();
-  const dateStr = formatChatDate(ts);
-  const dateTag = `<span class='chat-model-tag'>${dateStr}</span>`;
+  // Date — SEULEMENT si _lastActivity existe (ne jamais inventer une date)
+  const dateStr = c._lastActivity ? formatChatDate(c._lastActivity) : '';
+  
+  // Modèle — dernier modèle utilisé dans la conversation
+  const lastMsg = [...(c.messages || [])].reverse().find(m => m.role === "assistant" && m.model);
+  const modelName = lastMsg ? lastMsg.model : '';
+  
+  // Sous-titre : date + modèle séparés par un ·
+  const parts = [dateStr, modelName].filter(Boolean);
+  const subTag = parts.length ? `<span class='chat-model-tag'>${parts.join(' · ')}</span>` : '';
   
   // Étoile (visible pour les chats dans un projet)
   const isStarred = !!c._starred;
@@ -2579,7 +2585,7 @@ function chatRow(c, indent = false) {
     ${starHtml}
     <div class='chat-name-wrap'>
       <span class='name' title='${c.title}'>${c.title}</span>
-      ${dateTag}
+      ${subTag}
     </div>
     <button class='chat-menu-btn' data-a='menu' title='Options'>⋯</button>
   `;
