@@ -1924,8 +1924,8 @@
     },
     {
       "id": "c3292ba1-99d4-4986-aa0d-d0e67e152872",
-      "title": "Conversation",
-      "projectId": null,
+      "title": "Slides CEX ML",
+      "projectId": "4a80a2bb-5a7f-49d2-b420-c20965d8067b",
       "messages": [
         {
           "role": "user",
@@ -2236,9 +2236,21 @@
           "content": "### **Texte pertinent du Guide DGA V2.0 — Section 2, p. 9 et Section 3, p. 11**\nVoici le passage exact du guide qui correspond à votre principe, avec le texte original en *italique* :\n\n---\n\n**Extrait du Guide DGA V2.0 — Section 2, p. 9 et Section 3, p. 11**\n*« Et leurs composants spécialement conçus » implique la déclinaison du classement dans toute l’arborescence produit, jusqu’au niveau le plus élémentaire.*\n\n*Détail :*\n*Exporter séparément les sous-ensembles d’un matériel classé en escomptant que chaque pièce, considérée isolément, échappe au classement est contraire à la lettre et à l’esprit du texte. Le chapeau des catégories ML4 et ML10, entre autres, porte cette mention qui couvre l’ensemble de l’arborescence.*\n\n*Illustration :*\n*Décomposer un module électronique intégré à un système classé en cartes individuelles en vue de les exporter hors classement ML relève de cette logique prohibée.*\n\n*Risque majeur :*\n*Une telle approche serait immédiatement détectée par le BRSI et pourrait être qualifiée de manquement grave aux obligations de l’exportateur.*\n\n**Source :**\n*Guide du classement ML V2.0 (T-2025/826) — Section 2, p. 9 et Section 3, p. 11*\n\n---\n\n### **Suggestions de titres corrigés :**\n1. **\"Déclinaison du classement ML dans toute l’arborescence produit\"**\n2. **\"Fractionnement d’un ensemble classé : une pratique interdite\"**\n3. **\"Pourquoi le fractionnement ne permet pas d’échapper au classement ML\"**\n4. **\"L’arborescence produit et le classement ML : une règle stricte\"**\n5. **\"Fractionnement d’un ensemble classé : une approche à éviter\"**\n\n---\n### **Recommandation :**\nSi vous souhaitez un titre **clair et explicite**, je vous conseille :\n**\"Fractionnement d’un ensemble classé : une pratique interdite\"**\n\nCe titre met en avant l’idée que **le fractionnement d’un ensemble classé ML est interdit**, car le classement s’applique à toute l’arborescence produit, jusqu’aux composants les plus élémentaires.",
           "provider": "MISTRAL",
           "model": "mistral-small-latest"
+        },
+        {
+          "role": "user",
+          "content": "Faison maintenatn une slide de synthese",
+          "_text": "Faison maintenatn une slide de synthese"
+        },
+        {
+          "role": "assistant",
+          "content": "## **Synthèse : Les 7 erreurs à éviter pour un classement ML conforme**\n\n### **1. Forme, apparence ou couleur**\n*Un composant classé ML reste classé même s’il est présenté sous un emballage neutre ou dans un catalogue commercial.*\n→ **Le classement dépend des performances techniques, pas de l’apparence.**\n\n### **2. Redésignation commerciale**\n*Changer le nom ou le catalogue d’un produit ne suffit pas à le déclasser si sa définition technique et son usage militaire restent identiques.*\n→ **Seuls les travaux préparatoires (conception, qualification) déterminent le classement ML.**\n\n### **3. Disponibilité dans le commerce**\n*Un composant dont la référence est exclusive à un matériel militaire reste classé ML, même s’il ressemble à un article commercial.*\n→ **L’exclusivité d’intégration prime sur la ressemblance fonctionnelle.**\n\n### **4. Faible niveau technologique**\n*Un composant simple peut rester classé ML s’il a été spécialement conçu pour une intégration militaire exclusive.*\n→ **La simplicité technique ne suffit pas : l’usage militaire est déterminant.**\n\n### **5. Fractionnement d’un ensemble classé**\n*« Et leurs composants spécialement conçus » implique que le classement s’applique à toute l’arborescence produit, jusqu’aux composants les plus élémentaires.*\n→ **Décomposer un ensemble classé pour éviter le classement ML est interdit.**\n\n### **6. Application erronée des Lignes directrices UE**\n*L’exception « composant simple » suppose une fonction unique et l’absence de technologie militaire dans le processus de fabrication.*\n→ **Les critères sont cumulatifs et stricts : une double fonction exclut l’exception.**\n\n### **7. Autodéclaration sans validation DGA**\n*Le BRSI (DGA) est l’autorité nationale de classement. Une autodéclaration sans validation expose à des sanctions pénales.*\n→ **Toute démarche de déclassement doit être soumise au BRSI.**\n\n---\n**À retenir :**\nToute démarche de déclassement fondée sur l’un de ces arguments sera rejetée par le BRSI et peut exposer l’entreprise à des sanctions pénales. Le fondement de tout déclassement doit être **technique et documenté** — jamais formel ou commercial.",
+          "provider": "MISTRAL",
+          "model": "mistral-small-latest"
         }
       ],
-      "_lastActivity": 1780053826145
+      "_lastActivity": 1780056014713,
+      "_starred": true
     },
     {
       "id": "880409ad-0b3d-4238-b42d-71d05cf1172a",
@@ -2566,6 +2578,6 @@
     "gemini-3.5-flash",
     "mistral-small-latest"
   ],
-  "savedAt": "2026-05-29T11:58:34.514Z",
+  "savedAt": "2026-05-29T12:00:18.357Z",
   "version": 2
 }
