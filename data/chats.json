@@ -3812,13 +3812,13 @@
     "showThinking": false,
     "webSearch": true
   },
-  "model": "openai/gpt-oss-120b",
+  "model": "gemini-2.5-flash",
   "favoriteModels": [
     "openai/gpt-oss-120b",
     "claude-sonnet-4-6",
     "gemini-3.5-flash",
     "mistral-small-latest"
   ],
-  "savedAt": "2026-05-30T19:45:13.349Z",
+  "savedAt": "2026-05-30T19:46:38.134Z",
   "version": 2
 }
