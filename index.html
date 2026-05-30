@@ -6082,12 +6082,18 @@ async function ghPushSilent() {
 async function ghPullSilent() {
   if (!GH.token || !GH.owner || !GH.repo) return;
   try {
-    // ═══ ÉTAPE 1 : PUSH D'ABORD pour sauvegarder les changements locaux ═══
-    try {
-      await ghPushSilent();
-      console.log('[BrAInShift] ✅ Push préventif OK (avant pull)');
-    } catch(pe) {
-      console.warn('[BrAInShift] ⚠ Push préventif échoué:', pe.message, '— on continue le pull');
+    // ═══ ÉTAPE 1 : PUSH D'ABORD — SEULEMENT si des données locales existent ═══
+    // Sur une machine fraîche (localStorage vide), on NE POUSSE PAS → sinon ça écrase GitHub
+    const hasLocalData = S.chats.some(c => c.messages && c.messages.length > 0) || S.projects.length > 0;
+    if (hasLocalData) {
+      try {
+        await ghPushSilent();
+        console.log('[BrAInShift] ✅ Push préventif OK (avant pull)');
+      } catch(pe) {
+        console.warn('[BrAInShift] ⚠ Push préventif échoué:', pe.message, '— on continue le pull');
+      }
+    } else {
+      console.log('[BrAInShift] ℹ Pas de données locales significatives — push préventif ignoré');
     }
 
     // ═══ ÉTAPE 2 : PULL depuis GitHub ═══
@@ -6798,10 +6804,14 @@ promptEl.addEventListener("keydown", e => {
 // ── Collage depuis le presse-papiers (images, fichiers, texte) ──
 promptEl.addEventListener("paste", async e => {
   const items = [...(e.clipboardData?.items || [])];
-  const files = [];
   
+  // Si le presse-papiers contient du texte → laisser le comportement natif (coller le texte)
+  const hasText = items.some(i => i.kind === 'string' && (i.type === 'text/plain' || i.type === 'text/html'));
+  if (hasText) return; // Ne PAS intercepter — le textarea gère nativement
+  
+  // Pas de texte → c'est une image pure (capture d'écran, copie d'image)
+  const files = [];
   for (const item of items) {
-    // Image collée (capture d'écran, copie d'image)
     if (item.type.startsWith("image/")) {
       e.preventDefault();
       const blob = item.getAsFile();
@@ -6822,18 +6832,16 @@ promptEl.addEventListener("paste", async e => {
       });
       files.push(blob);
     }
-    // Fichier collé (certains navigateurs supportent le collage de fichiers)
-    else if (item.kind === "file") {
+    else if (item.kind === "file" && !item.type.startsWith("text/")) {
+      e.preventDefault();
       const file = item.getAsFile();
       if (file) {
-        // Déclencher le même handler que l'input file
         const dt = new DataTransfer();
         dt.items.add(file);
         el('fileInput').files = dt.files;
         el('fileInput').dispatchEvent(new Event('change'));
       }
     }
-    // Texte → le textarea gère nativement, on ne fait rien
   }
   
   if (files.length) {
