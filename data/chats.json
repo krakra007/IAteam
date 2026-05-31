@@ -2,10 +2,22 @@
   "chats": [
     {
       "id": "ca4e7cb6-aa21-4e1c-88e3-65dc0722ba8b",
-      "title": "Nouveau chat",
+      "title": "Création document avec ce tableau",
       "projectId": null,
-      "messages": [],
-      "_lastActivity": 1780249243145
+      "messages": [
+        {
+          "role": "user",
+          "content": "créer un document avec ce tableau",
+          "_text": "créer un document avec ce tableau"
+        },
+        {
+          "role": "assistant",
+          "content": "Veuillez me fournir le tableau (les données, les en‑têtes et le contenu) que vous souhaitez intégrer dans le document Word.",
+          "provider": "GROQ",
+          "model": "openai/gpt-oss-120b"
+        }
+      ],
+      "_lastActivity": 1780249472117
     },
     {
       "id": "e26e2c6b-680d-4770-8476-b50b2e411af0",
@@ -4057,6 +4069,6 @@
     "gemini-3.5-flash",
     "mistral-small-latest"
   ],
-  "savedAt": "2026-05-31T17:42:05.343Z",
+  "savedAt": "2026-05-31T17:44:33.404Z",
   "version": 2
 }
