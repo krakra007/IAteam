@@ -1213,10 +1213,24 @@
     },
     {
       "id": "327ede3d-e12b-4cce-8454-2b8c81019e49",
-      "title": "Nouveau chat",
+      "title": "Enlève le préamubune de l'échange du fichier word créé…",
       "projectId": null,
-      "messages": [],
-      "_lastActivity": 1780068829434
+      "messages": [
+        {
+          "role": "user",
+          "content": "enlève le préamubune de l'échange du fichier word créé et garde uniquement le tableau",
+          "_text": "enlève le préamubune de l'échange du fichier word créé et garde uniquement le tableau"
+        },
+        {
+          "role": "assistant",
+          "content": "Voici le fichier Word configuré pour ne contenir que le tableau demandé.\n\n\n\n📄 **Enlève le préamubune de l'échange du fichier word créé…** — 7 lignes → *ouvert dans le panneau Artifact*\n",
+          "provider": "GOOGLE GEMINI",
+          "model": "gemini-3.5-flash",
+          "_artifactContent": "| Étape | Description | Responsable | Échéance | Statut |\n| :--- | :--- | :--- | :--- | :--- |\n| Phase 1 | Cadrage du projet et définition des objectifs | Chef de projet | 15/06/2026 | Terminé |\n| Phase 2 | Analyse des besoins et spécifications | Analyste Business | 30/06/2026 | En cours |\n| Phase 3 | Développement et configuration | Équipe Technique | 15/08/2026 | À planifier |\n| Phase 4 | Recette et tests utilisateurs | Équipe QA | 31/08/2026 | À planifier |\n| Phase 5 | Déploiement et conduite du changement | Responsable Change | 15/09/2026 | À planifier |",
+          "_artifactTitle": "Enlève le préamubune de l'échange du fichier word créé…"
+        }
+      ],
+      "_lastActivity": 1780240389599
     },
     {
       "id": "0f923a7e-2a4a-4307-b532-67595f72624b",
@@ -3896,6 +3910,6 @@
     "gemini-3.5-flash",
     "mistral-small-latest"
   ],
-  "savedAt": "2026-05-31T15:12:24.619Z",
+  "savedAt": "2026-05-31T15:13:17.328Z",
   "version": 2
 }
