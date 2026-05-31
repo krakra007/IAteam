@@ -3885,6 +3885,11 @@
   ],
   "projects": [
     {
+      "id": "d1fe9b13-e2f3-42dd-a1d9-dead2e810d27",
+      "name": "Vie quotidienne",
+      "color": "#e05c5c"
+    },
+    {
       "id": "dc4fd640-8a89-46f0-91fc-becffd46bcb6",
       "name": "Programs",
       "color": "#b0b0b0"
@@ -3991,6 +3996,6 @@
     "gemini-3.5-flash",
     "mistral-small-latest"
   ],
-  "savedAt": "2026-05-31T10:40:53.446Z",
+  "savedAt": "2026-05-31T10:41:02.233Z",
   "version": 2
 }
