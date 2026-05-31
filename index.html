@@ -1372,7 +1372,7 @@
       <div class="search-results" id="searchResults"></div>
     </div>
     <div id="chatList"></div>
-    <div style="padding:6px 8px;font-size:9px;color:#4a4a5a;text-align:center;flex-shrink:0">BrAInShift v5.1</div>
+    <div style="padding:6px 8px;font-size:9px;color:#4a4a5a;text-align:center;flex-shrink:0">BrAInShift v5.2</div>
   </aside>
   <div class="resizer" id="resizer"></div>
 
@@ -1869,7 +1869,7 @@ let isWaitingResponse = false;
 let waitingStartTime = 0;
 let waitingTimerInterval = null;
 let _currentAbortController = null; // Controller global pour annuler les requêtes
-if (!CURATED_MODELS.includes(S.model)) S.model = "gemini-2.5-flash";
+if (!CURATED_MODELS.includes(S.model)) S.model = "openai/gpt-oss-120b";
 
 const promptEl   = el("prompt");
 
@@ -2533,14 +2533,50 @@ function deleteProject(id) {
   save(); render();
 }
 
+/** Popup pour choisir le modèle par défaut d'un projet */
+function setProjectDefaultModel(projectId, anchor) {
+  const p = S.projects.find(x => x.id === projectId);
+  if (!p) return;
+  // Fermer tout popup existant
+  document.querySelectorAll('.proj-model-popup').forEach(e => e.remove());
+  const popup = document.createElement('div');
+  popup.className = 'proj-model-popup';
+  popup.style.cssText = 'position:fixed;z-index:9999;background:#1a1a22;border:1px solid var(--line);border-radius:10px;padding:8px 0;min-width:280px;max-height:350px;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.5)';
+  let html = `<div class="model-dd-item" data-pm="" style="color:#9ca3af;font-style:italic"><span class="model-name">Aucun — utiliser le défaut global</span>${!p.defaultModel ? '<span style="color:#22c55e">✓</span>' : ''}</div><div class="model-dd-sep"></div>`;
+  MODEL_GROUPS.forEach(g => {
+    html += `<div class="model-dd-group">${g.label}</div>`;
+    g.models.forEach(m => {
+      const cur = p.defaultModel === m;
+      html += `<div class="model-dd-item${cur?' active':''}" data-pm="${m}"><span class="model-name">${m}</span>${cur?'<span style="color:#22c55e">✓</span>':''}</div>`;
+    });
+  });
+  popup.innerHTML = html;
+  popup.onclick = e => {
+    const item = e.target.closest('[data-pm]');
+    if (!item) return;
+    p.defaultModel = item.dataset.pm || null;
+    save(); render();
+    popup.remove();
+  };
+  document.body.appendChild(popup);
+  const rect = anchor.getBoundingClientRect();
+  popup.style.top = Math.min(rect.bottom + 4, window.innerHeight - 360) + 'px';
+  popup.style.left = Math.min(rect.left, window.innerWidth - 300) + 'px';
+  setTimeout(() => {
+    const close = ev => { if (!popup.contains(ev.target)) { popup.remove(); document.removeEventListener('click', close); } };
+    document.addEventListener('click', close);
+  }, 50);
+}
+
 function createChat(projectId = null) {
   const id = crypto.randomUUID();
   S.chats.unshift({ id, title: "Nouveau chat", projectId, messages: [], _lastActivity: Date.now() });
   S.activeChat    = id;
   S.activeProject = projectId || null;
-  // Nouveau chat → remettre le modèle par défaut si l'utilisateur n'a pas changé manuellement
+  // Modèle par défaut : celui du projet si défini, sinon le global
   if (!window._userChangedModel) {
-    S.model = "gemini-2.5-flash";
+    const proj = projectId ? S.projects.find(p => p.id === projectId) : null;
+    S.model = (proj && proj.defaultModel) || "openai/gpt-oss-120b";
   }
   save(); render(); renderModels();
 }
@@ -2631,7 +2667,17 @@ function chatRow(c, indent = false) {
       save(); render();
       return;
     }
-    S.activeChat = c.id; save(); render();
+    S.activeChat = c.id;
+    // Si on clique sur un chat vide dans un projet → appliquer le modèle du projet
+    if (c.projectId && (!c.messages || c.messages.length === 0)) {
+      const proj = S.projects.find(p => p.id === c.projectId);
+      if (proj && proj.defaultModel) {
+        S.model = proj.defaultModel;
+        window._userChangedModel = false;
+        renderModels();
+      }
+    }
+    save(); render();
   };
   return d;
 }
@@ -2838,11 +2884,16 @@ function renderChats() {
     h.className = "item project-item" + (p.id === S.activeProject ? " active" : "");
     h.style.borderLeftColor = p.color || PROJECT_COLORS[0];
     const dotColor = p.color || PROJECT_COLORS[0];
+    const projModelTag = p.defaultModel ? `<span style="font-size:9px;color:#6b7280;display:block;margin-top:1px">${p.defaultModel}</span>` : '';
     h.innerHTML = `
       <span class='proj-toggle' data-a='toggle' title='${isCollapsed ? "Déplier" : "Replier"}'>${isCollapsed ? '▶' : '▼'}</span>
       <span class='proj-dot' style='background:${dotColor}' title='Couleur projet'></span>
-      <span class='name' title='${p.name}'>${p.name}</span>
+      <div style="flex:1;overflow:hidden">
+        <span class='name' title='${p.name}'>${p.name}</span>
+        ${projModelTag}
+      </div>
       <span class='proj-count'>${chatCount}</span>
+      <button class='icon-btn' data-a='model' title='Modèle par défaut du projet'>🤖</button>
       <button class='icon-btn' data-a='color' title='Changer couleur'>●</button>
       <button class='icon-btn' data-a='addchat' title='Nouveau chat'>＋</button>
       <button class='icon-btn' data-a='edit'    title='Renommer'>✎</button>
@@ -2854,6 +2905,7 @@ function renderChats() {
       if (a === "addchat") return createChat(p.id);
       if (a === "edit")    return renameProject(p.id);
       if (a === "del")     return deleteProject(p.id);
+      if (a === "model")   return setProjectDefaultModel(p.id, e.target);
       if (a === "color"){
         openColorPicker(p.id, e.target);
         return;
@@ -6155,7 +6207,7 @@ async function ghPullSilent() {
     if (raw.params)         S.params         = { ...DEF, ...raw.params };
     if (raw.model)          S.model          = raw.model;
     if (!window._userChangedModel) {
-      S.model = "gemini-2.5-flash";
+      S.model = "openai/gpt-oss-120b";
     }
 
     if (!S.chats.find(c => c.id === S.activeChat))
@@ -6412,7 +6464,7 @@ async function ghPull() {
     if (raw.params)        S.params        = { ...DEF, ...raw.params };
     if (raw.model)         S.model         = raw.model;
     // Toujours forcer le modèle par défaut après un pull
-    if (!window._userChangedModel) S.model = "gemini-2.5-flash";
+    if (!window._userChangedModel) S.model = "openai/gpt-oss-120b";
 
     if (!S.chats.find(c => c.id === S.activeChat))
       S.activeChat = S.chats[0]?.id || null;
@@ -6974,9 +7026,9 @@ document.addEventListener("click", e => {
 // INIT
 // ─────────────────────────────────────────────────
 
-// FORCE: Modèle par défaut = gemini-2.5-flash (économique, bon en sciences)
-S.model = "gemini-2.5-flash";
-localStorage.setItem("model", "gemini-2.5-flash");
+// FORCE: Modèle par défaut = gpt-oss-120b (gratuit via Groq)
+S.model = "openai/gpt-oss-120b";
+localStorage.setItem("model", "openai/gpt-oss-120b");
 
 // Configurer marked.js
 if (typeof marked !== "undefined") {
