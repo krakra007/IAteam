@@ -1334,7 +1334,8 @@
           "provider": "DEEPSEEK",
           "model": "deepseek-v4-flash"
         }
-      ]
+      ],
+      "_starred": true
     },
     {
       "id": "5fff138b-9c0c-4b5d-84b5-a717d5f768a5",
@@ -3720,7 +3721,8 @@
     {
       "id": "4a80a2bb-5a7f-49d2-b420-c20965d8067b",
       "name": "Export Control",
-      "color": "#e05c5c"
+      "color": "#e05c5c",
+      "defaultModel": "gemini-2.5-flash"
     },
     {
       "id": "7137fcd8-d654-4ebf-b6a6-cbc28674ab1c",
@@ -3819,6 +3821,6 @@
     "gemini-3.5-flash",
     "mistral-small-latest"
   ],
-  "savedAt": "2026-05-31T13:11:49.927Z",
+  "savedAt": "2026-05-31T13:12:20.586Z",
   "version": 2
 }
