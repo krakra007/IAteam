@@ -1372,7 +1372,7 @@
       <div class="search-results" id="searchResults"></div>
     </div>
     <div id="chatList"></div>
-    <div style="padding:6px 8px;font-size:9px;color:#4a4a5a;text-align:center;flex-shrink:0">BrAInShift v5.2</div>
+    <div style="padding:6px 8px;font-size:9px;color:#4a4a5a;text-align:center;flex-shrink:0">BrAInShift v5.3</div>
   </aside>
   <div class="resizer" id="resizer"></div>
 
@@ -3708,6 +3708,8 @@ async function generatePptxFromMarkdown(rawMarkdown, title) {
     alert('⚠ PptxGenJS non chargé. Vérifiez votre connexion internet.');
     return;
   }
+  // Convertir LaTeX → Unicode avant traitement PPTX
+  rawMarkdown = latexToUnicode(rawMarkdown);
   const pptx = new PptxGenJS();
   pptx.author = 'BrAInShift';
   pptx.title = title || 'Présentation';
@@ -3857,6 +3859,50 @@ async function generatePptxFromMarkdown(rawMarkdown, title) {
 // GÉNÉRATION DOCX (Word) via docx.js
 // ═══════════════════════════════════════════════════════════
 
+// ── Conversion LaTeX → Unicode pour fichiers (DOCX, PPTX) ──
+// KaTeX rend les formules dans l'aperçu HTML, mais Word/PowerPoint ne comprennent pas LaTeX.
+function latexToUnicode(text) {
+  let t = text;
+  t = t.replace(/\$\$([\s\S]*?)\$\$/g, (_, inner) => _convertLatexInner(inner));
+  t = t.replace(/\$([^$\n]+?)\$/g, (_, inner) => _convertLatexInner(inner));
+  return t;
+}
+function _convertLatexInner(latex) {
+  let t = latex.trim();
+  t = t.replace(/\\begin\{[^}]+\}/g, '').replace(/\\end\{[^}]+\}/g, '');
+  t = t.replace(/\\ce\{([^}]+)\}/g, '$1');
+  t = t.replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '$1/$2');
+  t = t.replace(/\\sqrt\{([^}]+)\}/g, '√$1');
+  const subMap = {'0':'₀','1':'₁','2':'₂','3':'₃','4':'₄','5':'₅','6':'₆','7':'₇','8':'₈','9':'₉',
+    'a':'ₐ','e':'ₑ','h':'ₕ','i':'ᵢ','j':'ⱼ','k':'ₖ','l':'ₗ','m':'ₘ','n':'ₙ','o':'ₒ','p':'ₚ',
+    'r':'ᵣ','s':'ₛ','t':'ₜ','u':'ᵤ','v':'ᵥ','x':'ₓ','+':'₊','-':'₋','=':'₌','(':'₍',')':'₎'};
+  t = t.replace(/_\{([^}]+)\}/g, (_, s) => [...s].map(c => subMap[c] || c).join(''));
+  t = t.replace(/_([0-9a-z+\-])/gi, (_, c) => subMap[c.toLowerCase()] || c);
+  const supMap = {'0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹',
+    '+':'⁺','-':'⁻','=':'⁼','(':'⁽',')':'⁾','n':'ⁿ','i':'ⁱ'};
+  t = t.replace(/\^\{([^}]+)\}/g, (_, s) => [...s].map(c => supMap[c] || c).join(''));
+  t = t.replace(/\^([0-9+\-ni])/gi, (_, c) => supMap[c.toLowerCase()] || c);
+  t = t.replace(/\\rightarrow/g, '→').replace(/\\leftarrow/g, '←').replace(/\\leftrightarrow/g, '↔');
+  t = t.replace(/\\Rightarrow/g, '⇒').replace(/\\Leftarrow/g, '⇐');
+  t = t.replace(/\\longrightarrow/g, '⟶').replace(/\\xrightarrow\{[^}]*\}/g, '→');
+  t = t.replace(/\\alpha/g,'α').replace(/\\beta/g,'β').replace(/\\gamma/g,'γ').replace(/\\delta/g,'δ');
+  t = t.replace(/\\epsilon/g,'ε').replace(/\\zeta/g,'ζ').replace(/\\eta/g,'η').replace(/\\theta/g,'θ');
+  t = t.replace(/\\lambda/g,'λ').replace(/\\mu/g,'μ').replace(/\\nu/g,'ν').replace(/\\pi/g,'π');
+  t = t.replace(/\\sigma/g,'σ').replace(/\\tau/g,'τ').replace(/\\phi/g,'φ').replace(/\\psi/g,'ψ');
+  t = t.replace(/\\omega/g,'ω').replace(/\\Omega/g,'Ω').replace(/\\Delta/g,'Δ').replace(/\\Sigma/g,'Σ');
+  t = t.replace(/\\rho/g,'ρ').replace(/\\kappa/g,'κ').replace(/\\chi/g,'χ');
+  t = t.replace(/\\times/g,'×').replace(/\\cdot/g,'·').replace(/\\div/g,'÷');
+  t = t.replace(/\\pm/g,'±').replace(/\\mp/g,'∓').replace(/\\approx/g,'≈').replace(/\\neq/g,'≠');
+  t = t.replace(/\\leq/g,'≤').replace(/\\geq/g,'≥').replace(/\\infty/g,'∞');
+  t = t.replace(/\\sum/g,'Σ').replace(/\\prod/g,'Π').replace(/\\int/g,'∫');
+  t = t.replace(/\\partial/g,'∂').replace(/\\nabla/g,'∇').replace(/\\degree/g,'°');
+  t = t.replace(/\\text\{([^}]+)\}/g, '$1').replace(/\\mathrm\{([^}]+)\}/g, '$1').replace(/\\mathbf\{([^}]+)\}/g, '$1');
+  t = t.replace(/\\[a-zA-Z]+/g, '');
+  t = t.replace(/[{}]/g, '');
+  t = t.replace(/\s+/g, ' ').trim();
+  return t;
+}
+
 async function generateDocxFromMarkdown(rawMarkdown, chatTitle) {
   console.log('[BrAInShift DOCX] Démarrage export…', typeof window.docx);
   if (typeof window.docx === 'undefined' || !window.docx) {
@@ -3866,6 +3912,9 @@ async function generateDocxFromMarkdown(rawMarkdown, chatTitle) {
   }
 
   try {
+
+  // Convertir LaTeX → Unicode avant traitement DOCX
+  rawMarkdown = latexToUnicode(rawMarkdown);
 
   const {
     Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
@@ -4502,6 +4551,9 @@ blockquote{border-left:3px solid #4abfbf;margin:10px 0;padding:8px 16px;color:#5
   }
 
   box.scrollTop = box.scrollHeight;
+  // Re-scroll après rendu des formules et images (KaTeX, hljs)
+  setTimeout(() => { box.scrollTop = box.scrollHeight; }, 100);
+  setTimeout(() => { box.scrollTop = box.scrollHeight; }, 500);
   if (typeof hljs !== 'undefined') hljs.highlightAll();
 }
 
