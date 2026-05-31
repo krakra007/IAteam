@@ -1,6 +1,13 @@
 {
   "chats": [
     {
+      "id": "d323dd1b-aec7-45d0-88ee-3e80cd71e16d",
+      "title": "Nouveau chat",
+      "projectId": null,
+      "messages": [],
+      "_lastActivity": 1780253845955
+    },
+    {
       "id": "37c93724-45b9-4c56-b72f-ddc93e5e2d48",
       "title": "C'est quoi un milieu anhydre",
       "projectId": null,
@@ -4001,13 +4008,13 @@
     "showThinking": false,
     "webSearch": true
   },
-  "model": "gemini-2.5-flash",
+  "model": "openai/gpt-oss-120b",
   "favoriteModels": [
     "openai/gpt-oss-120b",
     "claude-sonnet-4-6",
     "gemini-3.5-flash",
     "mistral-small-latest"
   ],
-  "savedAt": "2026-05-31T18:57:22.841Z",
+  "savedAt": "2026-05-31T18:57:31.699Z",
   "version": 2
 }
