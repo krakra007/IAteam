@@ -1,6 +1,13 @@
 {
   "chats": [
     {
+      "id": "ca4e7cb6-aa21-4e1c-88e3-65dc0722ba8b",
+      "title": "Nouveau chat",
+      "projectId": null,
+      "messages": [],
+      "_lastActivity": 1780249243145
+    },
+    {
       "id": "e26e2c6b-680d-4770-8476-b50b2e411af0",
       "title": "Génère le tableau en faisant attentoin au commmandes…",
       "projectId": null,
@@ -4043,13 +4050,13 @@
     "showThinking": false,
     "webSearch": true
   },
-  "model": "gemini-3.5-flash",
+  "model": "openai/gpt-oss-120b",
   "favoriteModels": [
     "openai/gpt-oss-120b",
     "claude-sonnet-4-6",
     "gemini-3.5-flash",
     "mistral-small-latest"
   ],
-  "savedAt": "2026-05-31T17:40:17.983Z",
+  "savedAt": "2026-05-31T17:40:48.375Z",
   "version": 2
 }
