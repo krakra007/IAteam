@@ -1356,10 +1356,21 @@
           "content": "## Peptide vs. liaison amide : même chose ou pas ?\n\n### 1. Définition générale\n\n- **Liaison amide**  \n  C’est une liaison covalente caractérisée par le groupe fonctionnel  \n  $$\\text{R–C(=O)–NH–R'}$$  \n  où le carbone du carbonyle ($C=O$) est lié à un atome d’azote.  \n  Elle se retrouve dans de très nombreux composés (acides aminés libres, médicaments, polymères, etc.).\n\n- **Liaison peptidique**  \n  C’est une **amidé** particulière qui unit **deux acides aminés** dans une chaîne protéique ou un peptide :  \n  $$\\text{NH}_2\\text{–CHR–CO}–\\text{NH}–\\text{CHR'}\\text{–COOH}$$  \n  Après condensation (perte d’une molécule d’eau), on obtient le **peptide bond** :  \n  $$\\text{–C(=O)–NH–}$$  \n  situé entre le groupe carbonyle du premier résidu et le groupe amine du second.\n\n### 2. Points de convergence\n\n| Aspect | Liaison amide | Liaison peptidique |\n|--------|----------------|--------------------|\n| **Structure** | $-C(=O)-NH-$ (planar, résonance) | Identique : $-C(=O)-NH-$ |\n| **Résonance** | Partage du doublet d’électrons entre $C=O$ et $C–N$ → caractère partiellement double | Même résonance, donc planéité et rigidité similaires |\n| **Caractéristiques physiques** | Haute énergie de liaison, faible rotation autour du $C–N$ | Même énergie de liaison (~ 350 kJ mol⁻¹) et même contrainte rotationnelle |\n| **Stabilité** | Relativement stable, mais hydrolysable sous conditions acides ou basiques | Hydrolysable par enzymes (protéases) ou conditions chimiques similaires |\n\n### 3. Différences essentielles\n\n| Différence | Liaison amide (générale) | Liaison peptidique |\n|------------|--------------------------|--------------------|\n| **Contexte d’apparition** | Présente dans tout composé contenant le groupe $-C(=O)NH-$ (ex. acétamide, médicaments, polymères) | Spécifique aux **polymères d’acides aminés** (peptides, protéines) |\n| **Environnement chimique** | Peut être entourée de groupes alkyles, aromatiques, etc. | Située entre le **carbone α** d’un résidu et le **groupement amine** du résidu suivant ; souvent flanquée de chaînes latérales (R‑groupes) variables |\n| **Fonction biologique** | Aucun rôle biologique intrinsèque (sauf si le composé est bioactif) | **Clé de la structure secondaire** (α‑hélice, feuillet β) et de la **fonction enzymatique** des protéines |\n| **Nomination** | « liaison amide » (terme chimique) | « liaison peptidique » (terme biochimique) |\n| **Possibilité de formation** | Synthèse chimique directe (acylation d’une amine) | Formée **in vivo** par les ribosomes (transcription‑traduction) ou **in vitro** par couplage d’acides aminés (chimie peptidique) |\n\n### 4. Schémas simplifiés\n\n- **Amide générique**  \n\n  $$\\begin{aligned}\n  \\text{R–C(=O)–NH–R'} \\\\\n  \\end{aligned}$$  \n\n- **Peptide bond dans un dipeptide**  \n\n  $$\\begin{aligned}\n  \\text{NH}_2\\text{–CHR–CO}–\\text{NH}–\\text{CHR'}\\text{–COOH}\n  \\end{aligned}$$  \n\n  Après perte d’eau :  \n\n  $$\\begin{aligned}\n  \\text{NH}_2\\text{–CHR–C(=O)–NH–CHR'}\\text{–COOH}\n  \\end{aligned}$$  \n\n### 5. Résumé\n\n- **Toutes les liaisons peptidiques sont des liaisons amides**, mais **toutes les liaisons amides ne sont pas des liaisons peptidiques**.  \n- La distinction repose sur le **contexte biologique** (liaison entre deux résidus d’acides aminés) et sur la **terminologie** (« peptidique » pour les protéines, « amide » pour le groupe fonctionnel en chimie organique).  \n\nEn pratique, lorsqu’on parle de **peptide bond**, on fait référence à la même structure chimique que l’amide, mais avec les implications structurales et fonctionnelles propres aux biomolécules.",
           "provider": "GROQ",
           "model": "openai/gpt-oss-120b"
+        },
+        {
+          "role": "user",
+          "content": "les liaisons dites peptire et amide est-ce ma meme chose",
+          "_text": "les liaisons dites peptire et amide est-ce ma meme chose"
+        },
+        {
+          "role": "assistant",
+          "content": "## Réponse courte\n\n- **Liaison amide** : groupe fonctionnel $‑C(=O)‑NH‑$ présent dans de nombreux composés organiques (acétamide, médicaments, polymères, etc.).  \n- **Liaison peptidique** : **une amide spécifique** qui relie deux acides aminés dans un peptide ou une protéine.  \n\n**Donc :** toute liaison peptidique est une amide, mais toutes les amides ne sont pas des liaisons peptidiques. La différence réside uniquement dans le contexte : « peptidique » désigne la liaison amide entre résidus d’acides aminés.",
+          "provider": "GROQ",
+          "model": "openai/gpt-oss-120b"
         }
       ],
       "_starred": true,
-      "_lastActivity": 1780207617242
+      "_lastActivity": 1780207639357
     },
     {
       "id": "5fff138b-9c0c-4b5d-84b5-a717d5f768a5",
@@ -3820,7 +3831,9 @@
       "prompt": "Apporter la même réponse en anglais après la réponse en français."
     }
   ],
-  "activeProfiles": [],
+  "activeProfiles": [
+    "40ba6b82-d96a-418e-838c-44c792873ca7"
+  ],
   "params": {
     "temperature": 0.2,
     "top_p": 0,
@@ -3844,6 +3857,6 @@
     "gemini-3.5-flash",
     "mistral-small-latest"
   ],
-  "savedAt": "2026-05-31T06:07:00.854Z",
+  "savedAt": "2026-05-31T06:07:20.507Z",
   "version": 2
 }
