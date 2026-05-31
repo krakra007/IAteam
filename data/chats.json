@@ -1,6 +1,13 @@
 {
   "chats": [
     {
+      "id": "44b8e3df-e38e-4c88-89a4-b8dc393e6757",
+      "title": "Nouveau chat",
+      "projectId": null,
+      "messages": [],
+      "_lastActivity": 1780212722239
+    },
+    {
       "id": "023b10e4-84c0-4290-b641-9da51b5c0152",
       "title": "⑂ ⑂ Slides CEX ML",
       "projectId": "4a80a2bb-5a7f-49d2-b420-c20965d8067b",
@@ -3857,6 +3864,6 @@
     "gemini-3.5-flash",
     "mistral-small-latest"
   ],
-  "savedAt": "2026-05-31T07:31:57.541Z",
+  "savedAt": "2026-05-31T07:32:02.252Z",
   "version": 2
 }
