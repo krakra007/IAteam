@@ -1372,7 +1372,7 @@
       <div class="search-results" id="searchResults"></div>
     </div>
     <div id="chatList"></div>
-    <div style="padding:6px 8px;font-size:9px;color:#4a4a5a;text-align:center;flex-shrink:0">BrAInShift v5.3</div>
+    <div style="padding:6px 8px;font-size:9px;color:#4a4a5a;text-align:center;flex-shrink:0">BrAInShift v5.4</div>
   </aside>
   <div class="resizer" id="resizer"></div>
 
@@ -3294,6 +3294,43 @@ function formatAssistantContent(text) {
     }
   });
   html = collapseDiv.innerHTML;
+
+  // ── Post-traitement : convertir les commandes LaTeX orphelines (sans $...$) ──
+  // Certains modèles écrivent _{n}, \rightarrow, ^{2+} etc. dans les tableaux sans les envelopper dans $...$
+  // On les convertit en Unicode pour un affichage propre
+  html = html.replace(/(?<![<\w])\\rightarrow(?![a-zA-Z])/g, '→');
+  html = html.replace(/(?<![<\w])\\leftarrow(?![a-zA-Z])/g, '←');
+  html = html.replace(/(?<![<\w])\\leftrightarrow(?![a-zA-Z])/g, '↔');
+  html = html.replace(/(?<![<\w])\\Rightarrow(?![a-zA-Z])/g, '⇒');
+  html = html.replace(/(?<![<\w])\\longrightarrow(?![a-zA-Z])/g, '⟶');
+  html = html.replace(/(?<![<\w])\\times(?![a-zA-Z])/g, '×');
+  html = html.replace(/(?<![<\w])\\cdot(?![a-zA-Z])/g, '·');
+  html = html.replace(/(?<![<\w])\\pm(?![a-zA-Z])/g, '±');
+  html = html.replace(/(?<![<\w])\\approx(?![a-zA-Z])/g, '≈');
+  html = html.replace(/(?<![<\w])\\neq(?![a-zA-Z])/g, '≠');
+  html = html.replace(/(?<![<\w])\\leq(?![a-zA-Z])/g, '≤');
+  html = html.replace(/(?<![<\w])\\geq(?![a-zA-Z])/g, '≥');
+  html = html.replace(/(?<![<\w])\\infty(?![a-zA-Z])/g, '∞');
+  html = html.replace(/(?<![<\w])\\Delta(?![a-zA-Z])/g, 'Δ');
+  html = html.replace(/(?<![<\w])\\alpha(?![a-zA-Z])/g, 'α');
+  html = html.replace(/(?<![<\w])\\beta(?![a-zA-Z])/g, 'β');
+  html = html.replace(/(?<![<\w])\\gamma(?![a-zA-Z])/g, 'γ');
+  html = html.replace(/(?<![<\w])\\sigma(?![a-zA-Z])/g, 'σ');
+  html = html.replace(/(?<![<\w])\\pi(?![a-zA-Z])/g, 'π');
+  html = html.replace(/(?<![<\w])\\mu(?![a-zA-Z])/g, 'μ');
+  html = html.replace(/(?<![<\w])\\omega(?![a-zA-Z])/g, 'ω');
+  // Indices orphelins : _{texte} → subscript Unicode (pas dans les balises HTML)
+  const subMap2 = {'0':'₀','1':'₁','2':'₂','3':'₃','4':'₄','5':'₅','6':'₆','7':'₇','8':'₈','9':'₉',
+    'a':'ₐ','e':'ₑ','i':'ᵢ','n':'ₙ','o':'ₒ','x':'ₓ','+':'₊','-':'₋'};
+  html = html.replace(/(?<!<[^>]*)_\{([^}]{1,10})\}/g, (_, s) =>
+    [...s].map(c => subMap2[c.toLowerCase()] || c).join('')
+  );
+  // Exposants orphelins : ^{texte} → superscript Unicode
+  const supMap2 = {'0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹',
+    '+':'⁺','-':'⁻','n':'ⁿ','i':'ⁱ'};
+  html = html.replace(/(?<!<[^>]*)\^\{([^}]{1,10})\}/g, (_, s) =>
+    [...s].map(c => supMap2[c.toLowerCase()] || c).join('')
+  );
 
   return html;
 }
