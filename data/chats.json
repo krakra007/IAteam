@@ -2,10 +2,22 @@
   "chats": [
     {
       "id": "e26e2c6b-680d-4770-8476-b50b2e411af0",
-      "title": "Nouveau chat",
+      "title": "Génère le tableau en faisant attentoin au commmandes…",
       "projectId": null,
-      "messages": [],
-      "_lastActivity": 1780248603475
+      "messages": [
+        {
+          "role": "user",
+          "content": "Génère le tableau en faisant attentoin au commmandes latex",
+          "_text": "Génère le tableau en faisant attentoin au commmandes latex"
+        },
+        {
+          "role": "assistant",
+          "content": "## Tableau LaTeX\n\nVoici un exemple de tableau réalisé avec les commandes LaTeX :\n\n$$\n\\begin{tabular}{|c|c|c|}\n\\hline\n\\textbf{Produit} & \\textbf{Quantité} & \\textbf{Prix (€/unité)} \\\\\n\\hline\nPomme & 120 & 0,30 \\\\\n\\hline\nBanane & 85 & 0,25 \\\\\n\\hline\nCerise & 60 & 1,20 \\\\\n\\hline\n\\end{tabular}\n$$\n\n- **\\textbf{Produit}** : nom de l’article.  \n- **\\textbf{Quantité}** : nombre d’unités disponibles.  \n- **\\textbf{Prix (€/unité)}** : coût unitaire en euros.  ",
+          "provider": "GROQ",
+          "model": "openai/gpt-oss-120b"
+        }
+      ],
+      "_lastActivity": 1780248639220
     },
     {
       "id": "f72e24e9-c1aa-4554-ac5d-26807673ad91",
@@ -4016,6 +4028,6 @@
     "gemini-3.5-flash",
     "mistral-small-latest"
   ],
-  "savedAt": "2026-05-31T17:30:26.354Z",
+  "savedAt": "2026-05-31T17:30:40.913Z",
   "version": 2
 }
