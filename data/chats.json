@@ -2,10 +2,22 @@
   "chats": [
     {
       "id": "44b8e3df-e38e-4c88-89a4-b8dc393e6757",
-      "title": "Nouveau chat",
+      "title": "Quand on dit que des chaiens proteines sont solvaté…",
       "projectId": null,
-      "messages": [],
-      "_lastActivity": 1780212722239
+      "messages": [
+        {
+          "role": "user",
+          "content": "quand on dit que des chaiens proteines sont solvaté par l'eau à quelle réaction pense t on?",
+          "_text": "quand on dit que des chaiens proteines sont solvaté par l'eau à quelle réaction pense t on?"
+        },
+        {
+          "role": "assistant",
+          "content": "## Solvatation des chaînes protéiques par l’eau  \n\nLorsque l’on dit que des **chaînes protéiques** sont solvatées par l’eau, on fait référence à la **réaction d’hydratation (ou de solvatation)** :\n\n\\[\n\\text{Protéine} + n\\,\\mathrm{H_{2}O} \\;\\longrightarrow\\; \\text{Protéine}\\cdot(\\mathrm{H_{2}O})_{n}\n\\]\n\nCette « réaction » n’est pas une transformation chimique covalente (comme l’hydrolyse qui cliverait les liaisons peptidiques), mais un **processus physique‑chimique** où les molécules d’eau s’associent aux groupes fonctionnels de la protéine par :\n\n- **Liaisons hydrogène** entre les atomes d’oxygène ou d’azote polaires de la protéine et les molécules d’eau.  \n- **Interactions ioniques** entre les résidus chargés (ex. $ \\mathrm{NH_{3}^{+}}$, $ \\mathrm{COO^{-}}$) et les dipôles de l’eau.  \n- **Effet hydrophobe** : les parties non polaires de la chaîne sont entourées d’une « cage » d’eau structurée, ce qui contribue à la stabilité globale.\n\n### Points clés\n\n- **Hydratation** = association non covalente d’eau à la surface de la protéine.  \n- **Pas d’hydrolyse** : les liaisons peptidiques restent intactes ; aucune coupure de chaîne n’a lieu.  \n- **Stabilité** : la solvatation augmente la solubilité et stabilise la conformation native de la protéine.  \n- **Équilibre dynamique** : les molécules d’eau se lient et se détachent continuellement, créant un environnement fluide autour de la protéine.  \n\nEn résumé, la solvatation des protéines par l’eau correspond à une **hydratation** où l’eau forme un réseau de liaisons hydrogène et d’interactions ioniques avec les résidus polaires et crée un environnement hydrophobe autour des parties non polaires, assurant ainsi la stabilité et la fonctionnalité de la macromolécule.",
+          "provider": "GROQ",
+          "model": "openai/gpt-oss-120b"
+        }
+      ],
+      "_lastActivity": 1780212738599
     },
     {
       "id": "023b10e4-84c0-4290-b641-9da51b5c0152",
@@ -3838,9 +3850,7 @@
       "prompt": "Apporter la même réponse en anglais après la réponse en français."
     }
   ],
-  "activeProfiles": [
-    "40ba6b82-d96a-418e-838c-44c792873ca7"
-  ],
+  "activeProfiles": [],
   "params": {
     "temperature": 0.2,
     "top_p": 0,
@@ -3864,6 +3874,6 @@
     "gemini-3.5-flash",
     "mistral-small-latest"
   ],
-  "savedAt": "2026-05-31T07:32:02.252Z",
+  "savedAt": "2026-05-31T07:32:20.868Z",
   "version": 2
 }
