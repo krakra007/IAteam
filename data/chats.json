@@ -1,6 +1,19 @@
 {
   "chats": [
     {
+      "id": "0f6c2b6e-5c3a-4197-b530-e09244c5f286",
+      "title": "M'énumérer dans un tableau les différentes types…",
+      "projectId": "06407384-63b3-4383-b87c-6248d2482d0a",
+      "messages": [
+        {
+          "role": "user",
+          "content": "peux tu m'énumérer dans un tableau les différentes types d'enzimes existant dans les organismes biologiques et leurs roles dans les différents procéssus.",
+          "_text": "peux tu m'énumérer dans un tableau les différentes types d'enzimes existant dans les organismes biologiques et leurs roles dans les différents procéssus."
+        }
+      ],
+      "_lastActivity": 1780237506640
+    },
+    {
       "id": "023b10e4-84c0-4290-b641-9da51b5c0152",
       "title": "⑂ ⑂ Slides CEX ML",
       "projectId": "4a80a2bb-5a7f-49d2-b420-c20965d8067b",
@@ -3732,7 +3745,8 @@
     {
       "id": "06407384-63b3-4383-b87c-6248d2482d0a",
       "name": "Chimie Organique",
-      "color": "#4a6fd4"
+      "color": "#4a6fd4",
+      "defaultModel": "gemini-2.5-flash"
     }
   ],
   "profiles": [
@@ -3814,13 +3828,13 @@
     "showThinking": false,
     "webSearch": true
   },
-  "model": "openai/gpt-oss-120b",
+  "model": "gemini-2.5-flash",
   "favoriteModels": [
     "openai/gpt-oss-120b",
     "claude-sonnet-4-6",
     "gemini-3.5-flash",
     "mistral-small-latest"
   ],
-  "savedAt": "2026-05-31T14:22:06.858Z",
+  "savedAt": "2026-05-31T14:25:25.769Z",
   "version": 2
 }
