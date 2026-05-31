@@ -1228,9 +1228,22 @@
           "model": "gemini-3.5-flash",
           "_artifactContent": "| Étape | Description | Responsable | Échéance | Statut |\n| :--- | :--- | :--- | :--- | :--- |\n| Phase 1 | Cadrage du projet et définition des objectifs | Chef de projet | 15/06/2026 | Terminé |\n| Phase 2 | Analyse des besoins et spécifications | Analyste Business | 30/06/2026 | En cours |\n| Phase 3 | Développement et configuration | Équipe Technique | 15/08/2026 | À planifier |\n| Phase 4 | Recette et tests utilisateurs | Équipe QA | 31/08/2026 | À planifier |\n| Phase 5 | Déploiement et conduite du changement | Responsable Change | 15/09/2026 | À planifier |",
           "_artifactTitle": "Enlève le préamubune de l'échange du fichier word créé…"
+        },
+        {
+          "role": "user",
+          "content": "non généère le tableau avec les enzymes comme un fichier word",
+          "_text": "non généère le tableau avec les enzymes comme un fichier word"
+        },
+        {
+          "role": "assistant",
+          "content": "Voici le fichier Word contenant uniquement le tableau des principales enzymes.\n\n\n\n📄 **Tableau des Principales Enzymes** — 14 lignes → *ouvert dans le panneau Artifact*\n",
+          "provider": "GOOGLE GEMINI",
+          "model": "gemini-3.5-flash",
+          "_artifactContent": "## Tableau des Principales Enzymes\n\n| Enzyme | Source / Localisation | Substrat | Produits | pH optimal |\n| :--- | :--- | :--- | :--- | :--- |\n| **Amylase salivaire** | Glandes salivaires | Amidon | Maltose, dextrines | $6,7 - 7,0$ |\n| **Pepsine** | Estomac | Protéines | Peptides | $1,5 - 2,0$ |\n| **Amylase pancréatique** | Pancréas | Amidon | Maltose, maltotriose | $6,7 - 7,0$ |\n| **Trypsine** | Pancréas | Protéines, peptides | Peptides courts | $7,5 - 8,5$ |\n| **Chymotrypsine** | Pancréas | Protéines, peptides | Peptides, acides aminés | $7,5 - 8,5$ |\n| **Lipase pancréatique** | Pancréas | Triglycérides | Acides gras, monoglycérides | $8,0$ |\n| **Maltase** | Intestin grêle | Maltose | Glucose | $6,1 - 6,8$ |\n| **Lactase** | Intestin grêle | Lactose | Glucose + Galactose | $6,0$ |\n| **Sucrase** | Intestin grêle | Saccharose | Glucose + Fructose | $5,0 - 7,0$ |\n| **Peptidases** | Intestin grêle | Peptides | Acides aminés | $7,0 - 8,0$ |",
+          "_artifactTitle": "Tableau des Principales Enzymes"
         }
       ],
-      "_lastActivity": 1780240389599
+      "_lastActivity": 1780240461617
     },
     {
       "id": "0f923a7e-2a4a-4307-b532-67595f72624b",
@@ -3910,6 +3923,6 @@
     "gemini-3.5-flash",
     "mistral-small-latest"
   ],
-  "savedAt": "2026-05-31T15:13:17.328Z",
+  "savedAt": "2026-05-31T15:14:29.174Z",
   "version": 2
 }
