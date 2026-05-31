@@ -59,9 +59,20 @@
           "content": "## HYDROLYSE DES LIAISONS PEPTIDIQUES\n---\n**SYNTHÈSE GLOBALE**  \n*Définition* : Rupture covalente d’une liaison amide entre deux résidus d’acides aminés sous l’action de molécules d’eau, conduisant à la formation de deux fragments peptidiques ou d’acides aminés libres.\n\n| Entité Chimique | Rôle Spécifique | Résultat du Processus |\n| :--- | :--- | :--- |\n| $$\\mathrm{Peptide\\;–\\;CO\\!-\\!NH\\!-\\!R}$$ | Substrat contenant la liaison amide à cliver | Formation de $$\\mathrm{Peptide\\;–\\;COOH}$$ et $$\\mathrm{H_2N\\!-\\!R}$$ |\n| $$\\mathrm{H_2O}$$ | Nucléophile qui attaque le carbone carbonyle | Fournit le proton et l’ion hydroxyde nécessaires à la scission |\n| Enzyme (ex. peptidase, protéase) ou catalyseur acide/base | **Nucléofuge** qui active l’eau ou stabilise le **transition state** | Accélère la réaction en abaissant $$\\Delta G^{\\ddagger}$$ |\n\n**DÉVELOPPEMENT MÉCANISTIQUE ÉTENDU**  \n• **Géométrie et Nuages Électroniques**  \n  - **Hybridation** : Le carbone carbonyle de la liaison amide est en **$sp^{2}$**, l’azote en **$sp^{2}$** (planarité partielle).  \n  - **Densité Électronique** : Le **lone pair** de l’oxygène de l’eau agit comme **nucléophile** fort, tandis que le **dipôle** de la liaison C=O rend le carbone **électrophile**.\n\n• **Cinétique et Flux Électronique**  \n  - **Interaction Orbitalaire** : Le flux d’électrons part de l’**Orbitale Haute Occupée** du **lone pair** de l’oxygène de $$\\mathrm{H_2O}$$ vers l’**Orbitale Basse Vacante** du carbone carbonyle, formant un **intermédiaire tétraédrique**.  \n  - **Équations** :  \n\n    $$\\mathrm{Peptide\\;–\\;CO\\!-\\!NH\\!-\\!R + H_2O \\;\\xrightarrow{k}\\; Peptide\\;–\\;COOH + H_2N\\!-\\!R}$$  \n\n    L’énergie d’activation du processus est décrite par  \n\n    $$\\Delta G^{\\ddagger}= \\Delta H^{\\ddagger} - T\\Delta S^{\\ddagger}$$  \n\n    où $$\\Delta H^{\\ddagger}$$ correspond à la rupture de la liaison amide et $$\\Delta S^{\\ddagger}$$ à l’augmentation d’entropie liée à la formation de deux molécules distinctes.\n\n• **Biologie et Cancérologie**  \n  - **Application Cellulaire** : L’hydrolyse des liaisons peptidiques est essentielle à la **dégradation protéique** (ex. système ubiquitine‑protéasome, lysosomes) et à la **recyclage des acides aminés**.  \n  - **Implication Oncologique** : Une dérégulation de l’activité des **peptidases** (ex. cathepsines, métalloprotéinases) favorise la **remodelage de la matrice extracellulaire**, la **migration tumorale** et la **libération de facteurs de croissance**. Les inhibiteurs de ces enzymes constituent des cibles thérapeutiques recherchées en oncologie.",
           "provider": "GROQ",
           "model": "openai/gpt-oss-120b"
+        },
+        {
+          "role": "user",
+          "content": "quand on dit hydrolyse des liaisons peptidique on pense à uoi",
+          "_text": "quand on dit hydrolyse des liaisons peptidique on pense à uoi"
+        },
+        {
+          "role": "assistant",
+          "content": "## Hydrolyse des liaisons peptidiques  \n\nLorsque l’on parle d’**hydrolyse des liaisons peptidiques**, on fait référence à la **rupture covalente d’une liaison amide** (C=O‑NH) entre deux résidus d’acides aminés sous l’action de l’eau.  \n\n- **Réaction générale**  \n  \\[\n  \\text{Peptide‑CO‑NH‑R} + \\mathrm{H_2O}\n  \\;\\longrightarrow\\;\n  \\text{Peptide‑COOH} + \\text{H_2N‑R}\n  \\]\n\n- **Mécanisme**  \n  1. L’eau agit comme **nucléophile** et attaque le carbone carbonyle électrophile de la liaison amide.  \n  2. Un intermédiaire tétraédrique se forme, puis se décompose en un **acide carboxylique** (C‑terminus) et une **amine** (N‑terminus).  \n\n- **Catalyseurs**  \n  - **Acides ou bases fortes** (hydrolyse chimique).  \n  - **Enzymes** : peptidases / protéases (hydrolyse enzymatique, beaucoup plus rapide et spécifique).  \n\n- **Conséquence**  \n  - Séparation du peptide en fragments plus courts ou en acides aminés libres, processus essentiel à la **dégradation protéique** (digestion, recyclage cellulaire).  \n\nEn résumé, l’hydrolyse des liaisons peptidiques correspond à la **coupure d’une liaison amide par l’eau**, générant deux extrémités fonctionnelles (COOH et NH₂).",
+          "provider": "GROQ",
+          "model": "openai/gpt-oss-120b"
         }
       ],
-      "_lastActivity": 1780213185091
+      "_lastActivity": 1780213205953
     },
     {
       "id": "023b10e4-84c0-4290-b641-9da51b5c0152",
@@ -3895,8 +3906,7 @@
     }
   ],
   "activeProfiles": [
-    "40ba6b82-d96a-418e-838c-44c792873ca7",
-    "chemistry"
+    "40ba6b82-d96a-418e-838c-44c792873ca7"
   ],
   "params": {
     "temperature": 0.2,
@@ -3921,6 +3931,6 @@
     "gemini-3.5-flash",
     "mistral-small-latest"
   ],
-  "savedAt": "2026-05-31T07:39:48.181Z",
+  "savedAt": "2026-05-31T07:40:07.640Z",
   "version": 2
 }
