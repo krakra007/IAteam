@@ -8,25 +8,6 @@
       "_lastActivity": 1780330358022
     },
     {
-      "id": "f9b6b81e-ba4e-4337-8ea6-431094ab16a6",
-      "title": "Vérifier la réponse précédente",
-      "projectId": null,
-      "messages": [
-        {
-          "role": "user",
-          "content": "Vérifier la réponse précédente",
-          "_text": "Vérifier la réponse précédente"
-        },
-        {
-          "role": "assistant",
-          "content": "Je n'ai pas de réponse précédente à vérifier. Pourriez-vous me fournir la réponse que vous souhaitez que je vérifie ?",
-          "provider": "GOOGLE GEMINI",
-          "model": "gemini-2.5-flash"
-        }
-      ],
-      "_lastActivity": 1780325563609
-    },
-    {
       "id": "a1780150-eedf-49f5-a1f0-a49ad3f1f8d5",
       "title": "Quand on dit la créatinine est à 150 de quelle unité…",
       "projectId": null,
@@ -2336,6 +2317,6 @@
     "gemini-3.5-flash",
     "gemini-2.5-flash"
   ],
-  "savedAt": "2026-06-01T16:12:46.786Z",
+  "savedAt": "2026-06-01T16:12:50.351Z",
   "version": 2
 }
