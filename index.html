@@ -2455,8 +2455,21 @@ function ensureLandingBlankChat() {
     }
   }
 
-  // ── 2. Toujours ouvrir sur un chat vide ──
-  // Réutiliser s'il en existe déjà un
+  // ── 2. ⚠ FIX BUG "nouvelle conversation involontaire" ⚠ ──
+  // Si l'utilisateur est ACTUELLEMENT dans une conversation qui a des messages,
+  // on NE LE BASCULE PAS vers un chat vide. Sinon il se retrouve à taper Q2 dans
+  // une conv vierge, créant une nouvelle conversation parasite (le modèle ne voit
+  // plus le contexte de Q1+R1, et le titre du chat vide devient Q2).
+  // Cette fonction n'est appropriée que :
+  //   - au démarrage de l'app (landing page)
+  //   - ou si l'utilisateur n'a aucun chat actif valide
+  const currentChat = activeChat();
+  if (currentChat && Array.isArray(currentChat.messages) && currentChat.messages.length > 0) {
+    // L'utilisateur est dans une vraie conversation → on respecte son contexte
+    return;
+  }
+
+  // ── 3. Sinon : ouvrir sur un chat vide (réutiliser ou créer) ──
   const existing = S.chats.find(c =>
     !c.projectId && c.title === "Nouveau chat" && Array.isArray(c.messages) && c.messages.length === 0
   );
