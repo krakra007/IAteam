@@ -3983,9 +3983,7 @@
       "prompt": "Apporter la même réponse en anglais après la réponse en français."
     }
   ],
-  "activeProfiles": [
-    "40ba6b82-d96a-418e-838c-44c792873ca7"
-  ],
+  "activeProfiles": [],
   "params": {
     "temperature": 0.2,
     "top_p": 0,
@@ -4009,6 +4007,6 @@
     "gemini-3.5-flash",
     "mistral-small-latest"
   ],
-  "savedAt": "2026-06-01T17:19:51.761Z",
+  "savedAt": "2026-06-01T18:33:49.305Z",
   "version": 2
 }
