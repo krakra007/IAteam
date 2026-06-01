@@ -1,6 +1,25 @@
 {
   "chats": [
     {
+      "id": "a1780150-eedf-49f5-a1f0-a49ad3f1f8d5",
+      "title": "Quand on dit la créatinine est à 150 de quelle unité…",
+      "projectId": null,
+      "messages": [
+        {
+          "role": "user",
+          "content": "quand on dit la créatinine est à 150 de quelle unité parle t on. Il s'agit d'une information concernatn mon père en bulgarie",
+          "_text": "quand on dit la créatinine est à 150 de quelle unité parle t on. Il s'agit d'une information concernatn mon père en bulgarie"
+        },
+        {
+          "role": "assistant",
+          "content": "## Unité de la créatinine à 150\n\nLorsque l’on indique **« créatinine à 150 »**, l’unité la plus couramment utilisée en Europe (et donc en Bulgarie) est :\n\n**µmol · L⁻¹** (micromoles par litre)\n\n### Pourquoi cette unité ?\n\n- **Pratique clinique** : la plupart des laboratoires européens rapportent la créatinine sérique en µmol · L⁻¹.\n- **Correspondance avec les valeurs de référence** : les valeurs normales se situent généralement entre **60 et 110 µmol · L⁻¹** chez l’adulte.\n- **Conversion vers les unités américaines** :  \n  $$\\text{mg · dL}^{-1}= \\frac{\\text{µmol · L}^{-1}}{88,4}$$  \n  Ainsi, **150 µmol · L⁻¹ ≈ 1,70 mg · dL⁻¹**.\n\n### Interprétation clinique\n\n| Valeur (µmol · L⁻¹) | Interprétation possible |\n|---------------------|--------------------------|\n| < 60                | Possible insuffisance rénale aiguë ou chronique très précoce |\n| 60 – 110            | Plage normale |\n| 110 – 150           | Légère élévation, à surveiller |\n| > 150               | Élément de suspicion d’insuffisance rénale modérée à sévère, à confirmer avec d’autres paramètres (clairance, eGFR, etc.) |\n\n### Points à vérifier pour votre père\n\n1. **Contexte clinique** : âge, antécédents (hypertension, diabète, maladie rénale), prise de médicaments néphrotoxiques.\n2. **Valeur exacte** : s’assurer qu’il s’agit bien de **µmol · L⁻¹** et non d’une autre unité (parfois les laboratoires indiquent mg · dL⁻¹, mais 150 mg · dL⁻¹ serait extrêmement élevé et improbable).\n3. **Évolution** : comparer avec des mesures antérieures pour détecter une tendance à la hausse ou à la stabilisation.\n4. **Compléments d’analyse** : créatinine sérique, débit de filtration glomérulaire estimé (eGFR), protéinurie, etc.\n\n### Recommandations\n\n- **Consulter le médecin traitant** : il pourra interpréter la valeur dans le contexte global de santé de votre père.\n- **Demander le rapport complet** du laboratoire pour vérifier l’unité et les valeurs de référence utilisées.\n- **Surveiller régulièrement** la créatinine si une anomalie est détectée, afin d’ajuster le suivi ou le traitement si nécessaire.",
+          "provider": "GROQ",
+          "model": "openai/gpt-oss-120b"
+        }
+      ],
+      "_lastActivity": 1780322133554
+    },
+    {
       "id": "0932628d-82d5-4318-bb92-37161ee787d0",
       "title": "Nouveau chat",
       "projectId": null,
@@ -2217,12 +2236,12 @@
     "showThinking": false,
     "webSearch": true
   },
-  "model": "gemini-3.5-flash",
+  "model": "openai/gpt-oss-120b",
   "favoriteModels": [
     "openai/gpt-oss-120b",
     "claude-sonnet-4-6",
     "gemini-3.5-flash"
   ],
-  "savedAt": "2026-06-01T13:53:55.483Z",
+  "savedAt": "2026-06-01T13:55:36.232Z",
   "version": 2
 }
