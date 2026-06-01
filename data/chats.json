@@ -1,6 +1,13 @@
 {
   "chats": [
     {
+      "id": "7f429fec-3b19-4209-9f31-fa0db75de4cf",
+      "title": "Nouveau chat",
+      "projectId": null,
+      "messages": [],
+      "_lastActivity": 1780330358022
+    },
+    {
       "id": "f9b6b81e-ba4e-4337-8ea6-431094ab16a6",
       "title": "Vérifier la réponse précédente",
       "projectId": null,
@@ -2329,6 +2336,6 @@
     "gemini-3.5-flash",
     "gemini-2.5-flash"
   ],
-  "savedAt": "2026-06-01T16:12:32.688Z",
+  "savedAt": "2026-06-01T16:12:38.030Z",
   "version": 2
 }
