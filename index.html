@@ -3022,8 +3022,46 @@ function latexToUnicode(latex) {
   // Environnements (supprimer)
   t = t.replace(/\\begin\{[^}]*\}/g, '');
   t = t.replace(/\\end\{[^}]*\}/g, '');
-  // \ce{...} chimie
-  t = t.replace(/\\ce\{([^}]*)\}/g, '$1');
+  // \ce{...} chimie (mhchem) → Unicode propre
+  // ex : \ce{H2O} → H₂O, \ce{Fe^3+} → Fe³⁺, \ce{H+ + OH- -> H2O} → H⁺ + OH⁻ → H₂O
+  t = t.replace(/\\ce\{([^}]*)\}/g, function(_, inner) {
+    var s = inner;
+    // Flèches mhchem
+    s = s.replace(/<=>/g, '\u21cc');     // ⇌
+    s = s.replace(/<->/g, '\u2194');     // ↔
+    s = s.replace(/->/g, '\u2192');      // →
+    s = s.replace(/<-/g, '\u2190');      // ←
+    // Exposants : ^{texte} ou ^c
+    var supMapCe = {'0':'\u2070','1':'\u00b9','2':'\u00b2','3':'\u00b3','4':'\u2074','5':'\u2075','6':'\u2076','7':'\u2077','8':'\u2078','9':'\u2079','+':'\u207a','-':'\u207b','=':'\u207c','(':'\u207d',')':'\u207e','n':'\u207f','i':'\u2071'};
+    s = s.replace(/\^\{([^}]+)\}/g, function(_, x) {
+      return x.split('').map(function(c){ return supMapCe[c] || c; }).join('');
+    });
+    s = s.replace(/\^([0-9+\-]+)/g, function(_, x) {
+      return x.split('').map(function(c){ return supMapCe[c] || c; }).join('');
+    });
+    // Indices explicites : _{texte} ou _c
+    var subMapCe = {'0':'\u2080','1':'\u2081','2':'\u2082','3':'\u2083','4':'\u2084','5':'\u2085','6':'\u2086','7':'\u2087','8':'\u2088','9':'\u2089','+':'\u208a','-':'\u208b','(':'\u208d',')':'\u208e'};
+    s = s.replace(/_\{([^}]+)\}/g, function(_, x) {
+      return x.split('').map(function(c){ return subMapCe[c] || c; }).join('');
+    });
+    s = s.replace(/_([0-9])/g, function(_, c){ return subMapCe[c] || c; });
+    // Indices implicites mhchem : nombres APRÈS une lettre/parenthèse de fermeture
+    // ex : H2O → H₂O, Fe2O3 → Fe₂O₃, Ca(OH)2 → Ca(OH)₂
+    // Ne PAS toucher : nombres EN DÉBUT (coefficients stœchio : 2H₂O), nombres après " " ou "/"
+    s = s.replace(/([A-Za-z\)])([0-9]+)/g, function(_, prefix, digits) {
+      return prefix + digits.split('').map(function(c){ return subMapCe[c] || c; }).join('');
+    });
+    // Charges implicites mhchem : + ou - en fin d'espèce → exposant
+    // ex : OH- → OH⁻, H+ → H⁺, Cl- → Cl⁻, Na+ → Na⁺
+    // Critère : + ou - précédé d'une lettre / indice / parenthèse fermante, et suivi
+    // d'un espace, d'une fin de chaîne ou d'un opérateur de réaction.
+    s = s.replace(/([A-Za-z\u2080-\u2089\)])([+\-])(?=\s|$|[\u2192\u2190\u2194\u21cc,;])/g,
+      function(_, prefix, sign) {
+        return prefix + (sign === '+' ? '\u207a' : '\u207b');
+      });
+    // États (l), (g), (aq), (s) : laisser tel quel
+    return s;
+  });
   // \text{}, \mathrm{}, etc. -> contenu brut
   t = t.replace(/\\text(?:rm|bf|it|sf|tt)?\{([^}]*)\}/g, '$1');
   t = t.replace(/\\math(?:rm|bf|it|sf|bb|cal|frak)?\{([^}]*)\}/g, '$1');
@@ -3557,8 +3595,15 @@ function openDocumentArtifact(markdown, title, format) {
   artifactTitleEl.textContent = (isPptx ? '📊 ' : '📄 ') + docTitle;
   artifactLangEl.textContent  = isPptx ? 'POWERPOINT' : 'DOCUMENT';
 
+  // Pré-traitement : convertir le LaTeX en Unicode pour que la prévisualisation
+  // affiche des formules lisibles (H₂O, CH₃OH, →, Δ, etc.) au lieu de commandes brutes.
+  // Cohérent avec le fichier .docx/.pptx téléchargé qui applique la même conversion.
+  const markdownForPreview = (typeof convertLatexInMarkdown === 'function')
+    ? convertLatexInMarkdown(markdown)
+    : markdown;
+
   // Rendu Markdown → HTML
-  const rendered = typeof marked !== 'undefined' ? marked.parse(markdown, { gfm: true, breaks: false }) : markdown.replace(/\n/g, '<br>');
+  const rendered = typeof marked !== 'undefined' ? marked.parse(markdownForPreview, { gfm: true, breaks: false }) : markdownForPreview.replace(/\n/g, '<br>');
 
   let previewHtml;
   if (isPptx) {
@@ -3746,7 +3791,7 @@ async function generatePptxFromMarkdown(rawMarkdown, title) {
     return;
   }
   // Convertir LaTeX → Unicode avant traitement PPTX
-  rawMarkdown = latexToUnicode(rawMarkdown);
+  rawMarkdown = convertLatexInMarkdown(rawMarkdown);
   const pptx = new PptxGenJS();
   pptx.author = 'BrAInShift';
   pptx.title = title || 'Présentation';
@@ -3898,45 +3943,20 @@ async function generatePptxFromMarkdown(rawMarkdown, title) {
 
 // ── Conversion LaTeX → Unicode pour fichiers (DOCX, PPTX) ──
 // KaTeX rend les formules dans l'aperçu HTML, mais Word/PowerPoint ne comprennent pas LaTeX.
-function latexToUnicode(text) {
+// ⚠ Cette fonction prend du texte/markdown ENTIER et convertit le contenu des
+// délimiteurs $...$, $$...$$, \(...\) et \[...\]. Pour convertir du contenu
+// mathématique nu (sans délimiteurs), utiliser directement latexToUnicode().
+function convertLatexInMarkdown(text) {
+  if (!text) return text;
   let t = text;
-  t = t.replace(/\$\$([\s\S]*?)\$\$/g, (_, inner) => _convertLatexInner(inner));
-  t = t.replace(/\$([^$\n]+?)\$/g, (_, inner) => _convertLatexInner(inner));
-  return t;
-}
-function _convertLatexInner(latex) {
-  let t = latex.trim();
-  t = t.replace(/\\begin\{[^}]+\}/g, '').replace(/\\end\{[^}]+\}/g, '');
-  t = t.replace(/\\ce\{([^}]+)\}/g, '$1');
-  t = t.replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '$1/$2');
-  t = t.replace(/\\sqrt\{([^}]+)\}/g, '√$1');
-  const subMap = {'0':'₀','1':'₁','2':'₂','3':'₃','4':'₄','5':'₅','6':'₆','7':'₇','8':'₈','9':'₉',
-    'a':'ₐ','e':'ₑ','h':'ₕ','i':'ᵢ','j':'ⱼ','k':'ₖ','l':'ₗ','m':'ₘ','n':'ₙ','o':'ₒ','p':'ₚ',
-    'r':'ᵣ','s':'ₛ','t':'ₜ','u':'ᵤ','v':'ᵥ','x':'ₓ','+':'₊','-':'₋','=':'₌','(':'₍',')':'₎'};
-  t = t.replace(/_\{([^}]+)\}/g, (_, s) => [...s].map(c => subMap[c] || c).join(''));
-  t = t.replace(/_([0-9a-z+\-])/gi, (_, c) => subMap[c.toLowerCase()] || c);
-  const supMap = {'0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹',
-    '+':'⁺','-':'⁻','=':'⁼','(':'⁽',')':'⁾','n':'ⁿ','i':'ⁱ'};
-  t = t.replace(/\^\{([^}]+)\}/g, (_, s) => [...s].map(c => supMap[c] || c).join(''));
-  t = t.replace(/\^([0-9+\-ni])/gi, (_, c) => supMap[c.toLowerCase()] || c);
-  t = t.replace(/\\rightarrow/g, '→').replace(/\\leftarrow/g, '←').replace(/\\leftrightarrow/g, '↔');
-  t = t.replace(/\\Rightarrow/g, '⇒').replace(/\\Leftarrow/g, '⇐');
-  t = t.replace(/\\longrightarrow/g, '⟶').replace(/\\xrightarrow\{[^}]*\}/g, '→');
-  t = t.replace(/\\alpha/g,'α').replace(/\\beta/g,'β').replace(/\\gamma/g,'γ').replace(/\\delta/g,'δ');
-  t = t.replace(/\\epsilon/g,'ε').replace(/\\zeta/g,'ζ').replace(/\\eta/g,'η').replace(/\\theta/g,'θ');
-  t = t.replace(/\\lambda/g,'λ').replace(/\\mu/g,'μ').replace(/\\nu/g,'ν').replace(/\\pi/g,'π');
-  t = t.replace(/\\sigma/g,'σ').replace(/\\tau/g,'τ').replace(/\\phi/g,'φ').replace(/\\psi/g,'ψ');
-  t = t.replace(/\\omega/g,'ω').replace(/\\Omega/g,'Ω').replace(/\\Delta/g,'Δ').replace(/\\Sigma/g,'Σ');
-  t = t.replace(/\\rho/g,'ρ').replace(/\\kappa/g,'κ').replace(/\\chi/g,'χ');
-  t = t.replace(/\\times/g,'×').replace(/\\cdot/g,'·').replace(/\\div/g,'÷');
-  t = t.replace(/\\pm/g,'±').replace(/\\mp/g,'∓').replace(/\\approx/g,'≈').replace(/\\neq/g,'≠');
-  t = t.replace(/\\leq/g,'≤').replace(/\\geq/g,'≥').replace(/\\infty/g,'∞');
-  t = t.replace(/\\sum/g,'Σ').replace(/\\prod/g,'Π').replace(/\\int/g,'∫');
-  t = t.replace(/\\partial/g,'∂').replace(/\\nabla/g,'∇').replace(/\\degree/g,'°');
-  t = t.replace(/\\text\{([^}]+)\}/g, '$1').replace(/\\mathrm\{([^}]+)\}/g, '$1').replace(/\\mathbf\{([^}]+)\}/g, '$1');
-  t = t.replace(/\\[a-zA-Z]+/g, '');
-  t = t.replace(/[{}]/g, '');
-  t = t.replace(/\s+/g, ' ').trim();
+  // Display block : $$...$$
+  t = t.replace(/\$\$([\s\S]*?)\$\$/g, (_, inner) => latexToUnicode(inner));
+  // Inline : $...$ (pas $$, et pas multi-ligne)
+  t = t.replace(/\$([^$\n]+?)\$/g, (_, inner) => latexToUnicode(inner));
+  // \[ ... \] display
+  t = t.replace(/\\\[([\s\S]+?)\\\]/g, (_, inner) => latexToUnicode(inner));
+  // \( ... \) inline
+  t = t.replace(/\\\(([^)]+?)\\\)/g, (_, inner) => latexToUnicode(inner));
   return t;
 }
 
@@ -3951,7 +3971,7 @@ async function generateDocxFromMarkdown(rawMarkdown, chatTitle) {
   try {
 
   // Convertir LaTeX → Unicode avant traitement DOCX
-  rawMarkdown = latexToUnicode(rawMarkdown);
+  rawMarkdown = convertLatexInMarkdown(rawMarkdown);
 
   const {
     Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
