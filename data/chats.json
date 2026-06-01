@@ -1844,10 +1844,22 @@
     },
     {
       "id": "c3292ba1-99d4-4986-aa0d-d0e67e152872",
-      "title": "Nouveau chat",
+      "title": "Définition de la liste des documnets faisant partie…",
       "projectId": null,
-      "messages": [],
-      "_lastActivity": 1780037288281
+      "messages": [
+        {
+          "role": "user",
+          "content": "Peux tu me définir la liste des documnets faisant partie d'un dossier de définition d'une entrepriese dans l'aéronautique",
+          "_text": "Peux tu me définir la liste des documnets faisant partie d'un dossier de définition d'une entrepriese dans l'aéronautique"
+        },
+        {
+          "role": "assistant",
+          "content": "❌ Erreur : [429] Provider returned error",
+          "provider": "OPENROUTER",
+          "model": "meta-llama/llama-3.3-70b-instruct:free"
+        }
+      ],
+      "_lastActivity": 1780314841081
     },
     {
       "id": "880409ad-0b3d-4238-b42d-71d05cf1172a",
@@ -2168,12 +2180,12 @@
     "showThinking": false,
     "webSearch": true
   },
-  "model": "openai/gpt-oss-120b",
+  "model": "meta-llama/llama-3.3-70b-instruct:free",
   "favoriteModels": [
     "openai/gpt-oss-120b",
     "claude-sonnet-4-6",
     "gemini-3.5-flash"
   ],
-  "savedAt": "2026-06-01T11:53:31.843Z",
+  "savedAt": "2026-06-01T11:54:10.271Z",
   "version": 2
 }
