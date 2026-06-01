@@ -2286,9 +2286,7 @@
       "prompt": "Apporter la même réponse en anglais après la réponse en français."
     }
   ],
-  "activeProfiles": [
-    "bb1872aa-aef4-4bbd-bc09-e435f8093873"
-  ],
+  "activeProfiles": [],
   "params": {
     "temperature": 0.2,
     "top_p": 0,
@@ -2311,6 +2309,6 @@
     "claude-sonnet-4-6",
     "gemini-3.5-flash"
   ],
-  "savedAt": "2026-06-01T14:42:11.892Z",
+  "savedAt": "2026-06-01T14:42:27.629Z",
   "version": 2
 }
