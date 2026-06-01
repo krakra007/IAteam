@@ -2168,12 +2168,12 @@
     "showThinking": false,
     "webSearch": true
   },
-  "model": "openai/gpt-oss-120b",
+  "model": "xiaomi/mimo-v2-flash",
   "favoriteModels": [
     "openai/gpt-oss-120b",
     "claude-sonnet-4-6",
     "gemini-3.5-flash"
   ],
-  "savedAt": "2026-06-01T11:47:34.607Z",
+  "savedAt": "2026-06-01T11:49:43.428Z",
   "version": 2
 }
