@@ -1503,10 +1503,21 @@
           "content": "## Réponse courte\n\n- **Liaison amide** : groupe fonctionnel $‑C(=O)‑NH‑$ présent dans de nombreux composés organiques (acétamide, médicaments, polymères, etc.).  \n- **Liaison peptidique** : **une amide spécifique** qui relie deux acides aminés dans un peptide ou une protéine.  \n\n**Donc :** toute liaison peptidique est une amide, mais toutes les amides ne sont pas des liaisons peptidiques. La différence réside uniquement dans le contexte : « peptidique » désigne la liaison amide entre résidus d’acides aminés.",
           "provider": "GROQ",
           "model": "openai/gpt-oss-120b"
+        },
+        {
+          "role": "user",
+          "content": "me rappeller la molécule de l'énol",
+          "_text": "me rappeller la molécule de l'énol"
+        },
+        {
+          "role": "assistant",
+          "content": "## Enol : définition et structure générale\n\n- **Définition** : L’énol est la forme tautomère d’un composé carbonylé (cétone ou aldéhyde) dans laquelle le groupe carbonyle $C=O$ a migré pour donner un **doublet C=C** adjacent à un **groupement hydroxyle $‑OH$**.  \n- **Formule générale** :  \n\n\\[\n\\boxed{R_2C=CH‑OH}\n\\]\n\n  où $R$ peut être un groupe alkyle, aryle ou hydrogène. Le doublet C=C porte le groupe hydroxyle sur le carbone **sp²**.\n\n### Exemple classique : l’énol de l’acétaldéhyde (ou de l’acétone)\n\n- **Acétaldéhyde (aldéhyde)** : CH₃‑CHO  \n- **Énol correspondant** : CH₂=CH‑OH  \n\n  \\[\n  \\text{CH}_3\\text{CHO} \\;\\rightleftharpoons\\; \\text{CH}_2\\!=\\!\\text{CH‑OH}\n  \\]\n\n- **Acétone (cétone)** : CH₃‑CO‑CH₃  \n- **Énol correspondant** : CH₃‑C(OH)=CH₂  \n\n  \\[\n  \\text{CH}_3\\text{COCH}_3 \\;\\rightleftharpoons\\; \\text{CH}_3\\text{C(OH)=CH}_2\n  \\]\n\n### Points clés à retenir\n\n- L’énol possède **un groupe hydroxyle** attaché à un **carbone sp²** d’une double liaison C=C.  \n- Cette forme est généralement **moins stable** que la forme carbonylée, mais elle joue un rôle crucial dans les mécanismes de **tautomerie**, de **réactions d’addition** et de **réactions d’énolisation** (ex. aldolisation).  \n- La conversion entre la forme carbonylée et l’énol est appelée **tautomerie céto‑énolique**.",
+          "provider": "GROQ",
+          "model": "openai/gpt-oss-120b"
         }
       ],
       "_starred": true,
-      "_lastActivity": 1780207639357
+      "_lastActivity": 1780289988231
     },
     {
       "id": "5fff138b-9c0c-4b5d-84b5-a717d5f768a5",
@@ -3972,7 +3983,9 @@
       "prompt": "Apporter la même réponse en anglais après la réponse en français."
     }
   ],
-  "activeProfiles": [],
+  "activeProfiles": [
+    "40ba6b82-d96a-418e-838c-44c792873ca7"
+  ],
   "params": {
     "temperature": 0.2,
     "top_p": 0,
@@ -3996,6 +4009,6 @@
     "gemini-3.5-flash",
     "mistral-small-latest"
   ],
-  "savedAt": "2026-06-01T04:57:58.229Z",
+  "savedAt": "2026-06-01T04:59:50.284Z",
   "version": 2
 }
