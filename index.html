@@ -5624,8 +5624,14 @@ async function callGeminiImages(apiKey, prompt) {
 // ENVOI — aiguillage selon le provider
 // ─────────────────────────────────────────────────
 async function send() {
-  const provider = inferProviderFromModel(S.model);
-  const key      = (apiKeysByProvider[provider] || "").trim();
+  // ── FIX BUG "réponse disparue" ──
+  // 1. CAPTURER le modèle et le provider AU DÉBUT de la requête.
+  //    Si l'utilisateur change de modèle pendant qu'une réponse est en attente,
+  //    on doit étiqueter la réponse avec le modèle qui l'a réellement générée,
+  //    pas avec le modèle actuellement sélectionné dans l'UI.
+  const requestedModel    = S.model;
+  const provider          = inferProviderFromModel(requestedModel);
+  const key               = (apiKeysByProvider[provider] || "").trim();
 
   if (!key) {
     showApiError(`⚠ Aucune clé API configurée pour ${provider}. Cliquez sur 🔑 pour l'ajouter.`);
@@ -5637,7 +5643,13 @@ async function send() {
 
   let c = activeChat();
   if (!c) { createChat(S.activeProject || null); c = activeChat(); }
+  // 2. CAPTURER l'ID du chat pour pouvoir re-fetcher la référence si elle devient stale
+  const chatId = c.id;
   c._lastActivity = Date.now(); // Marquer l'activité pour le tri
+
+  // 3. MARQUER la requête comme "en cours" pour bloquer tout pull GitHub en arrière-plan
+  //    (cf. triggerAutoPull qui vérifie ce flag avant de remplacer S.chats)
+  window._sendInFlight = true;
 
   // Construire le contenu multimodal si fichiers présents
   const filesToSend = [...pendingFiles];
@@ -5713,46 +5725,65 @@ async function send() {
     }
 
     if (provider === "ANTHROPIC") {
-      responseContent = await callAnthropic(key, S.model, c.messages);
+      responseContent = await callAnthropic(key, requestedModel, c.messages);
 
     } else if (provider === "GOOGLE GEMINI") {
-      responseContent = await callGemini(key, S.model, c.messages);
+      responseContent = await callGemini(key, requestedModel, c.messages);
 
     } else if (provider === "GROQ") {
-      responseContent = await callGroq(key, S.model, c.messages);
+      responseContent = await callGroq(key, requestedModel, c.messages);
 
     } else if (provider === "MISTRAL") {
       // Mistral AI — API compatible OpenAI (Chat Completions)
       responseContent = await callOpenAICompatible(
         "https://api.mistral.ai/v1/chat/completions",
-        key, S.model, c.messages, "mistral"
+        key, requestedModel, c.messages, "mistral"
       );
 
     } else if (provider === "DEEPSEEK") {
       // BUG CORRIGÉ : endpoint DeepSeek propre + apiType dédié (max_tokens au lieu de max_completion_tokens)
       responseContent = await callOpenAICompatible(
         "https://api.deepseek.com/chat/completions",
-        key, S.model, c.messages, "deepseek"
+        key, requestedModel, c.messages, "deepseek"
       );
 
-    } else if (isGPT5Model(S.model)) {
+    } else if (isGPT5Model(requestedModel)) {
       // GPT-5.x → Responses API (/v1/responses)
-      responseContent = await callOpenAIResponses(key, S.model, c.messages);
+      responseContent = await callOpenAIResponses(key, requestedModel, c.messages);
 
     } else if (S.params.webSearch && provider === "OPENAI") {
       // GPT-4.x avec web search → Responses API (Chat Completions ne supporte pas web search)
-      responseContent = await callOpenAIResponses(key, S.model, c.messages);
+      responseContent = await callOpenAIResponses(key, requestedModel, c.messages);
 
     } else {
       // GPT-4.x, o-series → Chat Completions classique
       responseContent = await callOpenAICompatible(
         "https://api.openai.com/v1/chat/completions",
-        key, S.model, c.messages
+        key, requestedModel, c.messages
       );
     }
 
-    // On stocke provider ET modèle pour badge + sidebar
-    c.messages.push({ role: "assistant", content: responseContent, provider, model: S.model });
+    // ── FIX BUG "réponse disparue" ──
+    // Re-fetcher la référence du chat AU MOMENT du push, au cas où S.chats aurait
+    // été remplacé pendant l'attente API (par un pull GitHub, par exemple).
+    // Si la référence locale `c` est stale, le push irait sur un objet "fantôme"
+    // jamais affiché et la réponse semblerait perdue.
+    const liveChat = S.chats.find(ch => ch.id === chatId) || c;
+    // Si la référence a changé, on log pour traçabilité
+    if (liveChat !== c) {
+      console.warn('[BrAInShift] ⚠ Référence du chat actualisée pendant la requête (probablement pull GitHub en arrière-plan)');
+      // Vérifier si le message user (Q) est bien dans le chat live ; sinon le restaurer
+      const userMsgIdx = c.messages.findIndex(m => m.role === "user" && m === c.messages[c.messages.length - 1]);
+      const lastUserMsg = userMsgIdx >= 0 ? c.messages[userMsgIdx] : c.messages[c.messages.length - 1];
+      if (lastUserMsg && lastUserMsg.role === "user" && !liveChat.messages.includes(lastUserMsg)) {
+        console.warn('[BrAInShift] ⚠ Restauration du message user qui avait été écrasé par le pull');
+        liveChat.messages.push(lastUserMsg);
+      }
+    }
+    // On stocke provider ET modèle EFFECTIVEMENT utilisé pour badge + sidebar
+    liveChat.messages.push({ role: "assistant", content: responseContent, provider, model: requestedModel });
+    // Synchroniser `c` pour que le reste de la fonction (artifact detection) opère sur la bonne référence
+    c = liveChat;
 
     // ── Auto-détection Artifact v4 — JAMAIS auto-ouvrir markdown ──
     console.log('[BrAInShift Artifact v4] Détection en cours…');
@@ -5903,7 +5934,9 @@ async function send() {
       errMsg = `Échec réseau (${provider} — ${host})\n\n${hints.join('\n\n')}`;
       console.error('[BrAInShift] ❌ Failed to fetch — diagnostic:', { provider, model: S.model, protocol: location.protocol, url: location.href, error: e });
     }
-    c.messages.push({ role: "assistant", content: "❌ Erreur : " + errMsg, provider, model: S.model });
+    // ── FIX BUG "réponse disparue" : même protection sur le push d'erreur ──
+    const liveChatErr = S.chats.find(ch => ch.id === chatId) || c;
+    liveChatErr.messages.push({ role: "assistant", content: "❌ Erreur : " + errMsg, provider, model: requestedModel });
     showApiError(e.message);
   } finally {
     isWaitingResponse = false;
@@ -5913,6 +5946,8 @@ async function send() {
     el('sendBtn').style.display = '';
     el('stopBtn').classList.remove('visible');
     _currentAbortController = null;
+    // ── FIX BUG "réponse disparue" : libérer le verrou anti-pull en arrière-plan ──
+    window._sendInFlight = false;
   }
 
   // ── PURGE BASE64 : supprimer les données binaires volumineuses des messages stockés ──
@@ -7150,6 +7185,17 @@ initGithubPanel();
 // Permet de récupérer les conversations de l'autre machine via GitHub
 function triggerAutoPull() {
   if (!GH.token || !GH.owner || !GH.repo) return;
+  // ── FIX BUG "réponse disparue" ──
+  // Ne JAMAIS faire un pull GitHub pendant qu'une requête API est en cours.
+  // Si on le fait, `ghPullSilent` peut remplacer `S.chats` par une version GitHub
+  // pendant que `send()` tient une référence locale à un chat. La référence devient
+  // stale, et la réponse poussée à la fin va sur un objet "fantôme" jamais affiché.
+  if (isWaitingResponse || window._sendInFlight) {
+    console.log('[BrAInShift] ⏱ Pull automatique reporté — requête API en cours');
+    // Reprogrammer le pull dans 10 secondes
+    setTimeout(triggerAutoPull, 10000);
+    return;
+  }
   console.log('[BrAInShift] ⏱ Pull automatique…');
   ghPullSilent().then(() => {
     console.log('[BrAInShift] ✅ Pull automatique terminé');
