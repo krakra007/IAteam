@@ -1,6 +1,13 @@
 {
   "chats": [
     {
+      "id": "f9b6b81e-ba4e-4337-8ea6-431094ab16a6",
+      "title": "Nouveau chat",
+      "projectId": null,
+      "messages": [],
+      "_lastActivity": 1780325528011
+    },
+    {
       "id": "a1780150-eedf-49f5-a1f0-a49ad3f1f8d5",
       "title": "Quand on dit la créatinine est à 150 de quelle unité…",
       "projectId": null,
@@ -2309,6 +2316,6 @@
     "claude-sonnet-4-6",
     "gemini-3.5-flash"
   ],
-  "savedAt": "2026-06-01T14:52:06.191Z",
+  "savedAt": "2026-06-01T14:52:13.361Z",
   "version": 2
 }
