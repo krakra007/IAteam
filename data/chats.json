@@ -2,10 +2,22 @@
   "chats": [
     {
       "id": "d323dd1b-aec7-45d0-88ee-3e80cd71e16d",
-      "title": "Nouveau chat",
+      "title": "Rappeler l'aldolisation de l'acétyl CoA",
       "projectId": null,
-      "messages": [],
-      "_lastActivity": 1780253845955
+      "messages": [
+        {
+          "role": "user",
+          "content": "Me rappeler l'aldolisation de l'acétyl CoA?",
+          "_text": "Me rappeler l'aldolisation de l'acétyl CoA?"
+        },
+        {
+          "role": "assistant",
+          "content": "## Aldolisation de l’acétyl‑CoA (condensation de deux molécules d’acétyl‑CoA)\n\n- **Enzyme** : **thiolase** (ou acétoacétate‑thiolase).  \n- **Réaction** : 2 Acétyl‑CoA → **Acétoacétate‑CoA** + CoA‑SH  \n- **Mécanisme** :  \n  1. Un résidu d’acétyl‑CoA forme un **carbanion** (énolate) sur le carbone α.  \n  2. Cet énolate attaque le groupe carbonyle du deuxième acétyl‑CoA, créant une **liaison C–C** (type aldol).  \n  3. Le produit intermédiaire se réarrange pour donner l’acétoacétate‑CoA, libérant une molécule de CoA‑SH.  \n\n- **Rôle métabolique** :  \n  - Première étape de la **synthèse des corps cétoniques** (acétone, acétoacétate, β‑hydroxybutyrate).  \n  - Point d’entrée dans la **voie des acides gras** (via la formation de malonyl‑CoA).  \n\n- **Conditions** : se produit surtout dans le **foie** lors du jeûne ou d’une forte mobilisation des acides gras.  \n\nEn résumé, l’aldolisation de l’acétyl‑CoA est la condensation enzymatique de deux molécules d’acétyl‑CoA par la thiolase, générant l’acétoacétate‑CoA, précurseur des corps cétoniques et des acides gras.",
+          "provider": "GROQ",
+          "model": "openai/gpt-oss-120b"
+        }
+      ],
+      "_lastActivity": 1780288906284
     },
     {
       "id": "37c93724-45b9-4c56-b72f-ddc93e5e2d48",
@@ -3991,7 +4003,9 @@
       "prompt": "Apporter la même réponse en anglais après la réponse en français."
     }
   ],
-  "activeProfiles": [],
+  "activeProfiles": [
+    "40ba6b82-d96a-418e-838c-44c792873ca7"
+  ],
   "params": {
     "temperature": 0.2,
     "top_p": 0,
@@ -4015,6 +4029,6 @@
     "gemini-3.5-flash",
     "mistral-small-latest"
   ],
-  "savedAt": "2026-06-01T04:41:07.050Z",
+  "savedAt": "2026-06-01T04:41:48.046Z",
   "version": 2
 }
