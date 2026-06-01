@@ -1,6 +1,25 @@
 {
   "chats": [
     {
+      "id": "fc377558-c912-435b-8688-2ad1ca3bb0a8",
+      "title": "TEST-SYNC-21h40 ping",
+      "projectId": null,
+      "messages": [
+        {
+          "role": "user",
+          "content": "TEST-SYNC-21h40 ping",
+          "_text": "TEST-SYNC-21h40 ping"
+        },
+        {
+          "role": "assistant",
+          "content": "pong",
+          "provider": "GOOGLE GEMINI",
+          "model": "gemini-2.5-flash"
+        }
+      ],
+      "_lastActivity": 1780342906241
+    },
+    {
       "id": "0932628d-82d5-4318-bb92-37161ee787d0",
       "title": "Au sens large, la tension artériel est liée commetn à…",
       "projectId": null,
@@ -4089,6 +4108,6 @@
     "gemini-3.5-flash",
     "mistral-small-latest"
   ],
-  "savedAt": "2026-06-01T19:42:51.219Z",
+  "savedAt": "2026-06-01T19:44:15.989Z",
   "version": 2
 }
