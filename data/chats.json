@@ -1884,6 +1884,12 @@
           "role": "user",
           "content": "Peux tu me définir la liste des documnets faisant partie d'un dossier de définition d'une entrepriese dans l'aéronautique",
           "_text": "Peux tu me définir la liste des documnets faisant partie d'un dossier de définition d'une entrepriese dans l'aéronautique"
+        },
+        {
+          "role": "assistant",
+          "content": "## Dossier de définition d’une entreprise aéronautique  \n\n### 1. Documents administratifs  \n- **Statuts** de la société (forme juridique, capital, siège).  \n- **Extrait K‑bis** ou équivalent (enregistrement officiel).  \n- **Certificat de conformité** aux exigences de l’aviation civile (ex. EASA, FAA).  \n- **Licence d’exploitation** ou **certificat d’opérateur aéronautique** (AOC).  \n- **Assurances** (responsabilité civile, assurance des biens, assurance des vols).  \n\n### 2. Documents techniques et de qualification  \n- **Manuel de qualité** (ISO 9001, AS 9100).  \n- **Plan de maîtrise des risques** (RAM, FMEA).  \n- **Procédures de certification** (type‑certificate, production certificate).  \n- **Dossiers de conception** (CAD, spécifications, calculs de charge).  \n- **Plans de maintenance** (MPD, AMM).  \n\n### 3. Documents financiers  \n- **Bilans et comptes de résultat** des trois dernières années.  \n- **Plan de financement** du projet aéronautique (investissements, subventions).  \n- **Analyse de rentabilité** (ROI, NPV).  \n\n### 4. Documents de ressources humaines  \n- **Organigramme** de l’entreprise.  \n- **Descriptions de postes** clés (ingénierie, production, certification).  \n- **Plan de formation** (formation type‑certificate, formation sécurité).  \n\n### 5. Documents de conformité réglementaire  \n- **Déclarations d’impact environnemental** (émissions, bruit).  \n- **Certificats de conformité aux normes** (e.g., RTCA/DO‑178C pour le logiciel, NADCAP pour les procédés).  \n- **Registre des exportations** (licences ITAR/EAR ou équivalents).  \n\n### 6. Documents de propriété intellectuelle  \n- **Brevets** et **marques déposées** relatifs aux technologies aéronautiques.  \n- **Accords de confidentialité** (NDA) avec partenaires et fournisseurs.  \n\n### 7. Documents de chaîne d’approvisionnement  \n- **Liste des fournisseurs qualifiés** (avec certifications NADCAP, AS 9100).  \n- **Contrats cadre** et **accords de niveau de service** (SLA).  \n- **Plan de gestion des pièces de rechange** (spare‑parts).  \n\n### 8. Documents de gestion de projet  \n- **Plan de projet** (jalons, livrables, planning Gantt).  \n- **Matrice des exigences** (requirements traceability matrix).  \n- **Rapports d’avancement** et **comités de pilotage**.  \n\n### 9. Documents de sécurité et sûreté  \n- **Plan de sûreté** (security plan, conformité aux exigences TSA/ICAO).  \n- **Analyse de sûreté fonctionnelle** (FHA, FMECA).  \n- **Procédures d’urgence** et **plans de continuité d’activité**.  \n\n### 10. Documents de communication et marketing  \n- **Brochure d’entreprise** (présentation des capacités aéronautiques).  \n- **Études de marché** et **analyses concurrentielles**.  \n- **Plan de communication** (relations publiques, participation à salons).  \n\nCes documents constituent le socle d’un **dossier de définition** complet, permettant à une entreprise du secteur aéronautique de démontrer sa **capacité technique**, sa **conformité réglementaire**, sa **solidité financière** et sa **maîtrise des risques** auprès des autorités de certification, des clients et des partenaires.",
+          "provider": "OPENROUTER",
+          "model": "openai/gpt-oss-120b:free"
         }
       ],
       "_lastActivity": 1780315026115
@@ -2213,6 +2219,6 @@
     "claude-sonnet-4-6",
     "gemini-3.5-flash"
   ],
-  "savedAt": "2026-06-01T11:57:30.811Z",
+  "savedAt": "2026-06-01T11:58:21.743Z",
   "version": 2
 }
