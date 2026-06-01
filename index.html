@@ -1848,10 +1848,10 @@ const S = {
     }
   ],
   activeProfiles: JSON.parse(localStorage.getItem("activeProfiles") || "[]"),
-  favoriteModels: JSON.parse(localStorage.getItem("favoriteModels") || '["openai/gpt-oss-120b","claude-sonnet-4-6"]'),
+  favoriteModels: JSON.parse(localStorage.getItem("favoriteModels") || '["gemini-2.5-flash","claude-haiku-4-5-20251001"]'),
   activeChat:    localStorage.getItem("activeChat")    || null,
   activeProject: localStorage.getItem("activeProject") || null,
-  model:  "claude-sonnet-4-6",  // ← Force modèle par défaut (aligne avec IAGenius)
+  model:  "gemini-2.5-flash",  // ← Modèle par défaut : économique, contexte 1M, mode thinking pour sciences
   params: (() => {
     const raw = JSON.parse(localStorage.getItem("params") || "null");
     if (!raw) return { ...DEF };
@@ -1869,7 +1869,7 @@ let isWaitingResponse = false;
 let waitingStartTime = 0;
 let waitingTimerInterval = null;
 let _currentAbortController = null; // Controller global pour annuler les requêtes
-if (!CURATED_MODELS.includes(S.model)) S.model = "openai/gpt-oss-120b";
+if (!CURATED_MODELS.includes(S.model)) S.model = "gemini-2.5-flash";
 
 const promptEl   = el("prompt");
 
@@ -2589,7 +2589,7 @@ function createChat(projectId = null) {
   // Modèle par défaut : celui du projet si défini, sinon le global
   if (!window._userChangedModel) {
     const proj = projectId ? S.projects.find(p => p.id === projectId) : null;
-    S.model = (proj && proj.defaultModel) || "openai/gpt-oss-120b";
+    S.model = (proj && proj.defaultModel) || "gemini-2.5-flash";
   }
   save(); render(); renderModels();
 }
@@ -6364,7 +6364,7 @@ async function ghPullSilent() {
     if (raw.params)         S.params         = { ...DEF, ...raw.params };
     if (raw.model)          S.model          = raw.model;
     if (!window._userChangedModel) {
-      S.model = "openai/gpt-oss-120b";
+      S.model = "gemini-2.5-flash";
     }
 
     if (!S.chats.find(c => c.id === S.activeChat))
@@ -6621,7 +6621,7 @@ async function ghPull() {
     if (raw.params)        S.params        = { ...DEF, ...raw.params };
     if (raw.model)         S.model         = raw.model;
     // Toujours forcer le modèle par défaut après un pull
-    if (!window._userChangedModel) S.model = "openai/gpt-oss-120b";
+    if (!window._userChangedModel) S.model = "gemini-2.5-flash";
 
     if (!S.chats.find(c => c.id === S.activeChat))
       S.activeChat = S.chats[0]?.id || null;
@@ -7183,9 +7183,16 @@ document.addEventListener("click", e => {
 // INIT
 // ─────────────────────────────────────────────────
 
-// FORCE: Modèle par défaut = gpt-oss-120b (gratuit via Groq)
-S.model = "openai/gpt-oss-120b";
-localStorage.setItem("model", "openai/gpt-oss-120b");
+// MODÈLE PAR DÉFAUT : gemini-2.5-flash (économique, contexte 1M, mode thinking pour sciences).
+// ⚠ On NE force PAS le modèle si l'utilisateur en a déjà choisi un (respect du dernier choix).
+// Le défaut ne s'applique qu'au tout premier lancement ou si le modèle stocké n'existe plus.
+const _storedModel = localStorage.getItem("model");
+if (!_storedModel || !CURATED_MODELS.includes(_storedModel)) {
+  S.model = "gemini-2.5-flash";
+  localStorage.setItem("model", "gemini-2.5-flash");
+} else {
+  S.model = _storedModel;
+}
 
 // Configurer marked.js
 if (typeof marked !== "undefined") {
