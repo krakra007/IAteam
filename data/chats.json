@@ -2,10 +2,16 @@
   "chats": [
     {
       "id": "1c192353-5252-4831-94af-51471f010526",
-      "title": "Nouveau chat",
+      "title": "Mais si on doit néanmoins",
       "projectId": null,
-      "messages": [],
-      "_lastActivity": 1780320926906
+      "messages": [
+        {
+          "role": "user",
+          "content": "Mais si on doit néanmoins faire une liste, que mettrait on de façon mandatory",
+          "_text": "Mais si on doit néanmoins faire une liste, que mettrait on de façon mandatory"
+        }
+      ],
+      "_lastActivity": 1780320999369
     },
     {
       "id": "95ce1961-0236-4ea6-81cf-12e40347aa02",
@@ -2204,6 +2210,6 @@
     "claude-sonnet-4-6",
     "gemini-3.5-flash"
   ],
-  "savedAt": "2026-06-01T13:35:26.924Z",
+  "savedAt": "2026-06-01T13:36:53.572Z",
   "version": 2
 }
