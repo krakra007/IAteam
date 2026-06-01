@@ -3983,7 +3983,9 @@
       "prompt": "Apporter la même réponse en anglais après la réponse en français."
     }
   ],
-  "activeProfiles": [],
+  "activeProfiles": [
+    "40ba6b82-d96a-418e-838c-44c792873ca7"
+  ],
   "params": {
     "temperature": 0.2,
     "top_p": 0,
@@ -4000,13 +4002,13 @@
     "showThinking": false,
     "webSearch": true
   },
-  "model": "openai/gpt-oss-120b",
+  "model": "gemini-2.5-flash",
   "favoriteModels": [
     "openai/gpt-oss-120b",
     "claude-sonnet-4-6",
     "gemini-3.5-flash",
     "mistral-small-latest"
   ],
-  "savedAt": "2026-06-01T18:33:49.305Z",
+  "savedAt": "2026-06-01T18:33:54.589Z",
   "version": 2
 }
