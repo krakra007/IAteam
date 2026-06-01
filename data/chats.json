@@ -1,23 +1,23 @@
 {
   "chats": [
     {
-      "id": "fc377558-c912-435b-8688-2ad1ca3bb0a8",
-      "title": "TEST-SYNC-21h40 ping",
+      "id": "ef1b0b09-58cd-4a9f-8f77-7605bd1fc25b",
+      "title": "Test ping",
       "projectId": null,
       "messages": [
         {
           "role": "user",
-          "content": "TEST-SYNC-21h40 ping",
-          "_text": "TEST-SYNC-21h40 ping"
+          "content": "test ping",
+          "_text": "test ping"
         },
         {
           "role": "assistant",
-          "content": "pong",
+          "content": "Pong.",
           "provider": "GOOGLE GEMINI",
           "model": "gemini-2.5-flash"
         }
       ],
-      "_lastActivity": 1780342906241
+      "_lastActivity": 1780343160579
     },
     {
       "id": "0932628d-82d5-4318-bb92-37161ee787d0",
@@ -4108,6 +4108,6 @@
     "gemini-3.5-flash",
     "mistral-small-latest"
   ],
-  "savedAt": "2026-06-01T19:45:27.819Z",
+  "savedAt": "2026-06-01T19:46:01.878Z",
   "version": 2
 }
