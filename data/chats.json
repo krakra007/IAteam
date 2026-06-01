@@ -1,6 +1,13 @@
 {
   "chats": [
     {
+      "id": "0932628d-82d5-4318-bb92-37161ee787d0",
+      "title": "Nouveau chat",
+      "projectId": null,
+      "messages": [],
+      "_lastActivity": 1780321715180
+    },
+    {
       "id": "1c192353-5252-4831-94af-51471f010526",
       "title": "Mais si on doit néanmoins",
       "projectId": null,
@@ -2216,6 +2223,6 @@
     "claude-sonnet-4-6",
     "gemini-3.5-flash"
   ],
-  "savedAt": "2026-06-01T13:48:30.124Z",
+  "savedAt": "2026-06-01T13:48:35.187Z",
   "version": 2
 }
