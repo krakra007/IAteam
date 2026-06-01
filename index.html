@@ -309,6 +309,7 @@
     .badge-gemini{background:#4285f422;color:#7baaf7;border:1px solid #4285f444}
     .badge-groq{background:#f5501622;color:#f55016;border:1px solid #f5501644}
     .badge-mistral{background:#ff720022;color:#ff7200;border:1px solid #ff720044}
+    .badge-openrouter{background:#8b5cf622;color:#a78bfa;border:1px solid #8b5cf644}
 
     /* ── Typing ── */
     .typing{display:flex;align-items:center;gap:10px;color:#b8bec8;font-size:14px;padding:8px 0}
@@ -1737,6 +1738,45 @@ const MODEL_GROUPS = [
       "ministral-8b-latest",      // Ministral 8B — efficace, vision, $0.10/M in
       "open-mistral-nemo",        // Nemo 12B — multilingue, open-source
     ]
+  },
+  // ── OpenRouter — Gratuits ──────────────────────────
+  // Source : openrouter.ai/models — juin 2026
+  // Tous via API compatible OpenAI : https://openrouter.ai/api/v1/chat/completions
+  // ⚠ Modèles ":free" : rate-limit 20 req/min, 200 req/jour, peuvent être logués par OpenRouter
+  // 💡 Préfixe "openrouter/" ou contient "/" + suffixe ":free" → routé vers OpenRouter
+  {
+    label: "🌐 OpenRouter — Gratuits",
+    models: [
+      "openrouter/free",                                  // auto-routeur : OpenRouter choisit le meilleur modèle gratuit selon la requête
+      "openai/gpt-oss-120b:free",                         // le plus puissant en gratuit (Apache 2.0, reasoning)
+      "openai/gpt-oss-20b:free",                          // rapide, bon pour coding (match o3-mini)
+      "deepseek/deepseek-v4-flash:free",                  // 1M context, reasoning natif
+      "qwen/qwen3-coder:free",                            // meilleur free pour le code, 1M context
+      "meta-llama/llama-3.3-70b-instruct:free",           // généraliste solide
+      "google/gemini-2.5-flash-lite:free",                // léger et rapide
+      "nvidia/nemotron-3-super-120b:free"                 // frontier-grade NVIDIA (60% SWE-Bench)
+    ]
+  },
+  // ── OpenRouter — Très peu cher (< $0.50/M tokens in) ─
+  {
+    label: "🌐 OpenRouter — Économiques",
+    models: [
+      "liquidai/lfm2-24b",                                // ~$0.03/M in — le moins cher
+      "qwen/qwen3.5-9b",                                  // ~$0.05/M in — bulk classification
+      "xiaomi/mimo-v2-flash",                             // ~$0.09/M in — 262K context, high-volume
+      "google/gemini-3.1-flash-lite",                     // $0.25/M in — 1M context via OpenRouter
+      "qwen/qwen3.5-plus"                                 // $0.26/M in — 1M context, excellent rapport qualité/prix
+    ]
+  },
+  // ── OpenRouter — Premium reasoning ─────────────────
+  // Modèles flagship via OpenRouter (consomme ton crédit OpenRouter, pas la clé native)
+  {
+    label: "🌐 OpenRouter — Premium",
+    models: [
+      "deepseek/deepseek-v4-pro",                         // flagship reasoning DeepSeek
+      "anthropic/claude-sonnet-4-6",                      // Claude Sonnet 4.6 via OpenRouter
+      "openai/gpt-5.4"                                    // GPT-5.4 via OpenRouter
+    ]
   }
 ];
 
@@ -2232,7 +2272,7 @@ const apiErrorEl = el("apiError");
 // ─────────────────────────────────────────────────
 // CLÉS API — 4 fournisseurs
 // ─────────────────────────────────────────────────
-const PROVIDERS = ["ANTHROPIC", "OPENAI", "DEEPSEEK", "GOOGLE GEMINI", "GROQ", "MISTRAL"];
+const PROVIDERS = ["ANTHROPIC", "OPENAI", "DEEPSEEK", "GOOGLE GEMINI", "GROQ", "MISTRAL", "OPENROUTER"];
 const providerKeysEl = el("providerKeys");
 const apiKeysByProvider = JSON.parse(localStorage.getItem("apiKeysByProvider") || "{}");
 PROVIDERS.forEach(p => { if (!(p in apiKeysByProvider)) apiKeysByProvider[p] = ""; });
@@ -2283,6 +2323,14 @@ const activeChat = () => S.chats.find(c => c.id === S.activeChat);
 // ─────────────────────────────────────────────────
 function inferProviderFromModel(model) {
   const m = (model || "").toLowerCase();
+  // ── OpenRouter en premier : tous les modèles OpenRouter ont un slash ET sont dans la liste curée OR
+  // ── On vérifie d'abord la liste curée OR pour éviter tout faux positif avec Groq (qui a aussi des slashs)
+  const OR_MODELS = MODEL_GROUPS.filter(g => g.label.includes("OpenRouter")).flatMap(g => g.models);
+  if (OR_MODELS.includes(model)) return "OPENROUTER";
+  // Suffixe :free → toujours OpenRouter (modèles gratuits OR)
+  if (m.endsWith(":free")) return "OPENROUTER";
+  // Préfixe openrouter/ explicite
+  if (m.startsWith("openrouter/")) return "OPENROUTER";
   if (m.startsWith("claude"))   return "ANTHROPIC";
   if (m.startsWith("gemini"))   return "GOOGLE GEMINI";
   if (m.startsWith("deepseek")) return "DEEPSEEK";
@@ -2300,7 +2348,8 @@ function providerBadgeHtml(provider) {
     "DEEPSEEK":     ["badge-deepseek",  "DeepSeek"],
     "GOOGLE GEMINI":["badge-gemini",    "Gemini"],
     "GROQ":         ["badge-groq",      "Groq"],
-    "MISTRAL":      ["badge-mistral",   "Mistral"]
+    "MISTRAL":      ["badge-mistral",   "Mistral"],
+    "OPENROUTER":   ["badge-openrouter","OpenRouter"]
   };
   const [cls, label] = map[provider] || ["badge-openai", provider];
   return `<span class="provider-badge ${cls}">${label}</span>`;
@@ -2319,7 +2368,8 @@ function renderApiKeys() {
     "DEEPSEEK":     { color:"#7b9cf7", icon:"🔵", placeholder:"sk-..." },
     "GOOGLE GEMINI":{ color:"#7baaf7", icon:"🔷", placeholder:"AIza..." },
     "GROQ":         { color:"#f55016", icon:"🔴", placeholder:"gsk_..." },
-    "MISTRAL":      { color:"#ff7200", icon:"🟧", placeholder:"mistral-..." }
+    "MISTRAL":      { color:"#ff7200", icon:"🟧", placeholder:"mistral-..." },
+    "OPENROUTER":   { color:"#a78bfa", icon:"🟣", placeholder:"sk-or-v1-..." }
   };
 
   container.innerHTML = "";
@@ -2420,6 +2470,29 @@ async function testApiKey(provider, key) {
       });
       ok = r.status === 200;
       msg = ok ? "Clé valide ✓" : `Erreur ${r.status}`;
+    } else if (provider === "OPENROUTER") {
+      // OpenRouter expose /api/v1/models — la même URL que pour les requêtes,
+      // et /api/v1/auth/key pour info sur la clé (crédit restant, etc.)
+      const r = await fetch("https://openrouter.ai/api/v1/auth/key", {
+        headers: { "Authorization": "Bearer " + key }
+      });
+      ok = r.status === 200;
+      if (ok) {
+        // Bonus : afficher le crédit restant si possible
+        try {
+          const data = await r.json();
+          const limit = data?.data?.limit;
+          const usage = data?.data?.usage;
+          if (limit !== null && limit !== undefined && usage !== undefined) {
+            const remaining = (limit - usage).toFixed(2);
+            msg = `Clé valide ✓ — Crédit restant : $${remaining}`;
+          } else {
+            msg = "Clé valide ✓";
+          }
+        } catch(e) { msg = "Clé valide ✓"; }
+      } else {
+        msg = `Erreur ${r.status}`;
+      }
     }
     resEl.innerHTML = `<span style="color:${ok?'#22c55e':'#f87171'}">${ok?'✅':'❌'} ${msg}</span>`;
   } catch(e) {
@@ -4984,7 +5057,8 @@ function updateActiveModelChip() {
   const lastMsg = c ? [...(c.messages||[])].reverse().find(m => m.role==="assistant" && m.model) : null;
   const providerColors = {
     "ANTHROPIC":"#c8621a","OPENAI":"#10a37f","DEEPSEEK":"#7b9cf7",
-    "GOOGLE GEMINI":"#7baaf7","GROQ":"#f55016","MISTRAL":"#ff7200"
+    "GOOGLE GEMINI":"#7baaf7","GROQ":"#f55016","MISTRAL":"#ff7200",
+    "OPENROUTER":"#a78bfa"
   };
   if (lastMsg && lastMsg.model) {
     const col = providerColors[lastMsg.provider] || "#9ca3af";
@@ -5116,6 +5190,22 @@ function buildRequestParams(model, apiType) {
     return out;
   }
 
+  // ── OpenRouter ──────────────────────────────────────────────
+  // API normalisée compatible OpenAI Chat Completions
+  // Utilise max_tokens (et non max_completion_tokens) pour compat avec tous les modèles routés
+  // Supporte temperature, top_p, top_k (certains modèles), penalties, seed, stop
+  // Doc : openrouter.ai/docs/api-reference/parameters
+  if (apiType === "openrouter") {
+    const out = { max_tokens: maxT, ...stop };
+    if (valid(temp, 0, 2)) out.temperature = temp;
+    if (valid(topP, 0, 1) && topP > 0) out.top_p = topP;
+    if (topK > 0) out.top_k = topK;
+    if (freqP !== 0 && valid(freqP, -2, 2)) out.frequency_penalty = freqP;
+    if (presP !== 0 && valid(presP, -2, 2)) out.presence_penalty  = presP;
+    if (p.seed !== "" && p.seed != null) out.seed = Number(p.seed);
+    return out;
+  }
+
   // ── Chat Completions standard (OpenAI GPT-4.x) ─────────────
   const out = { max_completion_tokens: maxT, ...stop };
   if (valid(temp, 0, 2)) out.temperature = temp;
@@ -5217,12 +5307,21 @@ async function callOpenAICompatible(endpoint, key, model, messages, apiType) {
   // Note : web search n'est PAS supporté en Chat Completions standard.
   // Pour GPT-4.x avec web search → routé vers Responses API dans send().
 
+  // Headers de base — communs à tous les endpoints OpenAI-compatibles
+  const headers = {
+    "Content-Type": "application/json",
+    "Authorization": "Bearer " + key
+  };
+  // Headers spécifiques OpenRouter — apparaître dans leurs stats applicatives
+  // Optionnels mais recommandés (sinon l'app apparaît comme "Unknown")
+  if (apiType === "openrouter" || endpoint.includes("openrouter.ai")) {
+    headers["HTTP-Referer"] = "https://brainshift.local";  // site identifiant l'app
+    headers["X-Title"]      = "BrAInShift";                 // nom affiché dans le dashboard OR
+  }
+
   const r = await fetchWithRetry(endpoint, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": "Bearer " + key
-    },
+    headers,
     body: JSON.stringify(body)
   });
 
@@ -5733,6 +5832,15 @@ async function send() {
       responseContent = await callOpenAICompatible(
         "https://api.deepseek.com/chat/completions",
         key, S.model, c.messages, "deepseek"
+      );
+
+    } else if (provider === "OPENROUTER") {
+      // OpenRouter — API compatible OpenAI, accès à 300+ modèles via une seule clé
+      // Endpoint : https://openrouter.ai/api/v1/chat/completions
+      // Headers recommandés : HTTP-Referer + X-Title pour apparaître dans les stats OpenRouter
+      responseContent = await callOpenAICompatible(
+        "https://openrouter.ai/api/v1/chat/completions",
+        key, S.model, c.messages, "openrouter"
       );
 
     } else if (isGPT5Model(S.model)) {
