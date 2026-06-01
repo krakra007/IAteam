@@ -1879,9 +1879,14 @@
           "content": "❌ Erreur : [429] Provider returned error",
           "provider": "OPENROUTER",
           "model": "qwen/qwen3-coder:free"
+        },
+        {
+          "role": "user",
+          "content": "Peux tu me définir la liste des documnets faisant partie d'un dossier de définition d'une entrepriese dans l'aéronautique",
+          "_text": "Peux tu me définir la liste des documnets faisant partie d'un dossier de définition d'une entrepriese dans l'aéronautique"
         }
       ],
-      "_lastActivity": 1780315004852
+      "_lastActivity": 1780315026115
     },
     {
       "id": "880409ad-0b3d-4238-b42d-71d05cf1172a",
@@ -2202,12 +2207,12 @@
     "showThinking": false,
     "webSearch": true
   },
-  "model": "qwen/qwen3-coder:free",
+  "model": "openai/gpt-oss-120b:free",
   "favoriteModels": [
     "openai/gpt-oss-120b",
     "claude-sonnet-4-6",
     "gemini-3.5-flash"
   ],
-  "savedAt": "2026-06-01T11:56:53.576Z",
+  "savedAt": "2026-06-01T11:57:10.318Z",
   "version": 2
 }
