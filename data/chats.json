@@ -1,6 +1,13 @@
 {
   "chats": [
     {
+      "id": "1c192353-5252-4831-94af-51471f010526",
+      "title": "Nouveau chat",
+      "projectId": null,
+      "messages": [],
+      "_lastActivity": 1780320926906
+    },
+    {
       "id": "95ce1961-0236-4ea6-81cf-12e40347aa02",
       "title": "A présent re",
       "projectId": null,
@@ -2197,6 +2204,6 @@
     "claude-sonnet-4-6",
     "gemini-3.5-flash"
   ],
-  "savedAt": "2026-06-01T13:35:20.471Z",
+  "savedAt": "2026-06-01T13:35:26.924Z",
   "version": 2
 }
