@@ -423,6 +423,15 @@
     .gh-status.ok{color:#22c55e}
     .gh-status.err{color:#f87171}
     .gh-status.warn{color:#fbbf24}
+    /* Pastille d'état de sync GitHub — petit cercle coloré en haut-droite du bouton 🌐 */
+    .sync-badge{
+      position:absolute;top:-2px;right:-2px;width:9px;height:9px;border-radius:50%;
+      background:#9ca3af;border:1.5px solid var(--bg);display:block;transition:background .3s;
+    }
+    .sync-badge.ok{background:#22c55e}
+    .sync-badge.syncing{background:#f59e0b;animation:syncPulse 1.2s ease-in-out infinite}
+    .sync-badge.error{background:#ef4444;animation:syncPulse 0.8s ease-in-out infinite}
+    @keyframes syncPulse{0%,100%{opacity:1}50%{opacity:.4}}
     .gh-btn-row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
     .gh-btn{border:1px solid var(--line);background:#ffffff0d;color:var(--text);
       padding:7px 12px;border-radius:8px;cursor:pointer;font-size:13px;transition:background .15s}
@@ -1360,7 +1369,7 @@
   <meta name="theme-color" content="#7b68d4">
 </head>
 <body>
-<!-- VERSION_FIXED_V10 — 2 juin 2026 : anti-cache + fix 422 re-push inutile + nettoyage modèle par défaut -->
+<!-- VERSION_FIXED_V12 — 2 juin 2026 — anti-cache + fix 422 + nettoyage modèle + pastille de sync + retry 409 + API Git -->
 <div class="app">
   <!-- Backdrop pour fermer la sidebar sur tablette (invisible sur desktop) -->
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
@@ -1431,7 +1440,9 @@ Exemple pour la chimie :
             </div>
           </div>
         </div>
-        <button class="btn" id="githubBtn" title="Synchronisation GitHub">🌐</button>
+        <button class="btn" id="githubBtn" title="Synchronisation GitHub" style="position:relative">
+          🌐<span id="syncBadge" class="sync-badge" title=""></span>
+        </button>
         <button class="btn" id="apiKeyBtn" title="Gérer les clés API">🔑</button>
         <button class="btn" id="paramsBtn" title="Paramètres LLM">⚙</button>
         <!-- Panneau GitHub -->
@@ -6210,37 +6221,213 @@ function ghStartTimedSync() {
   console.log('[BrAInShift] ⏱ Auto-sync GitHub activé (toutes les 5 min)');
 }
 
-/** Push silencieux (sans UI feedback) pour l'auto-sync */
+// ─────────────────────────────────────────────────────────────
+// PASTILLE DE SYNC — état exposé globalement, met à jour le DOM
+// ─────────────────────────────────────────────────────────────
+window._syncStatus = { state: 'idle', lastSuccess: null, lastError: null, lastErrorMsg: '' };
+
+function setSyncStatus(state, errMsg = '') {
+  window._syncStatus.state = state;
+  if (state === 'ok') {
+    window._syncStatus.lastSuccess = Date.now();
+    window._syncStatus.lastError = null;
+    window._syncStatus.lastErrorMsg = '';
+  } else if (state === 'error') {
+    window._syncStatus.lastError = Date.now();
+    window._syncStatus.lastErrorMsg = errMsg;
+  }
+  updateSyncBadge();
+}
+
+/**
+ * Met à jour visuellement la pastille colorée sur le bouton 🌐 :
+ *  • gris  : idle (jamais synchronisé)
+ *  • orange clignotant : en cours
+ *  • vert  : dernier sync OK
+ *  • rouge clignotant  : dernière tentative échouée
+ */
+function updateSyncBadge() {
+  const badge = document.getElementById('syncBadge');
+  if (!badge) return;
+  const s = window._syncStatus;
+  badge.classList.remove('ok', 'syncing', 'error');
+  let tooltip = 'Synchronisation GitHub';
+  if (s.state === 'syncing') {
+    badge.classList.add('syncing');
+    tooltip = 'Sync en cours…';
+  } else if (s.state === 'error') {
+    badge.classList.add('error');
+    const t = s.lastError ? new Date(s.lastError).toLocaleTimeString('fr-FR') : '?';
+    tooltip = `❌ Erreur à ${t}\n${s.lastErrorMsg || ''}\nCliquez pour ouvrir le panneau de sync.`;
+  } else if (s.state === 'ok') {
+    badge.classList.add('ok');
+    const t = s.lastSuccess ? new Date(s.lastSuccess).toLocaleTimeString('fr-FR') : '?';
+    tooltip = `✅ Sync OK à ${t}`;
+  } else {
+    tooltip = 'Synchronisation GitHub (cliquez pour configurer)';
+  }
+  const btn = badge.closest('button');
+  if (btn) btn.title = tooltip;
+}
+// Rafraîchir le tooltip toutes les minutes (pour mettre à jour l'heure affichée)
+setInterval(updateSyncBadge, 60000);
+
+/**
+ * Push silencieux ROBUSTE :
+ * 1. Sur 409 (conflit SHA) → re-fetch du SHA et retry (jusqu'à 3 fois)
+ * 2. Sur fichier > 900 KB → fallback API Git (blobs/trees/commits) qui n'a pas la limite 1 MB
+ * 3. Anti-récursion : window._ghPushInProgress empêche les appels concurrents
+ * 4. État exposé via window._syncStatus (pastille verte/orange/rouge sur le 🌐)
+ */
 async function ghPushSilent() {
   if (!GH.token || !GH.owner || !GH.repo) return;
-  const sha = await ghGetFileSha();
-  // Toujours purger les données binaires volumineuses avant l'envoi GitHub
-  const lightChats = S.chats.map(chat => ({
-    ...chat,
-    messages: chat.messages.map(m => {
-      if (!Array.isArray(m.content)) return m;
-      return { ...m, content: m.content.map(b => {
-        if ((b.type === 'document' || b.type === 'image') && b.source?.data?.length > 50000) {
-          return { type: 'text', text: `[Fichier joint : ${b.title || b.type} — non stocké]` };
-        }
-        return b;
-      })};
-    })
-  }));
-  const data = {
-    chats: lightChats, projects: S.projects,
-    profiles: S.profiles, activeProfiles: S.activeProfiles || [],
-    params: S.params, model: S.model, favoriteModels: S.favoriteModels || [],
-    savedAt: new Date().toISOString(), version: 2
-  };
-  const content = ghEncode(data);
-  const body = {
-    message: "BrAInShift auto-sync — " + new Date().toLocaleString("fr-FR"),
-    content, ...(sha ? { sha } : {})
-  };
-  const url = `https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${GH.path}`;
-  const r = await fetch(url, { method: "PUT", headers: ghHeaders(), body: JSON.stringify(body) });
-  if (!r.ok) throw new Error(`PUT ${r.status}`);
+  // Garde anti-récursion (évite stack overflow si appelé pendant lui-même)
+  if (window._ghPushInProgress) {
+    console.log('[BrAInShift] ⏭ Push déjà en cours, on saute');
+    return;
+  }
+  window._ghPushInProgress = true;
+  setSyncStatus('syncing');
+
+  try {
+    // Toujours purger les données binaires volumineuses avant l'envoi GitHub
+    const lightChats = S.chats.map(chat => ({
+      ...chat,
+      messages: chat.messages.map(m => {
+        if (!Array.isArray(m.content)) return m;
+        return { ...m, content: m.content.map(b => {
+          if ((b.type === 'document' || b.type === 'image') && b.source?.data?.length > 50000) {
+            return { type: 'text', text: `[Fichier joint : ${b.title || b.type} — non stocké]` };
+          }
+          return b;
+        })};
+      })
+    }));
+    const data = {
+      chats: lightChats, projects: S.projects,
+      profiles: S.profiles, activeProfiles: S.activeProfiles || [],
+      params: S.params, model: S.model, favoriteModels: S.favoriteModels || [],
+      savedAt: new Date().toISOString(), version: 2
+    };
+    const jsonStr = JSON.stringify(data);
+    const sizeBytes = new Blob([jsonStr]).size;
+
+    // Si fichier > 900 Ko → fallback API Git directement (évite limite 1 Mo de l'API contents)
+    if (sizeBytes > 900_000) {
+      console.log(`[BrAInShift] 📦 Fichier ${(sizeBytes/1024/1024).toFixed(2)} Mo → API Git (blobs/trees)`);
+      await ghPushViaGitApi(jsonStr);
+      setSyncStatus('ok');
+      console.log('[BrAInShift] ✅ Push réussi via API Git');
+      return;
+    }
+
+    // Sinon, méthode contents classique avec retry sur 409
+    const MAX_RETRIES = 3;
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      const sha = await ghGetFileSha();
+      const content = ghEncode(data);
+      const body = {
+        message: "BrAInShift auto-sync — " + new Date().toLocaleString("fr-FR"),
+        content, ...(sha ? { sha } : {})
+      };
+      const url = `https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${GH.path}`;
+      const r = await fetch(url, { method: "PUT", headers: ghHeaders(), body: JSON.stringify(body) });
+      if (r.ok) {
+        setSyncStatus('ok');
+        if (attempt > 1) console.log(`[BrAInShift] ✅ Push réussi à la tentative ${attempt}/${MAX_RETRIES}`);
+        return;
+      }
+      if (r.status === 409 && attempt < MAX_RETRIES) {
+        // Conflit : quelqu'un a poussé entre notre fetch du SHA et notre PUT
+        // → on attend un peu (jitter aléatoire pour éviter resync immédiat) puis retry avec nouveau SHA
+        const wait = 500 + Math.random() * 1000;
+        console.warn(`[BrAInShift] ⚠ Conflit 409 (tentative ${attempt}/${MAX_RETRIES}) — retry dans ${Math.round(wait)}ms avec nouveau SHA`);
+        await new Promise(resolve => setTimeout(resolve, wait));
+        continue;
+      }
+      // Autre erreur ou dernier essai 409 : on abandonne
+      throw new Error(`PUT ${r.status}${r.status === 409 ? ' (conflit non résolu après '+MAX_RETRIES+' tentatives)' : ''}`);
+    }
+  } catch (e) {
+    setSyncStatus('error', e.message);
+    console.error('[BrAInShift] ❌ Push échoué :', e.message);
+    throw e; // propager pour que les appelants puissent réagir
+  } finally {
+    window._ghPushInProgress = false;
+  }
+}
+
+/**
+ * Push via l'API Git de bas niveau (blobs/trees/commits/refs).
+ * Utilisé pour les fichiers > 1 Mo car l'API contents PUT bloque au-delà.
+ * Gère le 422 (HEAD dépassé) avec retry, comme le 409 pour l'API contents.
+ */
+async function ghPushViaGitApi(jsonStr) {
+  const headers = ghHeaders();
+  const base = `https://api.github.com/repos/${GH.owner}/${GH.repo}`;
+  const MAX_GIT_RETRIES = 3;
+
+  for (let attempt = 1; attempt <= MAX_GIT_RETRIES; attempt++) {
+    // 1. HEAD de main
+    const refR = await fetch(`${base}/git/ref/heads/main`, { headers });
+    if (!refR.ok) throw new Error(`Git ref ${refR.status}`);
+    const ref = await refR.json();
+    const headSha = ref.object.sha;
+
+    // 2. Créer blob avec le contenu (UTF-8 brut, GitHub accepte sans encoding base64 si on précise utf-8)
+    const blobR = await fetch(`${base}/git/blobs`, {
+      method: 'POST', headers,
+      body: JSON.stringify({ content: jsonStr, encoding: 'utf-8' })
+    });
+    if (!blobR.ok) throw new Error(`Git blob ${blobR.status}`);
+    const blob = await blobR.json();
+
+    // 3. Récupérer le tree du HEAD
+    const commitR = await fetch(`${base}/git/commits/${headSha}`, { headers });
+    const commit = await commitR.json();
+
+    // 4. Nouveau tree (basé sur l'arbre du HEAD, avec notre fichier mis à jour)
+    const treeR = await fetch(`${base}/git/trees`, {
+      method: 'POST', headers,
+      body: JSON.stringify({
+        base_tree: commit.tree.sha,
+        tree: [{ path: GH.path, mode: '100644', type: 'blob', sha: blob.sha }]
+      })
+    });
+    if (!treeR.ok) throw new Error(`Git tree ${treeR.status}`);
+    const tree = await treeR.json();
+
+    // 5. Nouveau commit
+    const newCommitR = await fetch(`${base}/git/commits`, {
+      method: 'POST', headers,
+      body: JSON.stringify({
+        message: "BrAInShift sync (API Git) — " + new Date().toLocaleString("fr-FR"),
+        tree: tree.sha,
+        parents: [headSha]
+      })
+    });
+    if (!newCommitR.ok) throw new Error(`Git commit ${newCommitR.status}`);
+    const newCommit = await newCommitR.json();
+
+    // 6. Mettre à jour la ref (force: false → 422 si HEAD a bougé entre temps)
+    const updateR = await fetch(`${base}/git/refs/heads/main`, {
+      method: 'PATCH', headers,
+      body: JSON.stringify({ sha: newCommit.sha, force: false })
+    });
+    if (updateR.ok) {
+      if (attempt > 1) console.log(`[BrAInShift] ✅ Push API Git réussi à la tentative ${attempt}/${MAX_GIT_RETRIES}`);
+      return; // SUCCÈS
+    }
+    // 422 = HEAD a bougé → on retry depuis l'étape 1 (avec jitter pour éviter la course)
+    if (updateR.status === 422 && attempt < MAX_GIT_RETRIES) {
+      const wait = 1000 + Math.random() * 2000;
+      console.warn(`[BrAInShift] ⚠ HEAD dépassé (tentative ${attempt}/${MAX_GIT_RETRIES}) — retry dans ${Math.round(wait)}ms avec nouveau HEAD`);
+      await new Promise(resolve => setTimeout(resolve, wait));
+      continue;
+    }
+    // Autre erreur ou dernier essai 422 : on abandonne
+    throw new Error(`Git ref ${updateR.status}${updateR.status === 422 ? ' (HEAD dépassé après '+MAX_GIT_RETRIES+' tentatives — l\'autre machine pousse en boucle ?)' : ''}`);
+  }
 }
 
 /** Pull silencieux à l'ouverture — fusionne les données distantes sans toucher à l'UI GitHub */
@@ -7181,6 +7368,7 @@ if (typeof marked !== "undefined") {
 }
 buildColorPicker();
 initGithubPanel();
+updateSyncBadge(); // Initialiser la pastille de sync (état idle au démarrage)
 
 // ── Pull automatique à l'ouverture ──
 // Permet de récupérer les conversations de l'autre machine via GitHub
