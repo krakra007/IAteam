@@ -420,13 +420,6 @@
     .gh-status.err{color:#f87171}
     .gh-status.warn{color:#fbbf24}
     .gh-btn-row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
-    /* Pastille d'état de sync GitHub — petit cercle coloré en haut-droite du bouton 🌐 */
-    .sync-badge{position:absolute;top:-2px;right:-2px;width:9px;height:9px;border-radius:50%;
-                background:#9ca3af;border:1.5px solid var(--bg);display:block;transition:background .3s}
-    .sync-badge.ok{background:#22c55e}                /* vert : tout va bien */
-    .sync-badge.syncing{background:#f59e0b;animation:syncPulse 1.2s ease-in-out infinite} /* orange clignotant : en cours */
-    .sync-badge.error{background:#ef4444;animation:syncPulse 0.8s ease-in-out infinite}    /* rouge clignotant : erreur */
-    @keyframes syncPulse{0%,100%{opacity:1}50%{opacity:.4}}
     .gh-btn{border:1px solid var(--line);background:#ffffff0d;color:var(--text);
       padding:7px 12px;border-radius:8px;cursor:pointer;font-size:13px;transition:background .15s}
     .gh-btn:hover{background:#ffffff1a}
@@ -1434,9 +1427,7 @@ Exemple pour la chimie :
             </div>
           </div>
         </div>
-        <button class="btn" id="githubBtn" title="Synchronisation GitHub" style="position:relative">
-          🌐<span id="syncBadge" class="sync-badge" title=""></span>
-        </button>
+        <button class="btn" id="githubBtn" title="Synchronisation GitHub">🌐</button>
         <button class="btn" id="apiKeyBtn" title="Gérer les clés API">🔑</button>
         <button class="btn" id="paramsBtn" title="Paramètres LLM">⚙</button>
         <!-- Panneau GitHub -->
@@ -2464,19 +2455,8 @@ function ensureLandingBlankChat() {
     }
   }
 
-  // ── 2. ⚠ FIX BUG "nouvelle conversation involontaire" ⚠ ──
-  // Si l'utilisateur est ACTUELLEMENT dans une conversation qui a des messages,
-  // on NE LE BASCULE PAS vers un chat vide. Sinon il se retrouve à taper Q2
-  // dans une conv vierge, créant une nouvelle conversation parasite.
-  // Cette fonction n'est appropriée que :
-  //   - au démarrage de l'app (landing page)
-  //   - ou si l'utilisateur n'a aucun chat actif valide
-  const currentChat = activeChat();
-  if (currentChat && Array.isArray(currentChat.messages) && currentChat.messages.length > 0) {
-    return; // L'utilisateur est dans une vraie conversation → on respecte son contexte
-  }
-
-  // ── 3. Sinon : ouvrir sur un chat vide (réutiliser ou créer) ──
+  // ── 2. Toujours ouvrir sur un chat vide ──
+  // Réutiliser s'il en existe déjà un
   const existing = S.chats.find(c =>
     !c.projectId && c.title === "Nouveau chat" && Array.isArray(c.messages) && c.messages.length === 0
   );
@@ -5644,12 +5624,8 @@ async function callGeminiImages(apiKey, prompt) {
 // ENVOI — aiguillage selon le provider
 // ─────────────────────────────────────────────────
 async function send() {
-  // ── FIX BUG "réponse disparue" / "changement modèle" ──
-  // 1. CAPTURER modèle et provider AU DÉBUT : si l'utilisateur change de modèle
-  //    pendant qu'une réponse arrive, on étiquette avec le bon modèle.
-  const requestedModel    = S.model;
-  const provider          = inferProviderFromModel(requestedModel);
-  const key               = (apiKeysByProvider[provider] || "").trim();
+  const provider = inferProviderFromModel(S.model);
+  const key      = (apiKeysByProvider[provider] || "").trim();
 
   if (!key) {
     showApiError(`⚠ Aucune clé API configurée pour ${provider}. Cliquez sur 🔑 pour l'ajouter.`);
@@ -5661,13 +5637,7 @@ async function send() {
 
   let c = activeChat();
   if (!c) { createChat(S.activeProject || null); c = activeChat(); }
-  // 2. CAPTURER l'ID du chat (pour re-fetcher si la référence devient stale)
-  const chatId = c.id;
   c._lastActivity = Date.now(); // Marquer l'activité pour le tri
-
-  // 3. VERROU anti-pull GitHub : empêcher triggerAutoPull de remplacer S.chats
-  //    pendant qu'on attend une réponse API (sinon référence stale → message perdu)
-  window._sendInFlight = true;
 
   // Construire le contenu multimodal si fichiers présents
   const filesToSend = [...pendingFiles];
@@ -5743,59 +5713,46 @@ async function send() {
     }
 
     if (provider === "ANTHROPIC") {
-      responseContent = await callAnthropic(key, requestedModel, c.messages);
+      responseContent = await callAnthropic(key, S.model, c.messages);
 
     } else if (provider === "GOOGLE GEMINI") {
-      responseContent = await callGemini(key, requestedModel, c.messages);
+      responseContent = await callGemini(key, S.model, c.messages);
 
     } else if (provider === "GROQ") {
-      responseContent = await callGroq(key, requestedModel, c.messages);
+      responseContent = await callGroq(key, S.model, c.messages);
 
     } else if (provider === "MISTRAL") {
       // Mistral AI — API compatible OpenAI (Chat Completions)
       responseContent = await callOpenAICompatible(
         "https://api.mistral.ai/v1/chat/completions",
-        key, requestedModel, c.messages, "mistral"
+        key, S.model, c.messages, "mistral"
       );
 
     } else if (provider === "DEEPSEEK") {
       // BUG CORRIGÉ : endpoint DeepSeek propre + apiType dédié (max_tokens au lieu de max_completion_tokens)
       responseContent = await callOpenAICompatible(
         "https://api.deepseek.com/chat/completions",
-        key, requestedModel, c.messages, "deepseek"
+        key, S.model, c.messages, "deepseek"
       );
 
-    } else if (isGPT5Model(requestedModel)) {
+    } else if (isGPT5Model(S.model)) {
       // GPT-5.x → Responses API (/v1/responses)
-      responseContent = await callOpenAIResponses(key, requestedModel, c.messages);
+      responseContent = await callOpenAIResponses(key, S.model, c.messages);
 
     } else if (S.params.webSearch && provider === "OPENAI") {
       // GPT-4.x avec web search → Responses API (Chat Completions ne supporte pas web search)
-      responseContent = await callOpenAIResponses(key, requestedModel, c.messages);
+      responseContent = await callOpenAIResponses(key, S.model, c.messages);
 
     } else {
       // GPT-4.x, o-series → Chat Completions classique
       responseContent = await callOpenAICompatible(
         "https://api.openai.com/v1/chat/completions",
-        key, requestedModel, c.messages
+        key, S.model, c.messages
       );
     }
 
-    // ── FIX référence stale : re-fetch avant push ──
-    // Si pull GitHub en arrière-plan a remplacé S.chats pendant l'attente API,
-    // la référence locale `c` est obsolète. On va sur l'instance live.
-    const liveChat = S.chats.find(ch => ch.id === chatId) || c;
-    if (liveChat !== c) {
-      console.warn('[BrAInShift] ⚠ Référence chat actualisée pendant la requête (pull en arrière-plan)');
-      const lastUserMsg = c.messages[c.messages.length - 1];
-      if (lastUserMsg && lastUserMsg.role === "user" && !liveChat.messages.includes(lastUserMsg)) {
-        console.warn('[BrAInShift] ⚠ Restauration du message user écrasé par le pull');
-        liveChat.messages.push(lastUserMsg);
-      }
-    }
-    // On stocke provider ET modèle EFFECTIVEMENT utilisé
-    liveChat.messages.push({ role: "assistant", content: responseContent, provider, model: requestedModel });
-    c = liveChat;
+    // On stocke provider ET modèle pour badge + sidebar
+    c.messages.push({ role: "assistant", content: responseContent, provider, model: S.model });
 
     // ── Auto-détection Artifact v4 — JAMAIS auto-ouvrir markdown ──
     console.log('[BrAInShift Artifact v4] Détection en cours…');
@@ -5946,9 +5903,7 @@ async function send() {
       errMsg = `Échec réseau (${provider} — ${host})\n\n${hints.join('\n\n')}`;
       console.error('[BrAInShift] ❌ Failed to fetch — diagnostic:', { provider, model: S.model, protocol: location.protocol, url: location.href, error: e });
     }
-    // ── FIX référence stale : même protection sur push d'erreur ──
-    const liveChatErr = S.chats.find(ch => ch.id === chatId) || c;
-    liveChatErr.messages.push({ role: "assistant", content: "❌ Erreur : " + errMsg, provider, model: requestedModel });
+    c.messages.push({ role: "assistant", content: "❌ Erreur : " + errMsg, provider, model: S.model });
     showApiError(e.message);
   } finally {
     isWaitingResponse = false;
@@ -5958,8 +5913,6 @@ async function send() {
     el('sendBtn').style.display = '';
     el('stopBtn').classList.remove('visible');
     _currentAbortController = null;
-    // ── FIX : libérer le verrou anti-pull en arrière-plan ──
-    window._sendInFlight = false;
   }
 
   // ── PURGE BASE64 : supprimer les données binaires volumineuses des messages stockés ──
@@ -6254,214 +6207,36 @@ function ghStartTimedSync() {
 }
 
 /** Push silencieux (sans UI feedback) pour l'auto-sync */
-// ─────────────────────────────────────────────────────────────
-// Indicateur d'état de sync — accessible globalement pour l'UI
-// État stocké dans window._syncStatus pour qu'updateSyncBadge() le lise
-// ─────────────────────────────────────────────────────────────
-window._syncStatus = { state: 'idle', lastSuccess: null, lastError: null, lastErrorMsg: '' };
-function setSyncStatus(state, errMsg = '') {
-  window._syncStatus.state = state;
-  if (state === 'ok') {
-    window._syncStatus.lastSuccess = Date.now();
-    window._syncStatus.lastError = null;
-    window._syncStatus.lastErrorMsg = '';
-  } else if (state === 'error') {
-    window._syncStatus.lastError = Date.now();
-    window._syncStatus.lastErrorMsg = errMsg;
-  }
-  updateSyncBadge();
-}
-
-/**
- * Met à jour visuellement la pastille colorée sur le bouton 🌐 :
- *  • gris  : idle (jamais synchronisé)
- *  • orange clignotant : en cours
- *  • vert  : dernier sync OK
- *  • rouge clignotant  : dernière tentative échouée
- * Le tooltip affiche le détail (heure du dernier OK, message d'erreur).
- */
-function updateSyncBadge() {
-  const badge = document.getElementById('syncBadge');
-  if (!badge) return;
-  const s = window._syncStatus;
-  badge.classList.remove('ok', 'syncing', 'error');
-  let tooltip = 'Synchronisation GitHub';
-  if (s.state === 'syncing') {
-    badge.classList.add('syncing');
-    tooltip = 'Sync en cours…';
-  } else if (s.state === 'error') {
-    badge.classList.add('error');
-    const t = s.lastError ? new Date(s.lastError).toLocaleTimeString('fr-FR') : '?';
-    tooltip = `❌ Erreur à ${t}\n${s.lastErrorMsg || ''}\nCliquez pour ouvrir le panneau de sync.`;
-  } else if (s.state === 'ok') {
-    badge.classList.add('ok');
-    const t = s.lastSuccess ? new Date(s.lastSuccess).toLocaleTimeString('fr-FR') : '?';
-    tooltip = `✅ Sync OK à ${t}`;
-  } else {
-    tooltip = 'Synchronisation GitHub (cliquez pour configurer)';
-  }
-  // Tooltip sur le bouton parent (pas sur la pastille, sinon il ne s'affiche pas)
-  const btn = badge.closest('button');
-  if (btn) btn.title = tooltip;
-}
-// Mise à jour périodique pour rafraîchir l'heure affichée dans le tooltip
-setInterval(updateSyncBadge, 60000); // toutes les minutes
-
-/**
- * Push silencieux ROBUSTE :
- * 1. Sur 409 (conflit SHA) → re-fetch du SHA et retry (jusqu'à 3 fois)
- * 2. Sur fichier > 1 Mo → fallback API Git (blobs/trees/commits) qui n'a pas la limite
- * 3. Logs explicites, état exposé via window._syncStatus
- */
 async function ghPushSilent() {
   if (!GH.token || !GH.owner || !GH.repo) return;
-  // Garde anti-récursion (évite stack overflow si appelé pendant lui-même)
-  if (window._ghPushInProgress) {
-    console.log('[BrAInShift] ⏭ Push déjà en cours, on saute');
-    return;
-  }
-  window._ghPushInProgress = true;
-  setSyncStatus('syncing');
-
-  try {
-    // Toujours purger les données binaires volumineuses avant l'envoi GitHub
-    const lightChats = S.chats.map(chat => ({
-      ...chat,
-      messages: chat.messages.map(m => {
-        if (!Array.isArray(m.content)) return m;
-        return { ...m, content: m.content.map(b => {
-          if ((b.type === 'document' || b.type === 'image') && b.source?.data?.length > 50000) {
-            return { type: 'text', text: `[Fichier joint : ${b.title || b.type} — non stocké]` };
-          }
-          return b;
-        })};
-      })
-    }));
-    const data = {
-      chats: lightChats, projects: S.projects,
-      profiles: S.profiles, activeProfiles: S.activeProfiles || [],
-      params: S.params, model: S.model, favoriteModels: S.favoriteModels || [],
-      savedAt: new Date().toISOString(), version: 2
-    };
-    const jsonStr = JSON.stringify(data);
-    const sizeBytes = new Blob([jsonStr]).size;
-
-    // Si fichier > 900 Ko → fallback API Git directement (évite limite 1 Mo de l'API contents)
-    if (sizeBytes > 900_000) {
-      console.log(`[BrAInShift] 📦 Fichier ${(sizeBytes/1024/1024).toFixed(2)} Mo → API Git (blobs/trees)`);
-      await ghPushViaGitApi(jsonStr);
-      setSyncStatus('ok');
-      console.log('[BrAInShift] ✅ Push réussi via API Git');
-      return;
-    }
-
-    // Sinon, méthode contents classique avec retry sur 409
-    const MAX_RETRIES = 3;
-    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-      const sha = await ghGetFileSha();
-      const content = ghEncode(data);
-      const body = {
-        message: "BrAInShift auto-sync — " + new Date().toLocaleString("fr-FR"),
-        content, ...(sha ? { sha } : {})
-      };
-      const url = `https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${GH.path}`;
-      const r = await fetch(url, { method: "PUT", headers: ghHeaders(), body: JSON.stringify(body) });
-      if (r.ok) {
-        setSyncStatus('ok');
-        if (attempt > 1) console.log(`[BrAInShift] ✅ Push réussi à la tentative ${attempt}/${MAX_RETRIES}`);
-        return;
-      }
-      if (r.status === 409 && attempt < MAX_RETRIES) {
-        // Conflit : quelqu'un a poussé entre notre fetch du SHA et notre PUT
-        // → on attend un peu (jitter aléatoire pour éviter resync immédiat) puis retry avec nouveau SHA
-        const wait = 500 + Math.random() * 1000;
-        console.warn(`[BrAInShift] ⚠ Conflit 409 (tentative ${attempt}/${MAX_RETRIES}) — retry dans ${Math.round(wait)}ms avec nouveau SHA`);
-        await new Promise(resolve => setTimeout(resolve, wait));
-        continue;
-      }
-      // Autre erreur ou dernier essai 409 : on abandonne
-      throw new Error(`PUT ${r.status}${r.status === 409 ? ' (conflit non résolu après '+MAX_RETRIES+' tentatives)' : ''}`);
-    }
-  } catch (e) {
-    setSyncStatus('error', e.message);
-    console.error('[BrAInShift] ❌ Push échoué :', e.message);
-    throw e; // propager pour que les appelants puissent réagir
-  } finally {
-    window._ghPushInProgress = false;
-  }
-}
-
-/**
- * Push via l'API Git de bas niveau (blobs/trees/commits/refs).
- * Utilisé pour les fichiers > 1 Mo car l'API contents PUT bloque au-delà.
- * Gère le 422 (HEAD dépassé) avec retry, comme le 409 pour l'API contents.
- */
-async function ghPushViaGitApi(jsonStr) {
-  const headers = ghHeaders();
-  const base = `https://api.github.com/repos/${GH.owner}/${GH.repo}`;
-  const MAX_GIT_RETRIES = 3;
-
-  for (let attempt = 1; attempt <= MAX_GIT_RETRIES; attempt++) {
-    // 1. HEAD de main
-    const refR = await fetch(`${base}/git/ref/heads/main`, { headers });
-    if (!refR.ok) throw new Error(`Git ref ${refR.status}`);
-    const ref = await refR.json();
-    const headSha = ref.object.sha;
-
-    // 2. Créer blob (seulement à la première tentative — réutilisable si déjà créé)
-    const blobR = await fetch(`${base}/git/blobs`, {
-      method: 'POST', headers,
-      body: JSON.stringify({ content: jsonStr, encoding: 'utf-8' })
-    });
-    if (!blobR.ok) throw new Error(`Git blob ${blobR.status}`);
-    const blob = await blobR.json();
-
-    // 3. Récupérer le tree du HEAD
-    const commitR = await fetch(`${base}/git/commits/${headSha}`, { headers });
-    const commit = await commitR.json();
-
-    // 4. Nouveau tree
-    const treeR = await fetch(`${base}/git/trees`, {
-      method: 'POST', headers,
-      body: JSON.stringify({
-        base_tree: commit.tree.sha,
-        tree: [{ path: GH.path, mode: '100644', type: 'blob', sha: blob.sha }]
-      })
-    });
-    if (!treeR.ok) throw new Error(`Git tree ${treeR.status}`);
-    const tree = await treeR.json();
-
-    // 5. Nouveau commit
-    const newCommitR = await fetch(`${base}/git/commits`, {
-      method: 'POST', headers,
-      body: JSON.stringify({
-        message: "BrAInShift sync (API Git) — " + new Date().toLocaleString("fr-FR"),
-        tree: tree.sha,
-        parents: [headSha]
-      })
-    });
-    if (!newCommitR.ok) throw new Error(`Git commit ${newCommitR.status}`);
-    const newCommit = await newCommitR.json();
-
-    // 6. Mettre à jour la ref (force: false → 422 si HEAD a bougé entre temps)
-    const updateR = await fetch(`${base}/git/refs/heads/main`, {
-      method: 'PATCH', headers,
-      body: JSON.stringify({ sha: newCommit.sha, force: false })
-    });
-    if (updateR.ok) {
-      if (attempt > 1) console.log(`[BrAInShift] ✅ Push API Git réussi à la tentative ${attempt}/${MAX_GIT_RETRIES}`);
-      return; // SUCCÈS
-    }
-    // 422 = HEAD a bougé → on retry depuis l'étape 1 (avec jitter pour éviter la course)
-    if (updateR.status === 422 && attempt < MAX_GIT_RETRIES) {
-      const wait = 1000 + Math.random() * 2000; // 1-3s, plus large que le 409
-      console.warn(`[BrAInShift] ⚠ HEAD dépassé (tentative ${attempt}/${MAX_GIT_RETRIES}) — retry dans ${Math.round(wait)}ms avec nouveau HEAD`);
-      await new Promise(resolve => setTimeout(resolve, wait));
-      continue;
-    }
-    // Autre erreur ou dernier essai 422 : on abandonne
-    throw new Error(`Git ref ${updateR.status}${updateR.status === 422 ? ' (HEAD dépassé après '+MAX_GIT_RETRIES+' tentatives — l\'autre machine pousse en boucle ?)' : ''}`);
-  }
+  const sha = await ghGetFileSha();
+  // Toujours purger les données binaires volumineuses avant l'envoi GitHub
+  const lightChats = S.chats.map(chat => ({
+    ...chat,
+    messages: chat.messages.map(m => {
+      if (!Array.isArray(m.content)) return m;
+      return { ...m, content: m.content.map(b => {
+        if ((b.type === 'document' || b.type === 'image') && b.source?.data?.length > 50000) {
+          return { type: 'text', text: `[Fichier joint : ${b.title || b.type} — non stocké]` };
+        }
+        return b;
+      })};
+    })
+  }));
+  const data = {
+    chats: lightChats, projects: S.projects,
+    profiles: S.profiles, activeProfiles: S.activeProfiles || [],
+    params: S.params, model: S.model, favoriteModels: S.favoriteModels || [],
+    savedAt: new Date().toISOString(), version: 2
+  };
+  const content = ghEncode(data);
+  const body = {
+    message: "BrAInShift auto-sync — " + new Date().toLocaleString("fr-FR"),
+    content, ...(sha ? { sha } : {})
+  };
+  const url = `https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${GH.path}`;
+  const r = await fetch(url, { method: "PUT", headers: ghHeaders(), body: JSON.stringify(body) });
+  if (!r.ok) throw new Error(`PUT ${r.status}`);
 }
 
 /** Pull silencieux à l'ouverture — fusionne les données distantes sans toucher à l'UI GitHub */
@@ -6487,6 +6262,15 @@ async function ghPullSilent() {
     if (!result.found || !result.data) return;
     const raw = result.data;
     if (!raw || !raw.chats) return;
+
+    // ── Empreinte AVANT fusion (pour détecter si le pull change réellement quelque chose) ──
+    // Si rien ne change → pas de re-push → pas de 422 inutile
+    const fingerprintBefore = JSON.stringify({
+      nbConv:    S.chats.length,
+      nbProj:    S.projects.length,
+      totalMsgs: S.chats.reduce((acc, c) => acc + (c.messages?.length || 0), 0),
+      chatIds:   S.chats.map(c => c.id).sort().join(',')
+    });
 
     // ═══ ÉTAPE 3 : FUSION INTELLIGENTE ═══
     // Règle : pour chaque chat, garder la version qui a le PLUS de messages
@@ -6555,18 +6339,32 @@ async function ghPullSilent() {
     console.log(`[BrAInShift] ✅ Pull silencieux OK — ${S.chats.length} conversations, ${S.projects.length} projets`);
     ensureLandingBlankChat();
 
-    // ═══ ÉTAPE 4 : RE-PUSH après fusion pour que GitHub ait la version fusionnée ═══
+    // ── Empreinte APRÈS fusion — comparer pour savoir si re-push utile ──
+    const fingerprintAfter = JSON.stringify({
+      nbConv:    S.chats.length,
+      nbProj:    S.projects.length,
+      totalMsgs: S.chats.reduce((acc, c) => acc + (c.messages?.length || 0), 0),
+      chatIds:   S.chats.map(c => c.id).sort().join(',')
+    });
+
+    // ═══ ÉTAPE 4 : RE-PUSH UNIQUEMENT si la fusion a effectivement modifié les données ═══
+    // Si rien n'a changé (cas le plus fréquent : on récupère ce qu'on vient de pusher),
+    // on évite un re-push inutile qui peut générer un 422 "HEAD dépassé" sur l'API Git.
+    if (fingerprintBefore === fingerprintAfter) {
+      console.log('[BrAInShift] ℹ Fusion sans changement local — re-push évité (pas de 422 inutile)');
+      // Le push préventif a déjà mis l'état à 'ok' si tout s'est bien passé : on n'y touche pas.
+      return;
+    }
+
+    console.log('[BrAInShift] 🔄 Fusion a modifié les données → re-push…');
     try {
       await ghPushSilent();
       console.log('[BrAInShift] ✅ Re-push post-fusion OK');
     } catch(pe) {
       console.warn('[BrAInShift] ⚠ Re-push post-fusion échoué:', pe.message);
-      // Note : on signale 'error' uniquement si le re-push final échoue après ses retries internes
-      // (car ghPushSilent fait déjà 3 retries sur 409 et signale lui-même son état)
     }
   } catch (e) {
     console.warn('[BrAInShift] Pull silencieux échoué:', e.message);
-    setSyncStatus('error', 'Pull : ' + e.message);
   }
 }
 
@@ -7379,21 +7177,11 @@ if (typeof marked !== "undefined") {
 }
 buildColorPicker();
 initGithubPanel();
-updateSyncBadge(); // Initialiser la pastille de sync (état idle au démarrage)
 
 // ── Pull automatique à l'ouverture ──
 // Permet de récupérer les conversations de l'autre machine via GitHub
 function triggerAutoPull() {
   if (!GH.token || !GH.owner || !GH.repo) return;
-  // ── FIX BUG "réponse disparue" ──
-  // Ne JAMAIS faire un pull GitHub pendant qu'une requête API est en cours.
-  // Sinon `ghPullSilent` peut remplacer `S.chats` pendant que `send()` tient
-  // une référence locale → la réponse poussée à la fin va sur un objet fantôme.
-  if (isWaitingResponse || window._sendInFlight) {
-    console.log('[BrAInShift] ⏱ Pull automatique reporté — requête API en cours');
-    setTimeout(triggerAutoPull, 10000); // retenter dans 10s
-    return;
-  }
   console.log('[BrAInShift] ⏱ Pull automatique…');
   ghPullSilent().then(() => {
     console.log('[BrAInShift] ✅ Pull automatique terminé');
@@ -7431,15 +7219,10 @@ document.addEventListener('visibilitychange', () => {
       triggerAutoPull();
     }
   } else {
-    // Quitte l'onglet → PUSH (debounced, et seulement si pas déjà en cours)
-    if (GH.autoSync && GH.token && !window._ghPushInProgress) {
-      // Debounce : si déjà programmé, on annule
-      if (window._hiddenPushTimeout) clearTimeout(window._hiddenPushTimeout);
-      window._hiddenPushTimeout = setTimeout(() => {
-        console.log('[BrAInShift] 💾 Onglet caché — push préventif…');
-        ghPushSilent().catch(() => {});
-        window._hiddenPushTimeout = null;
-      }, 2000); // attend 2s avant de pousser (évite les rafales lors d'alt-tab rapides)
+    // Quitte l'onglet → PUSH immédiatement pour ne rien perdre
+    if (GH.autoSync && GH.token) {
+      console.log('[BrAInShift] 💾 Onglet caché — push préventif…');
+      ghPushSilent().catch(() => {});
     }
   }
   window._lastVisibleTime = Date.now();
