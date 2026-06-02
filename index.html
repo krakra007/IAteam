@@ -6394,65 +6394,73 @@ async function ghPushSilent() {
 /**
  * Push via l'API Git de bas niveau (blobs/trees/commits/refs).
  * Utilisé pour les fichiers > 1 Mo car l'API contents PUT bloque au-delà.
- * Évite aussi le problème CORS de raw.githubusercontent.com.
+ * Gère le 422 (HEAD dépassé) avec retry, comme le 409 pour l'API contents.
  */
 async function ghPushViaGitApi(jsonStr) {
   const headers = ghHeaders();
   const base = `https://api.github.com/repos/${GH.owner}/${GH.repo}`;
+  const MAX_GIT_RETRIES = 3;
 
-  // 1. HEAD de main
-  const refR = await fetch(`${base}/git/ref/heads/main`, { headers });
-  if (!refR.ok) throw new Error(`Git ref ${refR.status}`);
-  const ref = await refR.json();
-  const headSha = ref.object.sha;
+  for (let attempt = 1; attempt <= MAX_GIT_RETRIES; attempt++) {
+    // 1. HEAD de main
+    const refR = await fetch(`${base}/git/ref/heads/main`, { headers });
+    if (!refR.ok) throw new Error(`Git ref ${refR.status}`);
+    const ref = await refR.json();
+    const headSha = ref.object.sha;
 
-  // 2. Créer blob
-  const blobR = await fetch(`${base}/git/blobs`, {
-    method: 'POST', headers,
-    body: JSON.stringify({ content: jsonStr, encoding: 'utf-8' })
-  });
-  if (!blobR.ok) throw new Error(`Git blob ${blobR.status}`);
-  const blob = await blobR.json();
+    // 2. Créer blob (seulement à la première tentative — réutilisable si déjà créé)
+    const blobR = await fetch(`${base}/git/blobs`, {
+      method: 'POST', headers,
+      body: JSON.stringify({ content: jsonStr, encoding: 'utf-8' })
+    });
+    if (!blobR.ok) throw new Error(`Git blob ${blobR.status}`);
+    const blob = await blobR.json();
 
-  // 3. Récupérer le tree du HEAD
-  const commitR = await fetch(`${base}/git/commits/${headSha}`, { headers });
-  const commit = await commitR.json();
+    // 3. Récupérer le tree du HEAD
+    const commitR = await fetch(`${base}/git/commits/${headSha}`, { headers });
+    const commit = await commitR.json();
 
-  // 4. Nouveau tree
-  const treeR = await fetch(`${base}/git/trees`, {
-    method: 'POST', headers,
-    body: JSON.stringify({
-      base_tree: commit.tree.sha,
-      tree: [{ path: GH.path, mode: '100644', type: 'blob', sha: blob.sha }]
-    })
-  });
-  if (!treeR.ok) throw new Error(`Git tree ${treeR.status}`);
-  const tree = await treeR.json();
+    // 4. Nouveau tree
+    const treeR = await fetch(`${base}/git/trees`, {
+      method: 'POST', headers,
+      body: JSON.stringify({
+        base_tree: commit.tree.sha,
+        tree: [{ path: GH.path, mode: '100644', type: 'blob', sha: blob.sha }]
+      })
+    });
+    if (!treeR.ok) throw new Error(`Git tree ${treeR.status}`);
+    const tree = await treeR.json();
 
-  // 5. Nouveau commit
-  const newCommitR = await fetch(`${base}/git/commits`, {
-    method: 'POST', headers,
-    body: JSON.stringify({
-      message: "BrAInShift sync (API Git) — " + new Date().toLocaleString("fr-FR"),
-      tree: tree.sha,
-      parents: [headSha]
-    })
-  });
-  if (!newCommitR.ok) throw new Error(`Git commit ${newCommitR.status}`);
-  const newCommit = await newCommitR.json();
+    // 5. Nouveau commit
+    const newCommitR = await fetch(`${base}/git/commits`, {
+      method: 'POST', headers,
+      body: JSON.stringify({
+        message: "BrAInShift sync (API Git) — " + new Date().toLocaleString("fr-FR"),
+        tree: tree.sha,
+        parents: [headSha]
+      })
+    });
+    if (!newCommitR.ok) throw new Error(`Git commit ${newCommitR.status}`);
+    const newCommit = await newCommitR.json();
 
-  // 6. Mettre à jour la ref (force: false → 409 si on a été dépassé)
-  const updateR = await fetch(`${base}/git/refs/heads/main`, {
-    method: 'PATCH', headers,
-    body: JSON.stringify({ sha: newCommit.sha, force: false })
-  });
-  if (!updateR.ok) {
-    // Si la ref a bougé entre-temps, on lit le nouveau HEAD et on rejoue 1 fois
-    // (pas de boucle infinie : si ça échoue encore, on abandonne)
-    if (updateR.status === 422) {
-      throw new Error(`Git ref ${updateR.status} (HEAD a été dépassé pendant le push)`);
+    // 6. Mettre à jour la ref (force: false → 422 si HEAD a bougé entre temps)
+    const updateR = await fetch(`${base}/git/refs/heads/main`, {
+      method: 'PATCH', headers,
+      body: JSON.stringify({ sha: newCommit.sha, force: false })
+    });
+    if (updateR.ok) {
+      if (attempt > 1) console.log(`[BrAInShift] ✅ Push API Git réussi à la tentative ${attempt}/${MAX_GIT_RETRIES}`);
+      return; // SUCCÈS
     }
-    throw new Error(`Git ref update ${updateR.status}`);
+    // 422 = HEAD a bougé → on retry depuis l'étape 1 (avec jitter pour éviter la course)
+    if (updateR.status === 422 && attempt < MAX_GIT_RETRIES) {
+      const wait = 1000 + Math.random() * 2000; // 1-3s, plus large que le 409
+      console.warn(`[BrAInShift] ⚠ HEAD dépassé (tentative ${attempt}/${MAX_GIT_RETRIES}) — retry dans ${Math.round(wait)}ms avec nouveau HEAD`);
+      await new Promise(resolve => setTimeout(resolve, wait));
+      continue;
+    }
+    // Autre erreur ou dernier essai 422 : on abandonne
+    throw new Error(`Git ref ${updateR.status}${updateR.status === 422 ? ' (HEAD dépassé après '+MAX_GIT_RETRIES+' tentatives — l\'autre machine pousse en boucle ?)' : ''}`);
   }
 }
 
@@ -7423,10 +7431,15 @@ document.addEventListener('visibilitychange', () => {
       triggerAutoPull();
     }
   } else {
-    // Quitte l'onglet → PUSH immédiatement pour ne rien perdre
-    if (GH.autoSync && GH.token) {
-      console.log('[BrAInShift] 💾 Onglet caché — push préventif…');
-      ghPushSilent().catch(() => {});
+    // Quitte l'onglet → PUSH (debounced, et seulement si pas déjà en cours)
+    if (GH.autoSync && GH.token && !window._ghPushInProgress) {
+      // Debounce : si déjà programmé, on annule
+      if (window._hiddenPushTimeout) clearTimeout(window._hiddenPushTimeout);
+      window._hiddenPushTimeout = setTimeout(() => {
+        console.log('[BrAInShift] 💾 Onglet caché — push préventif…');
+        ghPushSilent().catch(() => {});
+        window._hiddenPushTimeout = null;
+      }, 2000); // attend 2s avant de pousser (évite les rafales lors d'alt-tab rapides)
     }
   }
   window._lastVisibleTime = Date.now();
