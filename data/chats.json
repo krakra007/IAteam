@@ -1,25 +1,6 @@
 {
   "chats": [
     {
-      "id": "ef1b0b09-58cd-4a9f-8f77-7605bd1fc25b",
-      "title": "Test ping",
-      "projectId": null,
-      "messages": [
-        {
-          "role": "user",
-          "content": "test ping",
-          "_text": "test ping"
-        },
-        {
-          "role": "assistant",
-          "content": "Pong.",
-          "provider": "GOOGLE GEMINI",
-          "model": "gemini-2.5-flash"
-        }
-      ],
-      "_lastActivity": 1780343160579
-    },
-    {
       "id": "0932628d-82d5-4318-bb92-37161ee787d0",
       "title": "Au sens large, la tension artériel est liée commetn à…",
       "projectId": null,
@@ -4108,6 +4089,6 @@
     "gemini-3.5-flash",
     "mistral-small-latest"
   ],
-  "savedAt": "2026-06-02T12:41:01.214Z",
+  "savedAt": "2026-06-02T12:45:56.369Z",
   "version": 2
 }
