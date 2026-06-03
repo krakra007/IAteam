@@ -1423,7 +1423,7 @@
   <meta name="theme-color" content="#7b68d4">
 </head>
 <body>
-<!-- VERSION_FIXED_V25 — 3 juin 2026 — Bandeau de dégradation Triple Check déplacé en fin de réponse (juste avant la barre d'icônes) -->
+<!-- VERSION_FIXED_V26 — 3 juin 2026 — Fix : "adaptive thinking" envoyé à Sonnet 4.5 → 400. Restriction aux modèles 4.6+ + désactivation du thinking pendant Triple Check -->
 <div class="app">
   <!-- Backdrop pour fermer la sidebar sur tablette (invisible sur desktop) -->
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
@@ -5492,10 +5492,21 @@ async function callAnthropic(key, model, messages) {
     body.tools = [{ type: "web_search_20250305", name: "web_search", max_uses: 5 }];
   }
 
-  // Thinking (extended thinking) — format adaptatif pour les modèles 4.6+
-  if (S.params.thinking && /sonnet|opus/i.test(model)) {
-    body.thinking = { type: "adaptive" };
-    body.output_config = { effort: S.params.thinkingEffort || "high" };
+  // Thinking (extended thinking) — V26 :
+  // - format "adaptive" : uniquement modèles 4.6+ (Sonnet 4.6, Opus 4.6, Opus 4.7…)
+  // - format "enabled" + budget_tokens : modèles 4.5 et antérieurs qui supportent thinking
+  // - Triple Check : on désactive complètement le thinking (window._tripleCheckInProgress)
+  //   car le prompt validateur fait déjà le travail, le thinking est redondant et coûteux.
+  const _suppressThinking = window._tripleCheckInProgress === true;
+  if (S.params.thinking && /sonnet|opus/i.test(model) && !_suppressThinking) {
+    const isAdaptiveCompatible = /sonnet-4-6|sonnet-4-7|opus-4-6|opus-4-7/i.test(model);
+    if (isAdaptiveCompatible) {
+      body.thinking = { type: "adaptive" };
+      body.output_config = { effort: S.params.thinkingEffort || "high" };
+    } else {
+      // Format classique : extended thinking avec budget
+      body.thinking = { type: "enabled", budget_tokens: S.params.thinkingBudget || 10240 };
+    }
     if (body.max_tokens < 16000) body.max_tokens = 16000;
     body.temperature = 1;
     delete body.top_p;
@@ -6266,6 +6277,11 @@ function stripValidatorPreamble(text) {
 }
 
 async function runTripleCheck(userQuestion, conversationHistory) {
+  // V26 — Flag global pour désactiver thinking dans callAnthropic pendant le Triple Check
+  // (le prompt validateur fait déjà le boulot, thinking est inutile et coûteux).
+  // Le try/finally garantit que le flag est nettoyé même en cas d'erreur.
+  window._tripleCheckInProgress = true;
+  try {
   // V16 — Récupérer le preset actif (eco par défaut si mode inconnu)
   const mode = getTripleCheckMode();
   const preset = TRIPLE_CHECK_PRESETS[mode] || TRIPLE_CHECK_PRESETS.eco;
@@ -6408,6 +6424,10 @@ Ta version corrigée (texte intégral) :`
     phaseErrors,     // V24 : message d'erreur si skipped/failed
     successCount     // V24 : nombre de phases qui ont réussi (1 à 3)
   };
+  } finally {
+    // V26 — Nettoyer le flag dans tous les cas (succès ou exception remontée)
+    window._tripleCheckInProgress = false;
+  }
 }
 
 // ─────────────────────────────────────────────────
