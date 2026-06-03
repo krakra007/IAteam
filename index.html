@@ -1423,7 +1423,7 @@
   <meta name="theme-color" content="#7b68d4">
 </head>
 <body>
-<!-- VERSION_FIXED_V24 — 3 juin 2026 — Robustesse Triple Check : pas de retry sur erreurs définitives (quota, auth) + badge honnête + notification de dégradation -->
+<!-- VERSION_FIXED_V25 — 3 juin 2026 — Bandeau de dégradation Triple Check déplacé en fin de réponse (juste avant la barre d'icônes) -->
 <div class="app">
   <!-- Backdrop pour fermer la sidebar sur tablette (invisible sur desktop) -->
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
@@ -4522,24 +4522,7 @@ function renderMessages() {
       }
       wrap.appendChild(badge);
 
-      // V24 — Notification visible si une ou plusieurs phases Triple Check ont sauté
-      if (m._tripleCheck && !m._tripleCheckError && m._tripleCheckStatus) {
-        const skippedPhases = ['phase1','phase2','phase3']
-          .map((p, i) => ({ p, idx: i+1, status: m._tripleCheckStatus[p], err: m._tripleCheckErrors?.[p], model: m._tripleCheckModels?.[p] }))
-          .filter(x => x.status === 'skipped');
-        if (skippedPhases.length) {
-          const warn = document.createElement('div');
-          warn.style.cssText = 'background:#f59e0b15;border:1px solid #f59e0b44;color:#f59e0b;padding:6px 10px;border-radius:8px;font-size:12px;margin:4px 0;line-height:1.4';
-          const lines = skippedPhases.map(x => {
-            const reason = (x.err && /quota|insufficient|billing|payment/i.test(x.err)) ? 'quota épuisé'
-                         : (x.err && /authentication|invalid_api_key|permission/i.test(x.err)) ? 'clé API invalide'
-                         : 'indisponible';
-            return `Phase ${x.idx} (${x.model}) ignorée : ${reason}.`;
-          }).join(' ');
-          warn.innerHTML = `⚠ <strong>Dégradation :</strong> ${lines} La réponse a été générée avec les modèles restants.`;
-          wrap.appendChild(warn);
-        }
-      }
+      // V25 — Bandeau de dégradation : retiré d'ici (haut), placé en bas juste au-dessus de la barre d'icônes
     }
 
     const d = document.createElement("div");
@@ -4596,6 +4579,26 @@ function renderMessages() {
     foot.className = "msg-foot";
 
     if (m.role === "assistant") {
+      // V25 — Bandeau de dégradation Triple Check : juste avant la barre d'actions
+      // (= en bas de la réponse, là où l'œil arrive en fin de lecture)
+      if (m._tripleCheck && !m._tripleCheckError && m._tripleCheckStatus) {
+        const skippedPhases = ['phase1','phase2','phase3']
+          .map((p, i) => ({ p, idx: i+1, status: m._tripleCheckStatus[p], err: m._tripleCheckErrors?.[p], model: m._tripleCheckModels?.[p] }))
+          .filter(x => x.status === 'skipped');
+        if (skippedPhases.length) {
+          const warn = document.createElement('div');
+          warn.style.cssText = 'background:#f59e0b15;border:1px solid #f59e0b66;color:#f59e0b;padding:8px 12px;border-radius:8px;font-size:12px;margin:8px 0 6px;line-height:1.5';
+          const lines = skippedPhases.map(x => {
+            const reason = (x.err && /quota|insufficient|billing|payment/i.test(x.err)) ? 'quota épuisé'
+                         : (x.err && /authentication|invalid_api_key|permission/i.test(x.err)) ? 'clé API invalide'
+                         : 'indisponible';
+            return `Phase ${x.idx} (${x.model}) ignorée : <strong>${reason}</strong>`;
+          }).join(' · ');
+          warn.innerHTML = `⚠ <strong>Triple Check dégradé</strong> — ${lines}. La réponse a été générée avec les modèles restants.`;
+          foot.appendChild(warn);
+        }
+      }
+
       const actions = document.createElement("div");
       actions.className = "msg-actions";
 
