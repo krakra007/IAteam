@@ -421,7 +421,7 @@
     /* ── V15 — Bouton Triple Check (validation à 3 modèles) ── */
     .triple-check-btn{
       display:inline-flex;align-items:center;justify-content:center;
-      width:30px;height:30px;border-radius:50%;border:1.5px solid transparent;
+      min-width:30px;height:30px;padding:0 6px;border-radius:50px;border:1.5px solid transparent;
       background:#22c55e22;color:#22c55e;font-size:13px;font-weight:700;
       cursor:pointer;transition:all .2s;margin-left:4px;
       user-select:none;flex-shrink:0;
@@ -433,6 +433,15 @@
     @keyframes tcGlow{
       0%,100%{box-shadow:0 0 0 0 #ef444466}
       50%{box-shadow:0 0 0 4px #ef444400}
+    }
+    /* V16 — Variante PREMIUM : accent doré pour distinguer du bouton éco */
+    .triple-check-btn.premium .tc-icon{font-size:12px;letter-spacing:-.5px}
+    .triple-check-btn.premium.off{background:#eab30822;color:#eab308;border-color:#eab30855}
+    .triple-check-btn.premium.on{background:#dc262633;color:#fbbf24;border-color:#dc262688;
+      animation:tcGlowPrem 2s ease-in-out infinite;}
+    @keyframes tcGlowPrem{
+      0%,100%{box-shadow:0 0 0 0 #dc262666,0 0 0 0 #fbbf2466}
+      50%{box-shadow:0 0 0 4px #dc262600,0 0 0 2px #fbbf2400}
     }
     .triple-check-btn .tc-icon{font-size:14px;line-height:1}
 
@@ -1414,7 +1423,7 @@
   <meta name="theme-color" content="#7b68d4">
 </head>
 <body>
-<!-- VERSION_FIXED_V15 — 3 juin 2026 — Triple Check : validation automatique à 3 modèles (Gemini 2.5 Flash → Claude Haiku 4.5 → Gemini 3.5 Flash) -->
+<!-- VERSION_FIXED_V16 — 3 juin 2026 — Triple Check : 2 modes exclusifs (ÉCO Haiku 4.5 / PREMIUM Sonnet 4.5) avec GPT-5.4-mini en validation intermédiaire -->
 <div class="app">
   <!-- Backdrop pour fermer la sidebar sur tablette (invisible sur desktop) -->
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
@@ -1442,9 +1451,12 @@
           <button class="model-dd-btn" id="modelDdBtn"><span id="modelDdLabel">gemini-2.5-flash</span> <span style="opacity:.5">▾</span></button>
           <div class="model-dd-panel" id="modelDdPanel"></div>
         </div>
-        <!-- V15 — Bouton Triple Check (validation à 3 modèles) -->
-        <button class="triple-check-btn off" id="tripleCheckBtn" title="Triple Check : validation automatique à 3 modèles (OFF — cliquer pour activer)">
+        <!-- V16 — Boutons Triple Check (deux modes exclusifs : ÉCO et PREMIUM) -->
+        <button class="triple-check-btn off" id="tripleCheckBtn" title="Triple Check ÉCO — validation à 3 modèles (Gemini 2.5 Flash → GPT-5.4-mini → Claude Haiku 4.5), ~$0.014/requête. Cliquer pour activer.">
           <span class="tc-icon">3×</span>
+        </button>
+        <button class="triple-check-btn off premium" id="tripleCheckBtnPrem" title="Triple Check PREMIUM — validation à 3 modèles haut de gamme (Gemini 2.5 Flash → GPT-5.4-mini → Claude Sonnet 4.5), ~$0.037/requête. Cliquer pour activer.">
+          <span class="tc-icon">3×+</span>
         </button>
         <span id="tcProgress" class="tc-progress" style="display:none"></span>
       </div>
@@ -4448,10 +4460,20 @@ function renderMessages() {
     // Badge provider sur la première réponse assistante
     if (m.role === "assistant" && m.provider) {
       const badge = document.createElement("div");
-      // V15 — Si la réponse vient du Triple Check, badge spécial à la place du badge provider
+      // V16 — Si la réponse vient du Triple Check, badge spécial avec mode (eco/premium)
       if (m._tripleCheck) {
-        const status = m._tripleCheckError ? '⚠ erreur' : '✓ validé par 3 modèles';
-        badge.innerHTML = `<span class="tc-badge">🔺 Triple Check — ${status}</span>`;
+        let label, bgColor, txtColor, borderColor;
+        if (m._tripleCheckError) {
+          label = '🔺 Triple Check — ⚠ erreur';
+          bgColor = '#ef444422'; txtColor = '#ef4444'; borderColor = '#ef444444';
+        } else if (m._tripleCheckMode === 'premium') {
+          label = '🔺 Triple Check PREMIUM — ✓ validé par 3 modèles haut de gamme';
+          bgColor = '#dc262622'; txtColor = '#fbbf24'; borderColor = '#dc262644';
+        } else {
+          label = '🔺 Triple Check — ✓ validé par 3 modèles';
+          bgColor = '#ef444422'; txtColor = '#ef4444'; borderColor = '#ef444444';
+        }
+        badge.innerHTML = `<span class="tc-badge" style="background:${bgColor};color:${txtColor};border-color:${borderColor}">${label}</span>`;
       } else {
         badge.innerHTML = providerBadgeHtml(m.provider);
       }
@@ -5692,19 +5714,29 @@ async function callGeminiImages(apiKey, prompt) {
 }
 
 // ═════════════════════════════════════════════════════════════
-// V15 — TRIPLE CHECK : validation automatique à 3 modèles
+// V16 — TRIPLE CHECK : 2 modes exclusifs (économique vs premium)
 // ═════════════════════════════════════════════════════════════
-// Quand activé : la question part vers gemini-2.5-flash (phase 1),
-// sa réponse est revue par claude-haiku-4-5-20251001 (phase 2),
-// puis le résultat est revu par gemini-3.5-flash (phase 3).
-// La réponse finale (phase 3) est celle affichée à l'utilisateur.
+// Mode 'eco'     : Gemini 2.5 Flash → GPT-5.4-mini → Claude Haiku 4.5  (~$0.014/req)
+// Mode 'premium' : Gemini 2.5 Flash → GPT-5.4-mini → Claude Sonnet 4.5 (~$0.037/req)
+// Mode 'off'     : pas de Triple Check, comportement normal
+// Les deux modes ON sont mutuellement exclusifs (UI gère l'exclusivité).
 // ─────────────────────────────────────────────────────────────
 
-const TRIPLE_CHECK_MODELS = {
-  phase1: 'gemini-2.5-flash',          // Première réponse
-  phase2: 'claude-haiku-4-5-20251001', // Premier validateur
-  phase3: 'gemini-3.5-flash'           // Validateur final
+const TRIPLE_CHECK_PRESETS = {
+  eco: {
+    phase1: 'gemini-2.5-flash',
+    phase2: 'gpt-5.4-mini',
+    phase3: 'claude-haiku-4-5-20251001'
+  },
+  premium: {
+    phase1: 'gemini-2.5-flash',
+    phase2: 'gpt-5.4-mini',
+    phase3: 'claude-sonnet-4-5'
+  }
 };
+
+// Compat avec l'ancienne API V15 — utilisé seulement comme fallback de log
+const TRIPLE_CHECK_MODELS = TRIPLE_CHECK_PRESETS.eco;
 
 const TRIPLE_CHECK_VALIDATOR_PROMPT = `[Vérification automatique BrAInShift — Triple Check]
 
@@ -5720,41 +5752,73 @@ CONSIGNES IMPORTANTES :
 5. Si tu détectes une erreur factuelle grave (date, nom, formule, valeur numérique), corrige-la silencieusement avec la valeur correcte.`;
 
 /**
- * État du bouton Triple Check : persisté en localStorage, init à OFF par défaut.
+ * Retourne le mode Triple Check actif : 'off' | 'eco' | 'premium'.
+ * Stocké en localStorage. Init à 'off' au premier chargement.
  */
-function isTripleCheckOn() {
-  return localStorage.getItem('tripleCheckEnabled') === '1';
+function getTripleCheckMode() {
+  const m = localStorage.getItem('tripleCheckMode');
+  if (m === 'eco' || m === 'premium') return m;
+  return 'off';
 }
-function setTripleCheckOn(on) {
-  localStorage.setItem('tripleCheckEnabled', on ? '1' : '0');
+function setTripleCheckMode(mode) {
+  if (!['off', 'eco', 'premium'].includes(mode)) mode = 'off';
+  localStorage.setItem('tripleCheckMode', mode);
+  // Compat ascendante avec V15 (autres parties du code lisent encore cette clé)
+  localStorage.setItem('tripleCheckEnabled', mode === 'off' ? '0' : '1');
   updateTripleCheckBtn();
 }
+function isTripleCheckOn() {
+  return getTripleCheckMode() !== 'off';
+}
+/**
+ * Toggle un mode donné. Si déjà actif → passe à 'off'. Sinon → active ce mode
+ * (et désactive l'autre s'il était actif, garantissant l'exclusivité).
+ */
+function toggleTripleCheckMode(targetMode) {
+  const current = getTripleCheckMode();
+  const newMode = (current === targetMode) ? 'off' : targetMode;
+  setTripleCheckMode(newMode);
+  console.log('[BrAInShift] 🔺 Triple Check mode → ' + newMode);
+}
+// Alias rétro-compat : ancien toggle (simple ON/OFF) → bascule en mode eco par défaut
 function toggleTripleCheck() {
-  const newState = !isTripleCheckOn();
-  setTripleCheckOn(newState);
-  console.log('[BrAInShift] 🔺 Triple Check ' + (newState ? 'ACTIVÉ' : 'désactivé'));
+  toggleTripleCheckMode('eco');
 }
 
 /**
- * Met à jour le visuel du bouton + état du sélecteur de modèles.
+ * Met à jour le visuel des DEUX boutons (eco + premium) + état du sélecteur de modèles.
+ * Le mode actif est rouge clignotant, l'autre est vert (disponible), OFF = les deux verts.
  */
 function updateTripleCheckBtn() {
-  const btn = document.getElementById('tripleCheckBtn');
-  if (!btn) return;
-  const on = isTripleCheckOn();
-  btn.classList.toggle('on', on);
-  btn.classList.toggle('off', !on);
-  btn.title = on
-    ? 'Triple Check : validation automatique à 3 modèles (ON — Gemini 2.5 Flash → Claude Haiku 4.5 → Gemini 3.5 Flash). Cliquer pour désactiver.'
-    : 'Triple Check : validation automatique à 3 modèles (OFF). Cliquer pour activer.';
+  const mode = getTripleCheckMode();
+  const btnEco = document.getElementById('tripleCheckBtn');     // bouton 3× = eco
+  const btnPrem = document.getElementById('tripleCheckBtnPrem'); // bouton 3×+ = premium
 
-  // Griser le sélecteur de modèles quand Triple Check est ON
+  if (btnEco) {
+    const ecoOn = (mode === 'eco');
+    btnEco.classList.toggle('on', ecoOn);
+    btnEco.classList.toggle('off', !ecoOn);
+    btnEco.title = ecoOn
+      ? 'Triple Check ÉCONOMIQUE actif (Gemini 2.5 Flash → GPT-5.4-mini → Claude Haiku 4.5). ~$0.014/requête. Cliquer pour désactiver.'
+      : 'Triple Check ÉCONOMIQUE — validation à 3 modèles, ~$0.014/requête (Gemini 2.5 Flash → GPT-5.4-mini → Claude Haiku 4.5). Cliquer pour activer.';
+  }
+  if (btnPrem) {
+    const premOn = (mode === 'premium');
+    btnPrem.classList.toggle('on', premOn);
+    btnPrem.classList.toggle('off', !premOn);
+    btnPrem.title = premOn
+      ? 'Triple Check PREMIUM actif (Gemini 2.5 Flash → GPT-5.4-mini → Claude Sonnet 4.5). ~$0.037/requête, qualité max. Cliquer pour désactiver.'
+      : 'Triple Check PREMIUM — validation à 3 modèles haut de gamme, ~$0.037/requête (Gemini 2.5 Flash → GPT-5.4-mini → Claude Sonnet 4.5). Cliquer pour activer.';
+  }
+
+  // Griser le sélecteur de modèles dès qu'un Triple Check est actif (peu importe lequel)
+  const on = isTripleCheckOn();
   const dd = document.getElementById('modelDropdown');
   if (dd) {
     dd.classList.toggle('tc-disabled', on);
     const ddBtn = document.getElementById('modelDdBtn');
     if (ddBtn) {
-      ddBtn.title = on ? 'Triple Check actif — modèles fixés (Gemini 2.5 → Haiku → Gemini 3.5)' : '';
+      ddBtn.title = on ? 'Triple Check actif — modèles fixés' : '';
     }
   }
 }
@@ -5771,12 +5835,28 @@ function setTripleCheckProgress(step) {
     el.innerHTML = '';
     return;
   }
+  // V16 — Récupérer le preset actif pour afficher les bons modèles
+  const mode = getTripleCheckMode();
+  const preset = TRIPLE_CHECK_PRESETS[mode] || TRIPLE_CHECK_PRESETS.eco;
+  // Noms courts pour affichage compact
+  const shortName = (full) => {
+    if (full.startsWith('gemini-2.5')) return 'Gemini 2.5';
+    if (full.startsWith('gemini-3.5')) return 'Gemini 3.5';
+    if (full.startsWith('gpt-5.4-mini')) return 'GPT-5.4-mini';
+    if (full.startsWith('gpt-5')) return 'GPT-5';
+    if (full.includes('haiku-4-5')) return 'Haiku 4.5';
+    if (full.includes('sonnet-4-5')) return 'Sonnet 4.5';
+    if (full.includes('sonnet-4-6')) return 'Sonnet 4.6';
+    if (full.startsWith('claude-')) return full.replace('claude-', '').replace(/-[0-9]+$/, '');
+    return full;
+  };
   const phases = [
-    { name: 'Gemini 2.5', icon: '①' },
-    { name: 'Haiku 4.5',  icon: '②' },
-    { name: 'Gemini 3.5', icon: '③' }
+    { name: shortName(preset.phase1), icon: '①' },
+    { name: shortName(preset.phase2), icon: '②' },
+    { name: shortName(preset.phase3), icon: '③' }
   ];
-  let html = '<span style="opacity:.7">🔺 Triple Check :</span>';
+  const modeIcon = (mode === 'premium') ? '🔺+' : '🔺';
+  let html = `<span style="opacity:.7">${modeIcon} Triple Check :</span>`;
   phases.forEach((p, idx) => {
     const phaseNum = idx + 1;
     let cls = '';
@@ -5824,30 +5904,34 @@ async function callModelForTripleCheck(modelName, messages) {
  * @returns {Promise<string>} - La réponse finale corrigée
  */
 async function runTripleCheck(userQuestion, conversationHistory) {
-  console.log('[BrAInShift] 🔺 Triple Check démarré');
+  // V16 — Récupérer le preset actif (eco par défaut si mode inconnu)
+  const mode = getTripleCheckMode();
+  const preset = TRIPLE_CHECK_PRESETS[mode] || TRIPLE_CHECK_PRESETS.eco;
+  const modeLabel = (mode === 'premium') ? '🔺 PREMIUM' : '🔺 ÉCONOMIQUE';
+  console.log('[BrAInShift] ' + modeLabel + ' Triple Check démarré ('
+    + preset.phase1 + ' → ' + preset.phase2 + ' → ' + preset.phase3 + ')');
 
-  // ── PHASE 1 : Gemini 2.5 Flash répond à la question originale ──
+  // ── PHASE 1 ──
   setTripleCheckProgress(1);
-  console.log('[BrAInShift] 🔺 Phase 1/3 : ' + TRIPLE_CHECK_MODELS.phase1);
+  console.log('[BrAInShift] 🔺 Phase 1/3 : ' + preset.phase1);
   let phase1Response;
   try {
-    phase1Response = await callModelForTripleCheck(TRIPLE_CHECK_MODELS.phase1, conversationHistory);
+    phase1Response = await callModelForTripleCheck(preset.phase1, conversationHistory);
     console.log('[BrAInShift] ✅ Phase 1 terminée (' + phase1Response.length + ' chars)');
   } catch (e) {
     console.error('[BrAInShift] ❌ Phase 1 échouée :', e.message);
-    // 1 retry
     try {
       console.log('[BrAInShift] 🔄 Phase 1 retry…');
-      phase1Response = await callModelForTripleCheck(TRIPLE_CHECK_MODELS.phase1, conversationHistory);
+      phase1Response = await callModelForTripleCheck(preset.phase1, conversationHistory);
     } catch (e2) {
       setTripleCheckProgress(0);
       throw new Error(`Triple Check échoué dès la phase 1 : ${e2.message}`);
     }
   }
 
-  // ── PHASE 2 : Claude Haiku 4.5 valide et corrige la réponse de la phase 1 ──
+  // ── PHASE 2 ──
   setTripleCheckProgress(2);
-  console.log('[BrAInShift] 🔺 Phase 2/3 : ' + TRIPLE_CHECK_MODELS.phase2);
+  console.log('[BrAInShift] 🔺 Phase 2/3 : ' + preset.phase2);
   const phase2Messages = [{
     role: 'user',
     content: `${TRIPLE_CHECK_VALIDATOR_PROMPT}
@@ -5860,14 +5944,14 @@ ${phase1Response}
 
 Ta version corrigée (texte intégral) :`
   }];
-  let phase2Response = phase1Response; // fallback : si phase 2 échoue, on garde phase 1
+  let phase2Response = phase1Response;
   try {
-    phase2Response = await callModelForTripleCheck(TRIPLE_CHECK_MODELS.phase2, phase2Messages);
+    phase2Response = await callModelForTripleCheck(preset.phase2, phase2Messages);
     console.log('[BrAInShift] ✅ Phase 2 terminée (' + phase2Response.length + ' chars)');
   } catch (e) {
     console.warn('[BrAInShift] ⚠ Phase 2 échouée, retry…', e.message);
     try {
-      phase2Response = await callModelForTripleCheck(TRIPLE_CHECK_MODELS.phase2, phase2Messages);
+      phase2Response = await callModelForTripleCheck(preset.phase2, phase2Messages);
       console.log('[BrAInShift] ✅ Phase 2 OK au retry');
     } catch (e2) {
       console.warn('[BrAInShift] ⚠ Phase 2 KO définitif, on saute à phase 3 avec la réponse phase 1');
@@ -5875,9 +5959,9 @@ Ta version corrigée (texte intégral) :`
     }
   }
 
-  // ── PHASE 3 : Gemini 3.5 Flash vérifie et finalise ──
+  // ── PHASE 3 ──
   setTripleCheckProgress(3);
-  console.log('[BrAInShift] 🔺 Phase 3/3 : ' + TRIPLE_CHECK_MODELS.phase3);
+  console.log('[BrAInShift] 🔺 Phase 3/3 : ' + preset.phase3);
   const phase3Messages = [{
     role: 'user',
     content: `${TRIPLE_CHECK_VALIDATOR_PROMPT}
@@ -5890,14 +5974,14 @@ ${phase2Response}
 
 Ta version corrigée (texte intégral) :`
   }];
-  let phase3Response = phase2Response; // fallback : si phase 3 échoue, on garde phase 2
+  let phase3Response = phase2Response;
   try {
-    phase3Response = await callModelForTripleCheck(TRIPLE_CHECK_MODELS.phase3, phase3Messages);
+    phase3Response = await callModelForTripleCheck(preset.phase3, phase3Messages);
     console.log('[BrAInShift] ✅ Phase 3 terminée (' + phase3Response.length + ' chars)');
   } catch (e) {
     console.warn('[BrAInShift] ⚠ Phase 3 échouée, retry…', e.message);
     try {
-      phase3Response = await callModelForTripleCheck(TRIPLE_CHECK_MODELS.phase3, phase3Messages);
+      phase3Response = await callModelForTripleCheck(preset.phase3, phase3Messages);
       console.log('[BrAInShift] ✅ Phase 3 OK au retry');
     } catch (e2) {
       console.warn('[BrAInShift] ⚠ Phase 3 KO définitif, on garde la phase 2');
@@ -5906,8 +5990,9 @@ Ta version corrigée (texte intégral) :`
   }
 
   setTripleCheckProgress(0);
-  console.log('[BrAInShift] 🔺 Triple Check terminé');
-  return phase3Response;
+  console.log('[BrAInShift] ' + modeLabel + ' Triple Check terminé');
+  // Retour : la réponse finale + le mode utilisé (pour affichage badge)
+  return { content: phase3Response, mode, finalModel: preset.phase3 };
 }
 
 // ─────────────────────────────────────────────────
@@ -5917,11 +6002,12 @@ async function send() {
   const provider = inferProviderFromModel(S.model);
   const key      = (apiKeysByProvider[provider] || "").trim();
 
-  // V15 — Si Triple Check actif : on vérifie les clés des 3 modèles, pas celle du modèle sélectionné
+  // V16 — Si Triple Check actif : on vérifie les clés des 3 modèles du preset actif
   if (isTripleCheckOn()) {
+    const preset = TRIPLE_CHECK_PRESETS[getTripleCheckMode()];
     const missingKeys = [];
     for (const phase of ['phase1', 'phase2', 'phase3']) {
-      const m = TRIPLE_CHECK_MODELS[phase];
+      const m = preset[phase];
       const p = inferProviderFromModel(m);
       if (!(apiKeysByProvider[p] || '').trim()) {
         missingKeys.push(`${p} (pour ${m})`);
@@ -6016,34 +6102,38 @@ async function send() {
       }
     }
 
-    // ── V15 — TRIPLE CHECK : si activé, on intercepte ici ──
-    // Le bouton 🔺 substitue la séquence normale par 3 modèles en cascade.
-    // La réponse finale provient de Gemini 3.5 Flash (phase 3).
+    // ── V16 — TRIPLE CHECK : si activé (mode eco ou premium), on intercepte ici ──
     if (isTripleCheckOn()) {
-      console.log('[BrAInShift] 🔺 Mode Triple Check actif — séquence à 3 modèles');
+      const _mode = getTripleCheckMode();
+      console.log('[BrAInShift] 🔺 Mode Triple Check actif : ' + _mode.toUpperCase());
       try {
-        responseContent = await runTripleCheck(text, c.messages);
-        // On stocke avec un flag spécial pour afficher le badge "Triple Check"
+        const tcResult = await runTripleCheck(text, c.messages);
+        responseContent = tcResult.content;
+        const finalModel = tcResult.finalModel;
+        const finalProvider = inferProviderFromModel(finalModel);
         c.messages.push({
           role: "assistant",
           content: responseContent,
-          provider: "GOOGLE GEMINI",                 // provider du dernier modèle (phase 3)
-          model: TRIPLE_CHECK_MODELS.phase3,
-          _tripleCheck: true                          // flag affichage badge spécial
+          provider: finalProvider,
+          model: finalModel,
+          _tripleCheck: true,
+          _tripleCheckMode: tcResult.mode  // 'eco' ou 'premium' pour affichage badge
         });
       } catch (e) {
         console.error('[BrAInShift] 🔺 Triple Check échec total:', e.message);
         showApiError(`🔺 Triple Check : ${e.message}`);
+        const fallbackModel = TRIPLE_CHECK_PRESETS[getTripleCheckMode()]?.phase1 || 'gemini-2.5-flash';
         c.messages.push({
           role: "assistant",
           content: "❌ Triple Check échoué : " + e.message,
-          provider: "GOOGLE GEMINI",
-          model: TRIPLE_CHECK_MODELS.phase1,
+          provider: inferProviderFromModel(fallbackModel),
+          model: fallbackModel,
           _tripleCheck: true,
-          _tripleCheckError: true
+          _tripleCheckError: true,
+          _tripleCheckMode: getTripleCheckMode()
         });
       }
-      // Skip le routage normal ci-dessous, on a déjà notre réponse
+      // Skip le routage normal ci-dessous
     } else if (provider === "ANTHROPIC") {
       responseContent = await callAnthropic(key, S.model, c.messages);
 
@@ -7458,9 +7548,11 @@ function renderSearchResults(query) {
 // ÉVÉNEMENTS
 // ─────────────────────────────────────────────────
 el("sendBtn").onclick = send;
-// V15 — Bouton Triple Check : toggle ON/OFF
+// V16 — Boutons Triple Check : 2 modes exclusifs (eco / premium)
 const _tcBtn = el("tripleCheckBtn");
-if (_tcBtn) _tcBtn.onclick = toggleTripleCheck;
+if (_tcBtn) _tcBtn.onclick = () => toggleTripleCheckMode('eco');
+const _tcBtnPrem = el("tripleCheckBtnPrem");
+if (_tcBtnPrem) _tcBtnPrem.onclick = () => toggleTripleCheckMode('premium');
 el("stopBtn").onclick = () => {
   if (_currentAbortController) {
     window._userAborted = true;
