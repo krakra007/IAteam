@@ -1423,7 +1423,7 @@
   <meta name="theme-color" content="#7b68d4">
 </head>
 <body>
-<!-- VERSION_FIXED_V21 — 3 juin 2026 — Coût affiché en pastille verte/gras bien visible à côté du badge des modèles -->
+<!-- VERSION_FIXED_V22 — 3 juin 2026 — Pastille de coût déplacée à la fin de la conversation (bas de chaque message, à droite des icônes) -->
 <div class="app">
   <!-- Backdrop pour fermer la sidebar sur tablette (invisible sur desktop) -->
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
@@ -4492,24 +4492,7 @@ function renderMessages() {
       badge.style.gap = '8px';
       badge.style.flexWrap = 'wrap';
 
-      // V21 — Pastille de coût bien visible (vert, gras, à côté du badge des modèles)
-      function buildCostPill(cost, tooltipText) {
-        if (typeof cost !== 'number' || cost <= 0) return '';
-        const tooltipAttr = tooltipText ? ` title="${tooltipText.replace(/"/g, '&quot;')}"` : '';
-        return `<span style="
-          display:inline-block;
-          font-size:13px;
-          font-weight:700;
-          color:#22c55e;
-          background:#22c55e1a;
-          border:1.5px solid #22c55e55;
-          border-radius:14px;
-          padding:3px 10px;
-          letter-spacing:.02em;
-          cursor:help;
-          font-variant-numeric:tabular-nums;
-        "${tooltipAttr}>${fmtUSD(cost)}</span>`;
-      }
+      // V22 — La pastille de coût n'est PLUS ici (haut du message) mais en bas, près des icônes d'action.
 
       // V16 — Si la réponse vient du Triple Check, badge spécial avec mode (eco/premium)
       if (m._tripleCheck) {
@@ -4524,33 +4507,9 @@ function renderMessages() {
           label = '🔺 Triple Check — ✓ validé par 3 modèles';
           bgColor = '#ef444422'; txtColor = '#ef4444'; borderColor = '#ef444444';
         }
-        // V17/V21 — Tooltip détaillant les 3 phases (affiché au survol de la pastille verte)
-        let tooltip = '';
-        if (typeof m._cost === 'number' && m._cost > 0 && m._tripleCheckCosts && m._tripleCheckModels && m._tripleCheckTokens) {
-          const lines = ['Détail Triple Check :'];
-          ['phase1','phase2','phase3'].forEach((p, i) => {
-            const mdl = m._tripleCheckModels[p] || '?';
-            const cst = m._tripleCheckCosts[p] || 0;
-            const tin = m._tripleCheckTokens[p]?.in || 0;
-            const tou = m._tripleCheckTokens[p]?.out || 0;
-            lines.push(`Phase ${i+1} (${mdl}) : ${fmtUSD(cst)} — ${tin} in / ${tou} out`);
-          });
-          lines.push(`Total : ${fmtUSD(m._cost)}`);
-          tooltip = lines.join('\n');
-        }
-        const tcBadgeHtml = `<span class="tc-badge" style="background:${bgColor};color:${txtColor};border-color:${borderColor}">${label}</span>`;
-        const costPillHtml = buildCostPill(m._cost, tooltip);
-        badge.innerHTML = tcBadgeHtml + costPillHtml;
+        badge.innerHTML = `<span class="tc-badge" style="background:${bgColor};color:${txtColor};border-color:${borderColor}">${label}</span>`;
       } else {
-        // V17/V21 — Réponses solo : badge provider + pastille verte coût bien visible
-        const providerHtml = providerBadgeHtml(m.provider);
-        let tooltip = '';
-        if (typeof m._cost === 'number' && m._cost > 0) {
-          const tin = m._tokensIn || 0, tou = m._tokensOut || 0;
-          tooltip = `${m.model} : ${fmtUSD(m._cost)} (${tin} in / ${tou} out)`;
-        }
-        const costPillHtml = buildCostPill(m._cost, tooltip);
-        badge.innerHTML = providerHtml + costPillHtml;
+        badge.innerHTML = providerBadgeHtml(m.provider);
       }
       wrap.appendChild(badge);
     }
@@ -4748,6 +4707,32 @@ blockquote{border-left:3px solid #4abfbf;margin:10px 0;padding:8px 16px;color:#5
       forkBtn.onclick = () => forkChatFromHere(c.id, msgIdx);
 
       actions.append(copyBtn, regenBtn, forkBtn, docBtn, exportBtn);
+
+      // V22 — Pastille verte du coût à la fin de la barre d'actions, après les icônes
+      if (typeof m._cost === 'number' && m._cost > 0) {
+        let tooltip = '';
+        if (m._tripleCheck && m._tripleCheckCosts && m._tripleCheckModels && m._tripleCheckTokens) {
+          const lines = ['Détail Triple Check :'];
+          ['phase1','phase2','phase3'].forEach((p, i) => {
+            const mdl = m._tripleCheckModels[p] || '?';
+            const cst = m._tripleCheckCosts[p] || 0;
+            const tin = m._tripleCheckTokens[p]?.in || 0;
+            const tou = m._tripleCheckTokens[p]?.out || 0;
+            lines.push(`Phase ${i+1} (${mdl}) : ${fmtUSD(cst)} — ${tin} in / ${tou} out`);
+          });
+          lines.push(`Total : ${fmtUSD(m._cost)}`);
+          tooltip = lines.join('\n');
+        } else {
+          const tin = m._tokensIn || 0, tou = m._tokensOut || 0;
+          tooltip = `${m.model} : ${fmtUSD(m._cost)} (${tin} in / ${tou} out)`;
+        }
+        const costPill = document.createElement('span');
+        costPill.style.cssText = 'display:inline-block;font-size:13px;font-weight:700;color:#22c55e;background:#22c55e1a;border:1.5px solid #22c55e55;border-radius:14px;padding:3px 10px;letter-spacing:.02em;cursor:help;font-variant-numeric:tabular-nums;margin-left:auto;';
+        costPill.title = tooltip;
+        costPill.textContent = fmtUSD(m._cost);
+        actions.appendChild(costPill);
+      }
+
       foot.appendChild(actions);
     } else {
       const b = document.createElement("button");
