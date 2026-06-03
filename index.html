@@ -418,6 +418,51 @@
     .active-model-chip span.label-txt{overflow:hidden;text-overflow:ellipsis;max-width:140px;display:inline-block;vertical-align:middle}
     .active-model-chip .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
 
+    /* ── V15 — Bouton Triple Check (validation à 3 modèles) ── */
+    .triple-check-btn{
+      display:inline-flex;align-items:center;justify-content:center;
+      width:30px;height:30px;border-radius:50%;border:1.5px solid transparent;
+      background:#22c55e22;color:#22c55e;font-size:13px;font-weight:700;
+      cursor:pointer;transition:all .2s;margin-left:4px;
+      user-select:none;flex-shrink:0;
+    }
+    .triple-check-btn:hover{transform:scale(1.05)}
+    .triple-check-btn.off{background:#22c55e22;color:#22c55e;border-color:#22c55e55}
+    .triple-check-btn.on{background:#ef444433;color:#ef4444;border-color:#ef444488;
+      animation:tcGlow 2s ease-in-out infinite;}
+    @keyframes tcGlow{
+      0%,100%{box-shadow:0 0 0 0 #ef444466}
+      50%{box-shadow:0 0 0 4px #ef444400}
+    }
+    .triple-check-btn .tc-icon{font-size:14px;line-height:1}
+
+    /* Badge "Triple Check ✓" sur les réponses validées */
+    .tc-badge{
+      display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;
+      margin-bottom:4px;font-weight:600;letter-spacing:.04em;
+      background:#ef444422;color:#ef4444;border:1px solid #ef444444;
+    }
+
+    /* Indicateur de progression Triple Check pendant le sync */
+    .tc-progress{
+      display:inline-flex;align-items:center;gap:8px;margin-left:10px;
+      font-size:12px;color:#ef4444;font-weight:500;
+    }
+    .tc-progress .tc-step{
+      background:#ef444415;border:1px solid #ef444433;border-radius:12px;
+      padding:2px 8px;font-size:11px;
+    }
+    .tc-progress .tc-step.done{background:#22c55e15;border-color:#22c55e44;color:#22c55e}
+    .tc-progress .tc-step.active{background:#f59e0b15;border-color:#f59e0b44;color:#f59e0b;
+      animation:tcStepPulse 1s ease-in-out infinite;}
+    @keyframes tcStepPulse{0%,100%{opacity:1}50%{opacity:.5}}
+
+    /* Sélecteur de modèles grisé quand Triple Check actif */
+    .model-dropdown.tc-disabled .model-dd-btn{
+      opacity:.5;cursor:not-allowed;background:#1a1a1a;
+    }
+    .model-dropdown.tc-disabled .model-dd-btn:hover{border-color:var(--line)}
+
     /* ── GitHub panel ── */
     .gh-status{font-size:12px;color:var(--muted);margin-top:8px;min-height:18px}
     .gh-status.ok{color:#22c55e}
@@ -1369,7 +1414,7 @@
   <meta name="theme-color" content="#7b68d4">
 </head>
 <body>
-<!-- VERSION_FIXED_V14 — 3 juin 2026 — Option B : auto-pull 60s + auto-sync 2 min + popup beforeunload si sync pas verte -->
+<!-- VERSION_FIXED_V15 — 3 juin 2026 — Triple Check : validation automatique à 3 modèles (Gemini 2.5 Flash → Claude Haiku 4.5 → Gemini 3.5 Flash) -->
 <div class="app">
   <!-- Backdrop pour fermer la sidebar sur tablette (invisible sur desktop) -->
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
@@ -1397,6 +1442,11 @@
           <button class="model-dd-btn" id="modelDdBtn"><span id="modelDdLabel">gemini-2.5-flash</span> <span style="opacity:.5">▾</span></button>
           <div class="model-dd-panel" id="modelDdPanel"></div>
         </div>
+        <!-- V15 — Bouton Triple Check (validation à 3 modèles) -->
+        <button class="triple-check-btn off" id="tripleCheckBtn" title="Triple Check : validation automatique à 3 modèles (OFF — cliquer pour activer)">
+          <span class="tc-icon">3×</span>
+        </button>
+        <span id="tcProgress" class="tc-progress" style="display:none"></span>
       </div>
       <div style="display:flex;gap:8px;align-items:center;position:relative">
         <!-- Chip profil actif -->
@@ -4398,7 +4448,13 @@ function renderMessages() {
     // Badge provider sur la première réponse assistante
     if (m.role === "assistant" && m.provider) {
       const badge = document.createElement("div");
-      badge.innerHTML = providerBadgeHtml(m.provider);
+      // V15 — Si la réponse vient du Triple Check, badge spécial à la place du badge provider
+      if (m._tripleCheck) {
+        const status = m._tripleCheckError ? '⚠ erreur' : '✓ validé par 3 modèles';
+        badge.innerHTML = `<span class="tc-badge">🔺 Triple Check — ${status}</span>`;
+      } else {
+        badge.innerHTML = providerBadgeHtml(m.provider);
+      }
       wrap.appendChild(badge);
     }
 
@@ -5635,6 +5691,225 @@ async function callGeminiImages(apiKey, prompt) {
   return (textContent ? textContent + '\n\n' : '') + imageHtml.trim();
 }
 
+// ═════════════════════════════════════════════════════════════
+// V15 — TRIPLE CHECK : validation automatique à 3 modèles
+// ═════════════════════════════════════════════════════════════
+// Quand activé : la question part vers gemini-2.5-flash (phase 1),
+// sa réponse est revue par claude-haiku-4-5-20251001 (phase 2),
+// puis le résultat est revu par gemini-3.5-flash (phase 3).
+// La réponse finale (phase 3) est celle affichée à l'utilisateur.
+// ─────────────────────────────────────────────────────────────
+
+const TRIPLE_CHECK_MODELS = {
+  phase1: 'gemini-2.5-flash',          // Première réponse
+  phase2: 'claude-haiku-4-5-20251001', // Premier validateur
+  phase3: 'gemini-3.5-flash'           // Validateur final
+};
+
+const TRIPLE_CHECK_VALIDATOR_PROMPT = `[Vérification automatique BrAInShift — Triple Check]
+
+Tu reçois ci-dessous une réponse rédigée par un autre modèle d'IA à une question posée par l'utilisateur.
+
+Ton rôle : vérifier rigoureusement cette réponse et corriger TOUTES les inexactitudes factuelles, erreurs de raisonnement, erreurs de calcul, données obsolètes, ou imprécisions techniques que tu détectes.
+
+CONSIGNES IMPORTANTES :
+1. Renvoie la VERSION CORRIGÉE EN INTÉGRALITÉ, dans le même format, la même langue et le même ton que l'original.
+2. NE renvoie PAS une liste de corrections séparée, NI de commentaires sur ce que tu as changé.
+3. Si la réponse originale est correcte et n'a besoin d'aucune correction, renvoie-la telle quelle.
+4. Conserve la structure, les titres, les tableaux, les équations LaTeX, les formules chimiques (\\ce{}), les blocs de code, etc.
+5. Si tu détectes une erreur factuelle grave (date, nom, formule, valeur numérique), corrige-la silencieusement avec la valeur correcte.`;
+
+/**
+ * État du bouton Triple Check : persisté en localStorage, init à OFF par défaut.
+ */
+function isTripleCheckOn() {
+  return localStorage.getItem('tripleCheckEnabled') === '1';
+}
+function setTripleCheckOn(on) {
+  localStorage.setItem('tripleCheckEnabled', on ? '1' : '0');
+  updateTripleCheckBtn();
+}
+function toggleTripleCheck() {
+  const newState = !isTripleCheckOn();
+  setTripleCheckOn(newState);
+  console.log('[BrAInShift] 🔺 Triple Check ' + (newState ? 'ACTIVÉ' : 'désactivé'));
+}
+
+/**
+ * Met à jour le visuel du bouton + état du sélecteur de modèles.
+ */
+function updateTripleCheckBtn() {
+  const btn = document.getElementById('tripleCheckBtn');
+  if (!btn) return;
+  const on = isTripleCheckOn();
+  btn.classList.toggle('on', on);
+  btn.classList.toggle('off', !on);
+  btn.title = on
+    ? 'Triple Check : validation automatique à 3 modèles (ON — Gemini 2.5 Flash → Claude Haiku 4.5 → Gemini 3.5 Flash). Cliquer pour désactiver.'
+    : 'Triple Check : validation automatique à 3 modèles (OFF). Cliquer pour activer.';
+
+  // Griser le sélecteur de modèles quand Triple Check est ON
+  const dd = document.getElementById('modelDropdown');
+  if (dd) {
+    dd.classList.toggle('tc-disabled', on);
+    const ddBtn = document.getElementById('modelDdBtn');
+    if (ddBtn) {
+      ddBtn.title = on ? 'Triple Check actif — modèles fixés (Gemini 2.5 → Haiku → Gemini 3.5)' : '';
+    }
+  }
+}
+
+/**
+ * Met à jour l'indicateur visuel de progression Triple Check.
+ * step: 0 = caché ; 1, 2, 3 = phase en cours ; 4 = terminé (caché)
+ */
+function setTripleCheckProgress(step) {
+  const el = document.getElementById('tcProgress');
+  if (!el) return;
+  if (step === 0 || step === 4) {
+    el.style.display = 'none';
+    el.innerHTML = '';
+    return;
+  }
+  const phases = [
+    { name: 'Gemini 2.5', icon: '①' },
+    { name: 'Haiku 4.5',  icon: '②' },
+    { name: 'Gemini 3.5', icon: '③' }
+  ];
+  let html = '<span style="opacity:.7">🔺 Triple Check :</span>';
+  phases.forEach((p, idx) => {
+    const phaseNum = idx + 1;
+    let cls = '';
+    if (phaseNum < step) cls = 'done';
+    else if (phaseNum === step) cls = 'active';
+    html += `<span class="tc-step ${cls}">${p.icon} ${p.name}</span>`;
+  });
+  el.innerHTML = html;
+  el.style.display = 'inline-flex';
+}
+
+/**
+ * Appelle un modèle spécifique et retourne le texte de la réponse.
+ * Sert d'aiguillage générique pour le Triple Check.
+ */
+async function callModelForTripleCheck(modelName, messages) {
+  const provider = inferProviderFromModel(modelName);
+  const key = (apiKeysByProvider[provider] || "").trim();
+  if (!key) throw new Error(`Clé API manquante pour ${provider} (modèle ${modelName})`);
+
+  if (provider === "ANTHROPIC") {
+    return await callAnthropic(key, modelName, messages);
+  } else if (provider === "GOOGLE GEMINI") {
+    return await callGemini(key, modelName, messages);
+  } else if (provider === "GROQ") {
+    return await callGroq(key, modelName, messages);
+  } else if (provider === "MISTRAL") {
+    return await callOpenAICompatible("https://api.mistral.ai/v1/chat/completions", key, modelName, messages, "mistral");
+  } else if (provider === "DEEPSEEK") {
+    return await callOpenAICompatible("https://api.deepseek.com/chat/completions", key, modelName, messages, "deepseek");
+  } else if (isGPT5Model(modelName)) {
+    return await callOpenAIResponses(key, modelName, messages);
+  } else {
+    return await callOpenAICompatible("https://api.openai.com/v1/chat/completions", key, modelName, messages);
+  }
+}
+
+/**
+ * Lance la séquence Triple Check : 3 modèles en cascade.
+ * Retourne la réponse finale (phase 3).
+ * Gère les erreurs avec 1 retry par phase, puis fallback sur la dernière réponse valide.
+ *
+ * @param {string} userQuestion - La question originale de l'utilisateur (texte brut)
+ * @param {Array} conversationHistory - Historique complet de la conv (incluant le user msg final)
+ * @returns {Promise<string>} - La réponse finale corrigée
+ */
+async function runTripleCheck(userQuestion, conversationHistory) {
+  console.log('[BrAInShift] 🔺 Triple Check démarré');
+
+  // ── PHASE 1 : Gemini 2.5 Flash répond à la question originale ──
+  setTripleCheckProgress(1);
+  console.log('[BrAInShift] 🔺 Phase 1/3 : ' + TRIPLE_CHECK_MODELS.phase1);
+  let phase1Response;
+  try {
+    phase1Response = await callModelForTripleCheck(TRIPLE_CHECK_MODELS.phase1, conversationHistory);
+    console.log('[BrAInShift] ✅ Phase 1 terminée (' + phase1Response.length + ' chars)');
+  } catch (e) {
+    console.error('[BrAInShift] ❌ Phase 1 échouée :', e.message);
+    // 1 retry
+    try {
+      console.log('[BrAInShift] 🔄 Phase 1 retry…');
+      phase1Response = await callModelForTripleCheck(TRIPLE_CHECK_MODELS.phase1, conversationHistory);
+    } catch (e2) {
+      setTripleCheckProgress(0);
+      throw new Error(`Triple Check échoué dès la phase 1 : ${e2.message}`);
+    }
+  }
+
+  // ── PHASE 2 : Claude Haiku 4.5 valide et corrige la réponse de la phase 1 ──
+  setTripleCheckProgress(2);
+  console.log('[BrAInShift] 🔺 Phase 2/3 : ' + TRIPLE_CHECK_MODELS.phase2);
+  const phase2Messages = [{
+    role: 'user',
+    content: `${TRIPLE_CHECK_VALIDATOR_PROMPT}
+
+Question originale de l'utilisateur :
+${userQuestion}
+
+Réponse à vérifier :
+${phase1Response}
+
+Ta version corrigée (texte intégral) :`
+  }];
+  let phase2Response = phase1Response; // fallback : si phase 2 échoue, on garde phase 1
+  try {
+    phase2Response = await callModelForTripleCheck(TRIPLE_CHECK_MODELS.phase2, phase2Messages);
+    console.log('[BrAInShift] ✅ Phase 2 terminée (' + phase2Response.length + ' chars)');
+  } catch (e) {
+    console.warn('[BrAInShift] ⚠ Phase 2 échouée, retry…', e.message);
+    try {
+      phase2Response = await callModelForTripleCheck(TRIPLE_CHECK_MODELS.phase2, phase2Messages);
+      console.log('[BrAInShift] ✅ Phase 2 OK au retry');
+    } catch (e2) {
+      console.warn('[BrAInShift] ⚠ Phase 2 KO définitif, on saute à phase 3 avec la réponse phase 1');
+      phase2Response = phase1Response;
+    }
+  }
+
+  // ── PHASE 3 : Gemini 3.5 Flash vérifie et finalise ──
+  setTripleCheckProgress(3);
+  console.log('[BrAInShift] 🔺 Phase 3/3 : ' + TRIPLE_CHECK_MODELS.phase3);
+  const phase3Messages = [{
+    role: 'user',
+    content: `${TRIPLE_CHECK_VALIDATOR_PROMPT}
+
+Question originale de l'utilisateur :
+${userQuestion}
+
+Réponse à vérifier :
+${phase2Response}
+
+Ta version corrigée (texte intégral) :`
+  }];
+  let phase3Response = phase2Response; // fallback : si phase 3 échoue, on garde phase 2
+  try {
+    phase3Response = await callModelForTripleCheck(TRIPLE_CHECK_MODELS.phase3, phase3Messages);
+    console.log('[BrAInShift] ✅ Phase 3 terminée (' + phase3Response.length + ' chars)');
+  } catch (e) {
+    console.warn('[BrAInShift] ⚠ Phase 3 échouée, retry…', e.message);
+    try {
+      phase3Response = await callModelForTripleCheck(TRIPLE_CHECK_MODELS.phase3, phase3Messages);
+      console.log('[BrAInShift] ✅ Phase 3 OK au retry');
+    } catch (e2) {
+      console.warn('[BrAInShift] ⚠ Phase 3 KO définitif, on garde la phase 2');
+      phase3Response = phase2Response;
+    }
+  }
+
+  setTripleCheckProgress(0);
+  console.log('[BrAInShift] 🔺 Triple Check terminé');
+  return phase3Response;
+}
+
 // ─────────────────────────────────────────────────
 // ENVOI — aiguillage selon le provider
 // ─────────────────────────────────────────────────
@@ -5642,7 +5917,21 @@ async function send() {
   const provider = inferProviderFromModel(S.model);
   const key      = (apiKeysByProvider[provider] || "").trim();
 
-  if (!key) {
+  // V15 — Si Triple Check actif : on vérifie les clés des 3 modèles, pas celle du modèle sélectionné
+  if (isTripleCheckOn()) {
+    const missingKeys = [];
+    for (const phase of ['phase1', 'phase2', 'phase3']) {
+      const m = TRIPLE_CHECK_MODELS[phase];
+      const p = inferProviderFromModel(m);
+      if (!(apiKeysByProvider[p] || '').trim()) {
+        missingKeys.push(`${p} (pour ${m})`);
+      }
+    }
+    if (missingKeys.length) {
+      showApiError(`⚠ Triple Check : clés API manquantes : ${missingKeys.join(', ')}. Cliquez sur 🔑 pour les ajouter.`);
+      return;
+    }
+  } else if (!key) {
     showApiError(`⚠ Aucune clé API configurée pour ${provider}. Cliquez sur 🔑 pour l'ajouter.`);
     return;
   }
@@ -5727,7 +6016,35 @@ async function send() {
       }
     }
 
-    if (provider === "ANTHROPIC") {
+    // ── V15 — TRIPLE CHECK : si activé, on intercepte ici ──
+    // Le bouton 🔺 substitue la séquence normale par 3 modèles en cascade.
+    // La réponse finale provient de Gemini 3.5 Flash (phase 3).
+    if (isTripleCheckOn()) {
+      console.log('[BrAInShift] 🔺 Mode Triple Check actif — séquence à 3 modèles');
+      try {
+        responseContent = await runTripleCheck(text, c.messages);
+        // On stocke avec un flag spécial pour afficher le badge "Triple Check"
+        c.messages.push({
+          role: "assistant",
+          content: responseContent,
+          provider: "GOOGLE GEMINI",                 // provider du dernier modèle (phase 3)
+          model: TRIPLE_CHECK_MODELS.phase3,
+          _tripleCheck: true                          // flag affichage badge spécial
+        });
+      } catch (e) {
+        console.error('[BrAInShift] 🔺 Triple Check échec total:', e.message);
+        showApiError(`🔺 Triple Check : ${e.message}`);
+        c.messages.push({
+          role: "assistant",
+          content: "❌ Triple Check échoué : " + e.message,
+          provider: "GOOGLE GEMINI",
+          model: TRIPLE_CHECK_MODELS.phase1,
+          _tripleCheck: true,
+          _tripleCheckError: true
+        });
+      }
+      // Skip le routage normal ci-dessous, on a déjà notre réponse
+    } else if (provider === "ANTHROPIC") {
       responseContent = await callAnthropic(key, S.model, c.messages);
 
     } else if (provider === "GOOGLE GEMINI") {
@@ -5766,8 +6083,10 @@ async function send() {
       );
     }
 
-    // On stocke provider ET modèle pour badge + sidebar
-    c.messages.push({ role: "assistant", content: responseContent, provider, model: S.model });
+    // On stocke provider ET modèle pour badge + sidebar (sauf si déjà fait par Triple Check)
+    if (!isTripleCheckOn()) {
+      c.messages.push({ role: "assistant", content: responseContent, provider, model: S.model });
+    }
 
     // ── Auto-détection Artifact v4 — JAMAIS auto-ouvrir markdown ──
     console.log('[BrAInShift Artifact v4] Détection en cours…');
@@ -7139,6 +7458,9 @@ function renderSearchResults(query) {
 // ÉVÉNEMENTS
 // ─────────────────────────────────────────────────
 el("sendBtn").onclick = send;
+// V15 — Bouton Triple Check : toggle ON/OFF
+const _tcBtn = el("tripleCheckBtn");
+if (_tcBtn) _tcBtn.onclick = toggleTripleCheck;
 el("stopBtn").onclick = () => {
   if (_currentAbortController) {
     window._userAborted = true;
@@ -7363,6 +7685,7 @@ if (typeof marked !== "undefined") {
 buildColorPicker();
 initGithubPanel();
 updateSyncBadge(); // Initialiser la pastille de sync (état idle au démarrage)
+updateTripleCheckBtn(); // V15 — Initialiser l'état visuel du bouton Triple Check
 
 // ── Pull automatique à l'ouverture ──
 // Permet de récupérer les conversations de l'autre machine via GitHub
