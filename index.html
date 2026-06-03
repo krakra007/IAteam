@@ -1423,7 +1423,7 @@
   <meta name="theme-color" content="#7b68d4">
 </head>
 <body>
-<!-- VERSION_FIXED_V16 — 3 juin 2026 — Triple Check : 2 modes exclusifs (ÉCO Haiku 4.5 / PREMIUM Sonnet 4.5) avec GPT-5.4-mini en validation intermédiaire -->
+<!-- VERSION_FIXED_V19 — 3 juin 2026 — Triple Check en mode one-shot (auto-désactivation après chaque question) -->
 <div class="app">
   <!-- Backdrop pour fermer la sidebar sur tablette (invisible sur desktop) -->
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
@@ -1550,6 +1550,17 @@ Exemple pour la chimie :
           <div id="ghRepoLink" style="font-size:11px;margin-top:6px;display:none"><a id="ghRepoAnchor" href="#" target="_blank" style="color:#7baaf7;text-decoration:none">🔗 Ouvrir le repo sur GitHub</a></div>
           <div style="font-size:11px;color:#6b7280;margin-top:10px;line-height:1.5;border-top:1px solid #2c2c2c;padding-top:8px">
             ℹ️ Le token doit avoir le scope <code style="background:#2a2a2a;padding:1px 4px;border-radius:3px">repo</code> (ou <code style="background:#2a2a2a;padding:1px 4px;border-radius:3px">contents:write</code> pour un token fin-grained).
+          </div>
+          <!-- V17 — Compteur de coûts API du mois -->
+          <div id="costStatsSection" style="margin-top:12px;border-top:1px solid #2c2c2c;padding-top:10px">
+            <div style="font-size:12px;font-weight:600;color:#e2e8f0;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
+              <span>💰 Coûts API du mois</span>
+              <button id="costStatsRefresh" style="background:transparent;border:1px solid #444;color:#9ca3af;font-size:10px;padding:2px 6px;border-radius:4px;cursor:pointer">↻ Actualiser</button>
+            </div>
+            <div id="costStatsBody" style="font-size:11px;color:#9ca3af;line-height:1.7"></div>
+            <div style="font-size:10px;color:#6b7280;margin-top:6px;font-style:italic">
+              Estimations basées sur les tarifs API publics. Ajustables via console : <code style="background:#2a2a2a;padding:1px 3px;border-radius:3px">TOKEN_PRICES</code>
+            </div>
           </div>
         </div>
         <div id="apiKeyPanel" class="params">
@@ -4473,9 +4484,34 @@ function renderMessages() {
           label = '🔺 Triple Check — ✓ validé par 3 modèles';
           bgColor = '#ef444422'; txtColor = '#ef4444'; borderColor = '#ef444444';
         }
-        badge.innerHTML = `<span class="tc-badge" style="background:${bgColor};color:${txtColor};border-color:${borderColor}">${label}</span>`;
+        // V17 — Suffixe coût + tooltip détaillant les 3 phases
+        let costSuffix = '', tooltip = '';
+        if (typeof m._cost === 'number' && m._cost > 0) {
+          costSuffix = ` · ${fmtUSD(m._cost)}`;
+          if (m._tripleCheckCosts && m._tripleCheckModels && m._tripleCheckTokens) {
+            const lines = ['Détail Triple Check :'];
+            ['phase1','phase2','phase3'].forEach((p, i) => {
+              const mdl = m._tripleCheckModels[p] || '?';
+              const cst = m._tripleCheckCosts[p] || 0;
+              const tin = m._tripleCheckTokens[p]?.in || 0;
+              const tou = m._tripleCheckTokens[p]?.out || 0;
+              lines.push(`Phase ${i+1} (${mdl}) : ${fmtUSD(cst)} — ${tin} in / ${tou} out`);
+            });
+            lines.push(`Total : ${fmtUSD(m._cost)}`);
+            tooltip = lines.join('\n');
+          }
+        }
+        const tooltipAttr = tooltip ? ` title="${tooltip.replace(/"/g, '&quot;')}"` : '';
+        badge.innerHTML = `<span class="tc-badge" style="background:${bgColor};color:${txtColor};border-color:${borderColor};cursor:help"${tooltipAttr}>${label}${costSuffix}</span>`;
       } else {
-        badge.innerHTML = providerBadgeHtml(m.provider);
+        // V17 — Pour les réponses solo, on garde le badge provider mais on suffixe le coût si dispo
+        let providerHtml = providerBadgeHtml(m.provider);
+        if (typeof m._cost === 'number' && m._cost > 0) {
+          const tin = m._tokensIn || 0, tou = m._tokensOut || 0;
+          const tip = `${m.model} : ${fmtUSD(m._cost)} (${tin} in / ${tou} out)`;
+          providerHtml += ` <span style="font-size:11px;color:var(--muted);opacity:.8;cursor:help" title="${tip}">· ${fmtUSD(m._cost)}</span>`;
+        }
+        badge.innerHTML = providerHtml;
       }
       wrap.appendChild(badge);
     }
@@ -5324,6 +5360,10 @@ async function callOpenAICompatible(endpoint, key, model, messages, apiType) {
   // Gestion d'erreur structurée
   if (d.error) throw new Error(`[${d.error.code || "API"}] ${d.error.message}`);
 
+  // V17 — Capture de l'usage pour le tracking de coût
+  const _u = extractUsage(d);
+  if (_u) window._lastUsage = { model: model, input: _u.input, output: _u.output };
+
   return d.choices?.[0]?.message?.content || JSON.stringify(d);
 }
 
@@ -5397,6 +5437,10 @@ async function callAnthropic(key, model, messages) {
   const d = await r.json();
 
   if (d.error) throw new Error(`[Anthropic ${d.error.type || d.error.error_type || "erreur"}] ${d.error.message || JSON.stringify(d.error)}`);
+
+  // V17 — Capture de l'usage pour le tracking de coût
+  const _u = extractUsage(d);
+  if (_u) window._lastUsage = { model: model, input: _u.input, output: _u.output };
 
   // Extraire la réponse (peut contenir thinking + text + web_search_tool_result)
   let thinking = '';
@@ -5472,6 +5516,9 @@ async function callGemini(key, model, messages) {
 
   const d = await r.json();
   if (d.error) throw new Error(`[Gemini ${d.error.code || ""}] ${d.error.message}`);
+  // V17 — Capture de l'usage pour le tracking de coût
+  const _u = extractUsage(d);
+  if (_u) window._lastUsage = { model: model, input: _u.input, output: _u.output };
   return d.choices?.[0]?.message?.content || JSON.stringify(d);
 }
 
@@ -5522,6 +5569,10 @@ async function callGeminiNative(key, model, messages) {
 
   const d = await r.json();
   if (d.error) throw new Error(`[Gemini ${d.error.code || ""}] ${d.error.message}`);
+
+  // V17 — Capture de l'usage pour le tracking de coût
+  const _u = extractUsage(d);
+  if (_u) window._lastUsage = { model: model, input: _u.input, output: _u.output };
 
   // Extraire le texte de la réponse native
   const candidate = d.candidates?.[0];
@@ -5599,6 +5650,10 @@ async function callOpenAIResponses(key, model, messages) {
   const d = await r.json();
   if (d.error) throw new Error(`[OpenAI ${d.error.code || "API"}] ${d.error.message}`);
 
+  // V17 — Capture de l'usage pour le tracking de coût
+  const _u = extractUsage(d);
+  if (_u) window._lastUsage = { model: model, input: _u.input, output: _u.output };
+
   // Extraire le texte depuis output[].content[].text
   const outputMsg = (d.output || []).find(o => o.type === "message");
   if (outputMsg) {
@@ -5652,6 +5707,9 @@ async function callGroq(key, model, messages) {
 
   const d = await r.json();
   if (d.error) throw new Error(`[Groq ${d.error.code || ""}] ${d.error.message}`);
+  // V17 — Capture de l'usage pour le tracking de coût
+  const _u = extractUsage(d);
+  if (_u) window._lastUsage = { model: model, input: _u.input, output: _u.output };
   return d.choices?.[0]?.message?.content || JSON.stringify(d);
 }
 
@@ -5694,6 +5752,10 @@ async function callGeminiImages(apiKey, prompt) {
   const d = await r.json();
   if (d.error) throw new Error(`[Gemini Image] ${d.error.message}`);
 
+  // V17 — Capture de l'usage pour le tracking de coût
+  const _u = extractUsage(d);
+  if (_u) window._lastUsage = { model: 'gemini-3.1-flash-image-preview', input: _u.input, output: _u.output };
+
   const parts = d.candidates?.[0]?.content?.parts || [];
   if (!parts.length) throw new Error('[Gemini Image] Aucune réponse reçue.');
 
@@ -5711,6 +5773,189 @@ async function callGeminiImages(apiKey, prompt) {
   if (!imageHtml) throw new Error('[Gemini Image] Aucune image retournée. Le modèle a peut-être répondu en texte seul.');
 
   return (textContent ? textContent + '\n\n' : '') + imageHtml.trim();
+}
+
+// ═════════════════════════════════════════════════════════════
+// V17 — TRACKING DES COÛTS API (a posteriori, basé sur usage réel)
+// ═════════════════════════════════════════════════════════════
+// À chaque appel API, on capture le `usage` retourné par le provider,
+// on calcule le coût en USD avec la table de prix, on l'accumule dans
+// localStorage par mois. Affiché dans les badges et le panneau 🌐.
+//
+// IMPORTANT : les prix sont des estimations à jour début 2026.
+// L'utilisateur peut les ajuster via la console : TOKEN_PRICES['gpt-5.4-mini'].input = 0.50
+// ─────────────────────────────────────────────────────────────
+
+const TOKEN_PRICES = {
+  // ── Google Gemini ──
+  'gemini-2.5-flash':           { input: 0.15,  output: 0.60 },
+  'gemini-2.5-flash-lite':      { input: 0.075, output: 0.30 },
+  'gemini-2.5-pro':             { input: 1.25,  output: 5.00 },
+  'gemini-3.1-pro-preview':     { input: 2.50,  output: 10.00 },
+  'gemini-3.1-flash-lite':      { input: 0.075, output: 0.30 },
+  'gemini-3.5-flash':           { input: 0.30,  output: 1.20 },
+  'gemini-3.1-flash-image-preview': { input: 0.30, output: 1.20 },
+
+  // ── OpenAI ──
+  'gpt-5.5':                    { input: 5.00,  output: 20.00 },
+  'gpt-5.5-pro':                { input: 15.00, output: 60.00 },
+  'gpt-5.4':                    { input: 2.50,  output: 10.00 },
+  'gpt-5.4-mini':               { input: 0.40,  output: 1.60 },
+  'gpt-5.4-nano':               { input: 0.10,  output: 0.40 },
+  'gpt-4.1':                    { input: 2.00,  output: 8.00 },
+  'gpt-4.1-mini':               { input: 0.40,  output: 1.60 },
+  'o3':                         { input: 2.00,  output: 8.00 },
+  'o4-mini':                    { input: 1.10,  output: 4.40 },
+
+  // ── Anthropic Claude ──
+  'claude-opus-4-7':            { input: 15.00, output: 75.00 },
+  'claude-opus-4-6':            { input: 15.00, output: 75.00 },
+  'claude-sonnet-4-6':          { input: 3.00,  output: 15.00 },
+  'claude-sonnet-4-5':          { input: 3.00,  output: 15.00 },
+  'claude-haiku-4-5-20251001':  { input: 1.00,  output: 5.00 },
+
+  // ── Groq (généralement gratuit jusqu'à un quota, prix indicatifs) ──
+  'openai/gpt-oss-120b':                          { input: 0.15,  output: 0.75 },
+  'openai/gpt-oss-20b':                           { input: 0.10,  output: 0.50 },
+  'qwen/qwen3-32b':                               { input: 0.29,  output: 0.59 },
+  'meta-llama/llama-4-scout-17b-16e-instruct':    { input: 0.11,  output: 0.34 },
+  'llama-3.3-70b-versatile':                      { input: 0.59,  output: 0.79 },
+  'llama-3.1-8b-instant':                         { input: 0.05,  output: 0.08 },
+
+  // ── DeepSeek ──
+  'deepseek-v4-pro':            { input: 0.55,  output: 2.19 },
+  'deepseek-v4-flash':          { input: 0.14,  output: 0.55 },
+  'deepseek-chat':              { input: 0.14,  output: 0.55 },
+  'deepseek-reasoner':          { input: 0.55,  output: 2.19 },
+
+  // ── Mistral ──
+  'mistral-medium-latest':      { input: 1.50,  output: 4.50 },
+  'mistral-small-latest':       { input: 0.15,  output: 0.45 },
+  'mistral-large-latest':       { input: 2.00,  output: 6.00 },
+  'codestral-latest':           { input: 0.30,  output: 0.90 },
+  'devstral-small-latest':      { input: 0.15,  output: 0.45 },
+  'magistral-medium-latest':    { input: 2.00,  output: 6.00 },
+  'mistral-medium-3-1-latest':  { input: 1.00,  output: 3.00 },
+  'ministral-3b-latest':        { input: 0.04,  output: 0.04 },
+  'ministral-8b-latest':        { input: 0.10,  output: 0.10 },
+  'open-mistral-nemo':          { input: 0.15,  output: 0.15 }
+};
+
+// Variable globale : usage du dernier appel API (rempli par les fonctions callXxx)
+window._lastUsage = null;
+
+/**
+ * Extrait input_tokens / output_tokens depuis la réponse JSON brute d'un provider.
+ * Format normalisé : { input: number, output: number }.
+ * Retourne null si aucun usage trouvé.
+ */
+function extractUsage(responseData, providerHint) {
+  if (!responseData) return null;
+  // Anthropic
+  if (responseData.usage && typeof responseData.usage.input_tokens === 'number') {
+    return { input: responseData.usage.input_tokens, output: responseData.usage.output_tokens || 0 };
+  }
+  // OpenAI Chat Completions / DeepSeek / Groq / Mistral / Gemini OpenAI-compat
+  if (responseData.usage && typeof responseData.usage.prompt_tokens === 'number') {
+    return { input: responseData.usage.prompt_tokens, output: responseData.usage.completion_tokens || 0 };
+  }
+  // OpenAI Responses API
+  if (responseData.usage && typeof responseData.usage.input_tokens === 'number') {
+    return { input: responseData.usage.input_tokens, output: responseData.usage.output_tokens || 0 };
+  }
+  // Gemini API native
+  if (responseData.usageMetadata) {
+    return {
+      input: responseData.usageMetadata.promptTokenCount || 0,
+      output: (responseData.usageMetadata.candidatesTokenCount || 0) + (responseData.usageMetadata.thoughtsTokenCount || 0)
+    };
+  }
+  return null;
+}
+
+/**
+ * Calcule le coût USD d'un appel à partir du modèle et de l'usage.
+ * Retourne 0 si le modèle n'est pas dans la table (au lieu de faire planter l'UI).
+ */
+function computeCost(model, inputTokens, outputTokens) {
+  const price = TOKEN_PRICES[model];
+  if (!price) return 0;
+  return (inputTokens * price.input + outputTokens * price.output) / 1_000_000;
+}
+
+/**
+ * Enregistre un appel API dans les stats mensuelles (localStorage).
+ * mode : 'solo' | 'tripleEco' | 'triplePremium'
+ */
+function recordApiCall(model, inputTokens, outputTokens, mode) {
+  const cost = computeCost(model, inputTokens, outputTokens);
+  const month = new Date().toISOString().slice(0, 7); // "2026-06"
+  let stats;
+  try {
+    stats = JSON.parse(localStorage.getItem('costStats') || '{}');
+  } catch(e) { stats = {}; }
+  if (!stats[month]) {
+    stats[month] = { solo: 0, tripleEco: 0, triplePremium: 0, soloCount: 0, tripleEcoCount: 0, triplePremiumCount: 0, totalTokensIn: 0, totalTokensOut: 0 };
+  }
+  const m = stats[month];
+  if (mode === 'tripleEco') {
+    m.tripleEco = (m.tripleEco || 0) + cost;
+    m.tripleEcoCount = (m.tripleEcoCount || 0) + 1;
+  } else if (mode === 'triplePremium') {
+    m.triplePremium = (m.triplePremium || 0) + cost;
+    m.triplePremiumCount = (m.triplePremiumCount || 0) + 1;
+  } else {
+    m.solo = (m.solo || 0) + cost;
+    m.soloCount = (m.soloCount || 0) + 1;
+  }
+  m.totalTokensIn  = (m.totalTokensIn  || 0) + inputTokens;
+  m.totalTokensOut = (m.totalTokensOut || 0) + outputTokens;
+  try { localStorage.setItem('costStats', JSON.stringify(stats)); } catch(e) {}
+  return cost;
+}
+
+/**
+ * Retourne les stats du mois courant pour affichage.
+ */
+function getCurrentMonthStats() {
+  const month = new Date().toISOString().slice(0, 7);
+  let stats;
+  try { stats = JSON.parse(localStorage.getItem('costStats') || '{}'); } catch(e) { stats = {}; }
+  return stats[month] || { solo: 0, tripleEco: 0, triplePremium: 0, soloCount: 0, tripleEcoCount: 0, triplePremiumCount: 0 };
+}
+
+/**
+ * Format USD compact : $0.0084 ou $1.23 selon ordre de grandeur.
+ */
+function fmtUSD(amount) {
+  if (amount < 0.01) return '$' + amount.toFixed(4);
+  if (amount < 1)    return '$' + amount.toFixed(3);
+  return '$' + amount.toFixed(2);
+}
+
+/**
+ * V17 — Rend l'affichage des stats coûts dans le panneau GitHub.
+ */
+function renderCostStats() {
+  const body = document.getElementById('costStatsBody');
+  if (!body) return;
+  const s = getCurrentMonthStats();
+  const month = new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+  const total = (s.solo || 0) + (s.tripleEco || 0) + (s.triplePremium || 0);
+  const totalCount = (s.soloCount || 0) + (s.tripleEcoCount || 0) + (s.triplePremiumCount || 0);
+
+  let html = `<div style="text-transform:capitalize;color:#cbd5e1;margin-bottom:4px">${month}</div>`;
+  html += `<div style="display:grid;grid-template-columns:1fr auto auto;gap:4px 12px;font-variant-numeric:tabular-nums">`;
+  html += `<span>Solo (1 modèle)</span><span>${s.soloCount || 0}×</span><span style="color:#cbd5e1">${fmtUSD(s.solo || 0)}</span>`;
+  html += `<span>🔺 Triple Check ÉCO</span><span>${s.tripleEcoCount || 0}×</span><span style="color:#ef4444">${fmtUSD(s.tripleEco || 0)}</span>`;
+  html += `<span>🔺 Triple Check PREMIUM</span><span>${s.triplePremiumCount || 0}×</span><span style="color:#fbbf24">${fmtUSD(s.triplePremium || 0)}</span>`;
+  html += `<span style="border-top:1px solid #2c2c2c;padding-top:4px;font-weight:600;color:#e2e8f0">TOTAL du mois</span><span style="border-top:1px solid #2c2c2c;padding-top:4px;font-weight:600;color:#e2e8f0">${totalCount}×</span><span style="border-top:1px solid #2c2c2c;padding-top:4px;font-weight:600;color:#22c55e">${fmtUSD(total)}</span>`;
+  html += `</div>`;
+  if (s.totalTokensIn || s.totalTokensOut) {
+    const fmt = n => (n || 0).toLocaleString('fr-FR');
+    html += `<div style="font-size:10px;color:#6b7280;margin-top:6px">Tokens : ${fmt(s.totalTokensIn)} in / ${fmt(s.totalTokensOut)} out</div>`;
+  }
+  body.innerHTML = html;
 }
 
 // ═════════════════════════════════════════════════════════════
@@ -5738,18 +5983,26 @@ const TRIPLE_CHECK_PRESETS = {
 // Compat avec l'ancienne API V15 — utilisé seulement comme fallback de log
 const TRIPLE_CHECK_MODELS = TRIPLE_CHECK_PRESETS.eco;
 
-const TRIPLE_CHECK_VALIDATOR_PROMPT = `[Vérification automatique BrAInShift — Triple Check]
+const TRIPLE_CHECK_VALIDATOR_PROMPT = `[Vérification automatique BrAInShift — Triple Check / Mode expert]
 
-Tu reçois ci-dessous une réponse rédigée par un autre modèle d'IA à une question posée par l'utilisateur.
+Tu reçois ci-dessous une réponse rédigée par un autre modèle d'IA à une question d'utilisateur exigeant (domaines : chimie organique avancée, pharmacologie, biologie moléculaire, pharmacocinétique, réglementation export). Tu joues le rôle d'un expert relecteur scientifique.
 
-Ton rôle : vérifier rigoureusement cette réponse et corriger TOUTES les inexactitudes factuelles, erreurs de raisonnement, erreurs de calcul, données obsolètes, ou imprécisions techniques que tu détectes.
+Ta mission : produire une **version améliorée** de cette réponse en effectuant les 5 contrôles suivants :
 
-CONSIGNES IMPORTANTES :
-1. Renvoie la VERSION CORRIGÉE EN INTÉGRALITÉ, dans le même format, la même langue et le même ton que l'original.
-2. NE renvoie PAS une liste de corrections séparée, NI de commentaires sur ce que tu as changé.
-3. Si la réponse originale est correcte et n'a besoin d'aucune correction, renvoie-la telle quelle.
-4. Conserve la structure, les titres, les tableaux, les équations LaTeX, les formules chimiques (\\ce{}), les blocs de code, etc.
-5. Si tu détectes une erreur factuelle grave (date, nom, formule, valeur numérique), corrige-la silencieusement avec la valeur correcte.`;
+1. **Valeurs numériques** : vérifier chaque pKa, pKi, Ki, IC50, Kd, dose, masse molaire, température, longueur d'onde, etc. Corriger les approximations en ajoutant la précision standard de la littérature (ex. "pKa ≈ 19,3 à 25 °C dans l'eau" plutôt que "pKa ≈ 19").
+2. **Nomenclature et formules** : vérifier chaque nom IUPAC, chaque formule brute, chaque mécanisme. Si un nom est correct mais incomplet, le compléter ; si une formule est ambiguë, la clarifier.
+3. **Mécanismes scientifiques** : identifier les mécanismes incomplets ou imprécis. Si le texte décrit une élimination, préciser le type (E1, E2, E1cb…). Si une stéréochimie est mentionnée, justifier brièvement par la stabilité conformationnelle / stérique / électronique réelle, pas par une formule générique.
+4. **Distinctions pédagogiques importantes** : ajouter les nuances qui distinguent une réponse de niveau étudiant d'une réponse de niveau chercheur (ex. cinétique vs thermodynamique, contrôle de Curtin-Hammett, principe de Le Chatelier appliqué, mécanisme E1cb explicite, état de transition, post-traitement courant en laboratoire).
+5. **Noms communs / synonymes** : pour les molécules complexes, ajouter les noms d'usage en regard du nom IUPAC (ex. "dibenzylidèneacétone (DBA)" en plus du nom IUPAC complet).
+
+CONSIGNES DE FORME — ABSOLUES :
+- Renvoie UNIQUEMENT la version corrigée et enrichie, en INTÉGRALITÉ, dans la même langue que l'original.
+- NE commence PAS par "Je vais vérifier…", "Basé sur mes recherches…", "Voici la version corrigée…", "Après analyse…", ni aucun autre préambule. Commence DIRECTEMENT par le contenu (titre, première phrase, etc.) comme si tu rédigeais toi-même la réponse depuis zéro.
+- NE conclus PAS par "J'espère que cette version vous convient" ou autre formule similaire.
+- N'utilise PAS de séparateur "---" en début ou fin.
+- NE liste PAS séparément les corrections faites. Intègre-les silencieusement dans le texte.
+- Conserve la structure générale (titres, équations LaTeX, formules \\ce{}, blocs de code, tableaux) sauf si elle est elle-même incorrecte.
+- Si la réponse originale est techniquement parfaite, renvoie-la telle quelle, sans ajout cosmétique.`;
 
 /**
  * Retourne le mode Triple Check actif : 'off' | 'eco' | 'premium'.
@@ -5799,16 +6052,16 @@ function updateTripleCheckBtn() {
     btnEco.classList.toggle('on', ecoOn);
     btnEco.classList.toggle('off', !ecoOn);
     btnEco.title = ecoOn
-      ? 'Triple Check ÉCONOMIQUE actif (Gemini 2.5 Flash → GPT-5.4-mini → Claude Haiku 4.5). ~$0.014/requête. Cliquer pour désactiver.'
-      : 'Triple Check ÉCONOMIQUE — validation à 3 modèles, ~$0.014/requête (Gemini 2.5 Flash → GPT-5.4-mini → Claude Haiku 4.5). Cliquer pour activer.';
+      ? 'Triple Check ÉCONOMIQUE armé (Gemini 2.5 Flash → GPT-5.4-mini → Claude Haiku 4.5). ~$0.014/requête. Se désactive automatiquement après votre prochaine question (mode one-shot). Cliquer pour annuler.'
+      : 'Triple Check ÉCONOMIQUE — validation à 3 modèles, ~$0.014/requête (Gemini 2.5 Flash → GPT-5.4-mini → Claude Haiku 4.5). Mode one-shot : actif uniquement pour la prochaine question. Cliquer pour armer.';
   }
   if (btnPrem) {
     const premOn = (mode === 'premium');
     btnPrem.classList.toggle('on', premOn);
     btnPrem.classList.toggle('off', !premOn);
     btnPrem.title = premOn
-      ? 'Triple Check PREMIUM actif (Gemini 2.5 Flash → GPT-5.4-mini → Claude Sonnet 4.5). ~$0.037/requête, qualité max. Cliquer pour désactiver.'
-      : 'Triple Check PREMIUM — validation à 3 modèles haut de gamme, ~$0.037/requête (Gemini 2.5 Flash → GPT-5.4-mini → Claude Sonnet 4.5). Cliquer pour activer.';
+      ? 'Triple Check PREMIUM armé (Gemini 2.5 Flash → GPT-5.4-mini → Claude Sonnet 4.5). ~$0.037/requête, qualité max. Se désactive automatiquement après votre prochaine question (mode one-shot). Cliquer pour annuler.'
+      : 'Triple Check PREMIUM — validation à 3 modèles haut de gamme, ~$0.037/requête (Gemini 2.5 Flash → GPT-5.4-mini → Claude Sonnet 4.5). Mode one-shot : actif uniquement pour la prochaine question. Cliquer pour armer.';
   }
 
   // Griser le sélecteur de modèles dès qu'un Triple Check est actif (peu importe lequel)
@@ -5903,6 +6156,30 @@ async function callModelForTripleCheck(modelName, messages) {
  * @param {Array} conversationHistory - Historique complet de la conv (incluant le user msg final)
  * @returns {Promise<string>} - La réponse finale corrigée
  */
+/**
+ * V18 — Nettoie les préambules méta qu'un validateur récalcitrant pourrait
+ * laisser malgré l'interdiction du prompt. Détecte les phrases d'intro typiques
+ * et le séparateur "---" qui suit, et les retire pour ne garder que le contenu.
+ * Conservateur : ne nettoie que si le match est très net (début de chaîne, motif explicite).
+ */
+function stripValidatorPreamble(text) {
+  if (!text || typeof text !== 'string') return text;
+
+  // Motifs d'introduction méta typiques (insensible à la casse, début de chaîne)
+  const preambleRegex = /^(?:\s*)(je vais (?:vérifier|examiner|analyser|revoir)|basé sur (?:mes|une) (?:recherches?|analyse|vérifications?)|après (?:analyse|vérification|examen|relecture)|voici (?:la |ma |une )?version (?:corrigée|améliorée|finale)|après avoir vérifié|j'ai (?:identifié|détecté|relevé|trouvé)|cette réponse (?:est|nécessite|contient))\b[\s\S]*?(?:\n\s*-{3,}\s*\n|\n\n)/i;
+
+  let cleaned = text.replace(preambleRegex, '');
+
+  // Retirer un séparateur "---" isolé en début si toujours présent
+  cleaned = cleaned.replace(/^\s*-{3,}\s*\n+/, '');
+
+  // Retirer une conclusion méta typique en toute fin
+  const conclusionRegex = /\n+\s*(?:j'espère que (?:cette|cela)|n'hésitez pas à|si vous avez (?:d'autres|encore)|cette version (?:devrait|est plus))\b[\s\S]*$/i;
+  cleaned = cleaned.replace(conclusionRegex, '');
+
+  return cleaned.trim() === '' ? text : cleaned;  // safety : si on a tout vidé, restituer l'original
+}
+
 async function runTripleCheck(userQuestion, conversationHistory) {
   // V16 — Récupérer le preset actif (eco par défaut si mode inconnu)
   const mode = getTripleCheckMode();
@@ -5911,18 +6188,35 @@ async function runTripleCheck(userQuestion, conversationHistory) {
   console.log('[BrAInShift] ' + modeLabel + ' Triple Check démarré ('
     + preset.phase1 + ' → ' + preset.phase2 + ' → ' + preset.phase3 + ')');
 
+  // V17 — Tracking des coûts par phase
+  const phaseCosts = { phase1: 0, phase2: 0, phase3: 0 };
+  const phaseTokens = { phase1: {in:0,out:0}, phase2: {in:0,out:0}, phase3: {in:0,out:0} };
+  const phaseModels = { phase1: preset.phase1, phase2: preset.phase2, phase3: preset.phase3 };
+  const recordMode = (mode === 'premium') ? 'triplePremium' : 'tripleEco';
+
+  // Helper : capture le coût après chaque appel
+  const captureCost = (phaseName, model) => {
+    if (window._lastUsage && window._lastUsage.model === model) {
+      const cost = recordApiCall(model, window._lastUsage.input, window._lastUsage.output, recordMode);
+      phaseCosts[phaseName] = cost;
+      phaseTokens[phaseName] = { in: window._lastUsage.input, out: window._lastUsage.output };
+    }
+  };
+
   // ── PHASE 1 ──
   setTripleCheckProgress(1);
   console.log('[BrAInShift] 🔺 Phase 1/3 : ' + preset.phase1);
   let phase1Response;
   try {
     phase1Response = await callModelForTripleCheck(preset.phase1, conversationHistory);
-    console.log('[BrAInShift] ✅ Phase 1 terminée (' + phase1Response.length + ' chars)');
+    captureCost('phase1', preset.phase1);
+    console.log('[BrAInShift] ✅ Phase 1 terminée (' + phase1Response.length + ' chars, ' + fmtUSD(phaseCosts.phase1) + ')');
   } catch (e) {
     console.error('[BrAInShift] ❌ Phase 1 échouée :', e.message);
     try {
       console.log('[BrAInShift] 🔄 Phase 1 retry…');
       phase1Response = await callModelForTripleCheck(preset.phase1, conversationHistory);
+      captureCost('phase1', preset.phase1);
     } catch (e2) {
       setTripleCheckProgress(0);
       throw new Error(`Triple Check échoué dès la phase 1 : ${e2.message}`);
@@ -5947,11 +6241,15 @@ Ta version corrigée (texte intégral) :`
   let phase2Response = phase1Response;
   try {
     phase2Response = await callModelForTripleCheck(preset.phase2, phase2Messages);
-    console.log('[BrAInShift] ✅ Phase 2 terminée (' + phase2Response.length + ' chars)');
+    phase2Response = stripValidatorPreamble(phase2Response); // V18 — nettoyage anti-préambule
+    captureCost('phase2', preset.phase2);
+    console.log('[BrAInShift] ✅ Phase 2 terminée (' + phase2Response.length + ' chars, ' + fmtUSD(phaseCosts.phase2) + ')');
   } catch (e) {
     console.warn('[BrAInShift] ⚠ Phase 2 échouée, retry…', e.message);
     try {
       phase2Response = await callModelForTripleCheck(preset.phase2, phase2Messages);
+      phase2Response = stripValidatorPreamble(phase2Response); // V18
+      captureCost('phase2', preset.phase2);
       console.log('[BrAInShift] ✅ Phase 2 OK au retry');
     } catch (e2) {
       console.warn('[BrAInShift] ⚠ Phase 2 KO définitif, on saute à phase 3 avec la réponse phase 1');
@@ -5977,11 +6275,15 @@ Ta version corrigée (texte intégral) :`
   let phase3Response = phase2Response;
   try {
     phase3Response = await callModelForTripleCheck(preset.phase3, phase3Messages);
-    console.log('[BrAInShift] ✅ Phase 3 terminée (' + phase3Response.length + ' chars)');
+    phase3Response = stripValidatorPreamble(phase3Response); // V18 — nettoyage anti-préambule
+    captureCost('phase3', preset.phase3);
+    console.log('[BrAInShift] ✅ Phase 3 terminée (' + phase3Response.length + ' chars, ' + fmtUSD(phaseCosts.phase3) + ')');
   } catch (e) {
     console.warn('[BrAInShift] ⚠ Phase 3 échouée, retry…', e.message);
     try {
       phase3Response = await callModelForTripleCheck(preset.phase3, phase3Messages);
+      phase3Response = stripValidatorPreamble(phase3Response); // V18
+      captureCost('phase3', preset.phase3);
       console.log('[BrAInShift] ✅ Phase 3 OK au retry');
     } catch (e2) {
       console.warn('[BrAInShift] ⚠ Phase 3 KO définitif, on garde la phase 2');
@@ -5990,9 +6292,18 @@ Ta version corrigée (texte intégral) :`
   }
 
   setTripleCheckProgress(0);
-  console.log('[BrAInShift] ' + modeLabel + ' Triple Check terminé');
-  // Retour : la réponse finale + le mode utilisé (pour affichage badge)
-  return { content: phase3Response, mode, finalModel: preset.phase3 };
+  const totalCost = phaseCosts.phase1 + phaseCosts.phase2 + phaseCosts.phase3;
+  console.log('[BrAInShift] ' + modeLabel + ' Triple Check terminé · Coût total : ' + fmtUSD(totalCost));
+  // V17 — Retour enrichi avec détail des coûts
+  return {
+    content: phase3Response,
+    mode,
+    finalModel: preset.phase3,
+    totalCost,
+    phaseCosts,
+    phaseTokens,
+    phaseModels
+  };
 }
 
 // ─────────────────────────────────────────────────
@@ -6117,7 +6428,12 @@ async function send() {
           provider: finalProvider,
           model: finalModel,
           _tripleCheck: true,
-          _tripleCheckMode: tcResult.mode  // 'eco' ou 'premium' pour affichage badge
+          _tripleCheckMode: tcResult.mode,  // 'eco' ou 'premium' pour affichage badge
+          // V17 — Coûts attachés au message (utilisés par renderMessages pour afficher le badge enrichi)
+          _cost: tcResult.totalCost || 0,
+          _tripleCheckCosts: tcResult.phaseCosts,
+          _tripleCheckTokens: tcResult.phaseTokens,
+          _tripleCheckModels: tcResult.phaseModels
         });
       } catch (e) {
         console.error('[BrAInShift] 🔺 Triple Check échec total:', e.message);
@@ -6133,6 +6449,11 @@ async function send() {
           _tripleCheckMode: getTripleCheckMode()
         });
       }
+      // V19 — One-shot : on désactive automatiquement le mode après chaque question
+      // pour éviter les surcoûts par inadvertance sur les questions suivantes.
+      // L'utilisateur doit ré-activer 3× ou 3×+ pour la prochaine question critique.
+      console.log('[BrAInShift] 🔺 Mode Triple Check désactivé automatiquement (one-shot V19)');
+      setTripleCheckMode('off');
       // Skip le routage normal ci-dessous
     } else if (provider === "ANTHROPIC") {
       responseContent = await callAnthropic(key, S.model, c.messages);
@@ -6175,7 +6496,19 @@ async function send() {
 
     // On stocke provider ET modèle pour badge + sidebar (sauf si déjà fait par Triple Check)
     if (!isTripleCheckOn()) {
-      c.messages.push({ role: "assistant", content: responseContent, provider, model: S.model });
+      // V17 — Calcul du coût pour cet appel + attachement au message
+      let _msgCost = 0;
+      if (window._lastUsage && window._lastUsage.model === S.model) {
+        _msgCost = recordApiCall(S.model, window._lastUsage.input, window._lastUsage.output, 'solo');
+      }
+      c.messages.push({
+        role: "assistant",
+        content: responseContent,
+        provider, model: S.model,
+        _cost: _msgCost,
+        _tokensIn:  window._lastUsage?.input  || 0,
+        _tokensOut: window._lastUsage?.output || 0
+      });
     }
 
     // ── Auto-détection Artifact v4 — JAMAIS auto-ouvrir markdown ──
@@ -7260,7 +7593,16 @@ function initGithubPanel() {
   el("ghListRepos").onclick   = ghListRepos;
   el("ghPush").onclick       = ghPush;
   el("ghPull").onclick       = ghPull;
-  el("githubBtn").onclick    = () => el("githubPanel").classList.toggle("open");
+  el("githubBtn").onclick    = () => {
+    el("githubPanel").classList.toggle("open");
+    // V17 — Mettre à jour les stats coûts quand on ouvre le panneau
+    if (el("githubPanel").classList.contains("open")) {
+      try { renderCostStats(); } catch(e) { console.warn('[BrAInShift] renderCostStats:', e); }
+    }
+  };
+  // V17 — Bouton "Actualiser" pour rafraîchir les stats sans rouvrir le panneau
+  const _csrBtn = el("costStatsRefresh");
+  if (_csrBtn) _csrBtn.onclick = () => renderCostStats();
 
   document.addEventListener("click", e => {
     const panel = el("githubPanel");
