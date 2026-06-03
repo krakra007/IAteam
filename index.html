@@ -1423,7 +1423,7 @@
   <meta name="theme-color" content="#7b68d4">
 </head>
 <body>
-<!-- VERSION_FIXED_V19 — 3 juin 2026 — Triple Check en mode one-shot (auto-désactivation après chaque question) -->
+<!-- VERSION_FIXED_V20 — 3 juin 2026 — Fix : auto-pull ne saute plus vers chat vide pendant que tu travailles -->
 <div class="app">
   <!-- Backdrop pour fermer la sidebar sur tablette (invisible sur desktop) -->
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
@@ -2518,7 +2518,13 @@ async function testApiKey(provider, key) {
 // ─────────────────────────────────────────────────
 // PROJETS & CONVERSATIONS
 // ─────────────────────────────────────────────────
-function ensureLandingBlankChat() {
+function ensureLandingBlankChat(options = {}) {
+  // V20 — Paramètre `navigate` :
+  //   - true (défaut) : comportement historique, navigue vers un chat vide (chargement initial)
+  //   - false : nettoie juste les doublons sans changer S.activeChat (après un pull silencieux)
+  // Cela évite de catapulter l'utilisateur hors de sa conversation à chaque auto-pull 60s.
+  const navigate = options.navigate !== false;
+
   // ── 1. Nettoyer les doublons de chats vides ──
   // Garder max 1 seul "Nouveau chat" vide dans les conversations générales
   const emptyGeneralChats = S.chats.filter(c =>
@@ -2543,7 +2549,17 @@ function ensureLandingBlankChat() {
     }
   }
 
-  // ── 2. Toujours ouvrir sur un chat vide ──
+  // V20 — Si on est en mode "nettoyage seul" (post-pull), on s'arrête ici sans toucher au chat actif.
+  // Vérification de sécurité : si le chat actif a été supprimé par le nettoyage (très rare), on le restaure.
+  if (!navigate) {
+    if (S.activeChat && !S.chats.find(c => c.id === S.activeChat)) {
+      // Le chat actif n'existe plus (cas pathologique) → tomber sur le premier disponible
+      S.activeChat = S.chats[0]?.id || null;
+    }
+    return;
+  }
+
+  // ── 2. Toujours ouvrir sur un chat vide (chargement initial uniquement) ──
   // Réutiliser s'il en existe déjà un
   const existing = S.chats.find(c =>
     !c.projectId && c.title === "Nouveau chat" && Array.isArray(c.messages) && c.messages.length === 0
@@ -7264,7 +7280,8 @@ async function ghPullSilent() {
     updateProfileChip();
     render();
     console.log(`[BrAInShift] ✅ Pull silencieux OK — ${S.chats.length} conversations, ${S.projects.length} projets`);
-    ensureLandingBlankChat();
+    // V20 — Ne PAS naviguer vers un chat vide : on reste sur la conv en cours
+    ensureLandingBlankChat({ navigate: false });
 
     // ── Empreinte APRÈS fusion — comparer pour savoir si re-push utile ──
     const fingerprintAfter = JSON.stringify({
@@ -7531,8 +7548,8 @@ async function ghPull() {
     if (!S.chats.find(c => c.id === S.activeChat))
       S.activeChat = S.chats[0]?.id || null;
 
-    // Nettoyer les chats vides dupliqués après la fusion
-    ensureLandingBlankChat();
+    // V20 — Nettoyer les chats vides dupliqués SANS sauter vers un chat vide
+    ensureLandingBlankChat({ navigate: false });
     save();
     renderModels();
     renderProfiles();
