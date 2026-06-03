@@ -1369,7 +1369,7 @@
   <meta name="theme-color" content="#7b68d4">
 </head>
 <body>
-<!-- VERSION_FIXED_V12 — 2 juin 2026 — anti-cache + fix 422 + nettoyage modèle + pastille de sync + retry 409 + API Git -->
+<!-- VERSION_FIXED_V13 — 2 juin 2026 — suppression push préventif (cause 422 quand 2 machines démarrent ensemble) -->
 <div class="app">
   <!-- Backdrop pour fermer la sidebar sur tablette (invisible sur desktop) -->
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
@@ -6434,19 +6434,13 @@ async function ghPushViaGitApi(jsonStr) {
 async function ghPullSilent() {
   if (!GH.token || !GH.owner || !GH.repo) return;
   try {
-    // ═══ ÉTAPE 1 : PUSH D'ABORD — SEULEMENT si des données locales existent ═══
-    // Sur une machine fraîche (localStorage vide), on NE POUSSE PAS → sinon ça écrase GitHub
-    const hasLocalData = S.chats.some(c => c.messages && c.messages.length > 0) || S.projects.length > 0;
-    if (hasLocalData) {
-      try {
-        await ghPushSilent();
-        console.log('[BrAInShift] ✅ Push préventif OK (avant pull)');
-      } catch(pe) {
-        console.warn('[BrAInShift] ⚠ Push préventif échoué:', pe.message, '— on continue le pull');
-      }
-    } else {
-      console.log('[BrAInShift] ℹ Pas de données locales significatives — push préventif ignoré');
-    }
+    // ═══ V13 : SUPPRESSION DU PUSH PRÉVENTIF ═══
+    // L'ancienne version (V12 et avant) commençait par un push préventif "ceinture+bretelle"
+    // avant le pull. Problème : quand deux machines démarrent quasi-simultanément, elles
+    // poussent en parallèle → 422 "HEAD dépassé" à répétition.
+    // Suppression justifiée : la fusion intelligente (étape 3) garde déjà la version
+    // avec le plus de messages, donc le local n'est jamais écrasé. Le push se fait
+    // ensuite naturellement (étape 4 si fusion modifie le local, ou auto-sync 5 min).
 
     // ═══ ÉTAPE 2 : PULL depuis GitHub ═══
     const result = await ghFetchFileContent();
