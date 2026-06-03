@@ -1423,7 +1423,7 @@
   <meta name="theme-color" content="#7b68d4">
 </head>
 <body>
-<!-- VERSION_FIXED_V23 — 3 juin 2026 — Fix : double réponse (Triple Check + solo) causée par l'interaction one-shot/condition push -->
+<!-- VERSION_FIXED_V24 — 3 juin 2026 — Robustesse Triple Check : pas de retry sur erreurs définitives (quota, auth) + badge honnête + notification de dégradation -->
 <div class="app">
   <!-- Backdrop pour fermer la sidebar sur tablette (invisible sur desktop) -->
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
@@ -4497,14 +4497,23 @@ function renderMessages() {
       // V16 — Si la réponse vient du Triple Check, badge spécial avec mode (eco/premium)
       if (m._tripleCheck) {
         let label, bgColor, txtColor, borderColor;
+        // V24 — Compter les phases qui ont réussi pour un badge honnête
+        const successCount = m._tripleCheckSuccessCount;
+        const nbReussies = (typeof successCount === 'number') ? successCount : 3;
+        const allOk = nbReussies === 3;
+
         if (m._tripleCheckError) {
           label = '🔺 Triple Check — ⚠ erreur';
           bgColor = '#ef444422'; txtColor = '#ef4444'; borderColor = '#ef444444';
         } else if (m._tripleCheckMode === 'premium') {
-          label = '🔺 Triple Check PREMIUM — ✓ validé par 3 modèles haut de gamme';
+          label = allOk
+            ? '🔺 Triple Check PREMIUM — ✓ validé par 3 modèles haut de gamme'
+            : `🔺 Triple Check PREMIUM — ✓ validé par ${nbReussies}/3 modèles`;
           bgColor = '#dc262622'; txtColor = '#fbbf24'; borderColor = '#dc262644';
         } else {
-          label = '🔺 Triple Check — ✓ validé par 3 modèles';
+          label = allOk
+            ? '🔺 Triple Check — ✓ validé par 3 modèles'
+            : `🔺 Triple Check — ✓ validé par ${nbReussies}/3 modèles`;
           bgColor = '#ef444422'; txtColor = '#ef4444'; borderColor = '#ef444444';
         }
         badge.innerHTML = `<span class="tc-badge" style="background:${bgColor};color:${txtColor};border-color:${borderColor}">${label}</span>`;
@@ -4512,6 +4521,25 @@ function renderMessages() {
         badge.innerHTML = providerBadgeHtml(m.provider);
       }
       wrap.appendChild(badge);
+
+      // V24 — Notification visible si une ou plusieurs phases Triple Check ont sauté
+      if (m._tripleCheck && !m._tripleCheckError && m._tripleCheckStatus) {
+        const skippedPhases = ['phase1','phase2','phase3']
+          .map((p, i) => ({ p, idx: i+1, status: m._tripleCheckStatus[p], err: m._tripleCheckErrors?.[p], model: m._tripleCheckModels?.[p] }))
+          .filter(x => x.status === 'skipped');
+        if (skippedPhases.length) {
+          const warn = document.createElement('div');
+          warn.style.cssText = 'background:#f59e0b15;border:1px solid #f59e0b44;color:#f59e0b;padding:6px 10px;border-radius:8px;font-size:12px;margin:4px 0;line-height:1.4';
+          const lines = skippedPhases.map(x => {
+            const reason = (x.err && /quota|insufficient|billing|payment/i.test(x.err)) ? 'quota épuisé'
+                         : (x.err && /authentication|invalid_api_key|permission/i.test(x.err)) ? 'clé API invalide'
+                         : 'indisponible';
+            return `Phase ${x.idx} (${x.model}) ignorée : ${reason}.`;
+          }).join(' ');
+          warn.innerHTML = `⚠ <strong>Dégradation :</strong> ${lines} La réponse a été générée avec les modèles restants.`;
+          wrap.appendChild(warn);
+        }
+      }
     }
 
     const d = document.createElement("div");
@@ -5301,6 +5329,36 @@ async function fetchWithRetry(url, options, maxRetries = 3) {
       _currentAbortController = null;
       // 429 = rate limit, 529 = overloaded, 503 = service unavailable
       if ((r.status === 429 || r.status === 529 || r.status === 503) && attempt < maxRetries) {
+        // V24 — Distinguer les erreurs définitives (quota épuisé, clé invalide) des temporaires (rate-limit).
+        // Pour ça on regarde le corps de la réponse SANS la consommer (clone).
+        let isDefinitive = false;
+        let definitiveMsg = '';
+        try {
+          const peek = await r.clone().json();
+          const errCode = peek?.error?.code || peek?.error?.type || '';
+          const errMsg  = peek?.error?.message || '';
+          // Codes d'erreur "définitifs" qu'on ne doit pas retry
+          const definitiveCodes = [
+            'insufficient_quota',         // OpenAI : crédit épuisé
+            'invalid_api_key',            // clé API invalide
+            'authentication_error',       // pas authentifié
+            'permission_denied',          // pas le droit
+            'account_deactivated',        // compte désactivé
+            'billing_not_active',         // facturation inactive
+            'quota_exceeded'              // quota atteint
+          ];
+          if (definitiveCodes.includes(errCode) || /quota|insufficient|billing|payment/i.test(errMsg)) {
+            isDefinitive = true;
+            definitiveMsg = errMsg || errCode;
+          }
+        } catch(_) { /* parsing JSON impossible → on retry comme avant */ }
+
+        if (isDefinitive) {
+          console.warn(`[BrAInShift] ⛔ Erreur définitive (${r.status}) — pas de retry : ${definitiveMsg}`);
+          // On renvoie la réponse telle quelle pour que le caller lève une vraie erreur descriptive
+          return r;
+        }
+
         const retryAfter = r.headers.get('retry-after');
         const wait = retryAfter ? Number(retryAfter) * 1000 : Math.pow(2, attempt) * 1000;
         console.warn(`[BrAInShift] ⏳ ${r.status} — retry ${attempt + 1}/${maxRetries} dans ${Math.round(wait/1000)}s…`);
@@ -6216,6 +6274,9 @@ async function runTripleCheck(userQuestion, conversationHistory) {
   const phaseCosts = { phase1: 0, phase2: 0, phase3: 0 };
   const phaseTokens = { phase1: {in:0,out:0}, phase2: {in:0,out:0}, phase3: {in:0,out:0} };
   const phaseModels = { phase1: preset.phase1, phase2: preset.phase2, phase3: preset.phase3 };
+  // V24 — Tracking des statuts par phase (utile pour badge honnête + notification)
+  const phaseStatus = { phase1: 'pending', phase2: 'pending', phase3: 'pending' };
+  const phaseErrors = { phase1: null, phase2: null, phase3: null };
   const recordMode = (mode === 'premium') ? 'triplePremium' : 'tripleEco';
 
   // Helper : capture le coût après chaque appel
@@ -6234,6 +6295,7 @@ async function runTripleCheck(userQuestion, conversationHistory) {
   try {
     phase1Response = await callModelForTripleCheck(preset.phase1, conversationHistory);
     captureCost('phase1', preset.phase1);
+    phaseStatus.phase1 = 'done'; // V24
     console.log('[BrAInShift] ✅ Phase 1 terminée (' + phase1Response.length + ' chars, ' + fmtUSD(phaseCosts.phase1) + ')');
   } catch (e) {
     console.error('[BrAInShift] ❌ Phase 1 échouée :', e.message);
@@ -6241,7 +6303,10 @@ async function runTripleCheck(userQuestion, conversationHistory) {
       console.log('[BrAInShift] 🔄 Phase 1 retry…');
       phase1Response = await callModelForTripleCheck(preset.phase1, conversationHistory);
       captureCost('phase1', preset.phase1);
+      phaseStatus.phase1 = 'done'; // V24
     } catch (e2) {
+      phaseStatus.phase1 = 'failed'; // V24
+      phaseErrors.phase1 = e2.message;
       setTripleCheckProgress(0);
       throw new Error(`Triple Check échoué dès la phase 1 : ${e2.message}`);
     }
@@ -6267,6 +6332,7 @@ Ta version corrigée (texte intégral) :`
     phase2Response = await callModelForTripleCheck(preset.phase2, phase2Messages);
     phase2Response = stripValidatorPreamble(phase2Response); // V18 — nettoyage anti-préambule
     captureCost('phase2', preset.phase2);
+    phaseStatus.phase2 = 'done'; // V24
     console.log('[BrAInShift] ✅ Phase 2 terminée (' + phase2Response.length + ' chars, ' + fmtUSD(phaseCosts.phase2) + ')');
   } catch (e) {
     console.warn('[BrAInShift] ⚠ Phase 2 échouée, retry…', e.message);
@@ -6274,10 +6340,13 @@ Ta version corrigée (texte intégral) :`
       phase2Response = await callModelForTripleCheck(preset.phase2, phase2Messages);
       phase2Response = stripValidatorPreamble(phase2Response); // V18
       captureCost('phase2', preset.phase2);
+      phaseStatus.phase2 = 'done'; // V24
       console.log('[BrAInShift] ✅ Phase 2 OK au retry');
     } catch (e2) {
       console.warn('[BrAInShift] ⚠ Phase 2 KO définitif, on saute à phase 3 avec la réponse phase 1');
       phase2Response = phase1Response;
+      phaseStatus.phase2 = 'skipped'; // V24
+      phaseErrors.phase2 = e2.message;
     }
   }
 
@@ -6301,6 +6370,7 @@ Ta version corrigée (texte intégral) :`
     phase3Response = await callModelForTripleCheck(preset.phase3, phase3Messages);
     phase3Response = stripValidatorPreamble(phase3Response); // V18 — nettoyage anti-préambule
     captureCost('phase3', preset.phase3);
+    phaseStatus.phase3 = 'done'; // V24
     console.log('[BrAInShift] ✅ Phase 3 terminée (' + phase3Response.length + ' chars, ' + fmtUSD(phaseCosts.phase3) + ')');
   } catch (e) {
     console.warn('[BrAInShift] ⚠ Phase 3 échouée, retry…', e.message);
@@ -6308,17 +6378,21 @@ Ta version corrigée (texte intégral) :`
       phase3Response = await callModelForTripleCheck(preset.phase3, phase3Messages);
       phase3Response = stripValidatorPreamble(phase3Response); // V18
       captureCost('phase3', preset.phase3);
+      phaseStatus.phase3 = 'done'; // V24
       console.log('[BrAInShift] ✅ Phase 3 OK au retry');
     } catch (e2) {
       console.warn('[BrAInShift] ⚠ Phase 3 KO définitif, on garde la phase 2');
       phase3Response = phase2Response;
+      phaseStatus.phase3 = 'skipped'; // V24
+      phaseErrors.phase3 = e2.message;
     }
   }
 
   setTripleCheckProgress(0);
   const totalCost = phaseCosts.phase1 + phaseCosts.phase2 + phaseCosts.phase3;
-  console.log('[BrAInShift] ' + modeLabel + ' Triple Check terminé · Coût total : ' + fmtUSD(totalCost));
-  // V17 — Retour enrichi avec détail des coûts
+  const successCount = ['phase1','phase2','phase3'].filter(p => phaseStatus[p] === 'done').length;
+  console.log('[BrAInShift] ' + modeLabel + ' Triple Check terminé · ' + successCount + '/3 phases · Coût total : ' + fmtUSD(totalCost));
+  // V17/V24 — Retour enrichi avec détail des coûts ET statuts des phases
   return {
     content: phase3Response,
     mode,
@@ -6326,7 +6400,10 @@ Ta version corrigée (texte intégral) :`
     totalCost,
     phaseCosts,
     phaseTokens,
-    phaseModels
+    phaseModels,
+    phaseStatus,     // V24 : 'done' | 'skipped' | 'failed' par phase
+    phaseErrors,     // V24 : message d'erreur si skipped/failed
+    successCount     // V24 : nombre de phases qui ont réussi (1 à 3)
   };
 }
 
@@ -6461,7 +6538,11 @@ async function send() {
           _cost: tcResult.totalCost || 0,
           _tripleCheckCosts: tcResult.phaseCosts,
           _tripleCheckTokens: tcResult.phaseTokens,
-          _tripleCheckModels: tcResult.phaseModels
+          _tripleCheckModels: tcResult.phaseModels,
+          // V24 — Statuts par phase (done/skipped/failed) pour badge honnête + notification
+          _tripleCheckStatus: tcResult.phaseStatus,
+          _tripleCheckErrors: tcResult.phaseErrors,
+          _tripleCheckSuccessCount: tcResult.successCount
         });
       } catch (e) {
         console.error('[BrAInShift] 🔺 Triple Check échec total:', e.message);
