@@ -1423,7 +1423,7 @@
   <meta name="theme-color" content="#7b68d4">
 </head>
 <body>
-<!-- VERSION_FIXED_V22 — 3 juin 2026 — Pastille de coût déplacée à la fin de la conversation (bas de chaque message, à droite des icônes) -->
+<!-- VERSION_FIXED_V23 — 3 juin 2026 — Fix : double réponse (Triple Check + solo) causée par l'interaction one-shot/condition push -->
 <div class="app">
   <!-- Backdrop pour fermer la sidebar sur tablette (invisible sur desktop) -->
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
@@ -6438,7 +6438,11 @@ async function send() {
     }
 
     // ── V16 — TRIPLE CHECK : si activé (mode eco ou premium), on intercepte ici ──
-    if (isTripleCheckOn()) {
+    // V23 — On capture l'état du mode EN DÉBUT de tour dans une variable locale,
+    // car setTripleCheckMode('off') sera appelé à la fin (one-shot V19), ce qui ferait
+    // retourner `isTripleCheckOn()` à false plus loin → double push de la réponse (BUG V22).
+    const _tripleCheckActiveThisTurn = isTripleCheckOn();
+    if (_tripleCheckActiveThisTurn) {
       const _mode = getTripleCheckMode();
       console.log('[BrAInShift] 🔺 Mode Triple Check actif : ' + _mode.toUpperCase());
       try {
@@ -6519,7 +6523,9 @@ async function send() {
     }
 
     // On stocke provider ET modèle pour badge + sidebar (sauf si déjà fait par Triple Check)
-    if (!isTripleCheckOn()) {
+    // V23 — On utilise le flag local capturé en début de tour, pas isTripleCheckOn() qui aurait
+    // été remis à false par le one-shot V19, causant un double push (bug V22).
+    if (!_tripleCheckActiveThisTurn) {
       // V17 — Calcul du coût pour cet appel + attachement au message
       let _msgCost = 0;
       if (window._lastUsage && window._lastUsage.model === S.model) {
