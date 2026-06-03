@@ -429,9 +429,9 @@
       background:#9ca3af;border:1.5px solid var(--bg);display:block;transition:background .3s;
     }
     .sync-badge.ok{background:#22c55e}
-    .sync-badge.syncing{background:#f59e0b;animation:syncPulse 1.2s ease-in-out infinite}
+    .sync-badge.syncing{background:#f59e0b;animation:syncPulse 0.6s ease-in-out infinite}  /* V14 : 2x plus rapide pour mieux voir */
     .sync-badge.error{background:#ef4444;animation:syncPulse 0.8s ease-in-out infinite}
-    @keyframes syncPulse{0%,100%{opacity:1}50%{opacity:.4}}
+    @keyframes syncPulse{0%,100%{opacity:1}50%{opacity:.25}}  /* V14 : opacité plus marquée */
     .gh-btn-row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
     .gh-btn{border:1px solid var(--line);background:#ffffff0d;color:var(--text);
       padding:7px 12px;border-radius:8px;cursor:pointer;font-size:13px;transition:background .15s}
@@ -1369,7 +1369,7 @@
   <meta name="theme-color" content="#7b68d4">
 </head>
 <body>
-<!-- VERSION_FIXED_V13 — 2 juin 2026 — suppression push préventif (cause 422 quand 2 machines démarrent ensemble) -->
+<!-- VERSION_FIXED_V14 — 3 juin 2026 — Option B : auto-pull 60s + auto-sync 2 min + popup beforeunload si sync pas verte -->
 <div class="app">
   <!-- Backdrop pour fermer la sidebar sur tablette (invisible sur desktop) -->
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
@@ -1472,7 +1472,7 @@ Exemple pour la chimie :
           </div>
           <div class="gh-auto-row">
             <input type="checkbox" id="ghTimedSync" />
-            <label for="ghTimedSync">Sauvegarde automatique toutes les 5 minutes</label>
+            <label for="ghTimedSync">Sauvegarde automatique toutes les 2 minutes</label>
           </div>
           <div class="gh-btn-row">
             <button class="gh-btn primary" id="ghSaveConfig">💾 Enregistrer</button>
@@ -6203,12 +6203,12 @@ function ghSaveConfig() {
   ghStatus("✅ Configuration sauvegardée", "ok");
 }
 
-/** Démarre/arrête la sauvegarde automatique toutes les 5 min */
+/** Démarre/arrête la sauvegarde automatique toutes les 2 min (V14) */
 function ghStartTimedSync() {
   // Arrêter l'ancien timer s'il existe
   if (GH._timedInterval) { clearInterval(GH._timedInterval); GH._timedInterval = null; }
   if (!GH.timedSync || !GH.token || !GH.owner || !GH.repo) return;
-  // Démarrer un nouveau timer : push silencieux toutes les 5 minutes
+  // Démarrer un nouveau timer : push silencieux toutes les 2 minutes (V14 : raccourci de 5 → 2 min)
   GH._timedInterval = setInterval(async () => {
     try {
       console.log('[BrAInShift] ⏱ Auto-sync GitHub…');
@@ -6217,8 +6217,8 @@ function ghStartTimedSync() {
     } catch(e) {
       console.warn('[BrAInShift] ❌ Auto-sync échoué:', e.message);
     }
-  }, 5 * 60 * 1000); // 5 minutes
-  console.log('[BrAInShift] ⏱ Auto-sync GitHub activé (toutes les 5 min)');
+  }, 2 * 60 * 1000); // 2 minutes (V14)
+  console.log('[BrAInShift] ⏱ Auto-sync GitHub activé (toutes les 2 min)');
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -7384,6 +7384,28 @@ function triggerAutoPull() {
 // Pull après 5 secondes au chargement (laissons le temps à la page de se stabiliser)
 setTimeout(triggerAutoPull, 5000);
 
+// ─────────────────────────────────────────────────────────────
+// V14 — AUTO-PULL PÉRIODIQUE
+// Vérifie GitHub toutes les 60 secondes pour récupérer les modifications
+// faites sur les autres machines sans avoir à appuyer sur F5.
+// Le pull est silencieux (pas de spam de logs), la fusion intelligente
+// garde toujours la version la plus riche localement.
+// ─────────────────────────────────────────────────────────────
+function startPeriodicAutoPull() {
+  if (window._periodicPullInterval) clearInterval(window._periodicPullInterval);
+  window._periodicPullInterval = setInterval(() => {
+    // Skip si page cachée, requête API en cours, ou config GitHub manquante
+    if (document.visibilityState !== 'visible') return;
+    if (isWaitingResponse || window._sendInFlight) return;
+    if (!GH.token || !GH.owner || !GH.repo) return;
+    if (window._ghPushInProgress) return;
+    triggerAutoPull();
+  }, 60000); // 60 secondes
+  console.log('[BrAInShift] 🔄 Auto-pull périodique activé (toutes les 60s)');
+}
+// Démarrer 30 secondes après le chargement (laisse le pull initial finir)
+setTimeout(startPeriodicAutoPull, 30000);
+
 // iPad/Safari : bfcache restaure la page au lieu de la recharger
 window.addEventListener('pageshow', e => {
   if (e.persisted) {
@@ -7414,17 +7436,37 @@ document.addEventListener('visibilitychange', () => {
   window._lastVisibleTime = Date.now();
 });
 
-// Fermeture de la page → push de dernière chance
-window.addEventListener('beforeunload', () => {
-  if (GH.autoSync && GH.token) {
-    // Utiliser sendBeacon pour un push fiable même pendant la fermeture
-    // Fallback: push synchrone
-    try {
-      save(); // Au minimum, sauver dans localStorage
-      // Push async — le navigateur fera de son mieux
-      ghPushSilent().catch(() => {});
-    } catch(e) {}
+// ─────────────────────────────────────────────────────────────
+// V14 — FERMETURE INTELLIGENTE
+// Si la pastille n'est pas verte (sync en cours, erreur, ou jamais syncé),
+// on demande confirmation avant fermeture pour éviter de perdre des données.
+// Si la pastille est verte → fermeture silencieuse, aucune gêne.
+// On essaie en plus de pousser une dernière fois via fetch keepalive.
+// ─────────────────────────────────────────────────────────────
+window.addEventListener('beforeunload', (e) => {
+  // Toujours sauver localement avant tout
+  try { save(); } catch(err) {}
+
+  // Si GitHub pas configuré → pas de blocage
+  if (!GH.token || !GH.owner || !GH.repo) return;
+
+  // Si pastille verte (sync OK et récente) → fermeture silencieuse
+  const s = window._syncStatus;
+  const isGreen = s?.state === 'ok' && s.lastSuccess && (Date.now() - s.lastSuccess < 120000); // <2 min
+  if (isGreen) {
+    return; // tout est OK, pas de confirmation
   }
+
+  // Sinon : push de dernière chance (async, pas attendu) + popup natif
+  try {
+    ghPushSilent().catch(() => {}); // best effort
+  } catch(err) {}
+
+  // Popup natif Chrome/Edge/Safari — le message exact n'est plus affiché
+  // mais l'utilisateur voit la confirmation "êtes-vous sûr de quitter ?"
+  e.preventDefault();
+  e.returnValue = 'Synchronisation en cours. Quitter quand même ?';
+  return e.returnValue;
 });
 
   // KaTeX + marked : extensions enregistrées lors du 1er appel de formatAssistantContent
