@@ -472,6 +472,16 @@
     }
     .model-dropdown.tc-disabled .model-dd-btn:hover{border-color:var(--line)}
 
+    /* Sélecteur de modèles verrouillé pour le projet "Short answers" */
+    .model-dropdown.sa-locked .model-dd-btn{
+      opacity:.6;cursor:not-allowed;background:#1a1a1a;
+      border-color:#ff720055;
+    }
+    .model-dropdown.sa-locked .model-dd-btn:hover{border-color:#ff720055}
+    .model-dropdown.sa-locked .model-dd-btn::after{
+      content:" 🔒";font-size:11px;opacity:.8;
+    }
+
     /* ── GitHub panel ── */
     .gh-status{font-size:12px;color:var(--muted);margin-top:8px;min-height:18px}
     .gh-status.ok{color:#22c55e}
@@ -2367,6 +2377,45 @@ function save() {
 const activeChat = () => S.chats.find(c => c.id === S.activeChat);
 
 // ─────────────────────────────────────────────────
+// VERROU MODÈLE — projet "Short answers"
+// Quand un projet s'appelle "Short answers" (sensible aux espaces,
+// insensible à la casse), son modèle est figé sur mistral-small-latest
+// pour économiser les coûts. Le sélecteur est désactivé.
+// ─────────────────────────────────────────────────
+const SHORT_ANSWERS_LOCKED_MODEL = "mistral-small-latest";
+function isShortAnswersProject(p) {
+  return !!(p && typeof p.name === "string" &&
+            p.name.trim().toLowerCase() === "short answers");
+}
+function getActiveProjectForLock() {
+  // Priorité : projet du chat actif, sinon S.activeProject
+  const c = activeChat();
+  if (c && c.projectId) {
+    return S.projects.find(p => p.id === c.projectId) || null;
+  }
+  if (S.activeProject) {
+    return S.projects.find(p => p.id === S.activeProject) || null;
+  }
+  return null;
+}
+function isShortAnswersActive() {
+  return isShortAnswersProject(getActiveProjectForLock());
+}
+function enforceShortAnswersLock() {
+  // Pour TOUS les projets "Short answers" : forcer le defaultModel
+  S.projects.forEach(p => {
+    if (isShortAnswersProject(p) && p.defaultModel !== SHORT_ANSWERS_LOCKED_MODEL) {
+      p.defaultModel = SHORT_ANSWERS_LOCKED_MODEL;
+    }
+  });
+  // Si on est actuellement dans un contexte "Short answers" : forcer S.model
+  if (isShortAnswersActive() && S.model !== SHORT_ANSWERS_LOCKED_MODEL) {
+    S.model = SHORT_ANSWERS_LOCKED_MODEL;
+    window._userChangedModel = false;
+  }
+}
+
+// ─────────────────────────────────────────────────
 // BUG CORRIGÉ : inférence provider fiable
 // ─────────────────────────────────────────────────
 function inferProviderFromModel(model) {
@@ -2643,6 +2692,25 @@ function setProjectDefaultModel(projectId, anchor) {
   if (!p) return;
   // Fermer tout popup existant
   document.querySelectorAll('.proj-model-popup').forEach(e => e.remove());
+  // Verrou "Short answers" — afficher un message au lieu du sélecteur
+  if (isShortAnswersProject(p)) {
+    p.defaultModel = SHORT_ANSWERS_LOCKED_MODEL;
+    save();
+    const lockPopup = document.createElement('div');
+    lockPopup.className = 'proj-model-popup';
+    lockPopup.style.cssText = 'position:fixed;z-index:9999;background:#1a1a22;border:1px solid #ff720055;border-radius:10px;padding:14px 16px;min-width:280px;max-width:320px;box-shadow:0 8px 32px rgba(0,0,0,.5);font-size:13px;line-height:1.5;color:#e0e2e8';
+    lockPopup.innerHTML = `<div style="color:#ff7200;font-weight:600;margin-bottom:8px">🔒 Modèle verrouillé</div><div style="color:#9ca3af">Le projet <b style="color:#e0e2e8">"Short answers"</b> est figé sur <code style="background:#ffffff10;padding:2px 6px;border-radius:4px;color:#ff7200">mistral-small-latest</code> pour économiser les coûts. Cette restriction ne peut pas être modifiée tant que le projet porte ce nom.</div>`;
+    document.body.appendChild(lockPopup);
+    const rectL = anchor.getBoundingClientRect();
+    lockPopup.style.top = Math.min(rectL.bottom + 4, window.innerHeight - 180) + 'px';
+    lockPopup.style.left = Math.min(rectL.left, window.innerWidth - 340) + 'px';
+    setTimeout(() => {
+      const closeL = ev => { if (!lockPopup.contains(ev.target)) { lockPopup.remove(); document.removeEventListener('click', closeL); } };
+      document.addEventListener('click', closeL);
+    }, 50);
+    render();
+    return;
+  }
   const popup = document.createElement('div');
   popup.className = 'proj-model-popup';
   popup.style.cssText = 'position:fixed;z-index:9999;background:#1a1a22;border:1px solid var(--line);border-radius:10px;padding:8px 0;min-width:280px;max-height:350px;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.5)';
@@ -4846,6 +4914,11 @@ function renderModels() {
     item.addEventListener('click', e => {
       // Ignore si on clique sur les dots
       if (e.target.closest('[data-fav-add]') || e.target.closest('[data-fav-remove]')) return;
+      // Verrou Short answers — refuser tout changement
+      if (isShortAnswersActive()) {
+        closeModelDropdown();
+        return;
+      }
       S.model = item.dataset.model;
       window._userChangedModel = true;
       save(); renderParams(); renderModels();
@@ -4893,6 +4966,10 @@ function closeModelDropdown() {
 // Toggle dropdown
 el("modelDdBtn").addEventListener("click", e => {
   e.stopPropagation();
+  // Verrou Short answers : empêcher l'ouverture
+  if (isShortAnswersActive()) {
+    return;
+  }
   const panel = el("modelDdPanel");
   if (panel.classList.contains("open")) {
     closeModelDropdown();
@@ -5194,10 +5271,27 @@ function updateLayoutMode() {
 }
 
 function render() {
+  // Verrou modèle pour le projet "Short answers" — appliqué AVANT tout rendu
+  enforceShortAnswersLock();
   renderChats();
   renderMessages();
   updateLayoutMode();
   updateActiveModelChip();
+  // Indicateur visuel verrou Short answers sur le sélecteur de modèles
+  const _dd = document.getElementById('modelDropdown');
+  if (_dd) {
+    const _locked = isShortAnswersActive();
+    _dd.classList.toggle('sa-locked', _locked);
+    const _ddBtn = document.getElementById('modelDdBtn');
+    if (_ddBtn) {
+      if (_locked) {
+        _ddBtn.title = 'Projet "Short answers" — modèle verrouillé sur mistral-small-latest (économie de coûts)';
+      } else if (typeof isTripleCheckOn === 'function' && !isTripleCheckOn()) {
+        _ddBtn.title = '';
+      }
+    }
+    if (_locked) closeModelDropdown();
+  }
 }
 
 function showApiError(msg) {
