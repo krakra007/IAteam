@@ -502,6 +502,16 @@
     }
     .copy-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
     .copy-toast.error{background:#ef4444;color:#fff}
+    .copy-toast.info{background:#f59e0b;color:#1a1a1a;max-width:88vw;text-align:center}
+
+    /* Compteurs de quota dans la sidebar : "15/20", "8/30" */
+    .quota-counter{
+      display:inline-block;font-size:10px;padding:1px 6px;border-radius:8px;
+      background:#ffffff10;color:#9ca3af;font-variant-numeric:tabular-nums;
+      margin-left:6px;cursor:help;letter-spacing:.02em;font-weight:500;
+    }
+    .quota-counter.warn  {background:#f59e0b22;color:#f59e0b}
+    .quota-counter.danger{background:#ef444422;color:#ef4444}
 
     /* Pulse animation appliquée sur le bouton qui vient d'être cliqué */
     .msg-icon.copied, .copy.copied, .copy-code-btn.copied, .artifact-btn.copied{
@@ -2515,6 +2525,93 @@ function enforceShortAnswersLock() {
 }
 
 // ─────────────────────────────────────────────────
+// QUOTAS DE CONVERSATIONS — purge automatique des anciennes
+// Limite "libres" : conversations sans projet (max 20).
+// Limite "projet" : conversations par projet (max 30).
+// Sont EXEMPTÉES du compte et de la suppression :
+//   - les conversations étoilées ★ (le user les a explicitement épinglées)
+//   - la conversation actuellement ouverte
+//   - les "Nouveau chat" vides (déjà gérés par le nettoyage existant)
+// Quand le quota est dépassé, les plus anciennes (par _lastActivity) partent.
+// ─────────────────────────────────────────────────
+const FREE_CHATS_LIMIT    = 20;
+const PROJECT_CHATS_LIMIT = 30;
+
+function _chatCountsTowardQuota(c) {
+  if (!c) return false;
+  if (c._starred) return false;
+  if (c.id === S.activeChat) return false;
+  if (c.title === "Nouveau chat" && Array.isArray(c.messages) && c.messages.length === 0) return false;
+  return true;
+}
+
+function _quotaUsage() {
+  // Retourne le compte "qui compte" pour libres et par projet (utilisé par renderChats pour les compteurs)
+  const free = S.chats.filter(c => !c.projectId && _chatCountsTowardQuota(c)).length;
+  const byProject = {};
+  S.projects.forEach(p => {
+    byProject[p.id] = S.chats.filter(c => c.projectId === p.id && _chatCountsTowardQuota(c)).length;
+  });
+  return { free, byProject };
+}
+
+function enforceChatLimits() {
+  const toRemove = new Set();
+  let deletedFree = 0;
+  let deletedProj = 0;
+  const projectsTouched = new Set();
+
+  // 1) Conversations libres : on garde les FREE_CHATS_LIMIT plus récentes (parmi les "comptables")
+  const freeCountable = S.chats
+    .filter(c => !c.projectId && _chatCountsTowardQuota(c))
+    .sort((a, b) => (b._lastActivity || 0) - (a._lastActivity || 0));
+  if (freeCountable.length > FREE_CHATS_LIMIT) {
+    freeCountable.slice(FREE_CHATS_LIMIT).forEach(c => toRemove.add(c.id));
+    deletedFree = freeCountable.length - FREE_CHATS_LIMIT;
+  }
+
+  // 2) Par projet : même logique, plafond PROJECT_CHATS_LIMIT
+  S.projects.forEach(p => {
+    const projCountable = S.chats
+      .filter(c => c.projectId === p.id && _chatCountsTowardQuota(c))
+      .sort((a, b) => (b._lastActivity || 0) - (a._lastActivity || 0));
+    if (projCountable.length > PROJECT_CHATS_LIMIT) {
+      projCountable.slice(PROJECT_CHATS_LIMIT).forEach(c => toRemove.add(c.id));
+      deletedProj += projCountable.length - PROJECT_CHATS_LIMIT;
+      projectsTouched.add(p.id);
+    }
+  });
+
+  if (toRemove.size === 0) return null;
+
+  S.chats = S.chats.filter(c => !toRemove.has(c.id));
+  return {
+    total: toRemove.size,
+    deletedFree,
+    deletedProj,
+    projectsTouched: projectsTouched.size
+  };
+}
+
+function enforceChatLimitsWithToast() {
+  const r = enforceChatLimits();
+  if (!r || typeof showCopyToast !== 'function') return r;
+  const parts = [];
+  if (r.deletedFree) {
+    const s = r.deletedFree > 1 ? 's' : '';
+    parts.push(`${r.deletedFree} libre${s}`);
+  }
+  if (r.deletedProj) {
+    const s = r.deletedProj > 1 ? 's' : '';
+    const projWord = r.projectsTouched > 1 ? `${r.projectsTouched} projets` : '1 projet';
+    parts.push(`${r.deletedProj} dans ${projWord}`);
+  }
+  const limits = `${FREE_CHATS_LIMIT} libres · ${PROJECT_CHATS_LIMIT}/projet`;
+  showCopyToast(`🗑 ${r.total} conversation${r.total>1?'s':''} ancienne${r.total>1?'s':''} supprimée${r.total>1?'s':''} (${parts.join(', ')}) — limites ${limits}`, 'info');
+  return r;
+}
+
+// ─────────────────────────────────────────────────
 // BUG CORRIGÉ : inférence provider fiable
 // ─────────────────────────────────────────────────
 function inferProviderFromModel(model) {
@@ -2849,6 +2946,8 @@ function createChat(projectId = null) {
     const proj = projectId ? S.projects.find(p => p.id === projectId) : null;
     S.model = (proj && proj.defaultModel) || "gemini-2.5-flash";
   }
+  // Appliquer les quotas (le nouveau chat est exempté car il est actif + vide)
+  enforceChatLimitsWithToast();
   save(); render(); renderModels();
 }
 
@@ -3141,6 +3240,9 @@ function renderChats() {
     return bTime - aTime; // Plus récent en premier
   });
 
+  // Pré-calcul des compteurs de quota (utilisés par les en-têtes Projets ET Conversations générales)
+  const usage = _quotaUsage();
+
   // — Projets —
   const pTitle = document.createElement("div");
   pTitle.className = "group-title";
@@ -3150,7 +3252,10 @@ function renderChats() {
   S.projects.forEach(p => {
     const isCollapsed = !!collapsed[p.id];
     const projectChats = chatsByRecency.filter(c => c.projectId === p.id);
-    const chatCount = projectChats.length;
+    const projUsed = usage.byProject[p.id] || 0;
+    const projRatio = projUsed / PROJECT_CHATS_LIMIT;
+    const projCls = projRatio >= 0.9 ? ' danger' : projRatio >= 0.7 ? ' warn' : '';
+    const projCounterTitle = `Conversations non-étoilées : ${projUsed} / ${PROJECT_CHATS_LIMIT}.&#10;Au-delà, les plus anciennes sont supprimées automatiquement.&#10;Étoiler (★) protège une conversation.`;
     const h = document.createElement("div");
     h.className = "item project-item" + (p.id === S.activeProject ? " active" : "");
     h.style.borderLeftColor = p.color || PROJECT_COLORS[0];
@@ -3163,7 +3268,7 @@ function renderChats() {
         <span class='name' title='${p.name}'>${p.name}</span>
         ${projModelTag}
       </div>
-      <span class='proj-count'>${chatCount}</span>
+      <span class='quota-counter${projCls}' title='${projCounterTitle}'>${projUsed}/${PROJECT_CHATS_LIMIT}</span>
       <button class='icon-btn' data-a='model' title='Modèle par défaut du projet'>🤖</button>
       <button class='icon-btn' data-a='color' title='Changer couleur'>●</button>
       <button class='icon-btn' data-a='addchat' title='Nouveau chat'>＋</button>
@@ -3202,9 +3307,13 @@ function renderChats() {
   w.appendChild(sep);
 
   // — Conversations générales (triées par récence) —
+  const freeUsed = usage.free;
+  const freeRatio = freeUsed / FREE_CHATS_LIMIT;
+  const freeCls = freeRatio >= 0.9 ? ' danger' : freeRatio >= 0.7 ? ' warn' : '';
+  const freeCounterHtml = `<span class="quota-counter${freeCls}" title="Conversations non-étoilées : ${freeUsed} / ${FREE_CHATS_LIMIT}.&#10;Au-delà de ${FREE_CHATS_LIMIT}, les plus anciennes sont supprimées automatiquement.&#10;Étoiler une conversation (★) la protège.">${freeUsed}/${FREE_CHATS_LIMIT}</span>`;
   const gTitle = document.createElement("div");
   gTitle.className = "group-title";
-  gTitle.innerHTML = `<span>Conversations générales</span><button class='icon-btn' id='newGeneralBtn' title='Nouvelle conversation'>＋</button>`;
+  gTitle.innerHTML = `<span>Conversations générales ${freeCounterHtml}</span><button class='icon-btn' id='newGeneralBtn' title='Nouvelle conversation'>＋</button>`;
   w.appendChild(gTitle);
 
   chatsByRecency.filter(c => !c.projectId).forEach(c => w.appendChild(chatRow(c, false)));
@@ -3651,22 +3760,33 @@ function formatAssistantContent(text) {
 // ─────────────────────────────────────────────────
 let _copyToastEl = null;
 let _copyToastTimer = null;
-function showCopyToast(message, isError) {
+function showCopyToast(message, variant) {
+  // Rétro-compatibilité : showCopyToast('msg', true) → erreur, showCopyToast('msg') → succès.
+  // Nouveau : showCopyToast('msg', 'info') → variante orange (purges, notifications informatives).
+  let type;
+  if (variant === true)                          type = 'error';
+  else if (typeof variant === 'string')          type = variant; // 'info', 'error', 'success'
+  else                                           type = 'success';
+
   if (!_copyToastEl) {
     _copyToastEl = document.createElement('div');
     _copyToastEl.className = 'copy-toast';
     document.body.appendChild(_copyToastEl);
   }
-  _copyToastEl.textContent = message || (isError ? '✕ Échec de la copie' : '✓ Copié dans le presse-papiers');
-  _copyToastEl.classList.toggle('error', !!isError);
+  _copyToastEl.textContent = message || (type === 'error' ? '✕ Échec de la copie' : '✓ Copié dans le presse-papiers');
+  _copyToastEl.classList.remove('error', 'info');
+  if (type !== 'success') _copyToastEl.classList.add(type);
+
   // Force un reflow pour pouvoir redéclencher l'animation si déjà affiché
   _copyToastEl.classList.remove('show');
   void _copyToastEl.offsetWidth;
   _copyToastEl.classList.add('show');
   clearTimeout(_copyToastTimer);
+  // Les toasts info (purges) restent un peu plus longtemps : le message est plus long à lire
+  const duration = type === 'info' ? 3500 : 1700;
   _copyToastTimer = setTimeout(() => {
     if (_copyToastEl) _copyToastEl.classList.remove('show');
-  }, 1700);
+  }, duration);
 }
 function flashCopyButton(btn, doneIcon) {
   if (!btn) return;
@@ -7666,6 +7786,9 @@ async function ghPullSilent() {
     if (!S.chats.find(c => c.id === S.activeChat))
       S.activeChat = S.chats[0]?.id || null;
 
+    // Appliquer les quotas après le merge (le remote peut nous renvoyer plus de chats que la limite)
+    enforceChatLimitsWithToast();
+
     save();
     renderModels();
     renderProfiles();
@@ -8684,6 +8807,8 @@ save();
 renderApiKeys();
 renderModels();
 renderParams();
+// Appliquer les quotas de conversations au démarrage (gère les états déjà au-dessus de la limite)
+enforceChatLimitsWithToast();
 render();
 loadModelsFromApi();
 
