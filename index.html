@@ -6649,20 +6649,34 @@ async function callModelForTripleCheck(modelName, messages) {
   const key = (apiKeysByProvider[provider] || "").trim();
   if (!key) throw new Error(`Clé API manquante pour ${provider} (modèle ${modelName})`);
 
-  if (provider === "ANTHROPIC") {
-    return await callAnthropic(key, modelName, messages);
-  } else if (provider === "GOOGLE GEMINI") {
-    return await callGemini(key, modelName, messages);
-  } else if (provider === "GROQ") {
-    return await callGroq(key, modelName, messages);
-  } else if (provider === "MISTRAL") {
-    return await callOpenAICompatible("https://api.mistral.ai/v1/chat/completions", key, modelName, messages, "mistral");
-  } else if (provider === "DEEPSEEK") {
-    return await callOpenAICompatible("https://api.deepseek.com/chat/completions", key, modelName, messages, "deepseek");
-  } else if (isGPT5Model(modelName)) {
-    return await callOpenAIResponses(key, modelName, messages);
-  } else {
-    return await callOpenAICompatible("https://api.openai.com/v1/chat/completions", key, modelName, messages);
+  // V28 — Instrumentation : on chronométer chaque appel API individuel pour repérer le maillon faible
+  const _start = Date.now();
+  const _logEnd = (status) => {
+    const dur = ((Date.now() - _start) / 1000).toFixed(1);
+    console.log(`[BrAInShift]    └─ ${provider} (${modelName}) → ${status} en ${dur}s`);
+  };
+  try {
+    let result;
+    if (provider === "ANTHROPIC") {
+      result = await callAnthropic(key, modelName, messages);
+    } else if (provider === "GOOGLE GEMINI") {
+      result = await callGemini(key, modelName, messages);
+    } else if (provider === "GROQ") {
+      result = await callGroq(key, modelName, messages);
+    } else if (provider === "MISTRAL") {
+      result = await callOpenAICompatible("https://api.mistral.ai/v1/chat/completions", key, modelName, messages, "mistral");
+    } else if (provider === "DEEPSEEK") {
+      result = await callOpenAICompatible("https://api.deepseek.com/chat/completions", key, modelName, messages, "deepseek");
+    } else if (isGPT5Model(modelName)) {
+      result = await callOpenAIResponses(key, modelName, messages);
+    } else {
+      result = await callOpenAICompatible("https://api.openai.com/v1/chat/completions", key, modelName, messages);
+    }
+    _logEnd(`OK (${(result || '').length} chars`);
+    return result;
+  } catch (e) {
+    _logEnd(`ÉCHEC: ${e.message}`);
+    throw e;
   }
 }
 
@@ -6704,6 +6718,16 @@ async function runTripleCheck(userQuestion, conversationHistory) {
   // (le prompt validateur fait déjà le boulot, thinking est inutile et coûteux).
   // Le try/finally garantit que le flag est nettoyé même en cas d'erreur.
   window._tripleCheckInProgress = true;
+  // V28 — Instrumentation : timer global + par phase, taille des payloads, pour diagnostiquer
+  // les blocages en environnement utilisateur (le code est identique au chemin solo donc tout
+  // écart de comportement doit être visible dans ces logs).
+  const _tcStartTs = Date.now();
+  const _tcElapsed = () => ((Date.now() - _tcStartTs) / 1000).toFixed(1) + 's';
+  const _approxMsgSize = msgs => {
+    try { return Math.round(JSON.stringify(msgs).length / 1024) + 'KB'; }
+    catch (_) { return '?KB'; }
+  };
+  console.log(`[BrAInShift] 🔺▶ Triple Check START — historique: ${conversationHistory.length} msgs / ${_approxMsgSize(conversationHistory)}`);
   try {
 
   // ─────────────────────────────────────────────────
@@ -6767,20 +6791,26 @@ async function runTripleCheck(userQuestion, conversationHistory) {
 
   // ── PHASE 1 ──
   setTripleCheckProgress(1);
-  console.log('[BrAInShift] 🔺 Phase 1/3 : ' + preset.phase1);
+  const _p1Start = Date.now();
+  console.log(`[BrAInShift] 🔺 Phase 1/3 START → ${preset.phase1} (t=${_tcElapsed()})`);
   let phase1Response;
   try {
     phase1Response = await callModelForTripleCheck(preset.phase1, conversationHistory);
+    const _p1Dur = ((Date.now() - _p1Start) / 1000).toFixed(1);
     captureCost('phase1', preset.phase1);
     phaseStatus.phase1 = 'done'; // V24
-    console.log('[BrAInShift] ✅ Phase 1 terminée (' + phase1Response.length + ' chars, ' + fmtUSD(phaseCosts.phase1) + ')');
+    console.log(`[BrAInShift] ✅ Phase 1 OK (${_p1Dur}s, ${phase1Response.length} chars, ${fmtUSD(phaseCosts.phase1)})`);
   } catch (e) {
-    console.error('[BrAInShift] ❌ Phase 1 échouée :', e.message);
+    const _p1Dur = ((Date.now() - _p1Start) / 1000).toFixed(1);
+    console.error(`[BrAInShift] ❌ Phase 1 échouée après ${_p1Dur}s :`, e.message);
     try {
-      console.log('[BrAInShift] 🔄 Phase 1 retry…');
+      const _p1RetryStart = Date.now();
+      console.log(`[BrAInShift] 🔄 Phase 1 retry… (t=${_tcElapsed()})`);
       phase1Response = await callModelForTripleCheck(preset.phase1, conversationHistory);
+      const _p1RetryDur = ((Date.now() - _p1RetryStart) / 1000).toFixed(1);
       captureCost('phase1', preset.phase1);
       phaseStatus.phase1 = 'done'; // V24
+      console.log(`[BrAInShift] ✅ Phase 1 OK au retry (${_p1RetryDur}s)`);
     } catch (e2) {
       phaseStatus.phase1 = 'failed'; // V24
       phaseErrors.phase1 = e2.message;
@@ -6791,7 +6821,7 @@ async function runTripleCheck(userQuestion, conversationHistory) {
 
   // ── PHASE 2 ──
   setTripleCheckProgress(2);
-  console.log('[BrAInShift] 🔺 Phase 2/3 : ' + preset.phase2);
+  const _p2Start = Date.now();
   const phase2Messages = [{
     role: 'user',
     content: `${TRIPLE_CHECK_VALIDATOR_PROMPT}
@@ -6804,21 +6834,25 @@ ${phase1Response}
 
 Ta version corrigée (texte intégral) :`
   }];
+  console.log(`[BrAInShift] 🔺 Phase 2/3 START → ${preset.phase2} (t=${_tcElapsed()}, payload ${_approxMsgSize(phase2Messages)})`);
   let phase2Response = phase1Response;
   try {
     phase2Response = await callModelForTripleCheck(preset.phase2, phase2Messages);
     phase2Response = stripValidatorPreamble(phase2Response); // V18 — nettoyage anti-préambule
+    const _p2Dur = ((Date.now() - _p2Start) / 1000).toFixed(1);
     captureCost('phase2', preset.phase2);
     phaseStatus.phase2 = 'done'; // V24
-    console.log('[BrAInShift] ✅ Phase 2 terminée (' + phase2Response.length + ' chars, ' + fmtUSD(phaseCosts.phase2) + ')');
+    console.log(`[BrAInShift] ✅ Phase 2 OK (${_p2Dur}s, ${phase2Response.length} chars, ${fmtUSD(phaseCosts.phase2)})`);
   } catch (e) {
-    console.warn('[BrAInShift] ⚠ Phase 2 échouée, retry…', e.message);
+    const _p2Dur = ((Date.now() - _p2Start) / 1000).toFixed(1);
+    console.warn(`[BrAInShift] ⚠ Phase 2 échouée après ${_p2Dur}s, retry…`, e.message);
     try {
+      const _p2RetryStart = Date.now();
       phase2Response = await callModelForTripleCheck(preset.phase2, phase2Messages);
       phase2Response = stripValidatorPreamble(phase2Response); // V18
       captureCost('phase2', preset.phase2);
       phaseStatus.phase2 = 'done'; // V24
-      console.log('[BrAInShift] ✅ Phase 2 OK au retry');
+      console.log(`[BrAInShift] ✅ Phase 2 OK au retry (${((Date.now() - _p2RetryStart)/1000).toFixed(1)}s)`);
     } catch (e2) {
       console.warn('[BrAInShift] ⚠ Phase 2 KO définitif, on saute à phase 3 avec la réponse phase 1');
       phase2Response = phase1Response;
@@ -6829,7 +6863,7 @@ Ta version corrigée (texte intégral) :`
 
   // ── PHASE 3 ──
   setTripleCheckProgress(3);
-  console.log('[BrAInShift] 🔺 Phase 3/3 : ' + preset.phase3);
+  const _p3Start = Date.now();
   const phase3Messages = [{
     role: 'user',
     content: `${TRIPLE_CHECK_VALIDATOR_PROMPT}
@@ -6842,21 +6876,25 @@ ${phase2Response}
 
 Ta version corrigée (texte intégral) :`
   }];
+  console.log(`[BrAInShift] 🔺 Phase 3/3 START → ${preset.phase3} (t=${_tcElapsed()}, payload ${_approxMsgSize(phase3Messages)})`);
   let phase3Response = phase2Response;
   try {
     phase3Response = await callModelForTripleCheck(preset.phase3, phase3Messages);
     phase3Response = stripValidatorPreamble(phase3Response); // V18 — nettoyage anti-préambule
+    const _p3Dur = ((Date.now() - _p3Start) / 1000).toFixed(1);
     captureCost('phase3', preset.phase3);
     phaseStatus.phase3 = 'done'; // V24
-    console.log('[BrAInShift] ✅ Phase 3 terminée (' + phase3Response.length + ' chars, ' + fmtUSD(phaseCosts.phase3) + ')');
+    console.log(`[BrAInShift] ✅ Phase 3 OK (${_p3Dur}s, ${phase3Response.length} chars, ${fmtUSD(phaseCosts.phase3)})`);
   } catch (e) {
-    console.warn('[BrAInShift] ⚠ Phase 3 échouée, retry…', e.message);
+    const _p3Dur = ((Date.now() - _p3Start) / 1000).toFixed(1);
+    console.warn(`[BrAInShift] ⚠ Phase 3 échouée après ${_p3Dur}s, retry…`, e.message);
     try {
+      const _p3RetryStart = Date.now();
       phase3Response = await callModelForTripleCheck(preset.phase3, phase3Messages);
       phase3Response = stripValidatorPreamble(phase3Response); // V18
       captureCost('phase3', preset.phase3);
       phaseStatus.phase3 = 'done'; // V24
-      console.log('[BrAInShift] ✅ Phase 3 OK au retry');
+      console.log(`[BrAInShift] ✅ Phase 3 OK au retry (${((Date.now() - _p3RetryStart)/1000).toFixed(1)}s)`);
     } catch (e2) {
       console.warn('[BrAInShift] ⚠ Phase 3 KO définitif, on garde la phase 2');
       phase3Response = phase2Response;
@@ -6868,7 +6906,7 @@ Ta version corrigée (texte intégral) :`
   setTripleCheckProgress(0);
   const totalCost = phaseCosts.phase1 + phaseCosts.phase2 + phaseCosts.phase3;
   const successCount = ['phase1','phase2','phase3'].filter(p => phaseStatus[p] === 'done').length;
-  console.log('[BrAInShift] ' + modeLabel + ' Triple Check terminé · ' + successCount + '/3 phases · Coût total : ' + fmtUSD(totalCost));
+  console.log(`[BrAInShift] 🔺◀ ${modeLabel} Triple Check END (${_tcElapsed()}) · ${successCount}/3 phases · ${fmtUSD(totalCost)}`);
   // V17/V24 — Retour enrichi avec détail des coûts ET statuts des phases
   return {
     content: phase3Response,
