@@ -7682,19 +7682,43 @@ async function ghPushSilent() {
   setSyncStatus('syncing');
 
   try {
-    // Toujours purger les données binaires volumineuses avant l'envoi GitHub
+    // V30 — Stats avant/après pour mesurer l'impact du stripping
+    let _strippedBytes = 0;
+    let _strippedFiles = 0;
+
+    // Purger pour la sync GitHub :
+    //  • Blocs binaires (PDF/image) > 50 KB → placeholder
+    //  • Blocs texte extraits de fichiers Office (docx, xlsx, pptx, …) > 5 KB → placeholder
+    //    Détection par pattern : buildUserContent produit toujours `[<emoji> Contenu du fichier "X" :]\n\n<texte>`
+    //    qui matche /^\[.{1,30}Contenu du fichier "[^"]+"\s*:\]/.
+    //    Sans ce strip, chaque docx (jusqu'à 100 KB extrait) restait dans la sync indéfiniment.
     const lightChats = S.chats.map(chat => ({
       ...chat,
       messages: chat.messages.map(m => {
         if (!Array.isArray(m.content)) return m;
         return { ...m, content: m.content.map(b => {
+          // 1) Blocs binaires volumineux (PDF, image base64)
           if ((b.type === 'document' || b.type === 'image') && b.source?.data?.length > 50000) {
-            return { type: 'text', text: `[Fichier joint : ${b.title || b.type} — non stocké]` };
+            _strippedBytes += b.source.data.length;
+            _strippedFiles++;
+            return { type: 'text', text: `[Fichier joint : ${b.title || b.type} — non stocké en sync]` };
+          }
+          // 2) Blocs texte issus de fichiers Office (extraction mammoth/SheetJS/PptxGen)
+          if (b.type === 'text' && typeof b.text === 'string' && b.text.length > 5000) {
+            const hit = b.text.match(/^\[([^\]]{1,40})\s+Contenu du fichier\s+"([^"]+)"\s*:\]/);
+            if (hit) {
+              _strippedBytes += b.text.length;
+              _strippedFiles++;
+              return { type: 'text', text: `[${hit[1]} Contenu de "${hit[2]}" — texte extrait non stocké en sync (${Math.round(b.text.length/1024)} KB localement)]` };
+            }
           }
           return b;
         })};
       })
     }));
+    if (_strippedFiles > 0) {
+      console.log(`[BrAInShift] 🗜 Stripping sync : ${_strippedFiles} fichier(s), ${(_strippedBytes/1024).toFixed(0)} KB économisés`);
+    }
     const data = {
       chats: lightChats, projects: S.projects,
       profiles: S.profiles, activeProfiles: S.activeProfiles || [],
