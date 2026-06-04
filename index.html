@@ -5140,10 +5140,14 @@ blockquote{border-left:3px solid #4abfbf;margin:10px 0;padding:8px 16px;color:#5
     box.appendChild(row);
   }
 
-  box.scrollTop = box.scrollHeight;
-  // Re-scroll après rendu des formules et images (KaTeX, hljs)
-  setTimeout(() => { box.scrollTop = box.scrollHeight; }, 100);
-  setTimeout(() => { box.scrollTop = box.scrollHeight; }, 500);
+  // Auto-scroll vers le bas : SAUTÉ si un pull silencieux est en cours
+  // (le pull restaure lui-même la position de scroll de l'utilisateur)
+  if (!window._suppressAutoScroll) {
+    box.scrollTop = box.scrollHeight;
+    // Re-scroll après rendu des formules et images (KaTeX, hljs)
+    setTimeout(() => { if (!window._suppressAutoScroll) box.scrollTop = box.scrollHeight; }, 100);
+    setTimeout(() => { if (!window._suppressAutoScroll) box.scrollTop = box.scrollHeight; }, 500);
+  }
   if (typeof hljs !== 'undefined') hljs.highlightAll();
 }
 
@@ -6004,7 +6008,22 @@ async function callGemini(key, model, messages) {
   // V17 — Capture de l'usage pour le tracking de coût
   const _u = extractUsage(d);
   if (_u) window._lastUsage = { model: model, input: _u.input, output: _u.output };
-  return d.choices?.[0]?.message?.content || JSON.stringify(d);
+  // ── Détection des blocages de sécurité Gemini (sujets sensibles : armes, ML, etc.) ──
+  // Sans ce garde-fou, Gemini retournait `message.content: null` avec finish_reason='content_filter'
+  // → on tombait sur le `|| JSON.stringify(d)` et phases 2/3 essayaient de "valider" du JSON,
+  // ce qui produisait une attente apparemment infinie.
+  const choice = d.choices?.[0];
+  if (!choice) throw new Error("[Gemini] Aucune réponse reçue");
+  const fr = choice.finish_reason;
+  if (fr && fr !== 'stop' && fr !== 'length') {
+    const reason = fr === 'content_filter' ? 'filtres de sécurité Gemini (sujet sensible)' : fr;
+    throw new Error(`[Gemini bloqué] ${reason}. Essayez un autre modèle (Claude, GPT, Mistral).`);
+  }
+  const content = choice.message?.content;
+  if (!content || (typeof content === 'string' && !content.trim())) {
+    throw new Error(`[Gemini] Réponse vide reçue (probablement filtrée). Essayez un autre modèle.`);
+  }
+  return content;
 }
 
 /** API native Gemini — utilisée pour la recherche web (google_search) */
@@ -6063,6 +6082,18 @@ async function callGeminiNative(key, model, messages) {
   const candidate = d.candidates?.[0];
   if (!candidate) throw new Error("[Gemini] Aucune réponse reçue");
 
+  // ── Détection des blocages de sécurité Gemini (sujets sensibles : armes, ML, etc.) ──
+  // Cas typique : sujet de classement export ML militaire → finishReason='SAFETY' ou 'PROHIBITED_CONTENT',
+  // candidate.content.parts vide. Sans ce garde-fou, on retournait '' silencieusement et le pipeline
+  // tournait dans le vide.
+  const fr = candidate.finishReason;
+  if (fr && fr !== 'STOP' && fr !== 'MAX_TOKENS') {
+    const reason = (fr === 'SAFETY' || fr === 'PROHIBITED_CONTENT')
+      ? 'filtres de sécurité Gemini (sujet sensible)'
+      : fr;
+    throw new Error(`[Gemini bloqué] ${reason}. Essayez un autre modèle (Claude, GPT, Mistral).`);
+  }
+
   let text = '';
   for (const part of (candidate.content?.parts || [])) {
     if (part.text) text += part.text;
@@ -6077,7 +6108,10 @@ async function callGeminiNative(key, model, messages) {
     });
   }
 
-  return text || JSON.stringify(d);
+  if (!text.trim()) {
+    throw new Error(`[Gemini] Réponse vide reçue (probablement filtrée). Essayez un autre modèle.`);
+  }
+  return text;
 }
 
 
@@ -6671,6 +6705,41 @@ async function runTripleCheck(userQuestion, conversationHistory) {
   // Le try/finally garantit que le flag est nettoyé même en cas d'erreur.
   window._tripleCheckInProgress = true;
   try {
+
+  // ─────────────────────────────────────────────────
+  // V27 — Triple Check rendu DOCUMENT-AWARE
+  // Auparavant : phases 2 et 3 ne recevaient que `userQuestion` (le texte tapé), pas le
+  // contenu des fichiers joints. Conséquence : les validateurs "validaient à l'aveugle"
+  // une réponse phase 1 qu'ils ne pouvaient pas vérifier faute de matière source.
+  // Désormais : on extrait le contenu COMPLET du dernier message utilisateur (texte +
+  // texte extrait des documents + notes sur les images) pour le donner aux 3 phases.
+  // ─────────────────────────────────────────────────
+  const _lastUserMsg = [...conversationHistory].reverse().find(m => m.role === 'user');
+  function _extractFullUserContent(msg, fallback) {
+    if (!msg) return fallback || '';
+    if (typeof msg.content === 'string') return msg.content;
+    if (!Array.isArray(msg.content)) return fallback || '';
+    const segs = [];
+    for (const b of msg.content) {
+      if (b.type === 'text' && b.text) {
+        segs.push(b.text);
+      } else if (b.type === 'document') {
+        if (b._extractedText) {
+          segs.push(`[Document joint "${b.title || 'document'}" :\n${b._extractedText}\n]`);
+        } else {
+          segs.push(`[Document joint "${b.title || 'document'}" — contenu non extractible]`);
+        }
+      } else if (b.type === 'image') {
+        segs.push(`[Image jointe "${b.title || 'sans titre'}" — non visible par les phases 2 et 3 en texte]`);
+      }
+    }
+    return segs.join('\n\n') || (fallback || '');
+  }
+  const fullUserContext = _extractFullUserContent(_lastUserMsg, userQuestion);
+  if (fullUserContext.length > userQuestion.length + 100) {
+    console.log(`[BrAInShift] 🔺 Contexte document détecté (${fullUserContext.length} chars) — transmis aux 3 phases`);
+  }
+
   // V16 — Récupérer le preset actif (eco par défaut si mode inconnu)
   const mode = getTripleCheckMode();
   const preset = TRIPLE_CHECK_PRESETS[mode] || TRIPLE_CHECK_PRESETS.eco;
@@ -6727,8 +6796,8 @@ async function runTripleCheck(userQuestion, conversationHistory) {
     role: 'user',
     content: `${TRIPLE_CHECK_VALIDATOR_PROMPT}
 
-Question originale de l'utilisateur :
-${userQuestion}
+Question originale de l'utilisateur (avec contenu des fichiers joints inclus) :
+${fullUserContext}
 
 Réponse à vérifier :
 ${phase1Response}
@@ -6765,8 +6834,8 @@ Ta version corrigée (texte intégral) :`
     role: 'user',
     content: `${TRIPLE_CHECK_VALIDATOR_PROMPT}
 
-Question originale de l'utilisateur :
-${userQuestion}
+Question originale de l'utilisateur (avec contenu des fichiers joints inclus) :
+${fullUserContext}
 
 Réponse à vérifier :
 ${phase2Response}
@@ -7712,14 +7781,51 @@ async function ghPullSilent() {
     // avec le plus de messages, donc le local n'est jamais écrasé. Le push se fait
     // ensuite naturellement (étape 4 si fusion modifie le local, ou auto-sync 5 min).
 
+    // ═══ ÉTAPE 1bis : SNAPSHOT de l'état utilisateur AVANT toute mutation ═══
+    // Le pull est silencieux : il NE DOIT JAMAIS modifier ce que voit/édite l'utilisateur.
+    // Tout ce qui suit (active chat, modèle, profils, scroll, textarea, focus) est restauré
+    // après le merge — seules les DONNÉES (chats, projets) sont mises à jour.
+    const _msgsBox = el('messages');
+    const _userSnap = {
+      activeChat:        S.activeChat,
+      activeProject:     S.activeProject,
+      model:             S.model,
+      activeProfiles:    [...(S.activeProfiles || [])],
+      userChangedModel:  window._userChangedModel,
+      msgScrollTop:      _msgsBox?.scrollTop || 0,
+      promptValue:       promptEl ? promptEl.value : '',
+      promptFocused:     promptEl ? (document.activeElement === promptEl) : false,
+      promptSelStart:    promptEl ? promptEl.selectionStart : 0,
+      promptSelEnd:      promptEl ? promptEl.selectionEnd   : 0,
+      promptHeight:      promptEl ? promptEl.style.height   : ''
+    };
+
     // ═══ ÉTAPE 2 : PULL depuis GitHub ═══
     const result = await ghFetchFileContent();
     if (!result.found || !result.data) return;
     const raw = result.data;
     if (!raw || !raw.chats) return;
 
-    // ── Empreinte AVANT fusion (pour détecter si le pull change réellement quelque chose) ──
-    // Si rien ne change → pas de re-push → pas de 422 inutile
+    // ── Empreintes AVANT fusion ─────────────────────────────────────────
+    // On capture deux empreintes distinctes pour décider plus tard :
+    //   • activeFp   = identité + nb messages + dernière activité du chat actif uniquement.
+    //     Si elle ne bouge pas, INUTILE d'appeler renderMessages (donc inutile d'appeler render).
+    //   • sidebarFp  = état observable de la sidebar (titres, compteurs, projets, _lastActivity).
+    //     Si elle ne bouge pas, INUTILE d'appeler renderChats.
+    //   • fingerprintBefore = empreinte globale pour décider du re-push (logique existante).
+    function _activeChatFp() {
+      const c = S.chats.find(ch => ch.id === S.activeChat);
+      if (!c) return 'none:' + S.activeChat;
+      return c.id + ':' + (c.messages?.length || 0) + ':' + (c._lastActivity || 0);
+    }
+    function _sidebarFp() {
+      return JSON.stringify({
+        chats:    S.chats.map(c => [c.id, c.title, c.projectId || '', c.messages?.length || 0, c._lastActivity || 0, c._starred ? 1 : 0]),
+        projects: S.projects.map(p => [p.id, p.name, p.defaultModel || '', p.color || ''])
+      });
+    }
+    const activeFpBefore  = _activeChatFp();
+    const sidebarFpBefore = _sidebarFp();
     const fingerprintBefore = JSON.stringify({
       nbConv:    S.chats.length,
       nbProj:    S.projects.length,
@@ -7778,22 +7884,88 @@ async function ghPullSilent() {
     if (raw.profiles)       S.profiles       = raw.profiles;
     if (raw.favoriteModels) S.favoriteModels = raw.favoriteModels;
     if (raw.params)         S.params         = { ...DEF, ...raw.params };
-    if (raw.model)          S.model          = raw.model;
-    if (!window._userChangedModel) {
-      S.model = "gemini-2.5-flash";
+    // NOTE : on n'écrase PAS S.model depuis raw — l'état du sélecteur de modèle est
+    // une préférence UI locale, pas une donnée à synchroniser de force pendant un pull
+    // silencieux. (Avant : `S.model = raw.model;` puis reset à gemini si !userChanged.)
+
+    // ═══ RESTAURATION DE L'ÉTAT UTILISATEUR ═══
+    // Le pull est terminé côté données. On rétablit maintenant tout ce qui touche à l'UX :
+    // — le chat actif reste celui où l'utilisateur était (jamais de saut de fenêtre)
+    // — le modèle, les profils, le flag _userChangedModel ne sont PAS écrasés par raw
+    S.model            = _userSnap.model;
+    S.activeProfiles   = _userSnap.activeProfiles;
+    window._userChangedModel = _userSnap.userChangedModel;
+    // Active chat : si encore présent dans la liste après merge, on le restaure tel quel ;
+    // sinon, on log mais on ne navigue PAS (mieux vaut un état "introuvable" qu'un saut surprise).
+    if (S.chats.find(c => c.id === _userSnap.activeChat)) {
+      S.activeChat    = _userSnap.activeChat;
+      S.activeProject = _userSnap.activeProject;
+    } else if (_userSnap.activeChat) {
+      console.warn('[BrAInShift] ⚠ Chat actif introuvable après merge — on préserve l\'ID, l\'utilisateur peut cliquer ailleurs lui-même');
+      S.activeChat    = _userSnap.activeChat;     // on garde quand même l'ID pour ne pas sauter
+      S.activeProject = _userSnap.activeProject;
     }
 
-    if (!S.chats.find(c => c.id === S.activeChat))
-      S.activeChat = S.chats[0]?.id || null;
-
-    // Appliquer les quotas après le merge (le remote peut nous renvoyer plus de chats que la limite)
-    enforceChatLimitsWithToast();
+    // PAS d'enforceChatLimitsWithToast() ici : un pull silencieux ne doit JAMAIS
+    // afficher de notification ni supprimer de chats sous le nez de l'utilisateur.
+    // Si la limite est dépassée après merge, elle sera appliquée au prochain createChat().
 
     save();
-    renderModels();
-    renderProfiles();
-    updateProfileChip();
-    render();
+
+    // ── Décider QUELS rendus sont nécessaires (et lesquels sont superflus) ──
+    // Le piège précédent : on appelait render() à chaque pull, ce qui rebuilt #messages
+    // → trace hljs « unescaped HTML », perte de sélection, flash potentiel. Désormais :
+    //   • si rien n'a changé du tout → AUCUN re-render. Pull vraiment invisible.
+    //   • si seul le sidebar a changé → renderChats() seul. #messages n'est pas touché.
+    //   • si le chat actif a changé de contenu → render complet (rare : autre machine
+    //     a ajouté des messages au chat sur lequel je suis).
+    const activeFpAfter  = _activeChatFp();
+    const sidebarFpAfter = _sidebarFp();
+    const activeChanged  = (activeFpAfter  !== activeFpBefore);
+    const sidebarChanged = (sidebarFpAfter !== sidebarFpBefore);
+
+    if (activeChanged) {
+      // Re-render complet, mais en préservant scroll et focus
+      window._suppressAutoScroll = true;
+      try {
+        renderModels();
+        if (typeof renderProfiles === 'function' && el('rightPanel')?.classList.contains('open')) {
+          renderProfiles();
+        }
+        updateProfileChip();
+        render();
+      } finally {
+        if (_msgsBox) _msgsBox.scrollTop = _userSnap.msgScrollTop;
+        setTimeout(() => { window._suppressAutoScroll = false; }, 800);
+      }
+      console.log('[BrAInShift] 🔄 Pull silencieux : chat actif modifié → render complet');
+    } else if (sidebarChanged) {
+      // Sidebar uniquement → on ne touche PAS à #messages (donc pas de hljs, pas de scroll, pas de flash)
+      renderChats();
+      updateProfileChip();
+      console.log('[BrAInShift] 🔄 Pull silencieux : sidebar modifiée → renderChats seul');
+    } else {
+      // Aucun changement visible → on n'appelle aucune fonction de rendu
+      console.log('[BrAInShift] ✓ Pull silencieux : aucun changement → aucun re-render');
+    }
+
+    // ── Restaurer le textarea (focus, sélection, hauteur) ──
+    // Le textarea est hors du #messages donc sa valeur survit normalement au render,
+    // mais on restaure défensivement focus et sélection. CRITIQUE : on n'écrase JAMAIS
+    // la valeur du textarea — si l'utilisateur a tapé pendant le roundtrip réseau, sa
+    // saisie a priorité absolue.
+    if (promptEl) {
+      const valueChangedDuringPull = (promptEl.value !== _userSnap.promptValue);
+      if (!valueChangedDuringPull) {
+        if (_userSnap.promptHeight) promptEl.style.height = _userSnap.promptHeight;
+        if (_userSnap.promptFocused && document.activeElement !== promptEl) {
+          promptEl.focus();
+          try { promptEl.setSelectionRange(_userSnap.promptSelStart, _userSnap.promptSelEnd); } catch(_) {}
+        }
+      }
+      // Si valeur changée pendant le pull → on ne touche à rien (ni valeur, ni focus, ni sélection)
+    }
+
     console.log(`[BrAInShift] ✅ Pull silencieux OK — ${S.chats.length} conversations, ${S.projects.length} projets`);
     // V20 — Ne PAS naviguer vers un chat vide : on reste sur la conv en cours
     ensureLandingBlankChat({ navigate: false });
@@ -8463,6 +8635,22 @@ function autoResizePrompt() {
 }
 promptEl.addEventListener("input", autoResizePrompt);
 
+// ── Tracker l'activité de frappe pour différer les pulls silencieux ──
+// (cf. ghPullSilent / startPeriodicAutoPull — on ne perturbe pas l'utilisateur qui tape)
+window._lastTypingAt = 0;
+promptEl.addEventListener("input",   () => { window._lastTypingAt = Date.now(); });
+promptEl.addEventListener("keydown", () => { window._lastTypingAt = Date.now(); });
+promptEl.addEventListener("compositionupdate", () => { window._lastTypingAt = Date.now(); });
+
+/** Retourne true si l'utilisateur est en train de composer un message. */
+function isUserComposing() {
+  // Focus sur le textarea + contenu non vide → composition en cours
+  if (document.activeElement === promptEl && (promptEl.value || '').trim().length > 0) return true;
+  // Frappe au clavier dans les 4 dernières secondes → composition récente
+  if (window._lastTypingAt && (Date.now() - window._lastTypingAt) < 4000) return true;
+  return false;
+}
+
 promptEl.addEventListener("keydown", e => {
   if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
 });
@@ -8666,12 +8854,10 @@ function triggerAutoPull() {
   console.log('[BrAInShift] ⏱ Pull automatique…');
   ghPullSilent().then(() => {
     console.log('[BrAInShift] ✅ Pull automatique terminé');
-    // Re-forcer aucun profil actif après le pull
-    S.activeProfiles = [];
-    renderProfiles();
-    updateProfileChip();
-    // Re-syncer le sélecteur de modèle
-    renderModels();
+    // NB : on ne touche PAS à S.activeProfiles ici — ghPullSilent a déjà restauré
+    // l'état utilisateur (modèle, profils actifs, chat actif) dans son snapshot.
+    // L'ancien comportement (S.activeProfiles = []) écrasait le verrou Short answers
+    // et la sélection multi-profils de l'utilisateur à chaque pull.
   }).catch(e => {
     console.warn('[BrAInShift] ⚠ Pull automatique échoué:', e.message);
   });
@@ -8694,6 +8880,11 @@ function startPeriodicAutoPull() {
     if (isWaitingResponse || window._sendInFlight) return;
     if (!GH.token || !GH.owner || !GH.repo) return;
     if (window._ghPushInProgress) return;
+    // Skip si utilisateur en train de composer un message (évite le saut de fenêtre)
+    if (typeof isUserComposing === 'function' && isUserComposing()) {
+      console.log('[BrAInShift] ⏸ Auto-pull différé — composition en cours');
+      return;
+    }
     triggerAutoPull();
   }, 60000); // 60 secondes
   console.log('[BrAInShift] 🔄 Auto-pull périodique activé (toutes les 60s)');
@@ -8705,9 +8896,7 @@ setTimeout(startPeriodicAutoPull, 30000);
 window.addEventListener('pageshow', e => {
   if (e.persisted) {
     console.log('[BrAInShift] 📱 Page restaurée depuis le cache (iPad/Safari) — sync…');
-    S.activeProfiles = [];
-    renderProfiles();
-    updateProfileChip();
+    // NB : on ne wipe PAS S.activeProfiles ici — ghPullSilent préserve l'état utilisateur.
     setTimeout(triggerAutoPull, 2000);
   }
 });
