@@ -482,6 +482,40 @@
       content:" 🔒";font-size:11px;opacity:.8;
     }
 
+    /* Boutons Triple Check grisés dans le projet "Short answers" */
+    .triple-check-btn.sa-locked{
+      opacity:.35;cursor:not-allowed;filter:grayscale(85%);
+    }
+    .triple-check-btn.sa-locked:hover{transform:none}
+
+    /* ── Feedback de copie : toast + animation du bouton ── */
+    .copy-toast{
+      position:fixed;bottom:88px;left:50%;
+      transform:translateX(-50%) translateY(16px);
+      background:#22c55e;color:#0a0a0d;
+      padding:10px 22px;border-radius:24px;
+      font-size:14px;font-weight:600;letter-spacing:.01em;
+      box-shadow:0 8px 28px rgba(34,197,94,.35), 0 2px 8px rgba(0,0,0,.4);
+      z-index:10000;pointer-events:none;
+      opacity:0;transition:opacity .2s ease, transform .25s cubic-bezier(.2,.8,.3,1.2);
+      display:flex;align-items:center;gap:8px;
+    }
+    .copy-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+    .copy-toast.error{background:#ef4444;color:#fff}
+
+    /* Pulse animation appliquée sur le bouton qui vient d'être cliqué */
+    .msg-icon.copied, .copy.copied, .copy-code-btn.copied, .artifact-btn.copied{
+      background:#22c55e22 !important;
+      color:#22c55e !important;
+      border-color:#22c55e66 !important;
+      animation: copyPulse .45s ease-out;
+    }
+    @keyframes copyPulse{
+      0%   { transform: scale(1);    box-shadow: 0 0 0 0 rgba(34,197,94,.5); }
+      40%  { transform: scale(1.22); box-shadow: 0 0 0 8px rgba(34,197,94,0);  }
+      100% { transform: scale(1);    box-shadow: 0 0 0 0 rgba(34,197,94,0);   }
+    }
+
     /* ── GitHub panel ── */
     .gh-status{font-size:12px;color:var(--muted);margin-top:8px;min-height:18px}
     .gh-status.ok{color:#22c55e}
@@ -2401,17 +2435,82 @@ function getActiveProjectForLock() {
 function isShortAnswersActive() {
   return isShortAnswersProject(getActiveProjectForLock());
 }
+
+// Le profil système "Short" est créé à la volée s'il n'existe pas encore.
+// Si l'utilisateur a déjà un profil nommé "Short" (insensible à la casse),
+// on le réutilise et on ne touche pas à son contenu.
+function ensureShortProfile() {
+  const existing = S.profiles.find(p =>
+    p && typeof p.name === "string" && p.name.trim().toLowerCase() === "short"
+  );
+  if (existing) return existing.id;
+  const id = crypto.randomUUID();
+  S.profiles.unshift({
+    id,
+    name: "Short",
+    icon: "✂️",
+    prompt: "Réponses ULTRA-CONCISES uniquement.\n\nRègles strictes :\n- Maximum 3-4 phrases par réponse (sauf demande explicite contraire).\n- Pas de préambule, pas de \"Bien sûr !\", pas de résumé final, pas de répétition de la question.\n- Va droit au fait : la réponse, point.\n- Pas de listes à puces sauf si la question impose une énumération.\n- Pas de titres Markdown (##), pas d'emphase superflue.\n- Si la question demande un fait, donne juste le fait.\n- Si plusieurs étapes sont nécessaires, numérote-les brièvement (1. … 2. …) sans détailler.\n- Pas de mise en garde, de disclaimers, ou de phrases du type \"il est important de noter\".\n\nObjectif : maximum d'information utile, minimum de tokens consommés."
+  });
+  return id;
+}
+
 function enforceShortAnswersLock() {
+  let _changed = false;
+
   // Pour TOUS les projets "Short answers" : forcer le defaultModel
   S.projects.forEach(p => {
     if (isShortAnswersProject(p) && p.defaultModel !== SHORT_ANSWERS_LOCKED_MODEL) {
       p.defaultModel = SHORT_ANSWERS_LOCKED_MODEL;
+      _changed = true;
     }
   });
-  // Si on est actuellement dans un contexte "Short answers" : forcer S.model
-  if (isShortAnswersActive() && S.model !== SHORT_ANSWERS_LOCKED_MODEL) {
-    S.model = SHORT_ANSWERS_LOCKED_MODEL;
-    window._userChangedModel = false;
+
+  const inSA = isShortAnswersActive();
+  const stashKey = "saStashedProfiles";
+  const hasStash = localStorage.getItem(stashKey) !== null;
+
+  if (inSA) {
+    // 1) Verrouiller le modèle
+    if (S.model !== SHORT_ANSWERS_LOCKED_MODEL) {
+      S.model = SHORT_ANSWERS_LOCKED_MODEL;
+      window._userChangedModel = false;
+      _changed = true;
+    }
+
+    // 2) Désactiver Triple Check s'il est actif (les boutons seront aussi grisés)
+    if (typeof isTripleCheckOn === "function" && isTripleCheckOn()) {
+      if (typeof setTripleCheckMode === "function") {
+        setTripleCheckMode("off");
+      }
+    }
+
+    // 3) Activer le profil système "Short" (et stasher l'état précédent à la première entrée)
+    const shortId = ensureShortProfile();
+    if (!hasStash) {
+      // C'est notre première entrée dans le projet : on mémorise les profils actifs courants
+      // pour pouvoir les restaurer à la sortie. La persistance localStorage survit aux rechargements.
+      localStorage.setItem(stashKey, JSON.stringify(S.activeProfiles || []));
+    }
+    const cur = S.activeProfiles || [];
+    if (cur.length !== 1 || cur[0] !== shortId) {
+      S.activeProfiles = [shortId];
+      _changed = true;
+    }
+  } else if (hasStash) {
+    // On vient de sortir du projet : restaurer les profils précédents
+    try {
+      const restored = JSON.parse(localStorage.getItem(stashKey)) || [];
+      // Filtrer les profils qui n'existent plus (cas où l'utilisateur en aurait supprimé)
+      S.activeProfiles = restored.filter(id => S.profiles.some(p => p.id === id));
+    } catch (_) {
+      S.activeProfiles = [];
+    }
+    localStorage.removeItem(stashKey);
+    _changed = true;
+  }
+
+  if (_changed) {
+    try { save(); } catch (_) { /* save peut échouer si appelé trop tôt */ }
   }
 }
 
@@ -3545,14 +3644,63 @@ function formatAssistantContent(text) {
   return html;
 }
 
+// ─────────────────────────────────────────────────
+// FEEDBACK VISUEL DE COPIE
+// Toast en bas d'écran + pulse vert sur le bouton cliqué.
+// Utilisable pour tous les boutons "Copier" de l'app.
+// ─────────────────────────────────────────────────
+let _copyToastEl = null;
+let _copyToastTimer = null;
+function showCopyToast(message, isError) {
+  if (!_copyToastEl) {
+    _copyToastEl = document.createElement('div');
+    _copyToastEl.className = 'copy-toast';
+    document.body.appendChild(_copyToastEl);
+  }
+  _copyToastEl.textContent = message || (isError ? '✕ Échec de la copie' : '✓ Copié dans le presse-papiers');
+  _copyToastEl.classList.toggle('error', !!isError);
+  // Force un reflow pour pouvoir redéclencher l'animation si déjà affiché
+  _copyToastEl.classList.remove('show');
+  void _copyToastEl.offsetWidth;
+  _copyToastEl.classList.add('show');
+  clearTimeout(_copyToastTimer);
+  _copyToastTimer = setTimeout(() => {
+    if (_copyToastEl) _copyToastEl.classList.remove('show');
+  }, 1700);
+}
+function flashCopyButton(btn, doneIcon) {
+  if (!btn) return;
+  // Mémorise le texte d'origine pour le restaurer
+  if (btn._origCopyText === undefined) btn._origCopyText = btn.textContent;
+  btn.textContent = doneIcon || '✓';
+  btn.classList.add('copied');
+  // Annule un éventuel reset précédent
+  if (btn._copyResetTimer) clearTimeout(btn._copyResetTimer);
+  btn._copyResetTimer = setTimeout(() => {
+    btn.classList.remove('copied');
+    btn.textContent = btn._origCopyText;
+    btn._copyResetTimer = null;
+  }, 1300);
+}
+function copyWithFeedback(text, btn, toastMsg, doneIcon) {
+  const fn = (navigator.clipboard && navigator.clipboard.writeText)
+    ? navigator.clipboard.writeText(text || '')
+    : Promise.reject(new Error('clipboard API indisponible'));
+  Promise.resolve(fn).then(() => {
+    flashCopyButton(btn, doneIcon);
+    showCopyToast(toastMsg);
+  }).catch(err => {
+    console.warn('[BrAInShift] Copie échouée :', err);
+    showCopyToast('✕ Échec de la copie', true);
+  });
+}
+
 function copyCodeBlock(btn) {
   // Chercher le code dans le bloc complet (details si collapsed, sinon pre direct)
   const container = btn.closest('.collapsed-code') || btn.closest('.code-header')?.parentElement;
   const code = container?.querySelector('details code') || btn.closest('.code-header')?.nextElementSibling?.querySelector('code');
   if (!code) return;
-  navigator.clipboard.writeText(code.textContent);
-  btn.textContent = '✓';
-  setTimeout(() => btn.textContent = 'Copier', 2000);
+  copyWithFeedback(code.textContent, btn, '✓ Code copié', '✓ Copié');
 }
 
 /** Télécharge le contenu d'un bloc de code */
@@ -3746,9 +3894,11 @@ function openArtifactFromBtn(btn, lang) {
 el('artifactCloseBtn').onclick = closeArtifact;
 
 el('artifactCopyBtn').onclick = () => {
-  navigator.clipboard.writeText(currentArtifact.code);
-  el('artifactCopyBtn').textContent = '✓';
-  setTimeout(() => el('artifactCopyBtn').textContent = '📋', 2000);
+  const btn = el('artifactCopyBtn');
+  copyWithFeedback(currentArtifact.code, btn, '✓ Contenu copié', '✓');
+  // Restaurer l'icône originale (le helper restaure le texte d'origine ✓ que le bouton avait au 1er click,
+  // mais ici on veut explicitement revenir à 📋 — donc on force après le délai)
+  setTimeout(() => { if (!btn.classList.contains('copied')) btn.textContent = '📋'; }, 1400);
 };
 
 el('artifactDownloadBtn').onclick = defaultArtifactDownload;
@@ -4680,7 +4830,7 @@ function renderMessages() {
         clean = clean.replace(/\$([^$\n]+?)\$/g, (_, tex) => latexToUnicode(tex));
         clean = clean.replace(/\\\[([^\]]+?)\\\]/g, (_, tex) => latexToUnicode(tex));
         clean = clean.replace(/\\\(([^)]+?)\\\)/g, (_, tex) => latexToUnicode(tex));
-        navigator.clipboard.writeText(clean);
+        copyWithFeedback(clean, copyBtn, '✓ Réponse copiée');
       };
 
       const regenBtn = document.createElement("button");
@@ -4752,9 +4902,16 @@ function renderMessages() {
             navigator.clipboard.write([new ClipboardItem({
               'text/html': blob,
               'text/plain': plainBlob
-            })]).catch(() => navigator.clipboard.writeText(rawContent));
+            })])
+              .then(() => showCopyToast('✓ Copié avec mise en forme'))
+              .catch(() => navigator.clipboard.writeText(rawContent)
+                .then(() => showCopyToast('✓ Copié (texte brut)'))
+                .catch(() => showCopyToast('✕ Échec de la copie', true))
+              );
           } else if (action === 'copy-raw') {
-            navigator.clipboard.writeText(rawContent);
+            navigator.clipboard.writeText(rawContent)
+              .then(() => showCopyToast('✓ Texte brut copié'))
+              .catch(() => showCopyToast('✕ Échec de la copie', true));
           } else if (action === 'dl-md') {
             downloadFile(rawContent, 'reponse.md', 'text/markdown');
           } else if (action === 'dl-html') {
@@ -4836,7 +4993,11 @@ blockquote{border-left:3px solid #4abfbf;margin:10px 0;padding:8px 16px;color:#5
     } else {
       const b = document.createElement("button");
       b.className = "copy"; b.textContent = "⧉"; b.title = "Copier";
-      b.onclick = () => navigator.clipboard.writeText(m._text || (typeof m.content === 'string' ? m.content : ''));
+      b.onclick = () => copyWithFeedback(
+        m._text || (typeof m.content === 'string' ? m.content : ''),
+        b,
+        '✓ Message copié'
+      );
       foot.appendChild(b);
     }
 
@@ -5278,9 +5439,9 @@ function render() {
   updateLayoutMode();
   updateActiveModelChip();
   // Indicateur visuel verrou Short answers sur le sélecteur de modèles
+  const _locked = isShortAnswersActive();
   const _dd = document.getElementById('modelDropdown');
   if (_dd) {
-    const _locked = isShortAnswersActive();
     _dd.classList.toggle('sa-locked', _locked);
     const _ddBtn = document.getElementById('modelDdBtn');
     if (_ddBtn) {
@@ -5291,6 +5452,20 @@ function render() {
       }
     }
     if (_locked) closeModelDropdown();
+  }
+  // Griser les boutons Triple Check (3× et 3×+) quand on est dans le projet
+  ['tripleCheckBtn', 'tripleCheckBtnPrem'].forEach(id => {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    btn.classList.toggle('sa-locked', _locked);
+    if (_locked) {
+      btn.title = 'Triple Check indisponible — projet "Short answers" verrouillé sur mistral-small-latest';
+    }
+  });
+  // Refléter l'éventuel changement de profil système actif
+  if (typeof updateProfileChip === 'function') updateProfileChip();
+  if (typeof renderProfiles === 'function' && el('rightPanel')?.classList.contains('open')) {
+    renderProfiles();
   }
 }
 
@@ -7064,6 +7239,11 @@ function renderProfiles() {
       const a = e.target.dataset.a;
       if (a === "edit")  { openProfileEditor(p.id); return; }
       if (a === "clone") { cloneProfile(p.id);       return; }
+      // Verrou Short answers : interdire toute modification des profils actifs
+      if (isShortAnswersActive()) {
+        showCopyToast('🔒 Verrouillé sur le profil "Short" dans ce projet', true);
+        return;
+      }
       // Toggle multi-sélection
       const cur = S.activeProfiles || [];
       if (cur.includes(p.id)) {
@@ -8121,9 +8301,15 @@ function renderSearchResults(query) {
 el("sendBtn").onclick = send;
 // V16 — Boutons Triple Check : 2 modes exclusifs (eco / premium)
 const _tcBtn = el("tripleCheckBtn");
-if (_tcBtn) _tcBtn.onclick = () => toggleTripleCheckMode('eco');
+if (_tcBtn) _tcBtn.onclick = () => {
+  if (isShortAnswersActive()) return; // verrou Short answers
+  toggleTripleCheckMode('eco');
+};
 const _tcBtnPrem = el("tripleCheckBtnPrem");
-if (_tcBtnPrem) _tcBtnPrem.onclick = () => toggleTripleCheckMode('premium');
+if (_tcBtnPrem) _tcBtnPrem.onclick = () => {
+  if (isShortAnswersActive()) return; // verrou Short answers
+  toggleTripleCheckMode('premium');
+};
 el("stopBtn").onclick = () => {
   if (_currentAbortController) {
     window._userAborted = true;
