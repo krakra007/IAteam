@@ -513,6 +513,24 @@
     .quota-counter.warn  {background:#f59e0b22;color:#f59e0b}
     .quota-counter.danger{background:#ef444422;color:#ef4444}
 
+    /* Badge "coût du jour" dans le bandeau supérieur */
+    .daily-cost-badge{
+      display:inline-flex;align-items:center;gap:5px;
+      padding:4px 10px;border-radius:14px;
+      background:#ef444415;border:1px solid #ef444455;
+      color:#ef4444;font-size:12px;font-weight:600;
+      font-variant-numeric:tabular-nums;letter-spacing:.01em;
+      cursor:help;user-select:none;
+      transition:background .15s, border-color .15s, color .15s;
+    }
+    .daily-cost-badge:hover{
+      background:#ef444425;border-color:#ef4444aa;
+    }
+    .daily-cost-badge.zero{
+      background:#ffffff08;border-color:#ffffff15;color:#6b7280;
+    }
+    .daily-cost-badge .daily-cost-icon{font-size:11px;opacity:.9}
+
     /* Pulse animation appliquée sur le bouton qui vient d'être cliqué */
     .msg-icon.copied, .copy.copied, .copy-code-btn.copied, .artifact-btn.copied{
       background:#22c55e22 !important;
@@ -1515,6 +1533,11 @@
         <span id="tcProgress" class="tc-progress" style="display:none"></span>
       </div>
       <div style="display:flex;gap:8px;align-items:center;position:relative">
+        <!-- Badge coût du jour (cumulé des appels API d'aujourd'hui) -->
+        <div class="daily-cost-badge zero" id="dailyCostBadge" title="Aucun appel API aujourd'hui">
+          <span class="daily-cost-icon">💸</span>
+          <span id="dailyCostValue">$0.0000</span>
+        </div>
         <!-- Chip profil actif -->
         <div class="active-profile-chip" id="activeProfileChip" onclick="el('toggleRightPanelBtn').click()" title="Profil système actif">
           <span id="chipProfileIcon">🤖</span>
@@ -6412,6 +6435,7 @@ function computeCost(model, inputTokens, outputTokens) {
 function recordApiCall(model, inputTokens, outputTokens, mode) {
   const cost = computeCost(model, inputTokens, outputTokens);
   const month = new Date().toISOString().slice(0, 7); // "2026-06"
+  const today = new Date().toISOString().slice(0, 10); // "2026-06-05"
   let stats;
   try {
     stats = JSON.parse(localStorage.getItem('costStats') || '{}');
@@ -6433,7 +6457,76 @@ function recordApiCall(model, inputTokens, outputTokens, mode) {
   m.totalTokensIn  = (m.totalTokensIn  || 0) + inputTokens;
   m.totalTokensOut = (m.totalTokensOut || 0) + outputTokens;
   try { localStorage.setItem('costStats', JSON.stringify(stats)); } catch(e) {}
+
+  // ── Tracking quotidien (V31) ──
+  // Stocke jour par jour pour le badge "coût du jour" dans le bandeau supérieur.
+  // On garde 60 jours d'historique pour pouvoir afficher un graphe plus tard si besoin.
+  let daily;
+  try { daily = JSON.parse(localStorage.getItem('costStatsDaily') || '{}'); } catch(e) { daily = {}; }
+  if (!daily[today]) daily[today] = { total: 0, count: 0, solo: 0, tripleEco: 0, triplePremium: 0, tokensIn: 0, tokensOut: 0 };
+  const d = daily[today];
+  d.total += cost;
+  d.count += 1;
+  if (mode === 'tripleEco')         d.tripleEco += cost;
+  else if (mode === 'triplePremium') d.triplePremium += cost;
+  else                               d.solo += cost;
+  d.tokensIn  += inputTokens;
+  d.tokensOut += outputTokens;
+  // Élaguer au-delà de 60 jours pour éviter le gonflement de localStorage
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 60);
+  const cutoffStr = cutoff.toISOString().slice(0, 10);
+  Object.keys(daily).forEach(k => { if (k < cutoffStr) delete daily[k]; });
+  try { localStorage.setItem('costStatsDaily', JSON.stringify(daily)); } catch(e) {}
+
+  // Rafraîchir le badge dans le bandeau si la fonction existe (chargée en aval)
+  if (typeof updateDailyCostBadge === 'function') updateDailyCostBadge();
+
   return cost;
+}
+
+/**
+ * Retourne les stats du jour pour le badge "coût du jour".
+ */
+function getTodayStats() {
+  const today = new Date().toISOString().slice(0, 10);
+  let daily;
+  try { daily = JSON.parse(localStorage.getItem('costStatsDaily') || '{}'); } catch(e) { daily = {}; }
+  return daily[today] || { total: 0, count: 0, solo: 0, tripleEco: 0, triplePremium: 0, tokensIn: 0, tokensOut: 0 };
+}
+
+/**
+ * Met à jour le badge "coût du jour" dans le bandeau supérieur.
+ * Couleur rouge si > 0, gris si 0. Tooltip avec ventilation détaillée.
+ */
+function updateDailyCostBadge() {
+  const badge = document.getElementById('dailyCostBadge');
+  if (!badge) return;
+  const valueEl = document.getElementById('dailyCostValue');
+  if (!valueEl) return;
+  const s = getTodayStats();
+  const total = s.total || 0;
+  // Format : pour de petits montants, montrer 4 décimales ; au-delà de 1$, 2 décimales
+  valueEl.textContent = total >= 1
+    ? `$${total.toFixed(2)}`
+    : `$${total.toFixed(4)}`;
+  badge.classList.toggle('zero', total === 0);
+  if (total === 0) {
+    badge.title = 'Aucun appel API aujourd\'hui';
+  } else {
+    const lines = [
+      `Coût cumulé aujourd'hui : $${total.toFixed(4)}`,
+      `${s.count} appel${s.count > 1 ? 's' : ''} API`,
+      ``,
+      `Solo : $${(s.solo || 0).toFixed(4)}`,
+      `🔺 Triple Check ÉCO : $${(s.tripleEco || 0).toFixed(4)}`,
+      `🔺 Triple Check PREMIUM : $${(s.triplePremium || 0).toFixed(4)}`,
+      ``,
+      `Tokens entrée : ${(s.tokensIn || 0).toLocaleString('fr-FR')}`,
+      `Tokens sortie : ${(s.tokensOut || 0).toLocaleString('fr-FR')}`
+    ];
+    badge.title = lines.join('\n');
+  }
 }
 
 /**
@@ -9075,6 +9168,8 @@ renderModels();
 renderParams();
 // Appliquer les quotas de conversations au démarrage (gère les états déjà au-dessus de la limite)
 enforceChatLimitsWithToast();
+// Initialiser le badge "coût du jour" avec le cumul d'aujourd'hui
+if (typeof updateDailyCostBadge === 'function') updateDailyCostBadge();
 render();
 loadModelsFromApi();
 
