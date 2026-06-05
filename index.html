@@ -2455,13 +2455,21 @@ function isShortAnswersProject(p) {
             p.name.trim().toLowerCase() === "short answers");
 }
 function getActiveProjectForLock() {
-  // Priorité : projet du chat actif, sinon S.activeProject
+  // ─── CORRECTIF BUG (verrou Short answers fuyant hors du projet) ───
+  // SEULE source de vérité = projectId de la conversation actuellement ouverte.
+  //
+  // Auparavant on avait un fallback `S.activeProject` quand activeChat n'avait
+  // pas de projectId. Or `S.activeProject` ne se met PAS à jour automatiquement
+  // quand on bascule entre conversations dans la sidebar — il reste "collé" sur
+  // le dernier projet sélectionné. Conséquence : en cliquant sur une conv libre
+  // depuis une conv SA, S.activeProject restait sur 'sa-id' → le verrou Short
+  // restait actif sur la conv libre.
+  //
+  // Avec ce correctif, seul le projectId du chat actif compte. Pas de chat actif
+  // ou chat sans projectId → pas de contexte projet → verrou désactivé.
   const c = activeChat();
   if (c && c.projectId) {
     return S.projects.find(p => p.id === c.projectId) || null;
-  }
-  if (S.activeProject) {
-    return S.projects.find(p => p.id === S.activeProject) || null;
   }
   return null;
 }
@@ -3061,6 +3069,9 @@ function chatRow(c, indent = false) {
       return;
     }
     S.activeChat = c.id;
+    // Garder S.activeProject cohérent avec le chat actif (sinon il reste collé sur
+    // le dernier projet sélectionné, ce qui faisait fuir le verrou Short answers).
+    S.activeProject = c.projectId || null;
     // Si on clique sur un chat vide dans un projet → appliquer le modèle du projet
     if (c.projectId && (!c.messages || c.messages.length === 0)) {
       const proj = S.projects.find(p => p.id === c.projectId);
