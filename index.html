@@ -6432,10 +6432,63 @@ function computeCost(model, inputTokens, outputTokens) {
  * Enregistre un appel API dans les stats mensuelles (localStorage).
  * mode : 'solo' | 'tripleEco' | 'triplePremium'
  */
+// ─────────────────────────────────────────────────
+// V32 — IDENTITÉ MACHINE pour stats de coût multi-machines
+// Chaque navigateur génère son UUID stable + un label lisible déduit de l'user-agent.
+// Permet de tracker indépendamment "Mac maison" vs "PC travail" et de SOMMER les
+// montants au lieu de les écraser au push/pull.
+// ─────────────────────────────────────────────────
+function getMachineId() {
+  let id = localStorage.getItem('machineId');
+  if (!id) {
+    id = (crypto.randomUUID ? crypto.randomUUID() : 'm-' + Date.now() + '-' + Math.random().toString(36).slice(2,10));
+    localStorage.setItem('machineId', id);
+  }
+  return id;
+}
+function getMachineLabel() {
+  let label = localStorage.getItem('machineLabel');
+  if (label) return label;
+  const ua = navigator.userAgent || '';
+  if (/iPad/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) label = 'iPad';
+  else if (/iPhone/.test(ua))      label = 'iPhone';
+  else if (/Macintosh/.test(ua))   label = 'Mac';
+  else if (/Windows/.test(ua))     label = 'PC';
+  else if (/Android/.test(ua))     label = 'Android';
+  else if (/Linux/.test(ua))       label = 'Linux';
+  else                             label = 'Machine';
+  localStorage.setItem('machineLabel', label);
+  return label;
+}
+
+// Migration : ancien format { date: {total, count, ...} } → nouveau { date: {machineId: {...}} }
+// Détecte l'ancien format si une entrée contient directement la clé `total`.
+function migrateDailyStatsIfNeeded() {
+  let daily;
+  try { daily = JSON.parse(localStorage.getItem('costStatsDaily') || '{}'); } catch(e) { return; }
+  const machineId = getMachineId();
+  const machineLabel = getMachineLabel();
+  let migrated = 0;
+  Object.keys(daily).forEach(date => {
+    const entry = daily[date];
+    if (entry && typeof entry === 'object' && typeof entry.total === 'number') {
+      // Ancien format : on rebascule sous l'UUID de cette machine
+      daily[date] = { [machineId]: { _label: machineLabel, ...entry } };
+      migrated++;
+    }
+  });
+  if (migrated > 0) {
+    try { localStorage.setItem('costStatsDaily', JSON.stringify(daily)); } catch(e) {}
+    console.log(`[BrAInShift] 📊 Migration costStatsDaily : ${migrated} jour(s) basculé(s) sous "${machineLabel}" (${machineId.slice(0,8)}…)`);
+  }
+}
+
 function recordApiCall(model, inputTokens, outputTokens, mode) {
   const cost = computeCost(model, inputTokens, outputTokens);
   const month = new Date().toISOString().slice(0, 7); // "2026-06"
   const today = new Date().toISOString().slice(0, 10); // "2026-06-05"
+
+  // ── Stats mensuelles (inchangées, format global) ──
   let stats;
   try {
     stats = JSON.parse(localStorage.getItem('costStats') || '{}');
@@ -6458,13 +6511,19 @@ function recordApiCall(model, inputTokens, outputTokens, mode) {
   m.totalTokensOut = (m.totalTokensOut || 0) + outputTokens;
   try { localStorage.setItem('costStats', JSON.stringify(stats)); } catch(e) {}
 
-  // ── Tracking quotidien (V31) ──
-  // Stocke jour par jour pour le badge "coût du jour" dans le bandeau supérieur.
-  // On garde 60 jours d'historique pour pouvoir afficher un graphe plus tard si besoin.
+  // ── Stats quotidiennes par MACHINE (V32 multi-machines) ──
+  const machineId = getMachineId();
+  const machineLabel = getMachineLabel();
   let daily;
   try { daily = JSON.parse(localStorage.getItem('costStatsDaily') || '{}'); } catch(e) { daily = {}; }
-  if (!daily[today]) daily[today] = { total: 0, count: 0, solo: 0, tripleEco: 0, triplePremium: 0, tokensIn: 0, tokensOut: 0 };
-  const d = daily[today];
+  if (!daily[today]) daily[today] = {};
+  if (!daily[today][machineId]) {
+    daily[today][machineId] = { _label: machineLabel, total: 0, count: 0, solo: 0, tripleEco: 0, triplePremium: 0, tokensIn: 0, tokensOut: 0 };
+  } else {
+    // Garder le label à jour (au cas où l'utilisateur l'aurait changé)
+    daily[today][machineId]._label = machineLabel;
+  }
+  const d = daily[today][machineId];
   d.total += cost;
   d.count += 1;
   if (mode === 'tripleEco')         d.tripleEco += cost;
@@ -6472,32 +6531,59 @@ function recordApiCall(model, inputTokens, outputTokens, mode) {
   else                               d.solo += cost;
   d.tokensIn  += inputTokens;
   d.tokensOut += outputTokens;
-  // Élaguer au-delà de 60 jours pour éviter le gonflement de localStorage
+  // Élaguer au-delà de 60 jours pour éviter le gonflement de localStorage et du push GitHub
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - 60);
   const cutoffStr = cutoff.toISOString().slice(0, 10);
   Object.keys(daily).forEach(k => { if (k < cutoffStr) delete daily[k]; });
   try { localStorage.setItem('costStatsDaily', JSON.stringify(daily)); } catch(e) {}
 
-  // Rafraîchir le badge dans le bandeau si la fonction existe (chargée en aval)
+  // Rafraîchir le badge si la fonction existe
   if (typeof updateDailyCostBadge === 'function') updateDailyCostBadge();
 
   return cost;
 }
 
 /**
- * Retourne les stats du jour pour le badge "coût du jour".
+ * Retourne les stats du jour SOMMÉES sur toutes les machines.
+ * Inclut `byMachine` pour la ventilation par machine dans le tooltip.
  */
 function getTodayStats() {
   const today = new Date().toISOString().slice(0, 10);
   let daily;
   try { daily = JSON.parse(localStorage.getItem('costStatsDaily') || '{}'); } catch(e) { daily = {}; }
-  return daily[today] || { total: 0, count: 0, solo: 0, tripleEco: 0, triplePremium: 0, tokensIn: 0, tokensOut: 0 };
+  const dayBucket = daily[today];
+  const out = { total: 0, count: 0, solo: 0, tripleEco: 0, triplePremium: 0, tokensIn: 0, tokensOut: 0, byMachine: [] };
+  if (!dayBucket) return out;
+  const myId = getMachineId();
+  Object.entries(dayBucket).forEach(([machineId, s]) => {
+    if (!s) return;
+    out.total         += s.total         || 0;
+    out.count         += s.count         || 0;
+    out.solo          += s.solo          || 0;
+    out.tripleEco     += s.tripleEco     || 0;
+    out.triplePremium += s.triplePremium || 0;
+    out.tokensIn      += s.tokensIn      || 0;
+    out.tokensOut     += s.tokensOut     || 0;
+    out.byMachine.push({
+      id: machineId,
+      label: s._label || machineId.slice(0, 6),
+      isMe: (machineId === myId),
+      total: s.total || 0,
+      count: s.count || 0
+    });
+  });
+  // Trier : ma machine d'abord, puis les autres par montant décroissant
+  out.byMachine.sort((a, b) => {
+    if (a.isMe && !b.isMe) return -1;
+    if (!a.isMe && b.isMe) return 1;
+    return b.total - a.total;
+  });
+  return out;
 }
 
 /**
- * Met à jour le badge "coût du jour" dans le bandeau supérieur.
- * Couleur rouge si > 0, gris si 0. Tooltip avec ventilation détaillée.
+ * Met à jour le badge "coût du jour" — total sommé sur toutes les machines.
  */
 function updateDailyCostBadge() {
   const badge = document.getElementById('dailyCostBadge');
@@ -6506,25 +6592,30 @@ function updateDailyCostBadge() {
   if (!valueEl) return;
   const s = getTodayStats();
   const total = s.total || 0;
-  // Format : pour de petits montants, montrer 4 décimales ; au-delà de 1$, 2 décimales
-  valueEl.textContent = total >= 1
-    ? `$${total.toFixed(2)}`
-    : `$${total.toFixed(4)}`;
+  valueEl.textContent = total >= 1 ? `$${total.toFixed(2)}` : `$${total.toFixed(4)}`;
   badge.classList.toggle('zero', total === 0);
   if (total === 0) {
     badge.title = 'Aucun appel API aujourd\'hui';
   } else {
     const lines = [
       `Coût cumulé aujourd'hui : $${total.toFixed(4)}`,
-      `${s.count} appel${s.count > 1 ? 's' : ''} API`,
-      ``,
-      `Solo : $${(s.solo || 0).toFixed(4)}`,
-      `🔺 Triple Check ÉCO : $${(s.tripleEco || 0).toFixed(4)}`,
-      `🔺 Triple Check PREMIUM : $${(s.triplePremium || 0).toFixed(4)}`,
-      ``,
-      `Tokens entrée : ${(s.tokensIn || 0).toLocaleString('fr-FR')}`,
-      `Tokens sortie : ${(s.tokensOut || 0).toLocaleString('fr-FR')}`
+      `${s.count} appel${s.count > 1 ? 's' : ''} API au total`,
+      ``
     ];
+    if (s.byMachine.length > 1) {
+      lines.push('Par machine :');
+      s.byMachine.forEach(m => {
+        const tag = m.isMe ? ` (cette machine)` : '';
+        lines.push(`  ${m.label}${tag} : $${m.total.toFixed(4)} (${m.count} appel${m.count > 1 ? 's' : ''})`);
+      });
+      lines.push(``);
+    }
+    lines.push(`Solo : $${(s.solo || 0).toFixed(4)}`);
+    lines.push(`🔺 Triple Check ÉCO : $${(s.tripleEco || 0).toFixed(4)}`);
+    lines.push(`🔺 Triple Check PREMIUM : $${(s.triplePremium || 0).toFixed(4)}`);
+    lines.push(``);
+    lines.push(`Tokens entrée : ${(s.tokensIn || 0).toLocaleString('fr-FR')}`);
+    lines.push(`Tokens sortie : ${(s.tokensOut || 0).toLocaleString('fr-FR')}`);
     badge.title = lines.join('\n');
   }
 }
@@ -7816,6 +7907,11 @@ async function ghPushSilent() {
       chats: lightChats, projects: S.projects,
       profiles: S.profiles, activeProfiles: S.activeProfiles || [],
       params: S.params, model: S.model, favoriteModels: S.favoriteModels || [],
+      // V32 — Stats de coût quotidiennes multi-machines (sync entre Mac/PC)
+      costStatsDaily: (() => {
+        try { return JSON.parse(localStorage.getItem('costStatsDaily') || '{}'); }
+        catch (e) { return {}; }
+      })(),
       savedAt: new Date().toISOString(), version: 2
     };
     const jsonStr = JSON.stringify(data);
@@ -8057,6 +8153,44 @@ async function ghPullSilent() {
     // NOTE : on n'écrase PAS S.model depuis raw — l'état du sélecteur de modèle est
     // une préférence UI locale, pas une donnée à synchroniser de force pendant un pull
     // silencieux. (Avant : `S.model = raw.model;` puis reset à gemini si !userChanged.)
+
+    // ═══ V32 — MERGE costStatsDaily (multi-machines, additif) ═══
+    // Règle : pour CETTE machine on garde le local (source de vérité), pour les AUTRES
+    // machines on prend le remote (elles sont source de vérité pour leur slot).
+    // Garantit que le compteur cumulé Mac + PC ne perd jamais d'appel.
+    if (raw.costStatsDaily && typeof raw.costStatsDaily === 'object') {
+      let localDaily;
+      try { localDaily = JSON.parse(localStorage.getItem('costStatsDaily') || '{}'); } catch (e) { localDaily = {}; }
+      const myId = (typeof getMachineId === 'function') ? getMachineId() : null;
+      let _mergeChanged = 0;
+      Object.keys(raw.costStatsDaily).forEach(date => {
+        const remoteDate = raw.costStatsDaily[date];
+        if (!remoteDate || typeof remoteDate !== 'object') return;
+        if (!localDaily[date]) localDaily[date] = {};
+        Object.keys(remoteDate).forEach(machineId => {
+          if (machineId === myId) return; // ma machine : le local est ma vérité
+          // Pour les autres machines, on prend la version distante (elles sont autoritaires sur leur slot)
+          const remoteSlot = remoteDate[machineId];
+          if (remoteSlot && typeof remoteSlot === 'object') {
+            // Comparer pour ne logger que si vraiment différent
+            const prev = localDaily[date][machineId];
+            const prevTotal = prev?.total || 0;
+            const newTotal = remoteSlot.total || 0;
+            if (Math.abs(prevTotal - newTotal) > 0.000001) _mergeChanged++;
+            localDaily[date][machineId] = remoteSlot;
+          }
+        });
+      });
+      // Élaguer au-delà de 60 jours
+      const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 60);
+      const cutoffStr = cutoff.toISOString().slice(0, 10);
+      Object.keys(localDaily).forEach(k => { if (k < cutoffStr) delete localDaily[k]; });
+      try { localStorage.setItem('costStatsDaily', JSON.stringify(localDaily)); } catch (e) {}
+      if (_mergeChanged > 0) {
+        console.log(`[BrAInShift] 💸 costStatsDaily mergé : ${_mergeChanged} slot(s) machine mis à jour depuis le remote`);
+      }
+      if (typeof updateDailyCostBadge === 'function') updateDailyCostBadge();
+    }
 
     // ═══ RESTAURATION DE L'ÉTAT UTILISATEUR ═══
     // Le pull est terminé côté données. On rétablit maintenant tout ce qui touche à l'UX :
@@ -9168,6 +9302,8 @@ renderModels();
 renderParams();
 // Appliquer les quotas de conversations au démarrage (gère les états déjà au-dessus de la limite)
 enforceChatLimitsWithToast();
+// V32 — Migrer costStatsDaily depuis l'ancien format mono-machine si nécessaire
+if (typeof migrateDailyStatsIfNeeded === 'function') migrateDailyStatsIfNeeded();
 // Initialiser le badge "coût du jour" avec le cumul d'aujourd'hui
 if (typeof updateDailyCostBadge === 'function') updateDailyCostBadge();
 render();
