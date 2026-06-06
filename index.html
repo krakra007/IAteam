@@ -3040,25 +3040,33 @@ function forkChatFromHere(chatId, msgIdx) {
 }
 
 /**
- * V34 — Helper centralisé pour passer d'une conversation à une autre.
+ * V34/V35 — Helper centralisé pour passer d'une conversation à une autre.
  * Garantit que le modèle, le projet actif, le chat actif et l'état sont mis à jour
  * de façon cohérente, peu importe d'où vient le clic (sidebar, recherche, etc.).
  *
- * Logique modèle (3 niveaux) :
- *   1) Modèle du dernier message assistant de la conv (continuité)
- *   2) Modèle par défaut du projet (si conv vide dans un projet à defaultModel)
- *   3) gemini-2.5-flash (défaut global)
- * Le verrou Short answers est prioritaire et écrasera S.model dans render() si la
- * conv cible appartient à un projet "Short answers".
+ * Logique modèle (V35 — le défaut prime, plus la continuité) :
+ *   1) Modèle par défaut du projet de la conv (ex: Short answers → mistral-small-latest)
+ *   2) gemini-2.5-flash (défaut global) pour tout chat libre ou projet sans defaultModel
+ *
+ * Rationale : on veut un comportement PRÉVISIBLE — chaque projet a un modèle
+ * connu, et l'entrée dans n'importe quelle conv ramène au défaut du projet (ou
+ * global). Une sélection manuelle du modèle reste valide pour la conv en cours
+ * tant qu'on n'en sort pas, mais elle ne "colle" pas à la conv après navigation.
+ *
+ * Le verrou Short answers est cohérent avec cette logique : il ÉCRASE de toute
+ * façon S.model dans render() via enforceShortAnswersLock pour les conv SA.
+ *
+ * (Ancienne logique V33 — abandonnée : on prenait d'abord le modèle du dernier
+ *  message assistant de la conv pour la continuité. Mais ça faisait coller
+ *  Mistral d'une conv quelconque au lieu de revenir sur le défaut Gemini, ce
+ *  qui n'était pas le comportement attendu par l'utilisateur.)
  */
 function switchToChat(c) {
   if (!c) return;
   S.activeChat    = c.id;
   S.activeProject = c.projectId || null;
-  const lastAssistantModel = [...(c.messages || [])].reverse()
-    .find(m => m.role === 'assistant' && m.model)?.model;
-  let resolvedModel = lastAssistantModel || null;
-  if (!resolvedModel && c.projectId) {
+  let resolvedModel = null;
+  if (c.projectId) {
     const proj = S.projects.find(p => p.id === c.projectId);
     if (proj && proj.defaultModel) resolvedModel = proj.defaultModel;
   }
