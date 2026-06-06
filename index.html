@@ -7237,8 +7237,20 @@ async function send() {
   render();
   // DEBUG — visible dans F12 → Console
   const _sp = getActiveSystemPrompt();
-  console.log('[BrAInShift] Profils actifs:', S.activeProfiles.length ? S.activeProfiles.join(', ') : 'AUCUN');
-  console.log('[BrAInShift] System prompt (100 premiers chars):', _sp.slice(0,100));
+  // V36 — Logging détaillé des profils système pour diagnostic
+  const _activeIds = S.activeProfiles || [];
+  const _activeProfs = _activeIds.map(id => S.profiles.find(p => p.id === id)).filter(Boolean);
+  if (_activeProfs.length === 0) {
+    console.log('[BrAInShift] 🎭 Profils système actifs : AUCUN — prompt système par défaut');
+  } else {
+    const names = _activeProfs.map(p => `${p.icon || '🤖'} ${p.name}`).join(' + ');
+    console.log(`[BrAInShift] 🎭 Profils système actifs : ${_activeProfs.length} (${names})`);
+    _activeProfs.forEach((p, i) => {
+      const preview = (p.prompt || '').slice(0, 80).replace(/\n/g, ' ');
+      console.log(`   ${i+1}. ${p.icon || '🤖'} ${p.name} — "${preview}…"`);
+    });
+  }
+  console.log(`[BrAInShift] 📝 System prompt envoyé : ${_sp.length} chars (preview: "${_sp.slice(0,120).replace(/\n/g,' ')}…")`);
   console.log('[BrAInShift] KaTeX:', typeof katex !== 'undefined' ? '✅ chargé' : '❌ BLOQUÉ (vérifier Tracking Prevention / pare-feu)');
   if (typeof katex !== 'undefined') {
     var _mhchemOk = false;
@@ -9372,8 +9384,13 @@ el("peCancel").onclick       = closeProfileEditor;
 el("peDelete").onclick       = deleteActiveProfile;
 el("peName").addEventListener("keydown", e => { if (e.key === "Enter") saveProfileEditor(); });
 
-// Au démarrage : aucun profil système sélectionné
-S.activeProfiles = [];
+// V36 fix — Ne plus écraser les profils actifs au démarrage.
+// L'ancienne ligne `S.activeProfiles = []` (commentée ci-dessous) faisait perdre
+// la sélection de l'utilisateur à chaque rechargement de page, parce que `save()`
+// persistait ensuite cet `[]` dans localStorage.
+// Désormais on conserve ce qui a été chargé depuis localStorage à l'init (ligne 2017).
+// Garde de robustesse : on filtre les IDs orphelins (profil supprimé entre-temps).
+S.activeProfiles = (S.activeProfiles || []).filter(id => S.profiles.some(p => p.id === id));
 renderProfiles();
 updateProfileChip();
 
