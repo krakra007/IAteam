@@ -6331,10 +6331,51 @@ function isImageGenerationRequest(text) {
   return false;
 }
 
-async function callGeminiImages(apiKey, prompt) {
-  // gemini-3.1-flash-image-preview : seul modèle Gemini supportant la génération d'images
+async function callGeminiImages(apiKey, messages) {
+  // V37 — Génération d'image CONTEXTUELLE.
+  // Avant : on ne passait que le texte du dernier message utilisateur ("dessine-moi ce processus"),
+  // donc Gemini Image n'avait aucune référence pour "ce processus" et inventait du contenu hors-sujet.
+  // Désormais : on lui passe l'historique de la conversation au format Gemini native.
+  // Il voit donc la question précédente, la réponse détaillée de l'assistant, ET la demande de dessin
+  // — il peut alors interpréter correctement "ce processus" et illustrer le bon sujet.
+  //
+  // Note : si `messages` est juste une string (rétrocompatibilité), on traite comme single-turn.
+  let contents;
+  if (typeof messages === 'string') {
+    // Rétrocompat : appel one-shot sans contexte
+    contents = [{ role: 'user', parts: [{ text: messages }] }];
+  } else if (Array.isArray(messages)) {
+    // Construction native multi-turn (comme callGeminiNative)
+    contents = [];
+    // On limite à ~last 8 messages pour éviter une requête trop lourde
+    const recent = messages.filter(m => m.role === 'user' || m.role === 'assistant').slice(-8);
+    for (const m of recent) {
+      const role = m.role === 'assistant' ? 'model' : 'user';
+      const parts = [];
+      if (Array.isArray(m.content)) {
+        for (const b of m.content) {
+          if (b.type === 'image') {
+            parts.push({ inline_data: { mime_type: b.source.media_type, data: b.source.data } });
+          } else if (b.type === 'document' && b.source?.data) {
+            parts.push({ inline_data: { mime_type: b.source.media_type || 'application/pdf', data: b.source.data } });
+          } else if (b.type === 'text') {
+            parts.push({ text: b.text || '' });
+          }
+        }
+      } else if (typeof m.content === 'string' && m.content.trim()) {
+        parts.push({ text: m.content });
+      }
+      if (parts.length) contents.push({ role, parts });
+    }
+    if (!contents.length) {
+      throw new Error('[Gemini Image] Aucun contenu valide dans la conversation');
+    }
+  } else {
+    throw new Error('[Gemini Image] Format de messages invalide');
+  }
+
   const body = {
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    contents,
     generationConfig: {
       responseModalities: ['TEXT', 'IMAGE']
     }
@@ -6394,7 +6435,7 @@ const TOKEN_PRICES = {
   'gemini-3.1-pro-preview':     { input: 2.50,  output: 10.00 },
   'gemini-3.1-flash-lite':      { input: 0.075, output: 0.30 },
   'gemini-3.5-flash':           { input: 0.30,  output: 1.20 },
-  'gemini-3.1-flash-image-preview': { input: 0.30, output: 1.20 },
+  'gemini-3.1-flash-image-preview': { input: 0.25, output: 60.00 }, // ⚠ tarif spécial : voir computeCost — flat $0.067 par image 1024px + tokens d'entrée
 
   // ── OpenAI ──
   'gpt-5.5':                    { input: 5.00,  output: 20.00 },
@@ -6479,6 +6520,20 @@ function extractUsage(responseData, providerHint) {
  * Retourne 0 si le modèle n'est pas dans la table (au lieu de faire planter l'UI).
  */
 function computeCost(model, inputTokens, outputTokens) {
+  // V38 — Gemini Image Preview : tarification image spécifique.
+  // Référence officielle (Google AI, juin 2026) :
+  //   - Input texte : $0.25 / 1M tokens
+  //   - Output image : $60 / 1M tokens d'image
+  //   - 1 image 1024×1024 ≈ 1120 tokens d'image ≈ $0.067
+  //   - Variations : 512px = $0.045, 4K = $0.151
+  // Comme l'utilisateur ne contrôle pas la résolution depuis BrAInshift et que le défaut
+  // est 1024×1024, on facture en flat $0.067 par image générée + tokens d'entrée standards.
+  // L'éventuel texte d'accompagnement est négligeable (< $0.0001).
+  if (model === 'gemini-3.1-flash-image-preview') {
+    const inputCost = (inputTokens * 0.25) / 1_000_000;
+    const imageCost = 0.067;
+    return inputCost + imageCost;
+  }
   const price = TOKEN_PRICES[model];
   if (!price) return 0;
   return (inputTokens * price.input + outputTokens * price.output) / 1_000_000;
@@ -7275,8 +7330,22 @@ async function send() {
       }
 
       try {
-        console.log('[BrAInShift] 🎨 Génération image via gemini-3.1-flash-image-preview...');
-        responseContent = await callGeminiImages(geminiKey, text);
+        console.log(`[BrAInShift] 🎨 Génération image contextuelle via gemini-3.1-flash-image-preview (${c.messages.length} messages d'historique)…`);
+        // V37 — On passe c.messages (historique complet) au lieu du texte seul.
+        // Gemini Image voit ainsi le contexte ("ce processus" → réponse précédente sur la traduction).
+        responseContent = await callGeminiImages(geminiKey, c.messages);
+
+        // V38 — Tracking du coût pour la génération d'image (était oublié dans le chemin image).
+        // computeCost a un cas spécial pour ce modèle (flat $0.067 par image 1024px + input tokens).
+        if (window._lastUsage) {
+          const _imgCost = recordApiCall(
+            'gemini-3.1-flash-image-preview',
+            window._lastUsage.input || 0,
+            window._lastUsage.output || 0,
+            'solo'
+          );
+          console.log(`[BrAInShift] 🎨 Coût image : ${fmtUSD(_imgCost)} (input ${window._lastUsage.input || 0} tokens + 1 image 1024px)`);
+        }
 
         c.messages.push({
           role: "assistant",
