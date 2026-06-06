@@ -6344,8 +6344,14 @@ async function callGroq(key, model, messages) {
 }
 
 // ─────────────────────────────────────────────────
-// 🎨 GÉNÉRATION D'IMAGES — Gemini Image Preview
-// Modèle : gemini-3.1-flash-image-preview
+// 🎨 GÉNÉRATION D'IMAGES — OpenAI gpt-image-2 (avril 2026)
+// V39b — Bascule sur le modèle flagship 2026 :
+//   • gpt-image-2 lancé le 21 avril 2026, model id : "gpt-image-2"
+//   • Architecture autoregressive avec reasoning intégré (≠ diffusion classique)
+//   • Jusqu'à 4× plus rapide que gpt-image-1, qualité supérieure
+//   • Résolutions flexibles jusqu'à 4K
+//   • Prérequis : vérification d'organisation OpenAI activée (gating standard pour GPT Image family)
+//   • Coût : ~$0.04/image en quality=medium 1024×1024 (flat dans computeCost)
 // ─────────────────────────────────────────────────
 
 function isImageGenerationRequest(text) {
@@ -6361,22 +6367,109 @@ function isImageGenerationRequest(text) {
   return false;
 }
 
+/**
+ * V39 — Construit un prompt contextuel pour OpenAI Image à partir de l'historique.
+ * Extrait le dernier exchange utilisateur/assistant pour donner à l'image générateur
+ * la matière nécessaire à comprendre une demande comme "dessine-moi ce processus".
+ */
+function buildOpenAIImagePrompt(messages) {
+  if (typeof messages === 'string') return messages;
+  if (!Array.isArray(messages) || !messages.length) return '';
+
+  const fileBlockPattern = /^\[[^\]]{1,40}\s+Contenu du fichier\s+"([^"]+)"\s*:\]/;
+  const extractText = m => {
+    if (typeof m.content === 'string') return m.content;
+    if (!Array.isArray(m.content)) return '';
+    return m.content
+      .filter(b => b.type === 'text' && b.text)
+      .map(b => {
+        const fm = b.text.match(fileBlockPattern);
+        return fm ? `[Fichier joint : ${fm[1]}]` : b.text;
+      })
+      .join(' ').trim();
+  };
+
+  // Dernière demande utilisateur (le "dessine-moi ce X")
+  const lastUser = [...messages].reverse().find(m => m.role === 'user');
+  const userRequest = (extractText(lastUser || {}) || '').trim();
+
+  // Dernier message assistant (le contexte explicatif)
+  const lastAssistant = [...messages].reverse().find(m => m.role === 'assistant');
+  let context = (extractText(lastAssistant || {}) || '').trim();
+  if (context.length > 3000) context = context.slice(0, 3000) + '…';
+
+  if (!context) {
+    // Pas de contexte précédent → prompt direct
+    return userRequest || 'A clear, detailed illustration';
+  }
+  // Prompt contextualisé : on donne le contexte ET la demande explicitement
+  return `Context from the previous explanation in the conversation:
+
+"${context}"
+
+---
+
+The user is now asking: "${userRequest}"
+
+Create a detailed, clear, educational illustration or diagram that visualizes the topic discussed above. Match the subject matter and level of detail to the conversation. Use clean lines, clear labels in French if appropriate, and a style suitable for scientific/educational content.`;
+}
+
+async function callOpenAIImages(apiKey, messages) {
+  // V39 — OpenAI Image API : prompt texte unique, pas de multi-turn.
+  // On construit le prompt contextuel depuis l'historique localement.
+  const prompt = buildOpenAIImagePrompt(messages);
+  if (!prompt) throw new Error('[OpenAI Image] Aucune demande détectée');
+
+  const body = {
+    model: 'gpt-image-2',
+    prompt: prompt,
+    n: 1,
+    size: '1024x1024',
+    quality: 'medium'  // 'low' (~$0.011) | 'medium' (~$0.04) | 'high' (~$0.17)
+  };
+
+  console.log(`[BrAInShift] 🎨 OpenAI Image (gpt-image-2) : prompt ${prompt.length} chars`);
+
+  const r = await fetchWithRetry(
+    'https://api.openai.com/v1/images/generations',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify(body)
+    }
+  );
+
+  const d = await r.json();
+  if (d.error) throw new Error(`[OpenAI Image] ${d.error.message}`);
+
+  // Capture usage (gpt-image-1 retourne usage.input_tokens et usage.output_tokens)
+  // Fallback : on force des valeurs cohérentes pour le tracking de coût (flat $0.04 dans computeCost)
+  window._lastUsage = {
+    model: 'gpt-image-2',
+    input:  d.usage?.input_tokens  ?? 0,
+    output: d.usage?.output_tokens ?? 0
+  };
+
+  const imgData = d.data?.[0];
+  if (!imgData) throw new Error('[OpenAI Image] Aucune image retournée');
+
+  // gpt-image-1 retourne b64_json par défaut (pas d'URL)
+  if (imgData.b64_json) {
+    return `![Image générée](data:image/png;base64,${imgData.b64_json})`;
+  } else if (imgData.url) {
+    return `![Image générée](${imgData.url})`;
+  }
+  throw new Error('[OpenAI Image] Format de réponse inattendu');
+}
+
+// V39 — Fonction Gemini Image conservée en réserve (pas appelée) pour migration future
 async function callGeminiImages(apiKey, messages) {
   // V37/V38b — Génération d'image CONTEXTUELLE avec contexte allégé.
-  // Avant V37 : on ne passait que le texte du dernier message ("dessine-moi ce processus"),
-  // → Gemini Image n'avait aucune référence pour "ce processus" et inventait du contenu hors-sujet.
-  // Avant V38b : on passait les 8 derniers messages avec leur contenu intégral
-  // → on dépassait facilement la limite de 200 000 tokens d'entrée par minute du modèle,
-  //   surtout si la conv contenait des docx/PDF extraits (jusqu'à 100 KB chacun = ~25K tokens).
-  //
-  // Désormais (V38b) :
-  //  • Au plus 4 derniers messages (l'utilisateur + sa demande de dessin + la réponse précédente + sa question initiale)
-  //  • Chaque bloc texte tronqué à 4000 caractères max
-  //  • Les blocs document/image binaires sont SKIPPÉS (pas utiles pour l'image gen, alourdissent)
-  //  • Les blocs texte de fichiers extraits (pattern "[<emoji> Contenu du fichier …]") sont remplacés
-  //    par une note courte — leur contenu intégral est inutile pour la génération d'image
-  //
-  // Résultat : ~95 % de réduction des tokens envoyés, on reste largement sous la limite TPM.
+  // Conservée par sécurité au cas où on voudrait basculer sur Gemini.
+  // Voir l'historique git pour les détails (V37, V38b).
   let contents;
   if (typeof messages === 'string') {
     contents = [{ role: 'user', parts: [{ text: messages }] }];
@@ -6385,17 +6478,14 @@ async function callGeminiImages(apiKey, messages) {
     const recent = messages.filter(m => m.role === 'user' || m.role === 'assistant').slice(-4);
     const MAX_CHARS_PER_BLOCK = 4000;
     const fileBlockPattern = /^\[[^\]]{1,40}\s+Contenu du fichier\s+"([^"]+)"\s*:\]/;
-
     for (const m of recent) {
       const role = m.role === 'assistant' ? 'model' : 'user';
       const parts = [];
       if (Array.isArray(m.content)) {
         for (const b of m.content) {
-          // Skip blocs binaires (document PDF, image base64) → trop lourds pour l'image gen contextuelle
           if (b.type === 'document' || b.type === 'image') continue;
           if (b.type === 'text') {
             let txt = b.text || '';
-            // Si c'est un bloc de contenu de fichier extrait, remplacer par une note
             const fileMatch = txt.match(fileBlockPattern);
             if (fileMatch) {
               txt = `[Fichier joint mentionné : "${fileMatch[1]}" — contenu détaillé non transmis pour la génération d'image]`;
@@ -6414,27 +6504,18 @@ async function callGeminiImages(apiKey, messages) {
       }
       if (parts.length) contents.push({ role, parts });
     }
-    if (!contents.length) {
-      throw new Error('[Gemini Image] Aucun contenu valide dans la conversation');
-    }
+    if (!contents.length) throw new Error('[Gemini Image] Aucun contenu valide dans la conversation');
   } else {
     throw new Error('[Gemini Image] Format de messages invalide');
   }
 
   const body = {
     contents,
-    generationConfig: {
-      responseModalities: ['TEXT', 'IMAGE']
-    }
+    generationConfig: { responseModalities: ['TEXT', 'IMAGE'] }
   };
-
   const r = await fetchWithRetry(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent?key=${apiKey}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    }
+    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
   );
 
   const d = await r.json();
@@ -6575,18 +6656,21 @@ function extractUsage(responseData, providerHint) {
  */
 function computeCost(model, inputTokens, outputTokens) {
   // V38 — Gemini Image Preview : tarification image spécifique.
-  // Référence officielle (Google AI, juin 2026) :
-  //   - Input texte : $0.25 / 1M tokens
-  //   - Output image : $60 / 1M tokens d'image
-  //   - 1 image 1024×1024 ≈ 1120 tokens d'image ≈ $0.067
-  //   - Variations : 512px = $0.045, 4K = $0.151
-  // Comme l'utilisateur ne contrôle pas la résolution depuis BrAInshift et que le défaut
-  // est 1024×1024, on facture en flat $0.067 par image générée + tokens d'entrée standards.
-  // L'éventuel texte d'accompagnement est négligeable (< $0.0001).
+  // 1 image 1024×1024 ≈ 1120 tokens d'image ≈ $0.067 (output tokens à $60/1M)
+  // Variations : 512px = $0.045, 4K = $0.151. On facture flat 1024px.
   if (model === 'gemini-3.1-flash-image-preview') {
     const inputCost = (inputTokens * 0.25) / 1_000_000;
     const imageCost = 0.067;
     return inputCost + imageCost;
+  }
+  // V39 — OpenAI gpt-image-1 medium 1024×1024 : tarification flat.
+  // Référence officielle OpenAI Image API (juin 2026) :
+  //   - Low quality (1024×1024)    : ~$0.011
+  //   - Medium quality (1024×1024) : ~$0.04  ← défaut utilisé dans callOpenAIImages
+  //   - High quality (1024×1024)   : ~$0.17
+  // On facture flat $0.04 (medium). Si l'utilisateur passe quality=high dans le code, ajuster ici.
+  if (model === 'gpt-image-1' || model === 'gpt-image-1-mini' || model === 'gpt-image-1.5' || model === 'gpt-image-2') {
+    return 0.04;
   }
   const price = TOKEN_PRICES[model];
   if (!price) return 0;
@@ -7371,12 +7455,12 @@ async function send() {
   try {
     let responseContent;
 
-    // 🎨 DÉTECTION AUTO : demande d'image → Gemini Image (quelle que soit le modèle chat actif)
+    // 🎨 DÉTECTION AUTO : demande d'image → OpenAI gpt-image-1 (V39, ex-Gemini)
     if (isImageGenerationRequest(text)) {
-      const geminiKey = (apiKeysByProvider["GOOGLE GEMINI"] || "").trim();
-      if (!geminiKey) {
-        console.warn('[BrAInShift] 🎨 Clé Google Gemini manquante pour génération d\'image');
-        showApiError(`🎨 Pour générer une image, configurez votre clé Google Gemini (🔑 Settings).`);
+      const openaiKey = (apiKeysByProvider["OPENAI"] || "").trim();
+      if (!openaiKey) {
+        console.warn('[BrAInShift] 🎨 Clé OpenAI manquante pour génération d\'image');
+        showApiError(`🎨 Pour générer une image, configurez votre clé OpenAI (🔑 Settings).`);
         isWaitingResponse = false;
         if (waitingTimerInterval) clearInterval(waitingTimerInterval);
         render();
@@ -7384,28 +7468,25 @@ async function send() {
       }
 
       try {
-        console.log(`[BrAInShift] 🎨 Génération image contextuelle via gemini-3.1-flash-image-preview (${c.messages.length} messages d'historique)…`);
-        // V37 — On passe c.messages (historique complet) au lieu du texte seul.
-        // Gemini Image voit ainsi le contexte ("ce processus" → réponse précédente sur la traduction).
-        responseContent = await callGeminiImages(geminiKey, c.messages);
+        console.log(`[BrAInShift] 🎨 Génération image via OpenAI gpt-image-2 (${c.messages.length} messages d'historique)…`);
+        responseContent = await callOpenAIImages(openaiKey, c.messages);
 
-        // V38 — Tracking du coût pour la génération d'image (était oublié dans le chemin image).
-        // computeCost a un cas spécial pour ce modèle (flat $0.067 par image 1024px + input tokens).
+        // V38/V39 — Tracking du coût (flat $0.04 pour gpt-image-2 medium 1024×1024, traité dans computeCost)
         if (window._lastUsage) {
           const _imgCost = recordApiCall(
-            'gemini-3.1-flash-image-preview',
+            'gpt-image-2',
             window._lastUsage.input || 0,
             window._lastUsage.output || 0,
             'solo'
           );
-          console.log(`[BrAInShift] 🎨 Coût image : ${fmtUSD(_imgCost)} (input ${window._lastUsage.input || 0} tokens + 1 image 1024px)`);
+          console.log(`[BrAInShift] 🎨 Coût image : ${fmtUSD(_imgCost)} (input ${window._lastUsage.input || 0} tokens + 1 image 1024px medium)`);
         }
 
         c.messages.push({
           role: "assistant",
           content: responseContent,
-          provider: "GOOGLE GEMINI",
-          model: "gemini-3.1-flash-image-preview",
+          provider: "OPENAI",
+          model: "gpt-image-2",
           _isImage: true
         });
 
@@ -7415,12 +7496,10 @@ async function send() {
         return;
       } catch (err) {
         console.error('[BrAInShift] 🎨 Erreur génération image:', err.message);
-        // V38b — Message friendly pour les rate-limits (limite TPM dépassée, pas un blocage billing).
+        // V38b — Message friendly pour les rate-limits
         let friendlyMsg = err.message;
         if (/quota|rate.?limit|429|exceeded/i.test(err.message)) {
-          const retryMatch = err.message.match(/retry in ([\d.]+)\s*s/i);
-          const wait = retryMatch ? Math.ceil(parseFloat(retryMatch[1])) : 60;
-          friendlyMsg = `Limite Gemini Image atteinte (200 000 tokens d'entrée/min). Attends ~${wait}s puis réessaie. La conversation est peut-être trop longue — efface des messages anciens ou crée une nouvelle conversation.`;
+          friendlyMsg = `Limite OpenAI Image atteinte. Attends ~30s puis réessaie.`;
         }
         showApiError(`🎨 ${friendlyMsg}`);
         isWaitingResponse = false;
