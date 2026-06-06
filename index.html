@@ -6332,38 +6332,55 @@ function isImageGenerationRequest(text) {
 }
 
 async function callGeminiImages(apiKey, messages) {
-  // V37 — Génération d'image CONTEXTUELLE.
-  // Avant : on ne passait que le texte du dernier message utilisateur ("dessine-moi ce processus"),
-  // donc Gemini Image n'avait aucune référence pour "ce processus" et inventait du contenu hors-sujet.
-  // Désormais : on lui passe l'historique de la conversation au format Gemini native.
-  // Il voit donc la question précédente, la réponse détaillée de l'assistant, ET la demande de dessin
-  // — il peut alors interpréter correctement "ce processus" et illustrer le bon sujet.
+  // V37/V38b — Génération d'image CONTEXTUELLE avec contexte allégé.
+  // Avant V37 : on ne passait que le texte du dernier message ("dessine-moi ce processus"),
+  // → Gemini Image n'avait aucune référence pour "ce processus" et inventait du contenu hors-sujet.
+  // Avant V38b : on passait les 8 derniers messages avec leur contenu intégral
+  // → on dépassait facilement la limite de 200 000 tokens d'entrée par minute du modèle,
+  //   surtout si la conv contenait des docx/PDF extraits (jusqu'à 100 KB chacun = ~25K tokens).
   //
-  // Note : si `messages` est juste une string (rétrocompatibilité), on traite comme single-turn.
+  // Désormais (V38b) :
+  //  • Au plus 4 derniers messages (l'utilisateur + sa demande de dessin + la réponse précédente + sa question initiale)
+  //  • Chaque bloc texte tronqué à 4000 caractères max
+  //  • Les blocs document/image binaires sont SKIPPÉS (pas utiles pour l'image gen, alourdissent)
+  //  • Les blocs texte de fichiers extraits (pattern "[<emoji> Contenu du fichier …]") sont remplacés
+  //    par une note courte — leur contenu intégral est inutile pour la génération d'image
+  //
+  // Résultat : ~95 % de réduction des tokens envoyés, on reste largement sous la limite TPM.
   let contents;
   if (typeof messages === 'string') {
-    // Rétrocompat : appel one-shot sans contexte
     contents = [{ role: 'user', parts: [{ text: messages }] }];
   } else if (Array.isArray(messages)) {
-    // Construction native multi-turn (comme callGeminiNative)
     contents = [];
-    // On limite à ~last 8 messages pour éviter une requête trop lourde
-    const recent = messages.filter(m => m.role === 'user' || m.role === 'assistant').slice(-8);
+    const recent = messages.filter(m => m.role === 'user' || m.role === 'assistant').slice(-4);
+    const MAX_CHARS_PER_BLOCK = 4000;
+    const fileBlockPattern = /^\[[^\]]{1,40}\s+Contenu du fichier\s+"([^"]+)"\s*:\]/;
+
     for (const m of recent) {
       const role = m.role === 'assistant' ? 'model' : 'user';
       const parts = [];
       if (Array.isArray(m.content)) {
         for (const b of m.content) {
-          if (b.type === 'image') {
-            parts.push({ inline_data: { mime_type: b.source.media_type, data: b.source.data } });
-          } else if (b.type === 'document' && b.source?.data) {
-            parts.push({ inline_data: { mime_type: b.source.media_type || 'application/pdf', data: b.source.data } });
-          } else if (b.type === 'text') {
-            parts.push({ text: b.text || '' });
+          // Skip blocs binaires (document PDF, image base64) → trop lourds pour l'image gen contextuelle
+          if (b.type === 'document' || b.type === 'image') continue;
+          if (b.type === 'text') {
+            let txt = b.text || '';
+            // Si c'est un bloc de contenu de fichier extrait, remplacer par une note
+            const fileMatch = txt.match(fileBlockPattern);
+            if (fileMatch) {
+              txt = `[Fichier joint mentionné : "${fileMatch[1]}" — contenu détaillé non transmis pour la génération d'image]`;
+            } else if (txt.length > MAX_CHARS_PER_BLOCK) {
+              txt = txt.slice(0, MAX_CHARS_PER_BLOCK) + '\n…[contenu tronqué pour la génération d\'image]';
+            }
+            if (txt.trim()) parts.push({ text: txt });
           }
         }
       } else if (typeof m.content === 'string' && m.content.trim()) {
-        parts.push({ text: m.content });
+        let txt = m.content;
+        if (txt.length > MAX_CHARS_PER_BLOCK) {
+          txt = txt.slice(0, MAX_CHARS_PER_BLOCK) + '\n…[contenu tronqué pour la génération d\'image]';
+        }
+        parts.push({ text: txt });
       }
       if (parts.length) contents.push({ role, parts });
     }
@@ -7361,7 +7378,14 @@ async function send() {
         return;
       } catch (err) {
         console.error('[BrAInShift] 🎨 Erreur génération image:', err.message);
-        showApiError(`🎨 Erreur image : ${err.message}`);
+        // V38b — Message friendly pour les rate-limits (limite TPM dépassée, pas un blocage billing).
+        let friendlyMsg = err.message;
+        if (/quota|rate.?limit|429|exceeded/i.test(err.message)) {
+          const retryMatch = err.message.match(/retry in ([\d.]+)\s*s/i);
+          const wait = retryMatch ? Math.ceil(parseFloat(retryMatch[1])) : 60;
+          friendlyMsg = `Limite Gemini Image atteinte (200 000 tokens d'entrée/min). Attends ~${wait}s puis réessaie. La conversation est peut-être trop longue — efface des messages anciens ou crée une nouvelle conversation.`;
+        }
+        showApiError(`🎨 ${friendlyMsg}`);
         isWaitingResponse = false;
         if (waitingTimerInterval) clearInterval(waitingTimerInterval);
         render();
