@@ -1795,15 +1795,17 @@ Exemple pour la chimie :
 // ─────────────────────────────────────────────────
 const MODEL_GROUPS = [
   // ── Anthropic Claude ──────────────────────────────
-  // Source : docs.anthropic.com — mai 2026
+  // Source : docs.anthropic.com — juin 2026
+  // 🆕 Claude Opus 4.8 sorti le 28 mai 2026 — nouveau flagship pour reasoning + agentic coding
   {
     label: "Anthropic Claude",
     models: [
-      "claude-opus-4-7",       // plus capable, coding avancé, vision HD
+      "claude-opus-4-8",       // 🆕 nouveau flagship (mai 2026), reasoning + long-horizon coding
+      "claude-opus-4-7",       // précédent flagship (avril 2026), coding avancé, vision HD
       "claude-sonnet-4-6",     // meilleur rapport vitesse/intelligence
       "claude-haiku-4-5-20251001", // le plus rapide / économique
       "claude-opus-4-6",       // opus précédent (context 1M tokens)
-      "claude-sonnet-4-5"      // sonnet précédent (stable)
+      "claude-sonnet-4-5"      // sonnet précédent (stable, retraite ≥ 29/09/2026)
     ]
   },
   // ── OpenAI GPT-5.x (Responses API) ────────────────
@@ -2835,8 +2837,19 @@ function ensureLandingBlankChat(options = {}) {
     return;
   }
 
-  // ── 2. Toujours ouvrir sur un chat vide (chargement initial uniquement) ──
-  // Réutiliser s'il en existe déjà un
+  // ── 2. V34 fix — Restaurer le chat actif si l'utilisateur en avait un de valide ──
+  // Avant : on FORÇAIT toujours l'utilisateur sur un "Nouveau chat" vide au démarrage,
+  // ce qui écrasait S.activeChat (chargé depuis localStorage) et faisait apparaître
+  // un chat fantôme à chaque réouverture. Désormais : si l'utilisateur a un chat actif
+  // valide, on le restaure tel quel. On n'atterrit sur un "Nouveau chat" QUE si :
+  //   • l'utilisateur n'avait pas de chat actif (1er lancement)
+  //   • OU son chat actif a été supprimé entre-temps (autre machine, etc.)
+  if (S.activeChat && S.chats.find(c => c.id === S.activeChat)) {
+    // L'utilisateur retrouve sa conv là où il l'avait laissée, comme attendu.
+    return;
+  }
+
+  // ── 3. Sinon, chercher un "Nouveau chat" vide existant et y atterrir ──
   const existing = S.chats.find(c =>
     !c.projectId && c.title === "Nouveau chat" && Array.isArray(c.messages) && c.messages.length === 0
   );
@@ -2846,7 +2859,7 @@ function ensureLandingBlankChat(options = {}) {
     return;
   }
 
-  // Sinon en créer un seul
+  // ── 4. Sinon (tout premier lancement, aucun chat existant), en créer un ──
   const id = crypto.randomUUID();
   S.chats.unshift({ id, title: "Nouveau chat", projectId: null, messages: [], _lastActivity: Date.now() });
   S.activeChat = id;
@@ -3026,6 +3039,39 @@ function forkChatFromHere(chatId, msgIdx) {
   console.log(`[BrAInShift] ⑂ Fork créé : "${forkTitle}" avec ${forkedMessages.length} messages`);
 }
 
+/**
+ * V34 — Helper centralisé pour passer d'une conversation à une autre.
+ * Garantit que le modèle, le projet actif, le chat actif et l'état sont mis à jour
+ * de façon cohérente, peu importe d'où vient le clic (sidebar, recherche, etc.).
+ *
+ * Logique modèle (3 niveaux) :
+ *   1) Modèle du dernier message assistant de la conv (continuité)
+ *   2) Modèle par défaut du projet (si conv vide dans un projet à defaultModel)
+ *   3) gemini-2.5-flash (défaut global)
+ * Le verrou Short answers est prioritaire et écrasera S.model dans render() si la
+ * conv cible appartient à un projet "Short answers".
+ */
+function switchToChat(c) {
+  if (!c) return;
+  S.activeChat    = c.id;
+  S.activeProject = c.projectId || null;
+  const lastAssistantModel = [...(c.messages || [])].reverse()
+    .find(m => m.role === 'assistant' && m.model)?.model;
+  let resolvedModel = lastAssistantModel || null;
+  if (!resolvedModel && c.projectId) {
+    const proj = S.projects.find(p => p.id === c.projectId);
+    if (proj && proj.defaultModel) resolvedModel = proj.defaultModel;
+  }
+  if (!resolvedModel) resolvedModel = "gemini-2.5-flash";
+  if (S.model !== resolvedModel) {
+    S.model = resolvedModel;
+    window._userChangedModel = false;
+    if (typeof renderModels === 'function') renderModels();
+  }
+  save();
+  render();
+}
+
 function chatRow(c, indent = false) {
   const d = document.createElement("div");
   d.className = "item" + (c.id === S.activeChat ? " active" : "");
@@ -3068,20 +3114,9 @@ function chatRow(c, indent = false) {
       save(); render();
       return;
     }
-    S.activeChat = c.id;
-    // Garder S.activeProject cohérent avec le chat actif (sinon il reste collé sur
-    // le dernier projet sélectionné, ce qui faisait fuir le verrou Short answers).
-    S.activeProject = c.projectId || null;
-    // Si on clique sur un chat vide dans un projet → appliquer le modèle du projet
-    if (c.projectId && (!c.messages || c.messages.length === 0)) {
-      const proj = S.projects.find(p => p.id === c.projectId);
-      if (proj && proj.defaultModel) {
-        S.model = proj.defaultModel;
-        window._userChangedModel = false;
-        renderModels();
-      }
-    }
-    save(); render();
+    // V34 — Utilise le helper centralisé switchToChat (qui gère projet + modèle + render).
+    // Le verrou Short answers s'applique automatiquement via enforceShortAnswersLock dans render().
+    switchToChat(c);
   };
   return d;
 }
@@ -6364,6 +6399,7 @@ const TOKEN_PRICES = {
   'o4-mini':                    { input: 1.10,  output: 4.40 },
 
   // ── Anthropic Claude ──
+  'claude-opus-4-8':            { input: 15.00, output: 75.00 },
   'claude-opus-4-7':            { input: 15.00, output: 75.00 },
   'claude-opus-4-6':            { input: 15.00, output: 75.00 },
   'claude-sonnet-4-6':          { input: 3.00,  output: 15.00 },
@@ -7880,14 +7916,31 @@ async function ghPushSilent() {
     // V30 — Stats avant/après pour mesurer l'impact du stripping
     let _strippedBytes = 0;
     let _strippedFiles = 0;
+    let _filteredEmptyChats = 0;
 
     // Purger pour la sync GitHub :
+    //  • V35 — Chats placeholder "Nouveau chat" VIDES → filtrés (n'apparaissent pas sur les autres machines)
+    //          Ces chats sont créés par ensureLandingBlankChat comme échafaudage UI local quand
+    //          l'utilisateur n'a pas de conversation active. Les pousser créait des "chats fantômes"
+    //          dans la sidebar des autres machines (Mac créait Nouveau chat → push → PC voit Nouveau chat).
+    //          Si le chat actif d'une machine pointe vers un de ces placeholders, on le préserve quand même.
     //  • Blocs binaires (PDF/image) > 50 KB → placeholder
     //  • Blocs texte extraits de fichiers Office (docx, xlsx, pptx, …) > 5 KB → placeholder
     //    Détection par pattern : buildUserContent produit toujours `[<emoji> Contenu du fichier "X" :]\n\n<texte>`
     //    qui matche /^\[.{1,30}Contenu du fichier "[^"]+"\s*:\]/.
     //    Sans ce strip, chaque docx (jusqu'à 100 KB extrait) restait dans la sync indéfiniment.
-    const lightChats = S.chats.map(chat => ({
+    const chatsToSync = S.chats.filter(chat => {
+      // Garder tout chat avec des messages, dans un projet, marqué starred, ou actif localement
+      const isEmpty = !Array.isArray(chat.messages) || chat.messages.length === 0;
+      const isPlaceholder = isEmpty && chat.title === "Nouveau chat" && !chat.projectId && !chat._starred;
+      const isActiveLocal = chat.id === S.activeChat;
+      if (isPlaceholder && !isActiveLocal) {
+        _filteredEmptyChats++;
+        return false;
+      }
+      return true;
+    });
+    const lightChats = chatsToSync.map(chat => ({
       ...chat,
       messages: chat.messages.map(m => {
         if (!Array.isArray(m.content)) return m;
@@ -7913,6 +7966,9 @@ async function ghPushSilent() {
     }));
     if (_strippedFiles > 0) {
       console.log(`[BrAInShift] 🗜 Stripping sync : ${_strippedFiles} fichier(s), ${(_strippedBytes/1024).toFixed(0)} KB économisés`);
+    }
+    if (_filteredEmptyChats > 0) {
+      console.log(`[BrAInShift] 🧹 Filtrage sync : ${_filteredEmptyChats} chat(s) placeholder vide(s) exclu(s) du push`);
     }
     const data = {
       chats: lightChats, projects: S.projects,
@@ -8049,6 +8105,14 @@ async function ghPushViaGitApi(jsonStr) {
 /** Pull silencieux à l'ouverture — fusionne les données distantes sans toucher à l'UI GitHub */
 async function ghPullSilent() {
   if (!GH.token || !GH.owner || !GH.repo) return;
+  // V34 — Garde anti-réentrance : si un pull est déjà en cours, on ne déclenche pas un second
+  // (sinon les deux modifient S en parallèle avec leurs snapshots respectifs → race condition
+  // qui peut faire apparaître des chats fantômes ou écraser l'état utilisateur de façon incohérente).
+  if (window._ghPullInProgress) {
+    console.log('[BrAInShift] ⏭ Pull déjà en cours, on saute');
+    return;
+  }
+  window._ghPullInProgress = true;
   try {
     // ═══ V13 : SUPPRESSION DU PUSH PRÉVENTIF ═══
     // L'ancienne version (V12 et avant) commençait par un push préventif "ceinture+bretelle"
@@ -8311,6 +8375,9 @@ async function ghPullSilent() {
     }
   } catch (e) {
     console.warn('[BrAInShift] Pull silencieux échoué:', e.message);
+  } finally {
+    // V34 — Libérer le verrou de réentrance quoi qu'il arrive
+    window._ghPullInProgress = false;
   }
 }
 
@@ -8815,10 +8882,18 @@ function renderSearchResults(query) {
     `;
 
     item.onclick = () => {
-      S.activeChat = r.chatId;
-      if (r.project) S.activeProject = r.project.id;
-      save();
-      render();
+      // V34 — Utilise le helper centralisé pour résoudre correctement le modèle
+      // (sinon même bug que la sidebar : Mistral pouvait coller depuis une conv SA).
+      const targetChat = S.chats.find(ch => ch.id === r.chatId);
+      if (targetChat) {
+        switchToChat(targetChat);
+      } else {
+        // Fallback défensif si le chat n'est plus là (race avec une suppression)
+        S.activeChat = r.chatId;
+        if (r.project) S.activeProject = r.project.id;
+        save();
+        render();
+      }
       // Fermer la recherche
       el('searchInput').value = '';
       container.classList.remove('open');
