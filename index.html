@@ -832,7 +832,37 @@
     .assistant-body{font-size:18px;line-height:1.65;color:var(--text);word-wrap:break-word;overflow-wrap:break-word;user-select:text;-webkit-user-select:text}
     .msg.user .msg-text{user-select:text;-webkit-user-select:text}
     .assistant-body p{margin:0 0 12px}
-    .assistant-body img{max-width:min(100%,520px);max-height:420px;object-fit:contain;border-radius:10px;display:block;margin:10px 0;box-shadow:0 2px 12px #0004}
+    /* V38c — cursor zoom-in pour signaler que l'image est cliquable */
+    .assistant-body img{max-width:min(100%,520px);max-height:420px;object-fit:contain;border-radius:10px;display:block;margin:10px 0;box-shadow:0 2px 12px #0004;cursor:zoom-in;transition:opacity .15s}
+    .assistant-body img:hover{opacity:.92}
+
+    /* V38c — Lightbox plein écran pour zoomer les images générées */
+    .lightbox-overlay{
+      position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:99999;
+      display:flex;align-items:center;justify-content:center;
+      cursor:zoom-out;opacity:0;transition:opacity .18s;
+      padding:40px;box-sizing:border-box
+    }
+    .lightbox-overlay.visible{opacity:1}
+    .lightbox-overlay img{
+      max-width:100%;max-height:100%;object-fit:contain;
+      border-radius:6px;box-shadow:0 12px 40px #000c;
+      transform:scale(.96);transition:transform .18s
+    }
+    .lightbox-overlay.visible img{transform:scale(1)}
+    .lightbox-close{
+      position:absolute;top:18px;right:24px;color:#fff;
+      font-size:28px;line-height:1;cursor:pointer;
+      background:rgba(0,0,0,.5);border-radius:50%;width:44px;height:44px;
+      display:flex;align-items:center;justify-content:center;
+      user-select:none;border:none
+    }
+    .lightbox-close:hover{background:rgba(255,255,255,.15)}
+    .lightbox-hint{
+      position:absolute;bottom:18px;left:50%;transform:translateX(-50%);
+      color:#aaa;font-size:13px;user-select:none;
+      background:rgba(0,0,0,.4);padding:6px 14px;border-radius:14px
+    }
     .assistant-body p:last-child{margin-bottom:0}
     .assistant-body strong{font-weight:700;color:#f0eeeb}
     .assistant-body em{font-style:italic;color:#d0cec8}
@@ -6410,9 +6440,16 @@ async function callGeminiImages(apiKey, messages) {
   const d = await r.json();
   if (d.error) throw new Error(`[Gemini Image] ${d.error.message}`);
 
-  // V17 — Capture de l'usage pour le tracking de coût
+  // V17/V38c — Capture de l'usage pour le tracking de coût.
+  // GARANTI : on écrit toujours `_lastUsage` avec le bon modèle, pour ne pas hériter
+  // de l'usage d'un précédent appel API texte. Si Gemini ne renvoie pas `usageMetadata`,
+  // on tombe sur des valeurs estimées prudentes (l'image elle-même domine le coût de toute façon).
   const _u = extractUsage(d);
-  if (_u) window._lastUsage = { model: 'gemini-3.1-flash-image-preview', input: _u.input, output: _u.output };
+  window._lastUsage = {
+    model: 'gemini-3.1-flash-image-preview',
+    input:  _u?.input  ?? 0,
+    output: _u?.output ?? 1120  // 1120 tokens = 1 image 1024×1024 par défaut
+  };
 
   const parts = d.candidates?.[0]?.content?.parts || [];
   if (!parts.length) throw new Error('[Gemini Image] Aucune réponse reçue.');
@@ -9395,6 +9432,51 @@ function startPeriodicAutoPull() {
 }
 // Démarrer 30 secondes après le chargement (laisse le pull initial finir)
 setTimeout(startPeriodicAutoPull, 30000);
+
+// V38c — Lightbox pour zoomer les images dans les messages assistant.
+// Ouverture : clic sur n'importe quelle <img> à l'intérieur d'un .assistant-body
+// Fermeture : clic sur l'overlay (n'importe où en dehors de l'image), clic sur ✕, ou touche Escape
+function openImageLightbox(src, alt) {
+  // Si une lightbox existe déjà (cas pathologique), on la retire d'abord
+  const existing = document.querySelector('.lightbox-overlay');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.className = 'lightbox-overlay';
+  overlay.innerHTML = `
+    <button class="lightbox-close" title="Fermer (Échap)" aria-label="Fermer">✕</button>
+    <img src="${src}" alt="${alt || 'Image générée'}" />
+    <div class="lightbox-hint">Cliquer ou Échap pour fermer · Clic droit pour copier/sauvegarder</div>
+  `;
+  document.body.appendChild(overlay);
+  // Forcer un reflow puis ajouter visible pour déclencher la transition fade-in
+  requestAnimationFrame(() => overlay.classList.add('visible'));
+
+  const close = () => {
+    overlay.classList.remove('visible');
+    setTimeout(() => overlay.remove(), 200);
+    document.removeEventListener('keydown', escHandler);
+  };
+  const escHandler = e => { if (e.key === 'Escape') close(); };
+  document.addEventListener('keydown', escHandler);
+
+  // Clic sur overlay ou bouton ✕ ferme. Clic sur l'image elle-même : ne pas fermer (permet
+  // de copier/zoomer pixel-perfect avec le clic droit).
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay || e.target.classList.contains('lightbox-close')) close();
+  });
+}
+
+// Délégation globale : tout clic sur une image dans une réponse assistant ouvre la lightbox.
+// On exclut explicitement les icônes/avatars (typing-brain, etc.) qui ne sont pas dans .assistant-body.
+document.addEventListener('click', e => {
+  const img = e.target;
+  if (img.tagName !== 'IMG') return;
+  if (!img.closest('.assistant-body')) return;
+  if (img.classList.contains('typing-brain')) return; // l'avatar "BrAInshift réfléchit"
+  e.preventDefault();
+  openImageLightbox(img.src, img.alt);
+});
 
 // iPad/Safari : bfcache restaure la page au lieu de la recharger
 window.addEventListener('pageshow', e => {
