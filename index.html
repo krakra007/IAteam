@@ -1169,34 +1169,15 @@
       .app { padding-top: env(safe-area-inset-top); }
     }
 
-    /* V40 — iPad en mode paysage (1025-1280px) + tactile → même overlay sidebar qu'en portrait.
-       Cible spécifiquement les appareils tactiles dans cette plage de largeur (iPad 10 paysage
-       à 1180 CSS px, iPad Pro 11" paysage à 1194 CSS px) sans affecter les laptops 13" non-tactiles
-       comme MacBook Air qui sont en pointer:fine. */
+    /* V41 — iPad en mode paysage (1025-1280px) + tactile : on GARDE le layout desktop
+       avec sidebar fixe et resizer glissable (au lieu de forcer un overlay sans resizer).
+       Avantage : tu peux ajuster la largeur de la sidebar à ton goût, même au doigt.
+       Le resizer est déjà tactile (V41 ajoute touchstart/move/end) et plus large (8px) qu'avant. */
     @media (min-width: 1025px) and (max-width: 1280px) and (pointer: coarse) {
-      .sidebar {
-        position: fixed;
-        left: 0; top: 0;
-        height: 100vh; height: 100dvh;
-        z-index: 50;
-        width: 300px !important;
-        min-width: 0;
-        max-width: 60vw;
-        box-shadow: 4px 0 24px rgba(0,0,0,.5);
-        transform: translateX(0);
-        transition: transform .22s cubic-bezier(.4,0,.2,1);
-      }
-      .app.sidebar-collapsed .sidebar { transform: translateX(-100%); }
-      .sidebar-backdrop {
-        display: none;
-        position: fixed; inset: 0;
-        background: rgba(0,0,0,.35);
-        z-index: 49;
-      }
-      .app:not(.sidebar-collapsed) .sidebar-backdrop { display: block; }
-      .resizer { display: none; }
-      .main { min-width: 0; width: 100%; }
-      /* Boutons et input area : taille tactile cohérente */
+      /* Augmenter la largeur de prise du resizer pour la rendre confortable au doigt */
+      .resizer { width: 14px; }
+      .resizer::after { height: 48px; opacity: .6; }
+      /* Garder les boutons à taille tactile */
       .top .btn { min-width: 44px; min-height: 44px; }
       .input-area { padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
     }
