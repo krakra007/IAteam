@@ -62,7 +62,7 @@
 
     /* ── Divider glissable ── */
     .resizer{
-      width:5px;
+      width:8px;
       background:transparent;
       cursor:col-resize;
       flex-shrink:0;
@@ -73,8 +73,10 @@
     .resizer:hover,.resizer.active{background:var(--line)}
     .resizer::after{
       content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-      height:32px;width:3px;border-radius:3px;background:var(--muted2);opacity:.5;
+      height:40px;width:3px;border-radius:3px;background:var(--muted2);opacity:.45;
+      transition:opacity .15s, background .15s;
     }
+    .resizer:hover::after,.resizer.active::after{opacity:.9;background:#e8eaee}
     .app.sidebar-collapsed .resizer{display:none}
 
     /* ── Main ── */
@@ -2993,6 +2995,63 @@ function renameProject(id) {
   save(); render();
 }
 
+/**
+ * V41 — Menu ⋯ d'un projet : consolide modèle, couleur, renommer, supprimer.
+ * Avant : 5 icônes inline (🤖 ● ＋ ✎ ✕) qui mangeaient l'espace du nom du projet.
+ * Maintenant : seul ＋ reste inline, le reste est dans ce menu déroulant.
+ */
+function openProjectMenu(p, anchor) {
+  // Fermer tout menu existant
+  document.querySelectorAll('.chat-ctx-menu').forEach(m => m.remove());
+
+  const menu = document.createElement('div');
+  menu.className = 'chat-ctx-menu';
+  menu.innerHTML = `
+    <div class='ctx-item' data-act='model'>🤖 <span>Modèle par défaut</span></div>
+    <div class='ctx-item' data-act='color'>● <span>Changer la couleur</span></div>
+    <div class='ctx-item' data-act='edit'>✎ <span>Renommer le projet</span></div>
+    <div class='ctx-divider'></div>
+    <div class='ctx-item danger' data-act='del'>✕ <span>Supprimer le projet</span></div>
+  `;
+  document.body.appendChild(menu);
+
+  // Position : sous le bouton ⋯, aligné à droite pour ne pas déborder
+  const rect = anchor.getBoundingClientRect();
+  const menuW = 220;
+  let left = rect.right - menuW;
+  if (left < 8) left = 8;
+  menu.style.left = left + 'px';
+  menu.style.top  = (rect.bottom + 4) + 'px';
+
+  // Si menu déborde en bas, le placer au-dessus du bouton
+  requestAnimationFrame(() => {
+    const mRect = menu.getBoundingClientRect();
+    if (mRect.bottom > window.innerHeight - 8) {
+      menu.style.top = (rect.top - mRect.height - 4) + 'px';
+    }
+  });
+
+  menu.addEventListener('click', e => {
+    const act = e.target.closest('.ctx-item')?.dataset.act;
+    if (!act) return;
+    menu.remove();
+    if (act === 'model') setProjectDefaultModel(p.id, anchor);
+    else if (act === 'color') openColorPicker(p.id, anchor);
+    else if (act === 'edit') renameProject(p.id);
+    else if (act === 'del') deleteProject(p.id);
+  });
+
+  // Fermer au clic en dehors
+  setTimeout(() => {
+    document.addEventListener('click', function onceClose(e) {
+      if (!menu.contains(e.target) && e.target !== anchor) {
+        menu.remove();
+        document.removeEventListener('click', onceClose);
+      }
+    });
+  }, 0);
+}
+
 function deleteProject(id) {
   if (!confirm("Supprimer ce projet et ses conversations ?")) return;
   S.projects = S.projects.filter(p => p.id !== id);
@@ -3416,28 +3475,20 @@ function renderChats() {
     h.innerHTML = `
       <span class='proj-toggle' data-a='toggle' title='${isCollapsed ? "Déplier" : "Replier"}'>${isCollapsed ? '▶' : '▼'}</span>
       <span class='proj-dot' style='background:${dotColor}' title='Couleur projet'></span>
-      <div style="flex:1;overflow:hidden">
+      <div style="flex:1;overflow:hidden;min-width:0">
         <span class='name' title='${p.name}'>${p.name}</span>
         ${projModelTag}
       </div>
       <span class='quota-counter${projCls}' title='${projCounterTitle}'>${projUsed}/${PROJECT_CHATS_LIMIT}</span>
-      <button class='icon-btn' data-a='model' title='Modèle par défaut du projet'>🤖</button>
-      <button class='icon-btn' data-a='color' title='Changer couleur'>●</button>
       <button class='icon-btn' data-a='addchat' title='Nouveau chat'>＋</button>
-      <button class='icon-btn' data-a='edit'    title='Renommer'>✎</button>
-      <button class='icon-btn' data-a='del'     title='Supprimer'>✕</button>
+      <button class='icon-btn proj-more-btn' data-a='more' title='Plus d\\'options'>⋯</button>
     `;
     h.onclick = e => {
       const a = e.target.dataset.a;
       if (a === "toggle")  return toggleCollapse(p.id);
       if (a === "addchat") return createChat(p.id);
-      if (a === "edit")    return renameProject(p.id);
-      if (a === "del")     return deleteProject(p.id);
-      if (a === "model")   return setProjectDefaultModel(p.id, e.target);
-      if (a === "color"){
-        openColorPicker(p.id, e.target);
-        return;
-      }
+      if (a === "more")    return openProjectMenu(p, e.target);
+      // Tous les autres actions sont maintenant dans le menu ⋯ — pas de raccourci direct.
       S.activeProject = p.id; save(); render();
     };
     w.appendChild(h);
@@ -9493,34 +9544,53 @@ document.addEventListener("click", e => {
   const sidebar  = document.querySelector(".sidebar");
   let dragging = false, startX = 0, startW = 0;
 
-  resizer.addEventListener("mousedown", e => {
+  function startDrag(clientX) {
     if(appEl.classList.contains("sidebar-collapsed")) return;
     dragging = true;
-    startX   = e.clientX;
+    startX   = clientX;
     startW   = sidebar.offsetWidth;
     resizer.classList.add("active");
     document.body.style.cursor = "col-resize";
     document.body.style.userSelect = "none";
-    e.preventDefault();
-  });
-
-  document.addEventListener("mousemove", e => {
+  }
+  function moveDrag(clientX) {
     if(!dragging) return;
-    const delta = e.clientX - startX;
+    const delta = clientX - startX;
     const newW  = Math.min(520, Math.max(160, startW + delta));
     sidebar.style.width = newW + "px";
     document.documentElement.style.setProperty("--sidebar-w", newW + "px");
-  });
-
-  document.addEventListener("mouseup", () => {
+  }
+  function endDrag() {
     if(!dragging) return;
     dragging = false;
     resizer.classList.remove("active");
     document.body.style.cursor = "";
     document.body.style.userSelect = "";
-    // Mémoriser la largeur
     localStorage.setItem("sidebarWidth", sidebar.offsetWidth);
+  }
+
+  // Mouse events (PC/Mac)
+  resizer.addEventListener("mousedown", e => {
+    startDrag(e.clientX);
+    e.preventDefault();
   });
+  document.addEventListener("mousemove", e => moveDrag(e.clientX));
+  document.addEventListener("mouseup", endDrag);
+
+  // V41 — Touch events (iPad/tactile) — la sidebar reste visible sur tablette landscape/desktop tactile
+  resizer.addEventListener("touchstart", e => {
+    if (e.touches.length !== 1) return;
+    startDrag(e.touches[0].clientX);
+    e.preventDefault();
+  }, { passive: false });
+  document.addEventListener("touchmove", e => {
+    if (dragging && e.touches.length === 1) {
+      moveDrag(e.touches[0].clientX);
+      e.preventDefault();
+    }
+  }, { passive: false });
+  document.addEventListener("touchend", endDrag);
+  document.addEventListener("touchcancel", endDrag);
 
   // Restaurer largeur (seulement si la sidebar n'est pas collapsed)
   const saved = localStorage.getItem("sidebarWidth");
