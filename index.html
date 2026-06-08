@@ -3147,6 +3147,8 @@ function renameChat(id) {
 }
 
 function deleteChat(id) {
+  const chatToDelete = S.chats.find(c => c.id === id);
+  const chatTitle = chatToDelete?.title || 'inconnu';
   S.chats = S.chats.filter(c => c.id !== id);
   if (S.activeChat === id) S.activeChat = S.chats[0]?.id || null;
   // V42 — Tombstone : marquer la suppression pour empêcher le pull de la ramener.
@@ -3154,9 +3156,15 @@ function deleteChat(id) {
   if (!S.tombstones.chats) S.tombstones.chats = {};
   S.tombstones.chats[id] = Date.now();
   save(); render();
+  console.log(`[BrAInShift] 🗑 Chat "${chatTitle}" (${id.slice(0,8)}) supprimé. Total tombstones chats: ${Object.keys(S.tombstones.chats).length}`);
   // Push immédiat pour propager la suppression aux autres machines
   if (typeof GH !== 'undefined' && GH.autoSync && GH.token && typeof ghPushSilent === 'function') {
-    ghPushSilent().catch(e => console.warn('[BrAInShift] Push après suppression échoué:', e.message));
+    console.log('[BrAInShift] ⬆ Push silencieux post-suppression…');
+    ghPushSilent()
+      .then(() => console.log('[BrAInShift] ✅ Tombstone propagé vers GitHub'))
+      .catch(e => console.warn('[BrAInShift] ⚠ Push après suppression échoué (tombstone reste local):', e.message));
+  } else {
+    console.log('[BrAInShift] ℹ Auto-sync désactivé — tombstone gardé en local. Cliquez Push pour propager.');
   }
 }
 
@@ -8989,6 +8997,14 @@ async function ghPush() {
       params:        S.params,
       model:         S.model,
       favoriteModels: S.favoriteModels || [],
+      // V42b — Tombstones obligatoires aussi dans le push manuel
+      // sinon les suppressions n'étaient pas propagées vers GitHub via le bouton Push
+      tombstones:    S.tombstones || { chats: {}, projects: {} },
+      // V32 — Stats coût quotidiennes (sync inter-machines)
+      costStatsDaily: (() => {
+        try { return JSON.parse(localStorage.getItem('costStatsDaily') || '{}'); }
+        catch (e) { return {}; }
+      })(),
       savedAt:       new Date().toISOString(),
       version:       2
     };
@@ -9029,8 +9045,38 @@ async function ghPull() {
     }
     const raw = result.data;
 
-    if (raw.chats)         S.chats         = raw.chats;
-    if (raw.projects)      S.projects      = raw.projects;
+    // V42b — Le pull manuel respecte les tombstones (comme le pull silencieux)
+    // Fusion des tombstones (union avec max timestamp)
+    if (!S.tombstones) S.tombstones = { chats: {}, projects: {} };
+    if (!S.tombstones.chats) S.tombstones.chats = {};
+    if (!S.tombstones.projects) S.tombstones.projects = {};
+    const remoteTomb = (raw.tombstones && typeof raw.tombstones === 'object') ? raw.tombstones : { chats: {}, projects: {} };
+    for (const [id, ts] of Object.entries(remoteTomb.chats || {})) {
+      if (!S.tombstones.chats[id] || ts > S.tombstones.chats[id]) S.tombstones.chats[id] = ts;
+    }
+    for (const [id, ts] of Object.entries(remoteTomb.projects || {})) {
+      if (!S.tombstones.projects[id] || ts > S.tombstones.projects[id]) S.tombstones.projects[id] = ts;
+    }
+
+    // Filtrer chats/projets tombstonés du pull
+    let _filteredChats = 0;
+    if (raw.chats) {
+      S.chats = raw.chats.filter(c => {
+        if (S.tombstones.chats[c.id]) { _filteredChats++; return false; }
+        return true;
+      });
+    }
+    let _filteredProjs = 0;
+    if (raw.projects) {
+      S.projects = raw.projects.filter(p => {
+        if (S.tombstones.projects[p.id]) { _filteredProjs++; return false; }
+        return true;
+      });
+    }
+    if (_filteredChats > 0 || _filteredProjs > 0) {
+      console.log(`[BrAInShift] 🪦 Pull manuel : ${_filteredChats} chat(s) et ${_filteredProjs} projet(s) bloqués par tombstones`);
+    }
+
     if (raw.profiles)        S.profiles       = raw.profiles;
     if (raw.favoriteModels)  S.favoriteModels = raw.favoriteModels;
     if (raw.activeProfiles)  S.activeProfiles  = raw.activeProfiles;
