@@ -2074,6 +2074,15 @@ const S = {
   ],
   activeProfiles: JSON.parse(localStorage.getItem("activeProfiles") || "[]"),
   favoriteModels: JSON.parse(localStorage.getItem("favoriteModels") || '["gemini-2.5-flash","claude-haiku-4-5-20251001"]'),
+  // V42 — Tombstones : ID de chats/projets supprimés, avec timestamp.
+  // Sert à empêcher le pull de "ressusciter" les éléments qu'on a supprimés localement
+  // (race condition entre delete local et auto-pull périodique).
+  // Format : { chats: { 'uuid-X': 1717891234567 }, projects: { 'uuid-Y': 1717891234567 } }
+  // Cleanup automatique > 30 jours au démarrage.
+  tombstones: (() => {
+    try { return JSON.parse(localStorage.getItem("tombstones") || '{"chats":{},"projects":{}}'); }
+    catch (e) { return { chats: {}, projects: {} }; }
+  })(),
   activeChat:    localStorage.getItem("activeChat")    || null,
   activeProject: localStorage.getItem("activeProject") || null,
   model:  "gemini-2.5-flash",  // ← Modèle par défaut : économique, contexte 1M, mode thinking pour sciences
@@ -2491,6 +2500,8 @@ function save() {
     localStorage.setItem("params",             JSON.stringify(S.params));
     localStorage.setItem("apiKeysByProvider",  JSON.stringify(apiKeysByProvider));
     localStorage.setItem("favoriteModels",     JSON.stringify(S.favoriteModels || []));
+    // V42 — Persister les tombstones pour qu'ils survivent au rechargement
+    localStorage.setItem("tombstones",         JSON.stringify(S.tombstones || { chats: {}, projects: {} }));
   } catch (e) {
     console.warn('[BrAInShift] ⚠ Sauvegarde échouée:', e.message);
     try {
@@ -3035,10 +3046,26 @@ function openProjectMenu(p, anchor) {
 
 function deleteProject(id) {
   if (!confirm("Supprimer ce projet et ses conversations ?")) return;
+  // V42 — Identifier les chats du projet AVANT suppression pour tombstoner aussi
+  const projectChatIds = S.chats.filter(c => c.projectId === id).map(c => c.id);
   S.projects = S.projects.filter(p => p.id !== id);
-  S.chats    = S.chats.map(c => c.projectId === id ? { ...c, projectId: null } : c);
+  // V42 — Suppression réelle des chats du projet (auparavant ils étaient juste détachés via projectId=null)
+  // Sinon on accumulait des conv orphelines flottant dans "Conversations générales".
+  S.chats = S.chats.filter(c => c.projectId !== id);
   if (S.activeProject === id) S.activeProject = null;
+  if (projectChatIds.includes(S.activeChat)) S.activeChat = S.chats[0]?.id || null;
+  // Tombstones pour le projet ET tous ses chats
+  if (!S.tombstones) S.tombstones = { chats: {}, projects: {} };
+  if (!S.tombstones.chats) S.tombstones.chats = {};
+  if (!S.tombstones.projects) S.tombstones.projects = {};
+  const now = Date.now();
+  S.tombstones.projects[id] = now;
+  projectChatIds.forEach(cid => { S.tombstones.chats[cid] = now; });
   save(); render();
+  // Push immédiat
+  if (typeof GH !== 'undefined' && GH.autoSync && GH.token && typeof ghPushSilent === 'function') {
+    ghPushSilent().catch(e => console.warn('[BrAInShift] Push après suppression projet échoué:', e.message));
+  }
 }
 
 /** Popup pour choisir le modèle par défaut d'un projet */
@@ -3122,7 +3149,15 @@ function renameChat(id) {
 function deleteChat(id) {
   S.chats = S.chats.filter(c => c.id !== id);
   if (S.activeChat === id) S.activeChat = S.chats[0]?.id || null;
+  // V42 — Tombstone : marquer la suppression pour empêcher le pull de la ramener.
+  if (!S.tombstones) S.tombstones = { chats: {}, projects: {} };
+  if (!S.tombstones.chats) S.tombstones.chats = {};
+  S.tombstones.chats[id] = Date.now();
   save(); render();
+  // Push immédiat pour propager la suppression aux autres machines
+  if (typeof GH !== 'undefined' && GH.autoSync && GH.token && typeof ghPushSilent === 'function') {
+    ghPushSilent().catch(e => console.warn('[BrAInShift] Push après suppression échoué:', e.message));
+  }
 }
 
 /** Fork Chat : crée un nouveau chat avec tous les messages jusqu'à msgIdx inclus */
@@ -8327,6 +8362,8 @@ async function ghPushSilent() {
         try { return JSON.parse(localStorage.getItem('costStatsDaily') || '{}'); }
         catch (e) { return {}; }
       })(),
+      // V42 — Tombstones de suppression : propagent les deletes aux autres machines
+      tombstones: S.tombstones || { chats: {}, projects: {} },
       savedAt: new Date().toISOString(), version: 2
     };
     const jsonStr = JSON.stringify(data);
@@ -8525,50 +8562,90 @@ async function ghPullSilent() {
     // ═══ ÉTAPE 3 : FUSION INTELLIGENTE ═══
     // Règle : pour chaque chat, garder la version qui a le PLUS de messages
     // (= la plus à jour). Si égalité, garder le local (priorité aux changements en cours).
+    //
+    // V42 — Avant le merge des chats, on fusionne les TOMBSTONES (union des deux côtés,
+    // en gardant le timestamp le plus récent en cas de conflit). Ensuite, on EXCLUT du
+    // résultat tout chat dont l'ID est tombstoné — c'est ce qui empêche les conv supprimées
+    // de réapparaître après un pull.
+    const remoteTomb = (raw.tombstones && typeof raw.tombstones === 'object') ? raw.tombstones : { chats: {}, projects: {} };
+    if (!S.tombstones) S.tombstones = { chats: {}, projects: {} };
+    if (!S.tombstones.chats) S.tombstones.chats = {};
+    if (!S.tombstones.projects) S.tombstones.projects = {};
+    // Union avec max timestamp
+    for (const [id, ts] of Object.entries(remoteTomb.chats || {})) {
+      if (!S.tombstones.chats[id] || ts > S.tombstones.chats[id]) S.tombstones.chats[id] = ts;
+    }
+    for (const [id, ts] of Object.entries(remoteTomb.projects || {})) {
+      if (!S.tombstones.projects[id] || ts > S.tombstones.projects[id]) S.tombstones.projects[id] = ts;
+    }
+    // Cleanup tombstones > 30 jours
+    const TOMBSTONE_TTL = 30 * 24 * 60 * 60 * 1000;
+    const cleanupCutoff = Date.now() - TOMBSTONE_TTL;
+    let _expiredTombs = 0;
+    for (const [id, ts] of Object.entries(S.tombstones.chats)) {
+      if (ts < cleanupCutoff) { delete S.tombstones.chats[id]; _expiredTombs++; }
+    }
+    for (const [id, ts] of Object.entries(S.tombstones.projects)) {
+      if (ts < cleanupCutoff) { delete S.tombstones.projects[id]; _expiredTombs++; }
+    }
+    if (_expiredTombs > 0) console.log(`[BrAInShift] 🧹 ${_expiredTombs} tombstone(s) expirés (>30j) nettoyés`);
+
     const remoteChatsMap = new Map(raw.chats.map(c => [c.id, c]));
     const localChatsMap  = new Map(S.chats.map(c => [c.id, c]));
 
     const merged = [];
+    let _resurrectedSkipped = 0;
     const allIds = new Set([...remoteChatsMap.keys(), ...localChatsMap.keys()]);
 
     for (const id of allIds) {
+      // V42 — Filtrage par tombstone : si l'ID est marqué comme supprimé, on l'IGNORE
+      if (S.tombstones.chats[id]) {
+        _resurrectedSkipped++;
+        continue;
+      }
       const local  = localChatsMap.get(id);
       const remote = remoteChatsMap.get(id);
 
       if (local && !remote) {
-        // Chat local uniquement (pas encore pushé) → GARDER
         merged.push(local);
       } else if (remote && !local) {
-        // Chat remote uniquement (créé sur une autre machine) → AJOUTER
         merged.push(remote);
       } else {
-        // Chat existe des deux côtés → garder celui avec le plus de messages
         const localLen  = Array.isArray(local.messages) ? local.messages.length : 0;
         const remoteLen = Array.isArray(remote.messages) ? remote.messages.length : 0;
         if (localLen >= remoteLen) {
-          // Local a autant ou plus de messages → GARDER LOCAL (priorité aux changements en cours)
           merged.push(local);
         } else {
-          // Remote a plus de messages → PRENDRE REMOTE (mis à jour depuis une autre machine)
           merged.push(remote);
         }
       }
     }
     S.chats = merged;
+    if (_resurrectedSkipped > 0) {
+      console.log(`[BrAInShift] 🪦 ${_resurrectedSkipped} chat(s) supprimés bloqués (tombstones respectés)`);
+    }
 
     // Projets : même logique — ne jamais perdre un projet local
+    // V42 — Filtrer aussi les projets tombstonés (supprimés)
     if (raw.projects) {
       const remoteProjMap = new Map(raw.projects.map(p => [p.id, p]));
       const localProjMap  = new Map(S.projects.map(p => [p.id, p]));
       const mergedProj = [];
+      let _resurrectedProjSkipped = 0;
       const allProjIds = new Set([...remoteProjMap.keys(), ...localProjMap.keys()]);
       for (const id of allProjIds) {
+        if (S.tombstones.projects[id]) {
+          _resurrectedProjSkipped++;
+          continue;
+        }
         const local = localProjMap.get(id);
         const remote = remoteProjMap.get(id);
-        // Garder le local s'il existe (il peut avoir des chats assignés en local)
         mergedProj.push(local || remote);
       }
       S.projects = mergedProj;
+      if (_resurrectedProjSkipped > 0) {
+        console.log(`[BrAInShift] 🪦 ${_resurrectedProjSkipped} projet(s) supprimés bloqués (tombstones respectés)`);
+      }
     }
     if (raw.profiles)       S.profiles       = raw.profiles;
     if (raw.favoriteModels) S.favoriteModels = raw.favoriteModels;
