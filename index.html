@@ -6204,10 +6204,13 @@ function buildRequestParams(model, apiType) {
 // FETCH AVEC RETRY AUTOMATIQUE (429 / 529 / erreurs réseau)
 // Backoff exponentiel : 1s → 2s → 4s (3 tentatives max)
 // ─────────────────────────────────────────────────────────────
-async function fetchWithRetry(url, options, maxRetries = 3) {
-  // Timeout adapté : 60s pour Anthropic (Edge coupe avant), 120s pour les autres
+async function fetchWithRetry(url, options, maxRetries = 3, timeoutMs = null) {
+  // Timeout adapté. Les modèles de raisonnement (GPT-5.x, o-series, Opus avec thinking,
+  // Gemini Pro) sur gros contexte peuvent légitimement dépasser 2-3 min : on relève donc
+  // nettement les délais par rapport à l'ancien 60/120s pensé pour du chat court.
+  // (Note : sur Edge, le navigateur peut couper les connexions longues avant ce délai.)
   const isAnthropic = url.includes('api.anthropic.com');
-  const TIMEOUT_MS = isAnthropic ? 60000 : 120000;
+  const TIMEOUT_MS = timeoutMs || (isAnthropic ? 150000 : 360000);
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       const controller = new AbortController();
@@ -6263,11 +6266,10 @@ async function fetchWithRetry(url, options, maxRetries = 3) {
           window._userAborted = false;
           throw new Error('⏹ Génération annulée.');
         }
-        if (attempt < maxRetries) {
-          console.warn(`[BrAInShift] ⏳ Timeout (${TIMEOUT_MS/1000}s) — retry ${attempt + 1}/${maxRetries}…`);
-          continue;
-        }
-        throw new Error(`Timeout : le modèle n'a pas répondu en ${TIMEOUT_MS/1000}s. ${isAnthropic ? 'Anthropic sur Edge est souvent bloqué — essayez un autre modèle.' : 'Réessayez.'}`);
+        // On NE retente PAS sur timeout : un appel de raisonnement qui dépasse le délai
+        // ne sera pas « réparé » en le relançant — ça ne ferait que multiplier l'attente
+        // et le coût (chaque tentative peut être facturée). On échoue tout de suite.
+        throw new Error(`Timeout : le modèle n'a pas répondu en ${TIMEOUT_MS/1000}s. ${isAnthropic ? 'Anthropic sur Edge est souvent bloqué — essayez un autre modèle.' : 'Réessayez en coupant la recherche web, en raccourcissant la demande, ou avec un autre modèle.'}`);
       }
       // Erreur réseau (Failed to fetch) — retry sauf dernière tentative
       if (attempt < maxRetries) {
@@ -10568,6 +10570,10 @@ initGithubPanel();
 updateSyncBadge(); // Initialiser la pastille de sync (état idle au démarrage)
 updateTripleCheckBtn(); // V15 — Initialiser l'état visuel du bouton Triple Check
 updateDeepResearchBtn(); // 🔬 Initialiser l'état du bouton + bannière Recherche approfondie
+
+// Tampon de version — permet de confirmer dans la console (F12) quelle version tourne réellement.
+const BRAINSHIFT_VERSION = 'V45 — double moteur de recherche approfondie (Perplexity + Gemini)';
+console.log('%c[BrAInShift] ' + BRAINSHIFT_VERSION, 'color:#7c3aed;font-weight:bold');
 
 // ── Pull automatique à l'ouverture ──
 // Permet de récupérer les conversations de l'autre machine via GitHub
