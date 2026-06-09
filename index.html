@@ -2983,12 +2983,12 @@ async function testApiKey(provider, key) {
       msg = ok ? "Clé valide ✓" : `Erreur ${r.status}`;
     } else if (provider === "PERPLEXITY") {
       // Pas d'endpoint GET /models fiable chez Perplexity → on teste par un appel minimal
-      // au modèle le moins cher (sonar, max_tokens:1). Coût négligeable (~$0.005).
+      // au modèle le moins cher (sonar). Perplexity impose max_tokens >= 16. Coût négligeable.
       // Un échec réseau ici (Failed to fetch sans code HTTP) = blocage CORS du navigateur.
       const r = await fetch("https://api.perplexity.ai/chat/completions", {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": "Bearer " + key },
-        body: JSON.stringify({ model: "sonar", messages: [{ role: "user", content: "ping" }], max_tokens: 1 })
+        body: JSON.stringify({ model: "sonar", messages: [{ role: "user", content: "ping" }], max_tokens: 16 })
       });
       ok = r.status === 200;
       if (ok) {
