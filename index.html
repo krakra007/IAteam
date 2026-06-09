@@ -2981,10 +2981,35 @@ async function testApiKey(provider, key) {
       });
       ok = r.status === 200;
       msg = ok ? "Clé valide ✓" : `Erreur ${r.status}`;
+    } else if (provider === "PERPLEXITY") {
+      // Pas d'endpoint GET /models fiable chez Perplexity → on teste par un appel minimal
+      // au modèle le moins cher (sonar, max_tokens:1). Coût négligeable (~$0.005).
+      // Un échec réseau ici (Failed to fetch sans code HTTP) = blocage CORS du navigateur.
+      const r = await fetch("https://api.perplexity.ai/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + key },
+        body: JSON.stringify({ model: "sonar", messages: [{ role: "user", content: "ping" }], max_tokens: 1 })
+      });
+      ok = r.status === 200;
+      if (ok) {
+        msg = "Clé valide ✓";
+      } else if (r.status === 401) {
+        msg = "Erreur 401 — clé refusée (vérifiez qu'elle commence par pplx- et que le compte a du crédit API)";
+      } else {
+        let detail = "";
+        try { const d = await r.json(); detail = d?.error?.message ? ` — ${d.error.message}` : ""; } catch (_) {}
+        msg = `Erreur ${r.status}${detail}`;
+      }
     }
     resEl.innerHTML = `<span style="color:${ok?'#22c55e':'#f87171'}">${ok?'✅':'❌'} ${msg}</span>`;
   } catch(e) {
-    resEl.innerHTML = `<span style="color:#f87171">❌ ${e.message}</span>`;
+    // "Failed to fetch" / "Load failed" sans code HTTP = la requête n'a jamais abouti.
+    // Cause la plus fréquente pour un fournisseur appelé depuis un navigateur : blocage CORS.
+    const isNetwork = /failed to fetch|load failed|networkerror/i.test(e.message || "");
+    const hint = (provider === "PERPLEXITY" && isNetwork)
+      ? " — l'API Perplexity bloque probablement les appels directs depuis le navigateur (CORS). Un proxy est nécessaire."
+      : "";
+    resEl.innerHTML = `<span style="color:#f87171">❌ ${e.message}${hint}</span>`;
   }
 }
 
