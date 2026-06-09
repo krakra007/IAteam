@@ -321,6 +321,7 @@
     .badge-gemini{background:#4285f422;color:#7baaf7;border:1px solid #4285f444}
     .badge-groq{background:#f5501622;color:#f55016;border:1px solid #f5501644}
     .badge-mistral{background:#ff720022;color:#ff7200;border:1px solid #ff720044}
+    .badge-perplexity{background:#20808d22;color:#41b9c9;border:1px solid #20808d55}
 
     /* ── Typing ── */
     .typing{display:flex;align-items:center;gap:10px;color:#b8bec8;font-size:14px;padding:8px 0}
@@ -452,6 +453,78 @@
       50%{box-shadow:0 0 0 4px #dc262600,0 0 0 2px #fbbf2400}
     }
     .triple-check-btn .tc-icon{font-size:14px;line-height:1}
+
+    /* ── Bouton 🔬 Recherche approfondie (Perplexity sonar-deep-research) ── */
+    .deep-research-btn{
+      display:inline-flex;align-items:center;justify-content:center;
+      min-width:30px;height:30px;padding:0 8px;border-radius:50px;border:1.5px solid transparent;
+      background:#20808d22;color:#41b9c9;font-size:14px;font-weight:700;
+      cursor:pointer;transition:all .2s;margin-left:4px;
+      user-select:none;flex-shrink:0;gap:4px;
+    }
+    .deep-research-btn:hover{transform:scale(1.05)}
+    .deep-research-btn.off{background:#20808d22;color:#41b9c9;border-color:#20808d55}
+    .deep-research-btn.on{background:#7c3aed33;color:#c4b5fd;border-color:#7c3aed88;
+      animation:drGlow 2s ease-in-out infinite;}
+    @keyframes drGlow{
+      0%,100%{box-shadow:0 0 0 0 #7c3aed66}
+      50%{box-shadow:0 0 0 4px #7c3aed00}
+    }
+    .deep-research-btn .dr-icon{font-size:14px;line-height:1}
+    .deep-research-btn.sa-locked{opacity:.35;cursor:not-allowed;filter:grayscale(85%)}
+    .deep-research-btn.sa-locked:hover{transform:none}
+
+    /* Bannière "mode armé" au-dessus du composer */
+    .dr-banner{
+      display:none;align-items:center;gap:10px;margin:0 auto 8px;max-width:var(--composer-max,860px);
+      padding:8px 14px;border-radius:12px;font-size:12.5px;line-height:1.4;
+      background:linear-gradient(90deg,#7c3aed18,#20808d18);
+      border:1px solid #7c3aed55;color:#c4b5fd;
+    }
+    .dr-banner.visible{display:flex}
+    .dr-banner .dr-banner-ico{font-size:16px;flex-shrink:0}
+    .dr-banner strong{color:#ddd6fe}
+    .dr-banner .dr-banner-cancel{
+      margin-left:auto;flex-shrink:0;background:#ffffff14;border:1px solid #ffffff22;color:#e9d5ff;
+      border-radius:6px;padding:3px 9px;font-size:11px;cursor:pointer;
+    }
+    .dr-banner .dr-banner-cancel:hover{background:#ffffff22}
+
+    /* Badge "Recherche approfondie" sur les rapports */
+    .dr-badge{
+      display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;
+      margin-bottom:4px;font-weight:600;letter-spacing:.03em;
+      background:#7c3aed22;color:#c4b5fd;border:1px solid #7c3aed55;
+    }
+    .dr-badge.err{background:#ef444422;color:#ef4444;border-color:#ef444444}
+
+    /* Indicateur de progression Recherche approfondie */
+    .dr-progress{
+      display:none;align-items:center;gap:8px;margin-left:10px;
+      font-size:12px;color:#c4b5fd;font-weight:500;
+    }
+    .dr-progress.visible{display:inline-flex}
+    .dr-progress .dr-dot{
+      width:8px;height:8px;border-radius:50%;background:#7c3aed;
+      animation:drPulse 1.1s ease-in-out infinite;
+    }
+    @keyframes drPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+
+    /* Lignes d'options dans la modale de confirmation */
+    .dr-modal-row{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;color:#c9d0db}
+    .dr-modal-row select{
+      background:#1e1e24;color:#e0e2e8;border:1px solid var(--line);border-radius:6px;
+      padding:5px 8px;font-size:12px;flex:0 0 auto;
+    }
+    .dr-cost-box{
+      background:#0f1115;border:1px solid #20808d44;border-radius:10px;padding:10px 12px;
+      font-size:12px;color:#9ca3af;line-height:1.7;
+    }
+    .dr-cost-box .dr-cost-big{color:#41b9c9;font-weight:700;font-size:15px}
+    .dr-limit-warn{
+      background:#3a1a0a;border:1px solid #d4853a66;border-radius:8px;padding:8px 11px;
+      font-size:11.5px;color:#f0b86a;line-height:1.5;
+    }
 
     /* Badge "Triple Check ✓" sur les réponses validées */
     .tc-badge{
@@ -1586,7 +1659,12 @@
         <button class="triple-check-btn off premium" id="tripleCheckBtnPrem" title="Triple Check PREMIUM — validation à 3 modèles haut de gamme (Gemini 2.5 Flash → GPT-5.4-mini → Claude Sonnet 4.5), ~$0.037/requête. Cliquer pour activer.">
           <span class="tc-icon">3×+</span>
         </button>
+        <!-- 🔬 Recherche approfondie (Perplexity sonar-deep-research) -->
+        <button class="deep-research-btn off" id="deepResearchBtn" title="🔬 Recherche approfondie — déclenche une vraie recherche multi-sources (Perplexity sonar-deep-research) sur votre prochaine question. ~$0.30 à $1.30, 2-5 min. Les questions suivantes utilisent le modèle sélectionné avec le rapport en contexte.">
+          <span class="dr-icon">🔬</span>
+        </button>
         <span id="tcProgress" class="tc-progress" style="display:none"></span>
+        <span id="drProgress" class="dr-progress"><span class="dr-dot"></span><span id="drProgressLabel">Recherche approfondie en cours…</span></span>
       </div>
       <div style="display:flex;gap:8px;align-items:center;position:relative">
         <!-- Badge coût du jour (cumulé des appels API d'aujourd'hui) -->
@@ -1782,6 +1860,12 @@ Exemple pour la chimie :
 </div>
 
     <div class="composer">
+      <!-- 🔬 Bannière mode Recherche approfondie armé -->
+      <div class="dr-banner" id="drBanner">
+        <span class="dr-banner-ico">🔬</span>
+        <span><strong>Recherche approfondie armée</strong> — votre prochaine question lancera une vraie recherche multi-sources (sonar-deep-research, 2-5 min, ~$0.30-1.30). Les suivantes utiliseront le modèle sélectionné avec le rapport en contexte.</span>
+        <button class="dr-banner-cancel" id="drBannerCancel">Annuler</button>
+      </div>
       <div class="composer-wrap"><div class="composer-box">
         <div class="file-preview-area" id="filePreviewArea"></div>
         <input type="file" id="fileInput" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.html,.htm,.css,.js,.json,.md,.txt,.csv,.py,.xml,.yaml,.yml,.ts,.jsx,.tsx,.sql,.sh,.bat,.log,.ini,.cfg,.env,.toml" style="display:none">
@@ -1838,6 +1922,41 @@ Exemple pour la chimie :
       <div class="modal-actions">
         <button class="modal-btn cancel" id="projectModalCancel">Annuler</button>
         <button class="modal-btn confirm" id="projectModalConfirm">Créer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 🔬 Modale de confirmation Recherche approfondie -->
+  <div class="modal-overlay" id="deepResearchModal">
+    <div class="modal-box" style="width:380px">
+      <div class="modal-title">🔬 Lancer une recherche approfondie ?</div>
+      <div>
+        <div class="modal-label">Sujet</div>
+        <div id="drModalQuery" style="font-size:12.5px;color:#e2e8f0;background:#0f1115;border:1px solid var(--line);border-radius:8px;padding:8px 11px;max-height:90px;overflow-y:auto;line-height:1.45;white-space:pre-wrap;word-break:break-word"></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:9px">
+        <div class="dr-modal-row">
+          <label for="drModalEffort">Profondeur de raisonnement</label>
+          <select id="drModalEffort">
+            <option value="low">Low — rapide, ~$0.20</option>
+            <option value="medium" selected>Medium — équilibré</option>
+            <option value="high">High — exhaustif, plus cher</option>
+          </select>
+        </div>
+        <div class="dr-modal-row">
+          <label for="drModalAcademic">Mode académique (sources scientifiques)</label>
+          <label class="toggle-switch"><input type="checkbox" id="drModalAcademic" checked><span class="toggle-slider"></span></label>
+        </div>
+      </div>
+      <div class="dr-cost-box" id="drModalCostBox">
+        <div>Modèle : <strong style="color:#41b9c9">sonar-deep-research</strong></div>
+        <div>Durée estimée : ~2 à 5 minutes (gardez l'onglet ouvert)</div>
+        <div>Coût estimé : <span class="dr-cost-big" id="drModalCostEst">$0.30 – $1.30</span></div>
+      </div>
+      <div class="dr-limit-warn" id="drModalLimitWarn" style="display:none"></div>
+      <div class="modal-actions">
+        <button class="modal-btn cancel" id="drModalCancel">Annuler</button>
+        <button class="modal-btn confirm" id="drModalConfirm" style="background:#7c3aed;border-color:#7c3aed">🚀 Lancer</button>
       </div>
     </div>
   </div>
@@ -1984,7 +2103,11 @@ const DEF = {
   // Recherche web
   webSearch: false,
   // V40 — Gemini 3.x : thinking_level "high" (équivalent "Extended" de l'app Gemini grand public)
-  geminiExtendedThinking: false
+  geminiExtendedThinking: false,
+  // 🔬 Recherche approfondie (Perplexity sonar-deep-research)
+  deepResearchDailyLimit: 5,        // garde-fou anti-surcoût : nb max de recherches/jour (0 = illimité)
+  deepResearchAcademic: true,       // search_mode "academic" → priorise les sources scientifiques
+  deepResearchEffort: 'medium'      // reasoning_effort : low | medium | high
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -2466,7 +2589,7 @@ const apiErrorEl = el("apiError");
 // ─────────────────────────────────────────────────
 // CLÉS API — 4 fournisseurs
 // ─────────────────────────────────────────────────
-const PROVIDERS = ["ANTHROPIC", "OPENAI", "DEEPSEEK", "GOOGLE GEMINI", "GROQ", "MISTRAL"];
+const PROVIDERS = ["ANTHROPIC", "OPENAI", "DEEPSEEK", "GOOGLE GEMINI", "GROQ", "MISTRAL", "PERPLEXITY"];
 const providerKeysEl = el("providerKeys");
 const apiKeysByProvider = JSON.parse(localStorage.getItem("apiKeysByProvider") || "{}");
 PROVIDERS.forEach(p => { if (!(p in apiKeysByProvider)) apiKeysByProvider[p] = ""; });
@@ -2722,6 +2845,7 @@ function inferProviderFromModel(model) {
   if (m.startsWith("gemini"))   return "GOOGLE GEMINI";
   if (m.startsWith("deepseek")) return "DEEPSEEK";
   if (m.startsWith("mistral") || m.startsWith("codestral") || m.startsWith("devstral") || m.startsWith("magistral") || m.startsWith("ministral") || m.startsWith("open-mistral")) return "MISTRAL";
+  if (m.startsWith("sonar")) return "PERPLEXITY";
   // Groq models — détection par préfixe de famille ou nom connu
   const GROQ_MODELS = MODEL_GROUPS.find(g => g.label.includes("Groq"))?.models || [];
   if (GROQ_MODELS.includes(model)) return "GROQ";
@@ -2735,7 +2859,8 @@ function providerBadgeHtml(provider) {
     "DEEPSEEK":     ["badge-deepseek",  "DeepSeek"],
     "GOOGLE GEMINI":["badge-gemini",    "Gemini"],
     "GROQ":         ["badge-groq",      "Groq"],
-    "MISTRAL":      ["badge-mistral",   "Mistral"]
+    "MISTRAL":      ["badge-mistral",   "Mistral"],
+    "PERPLEXITY":   ["badge-perplexity","Perplexity"]
   };
   const [cls, label] = map[provider] || ["badge-openai", provider];
   return `<span class="provider-badge ${cls}">${label}</span>`;
@@ -2754,7 +2879,8 @@ function renderApiKeys() {
     "DEEPSEEK":     { color:"#7b9cf7", icon:"🔵", placeholder:"sk-..." },
     "GOOGLE GEMINI":{ color:"#7baaf7", icon:"🔷", placeholder:"AIza..." },
     "GROQ":         { color:"#f55016", icon:"🔴", placeholder:"gsk_..." },
-    "MISTRAL":      { color:"#ff7200", icon:"🟧", placeholder:"mistral-..." }
+    "MISTRAL":      { color:"#ff7200", icon:"🟧", placeholder:"mistral-..." },
+    "PERPLEXITY":   { color:"#20808d", icon:"🟦", placeholder:"pplx-..." }
   };
 
   container.innerHTML = "";
@@ -5082,6 +5208,17 @@ function renderMessages() {
           bgColor = '#ef444422'; txtColor = '#ef4444'; borderColor = '#ef444444';
         }
         badge.innerHTML = `<span class="tc-badge" style="background:${bgColor};color:${txtColor};border-color:${borderColor}">${label}</span>`;
+      } else if (m._deepResearch) {
+        // 🔬 Badge Recherche approfondie
+        if (m._deepResearchError) {
+          badge.innerHTML = `<span class="dr-badge err">🔬 Recherche approfondie — ⚠ erreur</span>`;
+        } else {
+          const nbSrc = m._deepResearchSources || 0;
+          const nbSearch = m._deepResearchSearches || 0;
+          const detail = nbSrc ? ` · ${nbSrc} source${nbSrc > 1 ? 's' : ''}` : '';
+          const sd = nbSearch ? ` · ${nbSearch} recherche${nbSearch > 1 ? 's' : ''}` : '';
+          badge.innerHTML = `<span class="dr-badge">🔬 Recherche approfondie — sonar-deep-research${detail}${sd}</span>`;
+        }
       } else {
         badge.innerHTML = providerBadgeHtml(m.provider);
       }
@@ -5701,6 +5838,34 @@ function renderParams() {
       <div class="p-hint" style="margin-top:-8px;margin-bottom:4px">${caps.webSearch ? 'Le modèle cherchera sur internet quand c\'est pertinent.<br>Supporté : Claude, GPT-4/5, Gemini.' : `Non supporté par ${provider}.`}</div>
     </div>
 
+    <!-- 🔬 RECHERCHE APPROFONDIE -->
+    <div class="params-section">
+      <div class="params-section-title">🔬 Recherche approfondie (Perplexity)</div>
+
+      <div class="p-row">
+        <div class="p-row-head"><label>Limite quotidienne</label><span class="p-val" id="v_drlimit">${(Number(P.deepResearchDailyLimit)||0) === 0 ? '∞' : Number(P.deepResearchDailyLimit)}</span></div>
+        <input type="range" id="r_drlimit" min="0" max="30" step="1" value="${Number(P.deepResearchDailyLimit)||0}">
+        <div class="p-hint">Garde-fou anti-surcoût. 0 = illimité. Au-delà, confirmation supplémentaire requise.</div>
+      </div>
+
+      <div class="p-row">
+        <div class="p-row-head"><label>Profondeur par défaut</label><span class="p-val" id="v_dreffort">${P.deepResearchEffort || 'medium'}</span></div>
+        <select id="r_dreffort" style="width:100%;padding:6px 10px;background:#1e1e24;color:#e0e2e8;border:1px solid var(--line);border-radius:6px;font-size:13px">
+          <option value="low" ${P.deepResearchEffort==='low'?'selected':''}>Low — rapide, moins cher (~$0.20)</option>
+          <option value="medium" ${(!P.deepResearchEffort||P.deepResearchEffort==='medium')?'selected':''}>Medium — équilibré</option>
+          <option value="high" ${P.deepResearchEffort==='high'?'selected':''}>High — exhaustif, plus cher</option>
+        </select>
+        <div class="p-hint">Réglage <code>reasoning_effort</code>. Modifiable aussi à chaque lancement.</div>
+      </div>
+
+      <div class="p-toggle">
+        <label><span class="p-toggle-icon">🎓</span> Mode académique par défaut</label>
+        <label class="toggle-switch"><input type="checkbox" id="t_dracademic" ${P.deepResearchAcademic!==false?'checked':''}><span class="toggle-slider"></span></label>
+      </div>
+      <div class="p-hint" style="margin-top:-8px;margin-bottom:4px"><code>search_mode: academic</code> — priorise les sources scientifiques (PubMed, arXiv, revues à comité de lecture). Recommandé pour la biomédecine.</div>
+      <div class="p-hint" style="margin-top:2px;color:#6b7280">Premier message = vraie recherche (sonar-deep-research). Questions suivantes = modèle sélectionné, rapport en contexte.</div>
+    </div>
+
     <!-- V40 — RÉFLEXION ÉTENDUE GEMINI -->
     <!-- V40b — Affichée pour TOUTE la famille Gemini :
          - 2.5.x : pousse thinkingBudget à 24576 (max) → modèle pense plus avant de répondre
@@ -5765,6 +5930,21 @@ function renderParams() {
     bindToggle('t_gemext', 'geminiExtendedThinking');
   }
 
+  // 🔬 Recherche approfondie — limite quotidienne, profondeur, mode académique
+  bindSlider('r_drlimit', 'v_drlimit', 'deepResearchDailyLimit', v => Number(v) === 0 ? '∞' : v);
+  const drEffortSel = document.getElementById('r_dreffort');
+  if (drEffortSel) {
+    drEffortSel.onchange = () => {
+      S.params.deepResearchEffort = drEffortSel.value;
+      const lbl = document.getElementById('v_dreffort');
+      if (lbl) lbl.textContent = drEffortSel.value;
+      save();
+    };
+  }
+  if (document.getElementById('t_dracademic')) {
+    bindToggle('t_dracademic', 'deepResearchAcademic');
+  }
+
   // Bouton fermer
   el('paramsCloseBtn').onclick = () => p.classList.remove('open');
 }
@@ -5784,7 +5964,7 @@ function updateActiveModelChip() {
   const lastMsg = c ? [...(c.messages||[])].reverse().find(m => m.role==="assistant" && m.model) : null;
   const providerColors = {
     "ANTHROPIC":"#c8621a","OPENAI":"#10a37f","DEEPSEEK":"#7b9cf7",
-    "GOOGLE GEMINI":"#7baaf7","GROQ":"#f55016","MISTRAL":"#ff7200"
+    "GOOGLE GEMINI":"#7baaf7","GROQ":"#f55016","MISTRAL":"#ff7200","PERPLEXITY":"#41b9c9"
   };
   if (lastMsg && lastMsg.model) {
     const col = providerColors[lastMsg.provider] || "#9ca3af";
@@ -5832,14 +6012,18 @@ function render() {
     if (_locked) closeModelDropdown();
   }
   // Griser les boutons Triple Check (3× et 3×+) quand on est dans le projet
-  ['tripleCheckBtn', 'tripleCheckBtnPrem'].forEach(id => {
+  ['tripleCheckBtn', 'tripleCheckBtnPrem', 'deepResearchBtn'].forEach(id => {
     const btn = document.getElementById(id);
     if (!btn) return;
     btn.classList.toggle('sa-locked', _locked);
     if (_locked) {
-      btn.title = 'Triple Check indisponible — projet "Short answers" verrouillé sur mistral-small-latest';
+      btn.title = id === 'deepResearchBtn'
+        ? 'Recherche approfondie indisponible — projet "Short answers" verrouillé sur mistral-small-latest'
+        : 'Triple Check indisponible — projet "Short answers" verrouillé sur mistral-small-latest';
     }
   });
+  // 🔬 Garder le bouton + la bannière Recherche approfondie synchronisés
+  if (typeof updateDeepResearchBtn === 'function') updateDeepResearchBtn();
   // Refléter l'éventuel changement de profil système actif
   if (typeof updateProfileChip === 'function') updateProfileChip();
   if (typeof renderProfiles === 'function' && el('rightPanel')?.classList.contains('open')) {
@@ -6776,7 +6960,13 @@ const TOKEN_PRICES = {
   'mistral-medium-3-1-latest':  { input: 1.00,  output: 3.00 },
   'ministral-3b-latest':        { input: 0.04,  output: 0.04 },
   'ministral-8b-latest':        { input: 0.10,  output: 0.10 },
-  'open-mistral-nemo':          { input: 0.15,  output: 0.15 }
+  'open-mistral-nemo':          { input: 0.15,  output: 0.15 },
+
+  // ── Perplexity Sonar ──
+  // sonar-deep-research : base $2/M in, $8/M out — surcoûts (citation/reasoning/search) gérés dans computeCost
+  'sonar-deep-research':        { input: 2.00,  output: 8.00 },
+  'sonar-pro':                  { input: 3.00,  output: 15.00 },
+  'sonar':                      { input: 1.00,  output: 1.00 }
 };
 
 // Variable globale : usage du dernier appel API (rempli par les fonctions callXxx)
@@ -6815,7 +7005,7 @@ function extractUsage(responseData, providerHint) {
  * Calcule le coût USD d'un appel à partir du modèle et de l'usage.
  * Retourne 0 si le modèle n'est pas dans la table (au lieu de faire planter l'UI).
  */
-function computeCost(model, inputTokens, outputTokens) {
+function computeCost(model, inputTokens, outputTokens, extra) {
   // V38 — Gemini Image Preview : tarification image spécifique.
   // 1 image 1024×1024 ≈ 1120 tokens d'image ≈ $0.067 (output tokens à $60/1M)
   // Variations : 512px = $0.045, 4K = $0.151. On facture flat 1024px.
@@ -6832,6 +7022,20 @@ function computeCost(model, inputTokens, outputTokens) {
   // On facture flat $0.04 (medium). Si l'utilisateur passe quality=high dans le code, ajuster ici.
   if (model === 'gpt-image-1' || model === 'gpt-image-1-mini' || model === 'gpt-image-1.5' || model === 'gpt-image-2') {
     return 0.04;
+  }
+  // 🔬 Perplexity sonar-deep-research : facturation multi-composantes.
+  //   base : $2/M input + $8/M output  (déjà dans TOKEN_PRICES)
+  //   + citation tokens  : ~$2/M
+  //   + reasoning tokens : ~$3/M   ← souvent le plus gros poste
+  //   + search queries   : $5 / 1000 requêtes = $0.005/recherche
+  // Les composantes extra arrivent via `extra` (capturées depuis usage de la réponse).
+  if (model === 'sonar-deep-research') {
+    const e = extra || {};
+    const base = (inputTokens * 2.00 + outputTokens * 8.00) / 1_000_000;
+    const citation  = (e.citationTokens  || 0) * 2.00 / 1_000_000;
+    const reasoning = (e.reasoningTokens || 0) * 3.00 / 1_000_000;
+    const search    = (e.searchQueries   || 0) * 0.005;
+    return base + citation + reasoning + search;
   }
   const price = TOKEN_PRICES[model];
   if (!price) return 0;
@@ -6893,8 +7097,8 @@ function migrateDailyStatsIfNeeded() {
   }
 }
 
-function recordApiCall(model, inputTokens, outputTokens, mode) {
-  const cost = computeCost(model, inputTokens, outputTokens);
+function recordApiCall(model, inputTokens, outputTokens, mode, extra) {
+  const cost = computeCost(model, inputTokens, outputTokens, extra);
   const month = new Date().toISOString().slice(0, 7); // "2026-06"
   const today = new Date().toISOString().slice(0, 10); // "2026-06-05"
 
@@ -6904,7 +7108,7 @@ function recordApiCall(model, inputTokens, outputTokens, mode) {
     stats = JSON.parse(localStorage.getItem('costStats') || '{}');
   } catch(e) { stats = {}; }
   if (!stats[month]) {
-    stats[month] = { solo: 0, tripleEco: 0, triplePremium: 0, soloCount: 0, tripleEcoCount: 0, triplePremiumCount: 0, totalTokensIn: 0, totalTokensOut: 0 };
+    stats[month] = { solo: 0, tripleEco: 0, triplePremium: 0, deepResearch: 0, soloCount: 0, tripleEcoCount: 0, triplePremiumCount: 0, deepResearchCount: 0, totalTokensIn: 0, totalTokensOut: 0 };
   }
   const m = stats[month];
   if (mode === 'tripleEco') {
@@ -6913,6 +7117,9 @@ function recordApiCall(model, inputTokens, outputTokens, mode) {
   } else if (mode === 'triplePremium') {
     m.triplePremium = (m.triplePremium || 0) + cost;
     m.triplePremiumCount = (m.triplePremiumCount || 0) + 1;
+  } else if (mode === 'deepResearch') {
+    m.deepResearch = (m.deepResearch || 0) + cost;
+    m.deepResearchCount = (m.deepResearchCount || 0) + 1;
   } else {
     m.solo = (m.solo || 0) + cost;
     m.soloCount = (m.soloCount || 0) + 1;
@@ -6928,7 +7135,7 @@ function recordApiCall(model, inputTokens, outputTokens, mode) {
   try { daily = JSON.parse(localStorage.getItem('costStatsDaily') || '{}'); } catch(e) { daily = {}; }
   if (!daily[today]) daily[today] = {};
   if (!daily[today][machineId]) {
-    daily[today][machineId] = { _label: machineLabel, total: 0, count: 0, solo: 0, tripleEco: 0, triplePremium: 0, tokensIn: 0, tokensOut: 0 };
+    daily[today][machineId] = { _label: machineLabel, total: 0, count: 0, solo: 0, tripleEco: 0, triplePremium: 0, deepResearch: 0, tokensIn: 0, tokensOut: 0 };
   } else {
     // Garder le label à jour (au cas où l'utilisateur l'aurait changé)
     daily[today][machineId]._label = machineLabel;
@@ -6938,6 +7145,7 @@ function recordApiCall(model, inputTokens, outputTokens, mode) {
   d.count += 1;
   if (mode === 'tripleEco')         d.tripleEco += cost;
   else if (mode === 'triplePremium') d.triplePremium += cost;
+  else if (mode === 'deepResearch')  d.deepResearch = (d.deepResearch || 0) + cost;
   else                               d.solo += cost;
   d.tokensIn  += inputTokens;
   d.tokensOut += outputTokens;
@@ -6963,7 +7171,7 @@ function getTodayStats() {
   let daily;
   try { daily = JSON.parse(localStorage.getItem('costStatsDaily') || '{}'); } catch(e) { daily = {}; }
   const dayBucket = daily[today];
-  const out = { total: 0, count: 0, solo: 0, tripleEco: 0, triplePremium: 0, tokensIn: 0, tokensOut: 0, byMachine: [] };
+  const out = { total: 0, count: 0, solo: 0, tripleEco: 0, triplePremium: 0, deepResearch: 0, tokensIn: 0, tokensOut: 0, byMachine: [] };
   if (!dayBucket) return out;
   const myId = getMachineId();
   Object.entries(dayBucket).forEach(([machineId, s]) => {
@@ -6973,6 +7181,7 @@ function getTodayStats() {
     out.solo          += s.solo          || 0;
     out.tripleEco     += s.tripleEco     || 0;
     out.triplePremium += s.triplePremium || 0;
+    out.deepResearch  += s.deepResearch  || 0;
     out.tokensIn      += s.tokensIn      || 0;
     out.tokensOut     += s.tokensOut     || 0;
     out.byMachine.push({
@@ -7023,6 +7232,7 @@ function updateDailyCostBadge() {
     lines.push(`Solo : $${(s.solo || 0).toFixed(4)}`);
     lines.push(`🔺 Triple Check ÉCO : $${(s.tripleEco || 0).toFixed(4)}`);
     lines.push(`🔺 Triple Check PREMIUM : $${(s.triplePremium || 0).toFixed(4)}`);
+    lines.push(`🔬 Recherche approfondie : $${(s.deepResearch || 0).toFixed(4)}`);
     lines.push(``);
     lines.push(`Tokens entrée : ${(s.tokensIn || 0).toLocaleString('fr-FR')}`);
     lines.push(`Tokens sortie : ${(s.tokensOut || 0).toLocaleString('fr-FR')}`);
@@ -7057,14 +7267,15 @@ function renderCostStats() {
   if (!body) return;
   const s = getCurrentMonthStats();
   const month = new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
-  const total = (s.solo || 0) + (s.tripleEco || 0) + (s.triplePremium || 0);
-  const totalCount = (s.soloCount || 0) + (s.tripleEcoCount || 0) + (s.triplePremiumCount || 0);
+  const total = (s.solo || 0) + (s.tripleEco || 0) + (s.triplePremium || 0) + (s.deepResearch || 0);
+  const totalCount = (s.soloCount || 0) + (s.tripleEcoCount || 0) + (s.triplePremiumCount || 0) + (s.deepResearchCount || 0);
 
   let html = `<div style="text-transform:capitalize;color:#cbd5e1;margin-bottom:4px">${month}</div>`;
   html += `<div style="display:grid;grid-template-columns:1fr auto auto;gap:4px 12px;font-variant-numeric:tabular-nums">`;
   html += `<span>Solo (1 modèle)</span><span>${s.soloCount || 0}×</span><span style="color:#cbd5e1">${fmtUSD(s.solo || 0)}</span>`;
   html += `<span>🔺 Triple Check ÉCO</span><span>${s.tripleEcoCount || 0}×</span><span style="color:#ef4444">${fmtUSD(s.tripleEco || 0)}</span>`;
   html += `<span>🔺 Triple Check PREMIUM</span><span>${s.triplePremiumCount || 0}×</span><span style="color:#fbbf24">${fmtUSD(s.triplePremium || 0)}</span>`;
+  html += `<span>🔬 Recherche approfondie</span><span>${s.deepResearchCount || 0}×</span><span style="color:#c4b5fd">${fmtUSD(s.deepResearch || 0)}</span>`;
   html += `<span style="border-top:1px solid #2c2c2c;padding-top:4px;font-weight:600;color:#e2e8f0">TOTAL du mois</span><span style="border-top:1px solid #2c2c2c;padding-top:4px;font-weight:600;color:#e2e8f0">${totalCount}×</span><span style="border-top:1px solid #2c2c2c;padding-top:4px;font-weight:600;color:#22c55e">${fmtUSD(total)}</span>`;
   html += `</div>`;
   if (s.totalTokensIn || s.totalTokensOut) {
@@ -7146,6 +7357,10 @@ function isTripleCheckOn() {
 function toggleTripleCheckMode(targetMode) {
   const current = getTripleCheckMode();
   const newMode = (current === targetMode) ? 'off' : targetMode;
+  // Exclusivité avec la Recherche approfondie : on la désarme si on active un Triple Check
+  if (newMode !== 'off' && typeof getDeepResearchArmed === 'function' && getDeepResearchArmed()) {
+    setDeepResearchArmed(false);
+  }
   setTripleCheckMode(newMode);
   console.log('[BrAInShift] 🔺 Triple Check mode → ' + newMode);
 }
@@ -7523,6 +7738,244 @@ Ta version corrigée (texte intégral) :`
   }
 }
 
+// ═════════════════════════════════════════════════════════════
+// 🔬 RECHERCHE APPROFONDIE — Perplexity sonar-deep-research
+// ═════════════════════════════════════════════════════════════
+// Architecture hybride (cf. plan) :
+//  • Mode "armé" (one-shot) : la PROCHAINE question lance une vraie
+//    recherche multi-sources via sonar-deep-research (2-5 min, ~$0.30-1.30).
+//  • Le rapport (markdown + sources citées) est stocké dans la conversation.
+//  • Les questions SUIVANTES utilisent le modèle sélectionné dans le dropdown,
+//    avec le rapport déjà présent dans le contexte → critique/raisonnement
+//    rapide et économique, sans relancer de recherche.
+//  • Garde-fou : limite quotidienne configurable + popup de confirmation
+//    avec coût estimé avant chaque lancement.
+// ─────────────────────────────────────────────────────────────
+
+const DEEP_RESEARCH_MODEL = 'sonar-deep-research';
+
+/** Le mode est-il armé pour la prochaine question ? (persisté en localStorage) */
+function getDeepResearchArmed() {
+  return localStorage.getItem('deepResearchArmed') === '1';
+}
+function setDeepResearchArmed(on) {
+  localStorage.setItem('deepResearchArmed', on ? '1' : '0');
+  updateDeepResearchBtn();
+}
+/** Toggle le mode. Exclusif avec Triple Check (on désarme l'autre). */
+function toggleDeepResearch() {
+  const next = !getDeepResearchArmed();
+  if (next && typeof setTripleCheckMode === 'function' && isTripleCheckOn()) {
+    setTripleCheckMode('off'); // exclusivité : pas de Triple Check + recherche simultanés
+  }
+  setDeepResearchArmed(next);
+  console.log('[BrAInShift] 🔬 Recherche approfondie ' + (next ? 'ARMÉE' : 'désarmée'));
+}
+
+/** Met à jour le bouton 🔬 + la bannière + l'état du sélecteur de modèles. */
+function updateDeepResearchBtn() {
+  const armed = getDeepResearchArmed();
+  const btn = document.getElementById('deepResearchBtn');
+  if (btn) {
+    btn.classList.toggle('on', armed);
+    btn.classList.toggle('off', !armed);
+    btn.title = armed
+      ? '🔬 Recherche approfondie ARMÉE — votre prochaine question lancera sonar-deep-research (2-5 min, ~$0.30-1.30). Cliquer pour annuler.'
+      : '🔬 Recherche approfondie — déclenche une vraie recherche multi-sources (Perplexity sonar-deep-research) sur votre prochaine question. Les suivantes utilisent le modèle sélectionné avec le rapport en contexte.';
+  }
+  const banner = document.getElementById('drBanner');
+  if (banner) banner.classList.toggle('visible', armed);
+  // Griser le sélecteur de modèles tant que le mode est armé (le 1er message ira sur Perplexity)
+  const dd = document.getElementById('modelDropdown');
+  if (dd && armed) dd.classList.add('tc-disabled');
+  else if (dd && typeof isTripleCheckOn === 'function' && !isTripleCheckOn()) dd.classList.remove('tc-disabled');
+}
+
+// ── Compteur de limite quotidienne (par jour calendaire, toutes machines confondues localement) ──
+function getDeepResearchUsageToday() {
+  const today = new Date().toISOString().slice(0, 10);
+  let usage;
+  try { usage = JSON.parse(localStorage.getItem('deepResearchUsage') || '{}'); } catch (e) { usage = {}; }
+  return usage[today] || 0;
+}
+function incrementDeepResearchUsage() {
+  const today = new Date().toISOString().slice(0, 10);
+  let usage;
+  try { usage = JSON.parse(localStorage.getItem('deepResearchUsage') || '{}'); } catch (e) { usage = {}; }
+  usage[today] = (usage[today] || 0) + 1;
+  // Élaguer > 30 jours
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 30);
+  const cutoffStr = cutoff.toISOString().slice(0, 10);
+  Object.keys(usage).forEach(k => { if (k < cutoffStr) delete usage[k]; });
+  try { localStorage.setItem('deepResearchUsage', JSON.stringify(usage)); } catch (e) {}
+}
+
+/**
+ * Affiche la modale de confirmation. Renvoie une Promise qui se résout avec :
+ *   { effort, academic }  si l'utilisateur confirme
+ *   null                  s'il annule
+ */
+function showDeepResearchConfirm(queryText) {
+  return new Promise(resolve => {
+    const overlay  = el('deepResearchModal');
+    const qEl      = el('drModalQuery');
+    const effortEl = el('drModalEffort');
+    const acadEl   = el('drModalAcademic');
+    const warnEl   = el('drModalLimitWarn');
+    const confirmBtn = el('drModalConfirm');
+    const cancelBtn  = el('drModalCancel');
+
+    qEl.textContent = queryText && queryText.length ? queryText : '(question vide — joindre un fichier ?)';
+    effortEl.value  = S.params.deepResearchEffort  || 'medium';
+    acadEl.checked  = S.params.deepResearchAcademic !== false;
+
+    // Vérifier la limite quotidienne
+    const limit = Number(S.params.deepResearchDailyLimit) || 0;
+    const used  = getDeepResearchUsageToday();
+    let blocked = false;
+    if (limit > 0 && used >= limit) {
+      blocked = true;
+      warnEl.style.display = 'block';
+      warnEl.innerHTML = `⚠ Limite quotidienne atteinte (<strong>${used}/${limit}</strong> recherches aujourd'hui). Vous pouvez relever la limite dans ⚙ Paramètres → Recherche approfondie, ou confirmer quand même ci-dessous.`;
+      confirmBtn.textContent = '🚀 Lancer quand même';
+    } else if (limit > 0) {
+      warnEl.style.display = 'block';
+      warnEl.style.background = 'transparent';
+      warnEl.style.border = 'none';
+      warnEl.style.color = '#6b7280';
+      warnEl.innerHTML = `Recherches aujourd'hui : <strong>${used}/${limit}</strong>`;
+      confirmBtn.textContent = '🚀 Lancer';
+    } else {
+      warnEl.style.display = 'none';
+      confirmBtn.textContent = '🚀 Lancer';
+    }
+
+    overlay.classList.add('open');
+
+    function cleanup() {
+      overlay.classList.remove('open');
+      confirmBtn.onclick = null;
+      cancelBtn.onclick = null;
+      // Réinitialiser le style du warn (réutilisé entre appels)
+      warnEl.style.background = ''; warnEl.style.border = ''; warnEl.style.color = '';
+    }
+    confirmBtn.onclick = () => {
+      const result = { effort: effortEl.value, academic: acadEl.checked };
+      // Persister les choix comme nouveaux défauts
+      S.params.deepResearchEffort  = result.effort;
+      S.params.deepResearchAcademic = result.academic;
+      save();
+      cleanup();
+      resolve(result);
+    };
+    cancelBtn.onclick = () => { cleanup(); resolve(null); };
+  });
+}
+
+/**
+ * Appel API Perplexity sonar-deep-research (endpoint synchrone, OpenAI-compatible).
+ * IMPORTANT : pas de fetchWithRetry (timeout 120s trop court + risque de double facturation).
+ * fetch direct, timeout 10 min, abortable via le bouton Stop.
+ *
+ * Renvoie { content }  — le rapport markdown enrichi d'une section "## Sources".
+ * Remplit window._lastUsage avec input/output + extra {citationTokens, reasoningTokens, searchQueries}
+ * pour un calcul de coût précis.
+ */
+async function callPerplexityDeepResearch(key, messages, opts) {
+  opts = opts || {};
+  const sysPrompt = getActiveSystemPrompt();
+
+  // Construire l'historique au format OpenAI (le rapport antérieur éventuel reste en contexte)
+  const chatMessages = [
+    { role: 'system', content: sysPrompt },
+    ...messages
+      .filter(m => m.role === 'user' || m.role === 'assistant')
+      .map(m => {
+        if (Array.isArray(m.content)) {
+          // sonar ne gère pas les images/PDF inline → on aplatit en texte
+          const txt = m.content.map(b => {
+            if (b.type === 'text') return b.text || '';
+            if (b.type === 'document' && b._extractedText) return `📄 ${b.title || 'document'} :\n${b._extractedText}`;
+            if (b.type === 'image')  return '[image jointe — non analysable par sonar-deep-research]';
+            if (b.type === 'document') return `[fichier joint : ${b.title || 'document'} — texte non extractible]`;
+            return '';
+          }).filter(Boolean).join('\n\n');
+          return { role: m.role, content: txt };
+        }
+        return { role: m.role, content: m.content };
+      })
+  ];
+
+  const body = {
+    model: DEEP_RESEARCH_MODEL,
+    messages: chatMessages,
+    reasoning_effort: opts.effort || 'medium'
+  };
+  if (opts.academic) body.search_mode = 'academic';
+
+  // fetch direct, abortable, timeout 10 min
+  const controller = new AbortController();
+  _currentAbortController = controller;
+  const timer = setTimeout(() => controller.abort(), 600000); // 10 min
+
+  let r, d;
+  try {
+    r = await fetch('https://api.perplexity.ai/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+      body: JSON.stringify(body),
+      signal: controller.signal
+    });
+  } catch (e) {
+    clearTimeout(timer); _currentAbortController = null;
+    if (e.name === 'AbortError') {
+      if (window._userAborted) { window._userAborted = false; throw new Error('⏹ Recherche annulée.'); }
+      throw new Error('La recherche a dépassé 10 min sans réponse. Réessayez (la facturation Perplexity ne s\'applique qu\'aux recherches abouties).');
+    }
+    throw e;
+  }
+  clearTimeout(timer); _currentAbortController = null;
+
+  try { d = await r.json(); } catch (e) { throw new Error(`Réponse Perplexity illisible (HTTP ${r.status}).`); }
+
+  if (d.error) throw new Error(`[${d.error.type || d.error.code || 'API'}] ${d.error.message || 'erreur Perplexity'}`);
+  if (!r.ok)   throw new Error(`HTTP ${r.status} — ${d.error?.message || 'échec de la requête Perplexity'}`);
+
+  let content = d.choices?.[0]?.message?.content || '';
+  if (!content) throw new Error('Réponse vide de sonar-deep-research.');
+
+  // ── Sources citées : nouveau format (search_results : title/url/date) ou ancien (citations : url) ──
+  const searchResults = Array.isArray(d.search_results) ? d.search_results : null;
+  const citations     = Array.isArray(d.citations) ? d.citations : null;
+  if (searchResults && searchResults.length) {
+    const lines = searchResults.map((s, i) => {
+      const title = s.title || s.url || `Source ${i + 1}`;
+      const url   = s.url || '';
+      const date  = s.date ? ` — ${s.date}` : '';
+      return url ? `${i + 1}. [${title}](${url})${date}` : `${i + 1}. ${title}${date}`;
+    });
+    if (!/##\s*Sources/i.test(content)) content += `\n\n## Sources\n\n${lines.join('\n')}`;
+  } else if (citations && citations.length) {
+    const lines = citations.map((u, i) => `${i + 1}. ${u}`);
+    if (!/##\s*Sources/i.test(content)) content += `\n\n## Sources\n\n${lines.join('\n')}`;
+  }
+
+  // ── Usage → coût précis ──
+  const u = d.usage || {};
+  window._lastUsage = {
+    model: DEEP_RESEARCH_MODEL,
+    input:  u.prompt_tokens || u.input_tokens || 0,
+    output: u.completion_tokens || u.output_tokens || 0,
+    extra: {
+      citationTokens:  u.citation_tokens  || 0,
+      reasoningTokens: u.reasoning_tokens || 0,
+      searchQueries:   u.num_search_queries || u.search_queries || 0
+    }
+  };
+
+  return { content, sourceCount: (searchResults?.length || citations?.length || 0) };
+}
+
 // ─────────────────────────────────────────────────
 // ENVOI — aiguillage selon le provider
 // ─────────────────────────────────────────────────
@@ -7530,8 +7983,18 @@ async function send() {
   const provider = inferProviderFromModel(S.model);
   const key      = (apiKeysByProvider[provider] || "").trim();
 
-  // V16 — Si Triple Check actif : on vérifie les clés des 3 modèles du preset actif
-  if (isTripleCheckOn()) {
+  // 🔬 État du mode Recherche approfondie capturé en début de tour (one-shot)
+  const _drArmed = (typeof getDeepResearchArmed === 'function') && getDeepResearchArmed();
+  const _pplxKey = (apiKeysByProvider["PERPLEXITY"] || "").trim();
+
+  if (_drArmed) {
+    // Validation clé Perplexity uniquement (le 1er message ira sur sonar-deep-research)
+    if (!_pplxKey) {
+      showApiError(`⚠ Recherche approfondie : clé API Perplexity manquante. Cliquez sur 🔑 pour l'ajouter (format pplx-…).`);
+      return;
+    }
+  } else if (isTripleCheckOn()) {
+    // V16 — Si Triple Check actif : on vérifie les clés des 3 modèles du preset actif
     const preset = TRIPLE_CHECK_PRESETS[getTripleCheckMode()];
     const missingKeys = [];
     for (const phase of ['phase1', 'phase2', 'phase3']) {
@@ -7552,6 +8015,16 @@ async function send() {
 
   const text = promptEl.value.trim();
   if (!text && !pendingFiles.length) return;
+
+  // 🔬 Popup de confirmation AVANT de pousser le message (annulation = on ne touche à rien)
+  let _drOpts = null;
+  if (_drArmed) {
+    _drOpts = await showDeepResearchConfirm(text);
+    if (!_drOpts) {
+      console.log('[BrAInShift] 🔬 Recherche approfondie annulée par l\'utilisateur (popup).');
+      return; // le texte reste dans le textarea, le mode reste armé
+    }
+  }
 
   let c = activeChat();
   if (!c) { createChat(S.activeProject || null); c = activeChat(); }
@@ -7617,7 +8090,8 @@ async function send() {
     let responseContent;
 
     // 🎨 DÉTECTION AUTO : demande d'image → OpenAI gpt-image-1 (V39, ex-Gemini)
-    if (isImageGenerationRequest(text)) {
+    // (désactivée en mode Recherche approfondie : la question part sur sonar-deep-research)
+    if (!_drArmed && isImageGenerationRequest(text)) {
       const openaiKey = (apiKeysByProvider["OPENAI"] || "").trim();
       if (!openaiKey) {
         console.warn('[BrAInShift] 🎨 Clé OpenAI manquante pour génération d\'image');
@@ -7674,8 +8148,54 @@ async function send() {
     // V23 — On capture l'état du mode EN DÉBUT de tour dans une variable locale,
     // car setTripleCheckMode('off') sera appelé à la fin (one-shot V19), ce qui ferait
     // retourner `isTripleCheckOn()` à false plus loin → double push de la réponse (BUG V22).
-    const _tripleCheckActiveThisTurn = isTripleCheckOn();
-    if (_tripleCheckActiveThisTurn) {
+    // ── 🔬 RECHERCHE APPROFONDIE : si armée, on intercepte ici (avant Triple Check) ──
+    const _tripleCheckActiveThisTurn = !_drArmed && isTripleCheckOn();
+    if (_drArmed) {
+      console.log('[BrAInShift] 🔬 Lancement sonar-deep-research (effort=' + _drOpts.effort + ', academic=' + _drOpts.academic + ')…');
+      // Indicateur de progression dédié
+      const drProg = document.getElementById('drProgress');
+      if (drProg) drProg.classList.add('visible');
+      try {
+        const drRes = await callPerplexityDeepResearch(_pplxKey, c.messages, _drOpts);
+        responseContent = drRes.content;
+        // Coût précis (base + citation + reasoning + search)
+        let _drCost = 0;
+        if (window._lastUsage && window._lastUsage.model === DEEP_RESEARCH_MODEL) {
+          _drCost = recordApiCall(DEEP_RESEARCH_MODEL, window._lastUsage.input, window._lastUsage.output, 'deepResearch', window._lastUsage.extra);
+        }
+        incrementDeepResearchUsage();
+        console.log(`[BrAInShift] 🔬 Recherche terminée — ${fmtUSD(_drCost)} (${drRes.sourceCount} source(s), ${window._lastUsage?.extra?.searchQueries || 0} recherche(s))`);
+        c.messages.push({
+          role: "assistant",
+          content: responseContent,
+          provider: "PERPLEXITY",
+          model: DEEP_RESEARCH_MODEL,
+          _deepResearch: true,
+          _deepResearchSources: drRes.sourceCount,
+          _deepResearchSearches: window._lastUsage?.extra?.searchQueries || 0,
+          _cost: _drCost,
+          _tokensIn:  window._lastUsage?.input  || 0,
+          _tokensOut: window._lastUsage?.output || 0
+        });
+      } catch (e) {
+        console.error('[BrAInShift] 🔬 Recherche approfondie échec:', e.message);
+        showApiError(`🔬 Recherche approfondie : ${e.message}`);
+        c.messages.push({
+          role: "assistant",
+          content: "❌ Recherche approfondie échouée : " + e.message,
+          provider: "PERPLEXITY",
+          model: DEEP_RESEARCH_MODEL,
+          _deepResearch: true,
+          _deepResearchError: true
+        });
+      } finally {
+        if (drProg) drProg.classList.remove('visible');
+      }
+      // One-shot : on désarme automatiquement après la recherche.
+      // Les questions suivantes utiliseront le modèle sélectionné, avec le rapport en contexte.
+      setDeepResearchArmed(false);
+      // Skip Triple Check + routage normal ci-dessous
+    } else if (_tripleCheckActiveThisTurn) {
       const _mode = getTripleCheckMode();
       console.log('[BrAInShift] 🔺 Mode Triple Check actif : ' + _mode.toUpperCase());
       try {
@@ -7759,10 +8279,10 @@ async function send() {
       );
     }
 
-    // On stocke provider ET modèle pour badge + sidebar (sauf si déjà fait par Triple Check)
+    // On stocke provider ET modèle pour badge + sidebar (sauf si déjà fait par Triple Check ou Recherche approfondie)
     // V23 — On utilise le flag local capturé en début de tour, pas isTripleCheckOn() qui aurait
     // été remis à false par le one-shot V19, causant un double push (bug V22).
-    if (!_tripleCheckActiveThisTurn) {
+    if (!_tripleCheckActiveThisTurn && !_drArmed) {
       // V17 — Calcul du coût pour cet appel + attachement au message
       let _msgCost = 0;
       if (window._lastUsage && window._lastUsage.model === S.model) {
@@ -9466,6 +9986,14 @@ if (_tcBtnPrem) _tcBtnPrem.onclick = () => {
   if (isShortAnswersActive()) return; // verrou Short answers
   toggleTripleCheckMode('premium');
 };
+// 🔬 Bouton Recherche approfondie (arme/désarme le mode one-shot)
+const _drBtn = el("deepResearchBtn");
+if (_drBtn) _drBtn.onclick = () => {
+  if (isShortAnswersActive()) return; // verrou Short answers
+  toggleDeepResearch();
+};
+const _drBannerCancel = el("drBannerCancel");
+if (_drBannerCancel) _drBannerCancel.onclick = () => setDeepResearchArmed(false);
 el("stopBtn").onclick = () => {
   if (_currentAbortController) {
     window._userAborted = true;
@@ -9726,6 +10254,7 @@ buildColorPicker();
 initGithubPanel();
 updateSyncBadge(); // Initialiser la pastille de sync (état idle au démarrage)
 updateTripleCheckBtn(); // V15 — Initialiser l'état visuel du bouton Triple Check
+updateDeepResearchBtn(); // 🔬 Initialiser l'état du bouton + bannière Recherche approfondie
 
 // ── Pull automatique à l'ouverture ──
 // Permet de récupérer les conversations de l'autre machine via GitHub
