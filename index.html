@@ -1863,7 +1863,7 @@ Exemple pour la chimie :
       <!-- 🔬 Bannière mode Recherche approfondie armé -->
       <div class="dr-banner" id="drBanner">
         <span class="dr-banner-ico">🔬</span>
-        <span><strong>Recherche approfondie armée</strong> — votre prochaine question lancera une vraie recherche multi-sources (sonar-deep-research, 2-5 min, ~$0.30-1.30). Les suivantes utiliseront le modèle sélectionné avec le rapport en contexte.</span>
+        <span><strong>Recherche approfondie armée</strong> — votre prochaine question lancera une vraie recherche multi-sources (moteur Perplexity ou Gemini, au choix à la confirmation ; 2-20 min). Les suivantes utiliseront le modèle sélectionné avec le rapport en contexte.</span>
         <button class="dr-banner-cancel" id="drBannerCancel">Annuler</button>
       </div>
       <div class="composer-wrap"><div class="composer-box">
@@ -1936,7 +1936,14 @@ Exemple pour la chimie :
       </div>
       <div style="display:flex;flex-direction:column;gap:9px">
         <div class="dr-modal-row">
-          <label for="drModalEffort">Profondeur de raisonnement</label>
+          <label for="drModalEngine">Moteur de recherche</label>
+          <select id="drModalEngine">
+            <option value="perplexity">Perplexity — sonar-deep-research</option>
+            <option value="gemini">Gemini — Deep Research (preview)</option>
+          </select>
+        </div>
+        <div class="dr-modal-row">
+          <label for="drModalEffort"><span id="drModalEffortLabel">Profondeur de raisonnement</span></label>
           <select id="drModalEffort">
             <option value="low">Low — rapide, ~$0.20</option>
             <option value="medium" selected>Medium — équilibré</option>
@@ -1949,8 +1956,8 @@ Exemple pour la chimie :
         </div>
       </div>
       <div class="dr-cost-box" id="drModalCostBox">
-        <div>Modèle : <strong style="color:#41b9c9">sonar-deep-research</strong></div>
-        <div>Durée estimée : ~2 à 5 minutes (gardez l'onglet ouvert)</div>
+        <div>Modèle : <strong style="color:#41b9c9" id="drModalModelName">sonar-deep-research</strong></div>
+        <div id="drModalDuration">Durée estimée : ~2 à 5 minutes (gardez l'onglet ouvert)</div>
         <div>Coût estimé : <span class="dr-cost-big" id="drModalCostEst">$0.30 – $1.30</span></div>
       </div>
       <div class="dr-limit-warn" id="drModalLimitWarn" style="display:none"></div>
@@ -2107,7 +2114,8 @@ const DEF = {
   // 🔬 Recherche approfondie (Perplexity sonar-deep-research)
   deepResearchDailyLimit: 5,        // garde-fou anti-surcoût : nb max de recherches/jour (0 = illimité)
   deepResearchAcademic: true,       // search_mode "academic" → priorise les sources scientifiques
-  deepResearchEffort: 'medium'      // reasoning_effort : low | medium | high
+  deepResearchEffort: 'medium',     // reasoning_effort : low | medium | high
+  deepResearchEngine: 'perplexity'  // moteur de recherche approfondie : 'perplexity' | 'gemini'
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -5242,7 +5250,10 @@ function renderMessages() {
           const nbSearch = m._deepResearchSearches || 0;
           const detail = nbSrc ? ` · ${nbSrc} source${nbSrc > 1 ? 's' : ''}` : '';
           const sd = nbSearch ? ` · ${nbSearch} recherche${nbSearch > 1 ? 's' : ''}` : '';
-          badge.innerHTML = `<span class="dr-badge">🔬 Recherche approfondie — sonar-deep-research${detail}${sd}</span>`;
+          const engineName = m._deepResearchEngine === 'gemini'
+            ? `Gemini · ${m.model || 'deep-research'}`
+            : 'sonar-deep-research';
+          badge.innerHTML = `<span class="dr-badge">🔬 Recherche approfondie — ${engineName}${detail}${sd}</span>`;
         }
       } else {
         badge.innerHTML = providerBadgeHtml(m.provider);
@@ -5865,30 +5876,39 @@ function renderParams() {
 
     <!-- 🔬 RECHERCHE APPROFONDIE -->
     <div class="params-section">
-      <div class="params-section-title">🔬 Recherche approfondie (Perplexity)</div>
+      <div class="params-section-title">🔬 Recherche approfondie</div>
+
+      <div class="p-row">
+        <div class="p-row-head"><label>Moteur par défaut</label><span class="p-val" id="v_drengine">${P.deepResearchEngine === 'gemini' ? 'Gemini' : 'Perplexity'}</span></div>
+        <select id="r_drengine" style="width:100%;padding:6px 10px;background:#1e1e24;color:#e0e2e8;border:1px solid var(--line);border-radius:6px;font-size:13px">
+          <option value="perplexity" ${(!P.deepResearchEngine||P.deepResearchEngine==='perplexity')?'selected':''}>Perplexity — sonar-deep-research (~$0.30-1.30, 2-5 min)</option>
+          <option value="gemini" ${P.deepResearchEngine==='gemini'?'selected':''}>Gemini — Deep Research preview (~$1-7, 5-20 min)</option>
+        </select>
+        <div class="p-hint">Choix modifiable aussi à chaque lancement. Perplexity = sources académiques ; Gemini = navigation web large (index Google).</div>
+      </div>
 
       <div class="p-row">
         <div class="p-row-head"><label>Limite quotidienne</label><span class="p-val" id="v_drlimit">${(Number(P.deepResearchDailyLimit)||0) === 0 ? '∞' : Number(P.deepResearchDailyLimit)}</span></div>
         <input type="range" id="r_drlimit" min="0" max="30" step="1" value="${Number(P.deepResearchDailyLimit)||0}">
-        <div class="p-hint">Garde-fou anti-surcoût. 0 = illimité. Au-delà, confirmation supplémentaire requise.</div>
+        <div class="p-hint">Garde-fou anti-surcoût (tous moteurs confondus). 0 = illimité. Au-delà, confirmation supplémentaire requise.</div>
       </div>
 
       <div class="p-row">
         <div class="p-row-head"><label>Profondeur par défaut</label><span class="p-val" id="v_dreffort">${P.deepResearchEffort || 'medium'}</span></div>
         <select id="r_dreffort" style="width:100%;padding:6px 10px;background:#1e1e24;color:#e0e2e8;border:1px solid var(--line);border-radius:6px;font-size:13px">
-          <option value="low" ${P.deepResearchEffort==='low'?'selected':''}>Low — rapide, moins cher (~$0.20)</option>
+          <option value="low" ${P.deepResearchEffort==='low'?'selected':''}>Low — rapide, moins cher</option>
           <option value="medium" ${(!P.deepResearchEffort||P.deepResearchEffort==='medium')?'selected':''}>Medium — équilibré</option>
-          <option value="high" ${P.deepResearchEffort==='high'?'selected':''}>High — exhaustif, plus cher</option>
+          <option value="high" ${P.deepResearchEffort==='high'?'selected':''}>High — exhaustif (Gemini : agent Max)</option>
         </select>
-        <div class="p-hint">Réglage <code>reasoning_effort</code>. Modifiable aussi à chaque lancement.</div>
+        <div class="p-hint">Perplexity : <code>reasoning_effort</code>. Gemini : Low/Med = agent standard, High = agent Max. Modifiable à chaque lancement.</div>
       </div>
 
       <div class="p-toggle">
         <label><span class="p-toggle-icon">🎓</span> Mode académique par défaut</label>
         <label class="toggle-switch"><input type="checkbox" id="t_dracademic" ${P.deepResearchAcademic!==false?'checked':''}><span class="toggle-slider"></span></label>
       </div>
-      <div class="p-hint" style="margin-top:-8px;margin-bottom:4px"><code>search_mode: academic</code> — priorise les sources scientifiques (PubMed, arXiv, revues à comité de lecture). Recommandé pour la biomédecine.</div>
-      <div class="p-hint" style="margin-top:2px;color:#6b7280">Premier message = vraie recherche (sonar-deep-research). Questions suivantes = modèle sélectionné, rapport en contexte.</div>
+      <div class="p-hint" style="margin-top:-8px;margin-bottom:4px">Perplexity : <code>search_mode: academic</code>. Gemini : consigne de priorisation des sources peer-reviewed ajoutée au prompt. Recommandé pour la biomédecine.</div>
+      <div class="p-hint" style="margin-top:2px;color:#6b7280">Premier message = vraie recherche (moteur choisi). Questions suivantes = modèle sélectionné, rapport en contexte.</div>
     </div>
 
     <!-- V40 — RÉFLEXION ÉTENDUE GEMINI -->
@@ -5956,6 +5976,16 @@ function renderParams() {
   }
 
   // 🔬 Recherche approfondie — limite quotidienne, profondeur, mode académique
+  // 🔬 Recherche approfondie — moteur, limite quotidienne, profondeur, mode académique
+  const drEngineSel = document.getElementById('r_drengine');
+  if (drEngineSel) {
+    drEngineSel.onchange = () => {
+      S.params.deepResearchEngine = drEngineSel.value;
+      const lbl = document.getElementById('v_drengine');
+      if (lbl) lbl.textContent = drEngineSel.value === 'gemini' ? 'Gemini' : 'Perplexity';
+      save();
+    };
+  }
   bindSlider('r_drlimit', 'v_drlimit', 'deepResearchDailyLimit', v => Number(v) === 0 ? '∞' : v);
   const drEffortSel = document.getElementById('r_dreffort');
   if (drEffortSel) {
@@ -7033,7 +7063,13 @@ const TOKEN_PRICES = {
   // sonar-deep-research : base $2/M in, $8/M out — surcoûts (citation/reasoning/search) gérés dans computeCost
   'sonar-deep-research':        { input: 2.00,  output: 8.00 },
   'sonar-pro':                  { input: 3.00,  output: 15.00 },
-  'sonar':                      { input: 1.00,  output: 1.00 }
+  'sonar':                      { input: 1.00,  output: 1.00 },
+
+  // ── Gemini Deep Research (Interactions API, agentique) — base Gemini 3.1 Pro ──
+  // Coût réel = tokens (souvent indisponibles proprement en preview) + recherches.
+  // computeCost gère l'estimation forfaitaire si l'usage n'est pas exposé.
+  'gemini-deep-research':       { input: 2.50,  output: 15.00 },
+  'gemini-deep-research-max':   { input: 2.50,  output: 15.00 }
 };
 
 // Variable globale : usage du dernier appel API (rempli par les fonctions callXxx)
@@ -7103,6 +7139,19 @@ function computeCost(model, inputTokens, outputTokens, extra) {
     const reasoning = (e.reasoningTokens || 0) * 3.00 / 1_000_000;
     const search    = (e.searchQueries   || 0) * 0.005;
     return base + citation + reasoning + search;
+  }
+  // 🔭 Gemini Deep Research (agentique). Si l'usage en tokens est exposé, on calcule
+  // sur la base Gemini 3.1 Pro ($2.50/M in, $15/M out) ; sinon on retombe sur l'estimation
+  // forfaitaire de la doc Google : standard ~$2 (fourchette $1-3), Max ~$5 ($3-7).
+  if (model === 'gemini-deep-research' || model === 'gemini-deep-research-max') {
+    const isMax = model === 'gemini-deep-research-max';
+    if (inputTokens > 0 || outputTokens > 0) {
+      const e = extra || {};
+      const base   = (inputTokens * 2.50 + outputTokens * 15.00) / 1_000_000;
+      const search = (e.searchQueries || 0) * 0.005;
+      return base + search;
+    }
+    return isMax ? 5.00 : 2.00; // estimation forfaitaire (tokens non exposés)
   }
   const price = TOKEN_PRICES[model];
   if (!price) return 0;
@@ -7886,22 +7935,47 @@ function showDeepResearchConfirm(queryText) {
   return new Promise(resolve => {
     const overlay  = el('deepResearchModal');
     const qEl      = el('drModalQuery');
+    const engineEl = el('drModalEngine');
     const effortEl = el('drModalEffort');
     const acadEl   = el('drModalAcademic');
     const warnEl   = el('drModalLimitWarn');
     const confirmBtn = el('drModalConfirm');
     const cancelBtn  = el('drModalCancel');
+    const modelNameEl = el('drModalModelName');
+    const durationEl  = el('drModalDuration');
+    const costEstEl   = el('drModalCostEst');
+    const effortLabelEl = el('drModalEffortLabel');
 
     qEl.textContent = queryText && queryText.length ? queryText : '(question vide — joindre un fichier ?)';
+    engineEl.value  = S.params.deepResearchEngine  || 'perplexity';
     effortEl.value  = S.params.deepResearchEffort  || 'medium';
     acadEl.checked  = S.params.deepResearchAcademic !== false;
+
+    // Met à jour modèle / durée / coût affichés selon le moteur + la profondeur choisis
+    function refreshEstimates() {
+      const engine = engineEl.value;
+      const effort = effortEl.value;
+      if (engine === 'gemini') {
+        const isMax = effort === 'high';
+        modelNameEl.textContent = isMax ? 'deep-research-max-preview-04-2026' : 'deep-research-preview-04-2026';
+        durationEl.textContent  = 'Durée estimée : ~5 à 20 minutes (gardez l\'onglet ouvert)';
+        costEstEl.textContent   = isMax ? '$3 – $7' : '$1 – $3';
+        effortLabelEl.textContent = 'Profondeur (Low/Med = standard, High = Max)';
+      } else {
+        modelNameEl.textContent = 'sonar-deep-research';
+        durationEl.textContent  = 'Durée estimée : ~2 à 5 minutes (gardez l\'onglet ouvert)';
+        costEstEl.textContent   = '$0.30 – $1.30';
+        effortLabelEl.textContent = 'Profondeur de raisonnement';
+      }
+    }
+    refreshEstimates();
+    engineEl.onchange = refreshEstimates;
+    effortEl.onchange = refreshEstimates;
 
     // Vérifier la limite quotidienne
     const limit = Number(S.params.deepResearchDailyLimit) || 0;
     const used  = getDeepResearchUsageToday();
-    let blocked = false;
     if (limit > 0 && used >= limit) {
-      blocked = true;
       warnEl.style.display = 'block';
       warnEl.innerHTML = `⚠ Limite quotidienne atteinte (<strong>${used}/${limit}</strong> recherches aujourd'hui). Vous pouvez relever la limite dans ⚙ Paramètres → Recherche approfondie, ou confirmer quand même ci-dessous.`;
       confirmBtn.textContent = '🚀 Lancer quand même';
@@ -7923,13 +7997,15 @@ function showDeepResearchConfirm(queryText) {
       overlay.classList.remove('open');
       confirmBtn.onclick = null;
       cancelBtn.onclick = null;
-      // Réinitialiser le style du warn (réutilisé entre appels)
+      engineEl.onchange = null;
+      effortEl.onchange = null;
       warnEl.style.background = ''; warnEl.style.border = ''; warnEl.style.color = '';
     }
     confirmBtn.onclick = () => {
-      const result = { effort: effortEl.value, academic: acadEl.checked };
+      const result = { engine: engineEl.value, effort: effortEl.value, academic: acadEl.checked };
       // Persister les choix comme nouveaux défauts
-      S.params.deepResearchEffort  = result.effort;
+      S.params.deepResearchEngine   = result.engine;
+      S.params.deepResearchEffort   = result.effort;
       S.params.deepResearchAcademic = result.academic;
       save();
       cleanup();
@@ -8043,6 +8119,154 @@ async function callPerplexityDeepResearch(key, messages, opts) {
   return { content, sourceCount: (searchResults?.length || citations?.length || 0) };
 }
 
+/**
+ * 🔭 Gemini Deep Research (Interactions API, agentique, asynchrone).
+ * Flow : POST /v1beta/interactions (background:true, store:true) → id,
+ *        puis GET /v1beta/interactions/{id} en boucle jusqu'à completed/failed.
+ * Endpoint déjà CORS-OK (même host que les appels Gemini existants).
+ * Abortable via le bouton Stop. Met à jour l'indicateur de progression avec le temps écoulé.
+ *
+ * @param key   clé API Google Gemini
+ * @param messages  c.messages (historique ; aplati en texte pour l'input de recherche)
+ * @param opts  { effort, academic } — effort 'high' → agent Max, sinon standard
+ * Renvoie { content, sourceCount, modelUsed }. Remplit window._lastUsage.
+ */
+async function callGeminiDeepResearch(key, messages, opts) {
+  opts = opts || {};
+  const isMax = opts.effort === 'high';
+  const agent = isMax ? 'deep-research-max-preview-04-2026' : 'deep-research-preview-04-2026';
+  const modelKey = isMax ? 'gemini-deep-research-max' : 'gemini-deep-research';
+  const base = 'https://generativelanguage.googleapis.com/v1beta/interactions';
+  const headers = { 'Content-Type': 'application/json', 'x-goog-api-key': key, 'Api-Revision': '2026-05-20' };
+
+  // Construire l'input : prompt système actif + historique aplati en texte (le rapport
+  // antérieur éventuel reste en contexte). Deep Research accepte un input texte.
+  const sysPrompt = getActiveSystemPrompt();
+  const convoText = messages
+    .filter(m => m.role === 'user' || m.role === 'assistant')
+    .map(m => {
+      let txt;
+      if (Array.isArray(m.content)) {
+        txt = m.content.map(b => {
+          if (b.type === 'text') return b.text || '';
+          if (b.type === 'document' && b._extractedText) return `📄 ${b.title || 'document'} :\n${b._extractedText}`;
+          if (b.type === 'image') return '[image jointe — non transmise au moteur de recherche]';
+          if (b.type === 'document') return `[fichier joint : ${b.title || 'document'}]`;
+          return '';
+        }).filter(Boolean).join('\n\n');
+      } else txt = m.content;
+      return `${m.role === 'assistant' ? 'ASSISTANT' : 'UTILISATEUR'} : ${txt}`;
+    })
+    .join('\n\n');
+
+  let input = `${sysPrompt}\n\n--- Conversation ---\n${convoText}\n\n--- Tâche ---\nRéalise une recherche approfondie multi-sources répondant à la dernière question de l'utilisateur ci-dessus. Produis un rapport structuré et cité.`;
+  if (opts.academic) input += ` Priorise les sources scientifiques peer-reviewed et les sources primaires (PubMed, revues, clinicaltrials.gov), et cite-les.`;
+  // Bonne pratique recommandée par Google : cadrer la gestion des données manquantes
+  input += ` Si une donnée chiffrée n'est pas disponible, indique-le explicitement plutôt que de l'estimer.`;
+
+  const body = {
+    input,
+    agent,
+    background: true,   // requis pour l'exécution agentique (le serveur gère store côté agent)
+    agent_config: { type: 'deep-research', visualization: 'off' }
+  };
+
+  // ── Abort + progression ──
+  const controller = new AbortController();
+  _currentAbortController = controller;
+  const drProgLabel = document.getElementById('drProgressLabel');
+  const t0 = Date.now();
+  const tick = setInterval(() => {
+    if (drProgLabel) {
+      const s = Math.round((Date.now() - t0) / 1000);
+      drProgLabel.textContent = `Recherche Gemini en cours… ${Math.floor(s/60)}min ${String(s%60).padStart(2,'0')}s`;
+    }
+  }, 1000);
+
+  function stop() { clearInterval(tick); _currentAbortController = null; if (drProgLabel) drProgLabel.textContent = 'Recherche approfondie en cours…'; }
+
+  // 1) Création de la tâche
+  let createRes, createData;
+  try {
+    createRes = await fetch(base, { method: 'POST', headers, body: JSON.stringify(body), signal: controller.signal });
+  } catch (e) {
+    stop();
+    if (e.name === 'AbortError') { window._userAborted = false; throw new Error('⏹ Recherche annulée.'); }
+    throw e;
+  }
+  try { createData = await createRes.json(); } catch (e) { stop(); throw new Error(`Réponse Gemini illisible (HTTP ${createRes.status}).`); }
+  if (createData.error) { stop(); throw new Error(`[Gemini ${createData.error.code || 'API'}] ${createData.error.message || 'erreur'}`); }
+  if (!createRes.ok)    { stop(); throw new Error(`HTTP ${createRes.status} — échec du lancement Deep Research.`); }
+
+  // id : champ direct ou extrait du resource name "interactions/xxx"
+  const interactionId = createData.id || (createData.name ? createData.name.split('/').pop() : null);
+  if (!interactionId) { stop(); throw new Error('Aucun identifiant d\'interaction renvoyé par Gemini.'); }
+
+  // 2) Polling — toutes les 8 s, jusqu'à 45 min max (max research time Google = 60 min)
+  const POLL_MS = 8000;
+  const MAX_POLLS = Math.ceil(45 * 60 / 8); // ~337
+  let d = null;
+  for (let i = 0; i < MAX_POLLS; i++) {
+    await new Promise(r => setTimeout(r, POLL_MS));
+    let pollRes;
+    try {
+      pollRes = await fetch(`${base}/${interactionId}`, { method: 'GET', headers, signal: controller.signal });
+    } catch (e) {
+      if (e.name === 'AbortError') { stop(); window._userAborted = false; throw new Error('⏹ Recherche annulée.'); }
+      continue; // hoquet réseau transitoire → on retente au prochain tick
+    }
+    try { d = await pollRes.json(); } catch (e) { continue; }
+    const status = d.status || d.state;
+    if (status === 'completed' || status === 'succeeded') break;
+    if (status === 'failed' || status === 'error') {
+      stop();
+      throw new Error(`Recherche Gemini échouée : ${d.error?.message || d.error || 'raison inconnue'}`);
+    }
+    // sinon in_progress → on continue
+  }
+  stop();
+  if (!d) throw new Error('Aucune réponse du polling Gemini.');
+  const finalStatus = d.status || d.state;
+  if (finalStatus !== 'completed' && finalStatus !== 'succeeded') {
+    throw new Error('La recherche Gemini n\'a pas abouti dans le délai imparti (45 min).');
+  }
+
+  // 3) Extraction du rapport : output_text, sinon agrégation des steps model_output
+  let content = d.output_text || d.outputText || '';
+  if (!content && Array.isArray(d.steps)) {
+    content = d.steps
+      .filter(s => (s.type === 'model_output' || s.type === 'message'))
+      .map(s => (s.content || []).filter(c => c.type === 'text').map(c => c.text || '').join('\n'))
+      .filter(Boolean).join('\n\n');
+  }
+  if (!content) throw new Error('Rapport Gemini vide.');
+
+  // Sources : champ citations (liste d'objets {uri/url/title} ou de chaînes)
+  const citations = Array.isArray(d.citations) ? d.citations : null;
+  let sourceCount = 0;
+  if (citations && citations.length && !/##\s*Sources/i.test(content)) {
+    const lines = citations.map((c, i) => {
+      if (typeof c === 'string') return `${i + 1}. ${c}`;
+      const title = c.title || c.uri || c.url || `Source ${i + 1}`;
+      const url   = c.uri || c.url || '';
+      return url ? `${i + 1}. [${title}](${url})` : `${i + 1}. ${title}`;
+    });
+    content += `\n\n## Sources\n\n${lines.join('\n')}`;
+    sourceCount = citations.length;
+  }
+
+  // Usage / coût : tokens souvent non exposés proprement en preview → estimation forfaitaire gérée par computeCost
+  const um = d.usage_metadata || d.usageMetadata || d.usage || {};
+  window._lastUsage = {
+    model: modelKey,
+    input:  um.prompt_token_count || um.promptTokenCount || um.input_tokens || 0,
+    output: um.candidates_token_count || um.candidatesTokenCount || um.output_tokens || 0,
+    extra: { searchQueries: um.num_search_queries || 0 }
+  };
+
+  return { content, sourceCount, modelUsed: modelKey };
+}
+
 // ─────────────────────────────────────────────────
 // ENVOI — aiguillage selon le provider
 // ─────────────────────────────────────────────────
@@ -8053,11 +8277,13 @@ async function send() {
   // 🔬 État du mode Recherche approfondie capturé en début de tour (one-shot)
   const _drArmed = (typeof getDeepResearchArmed === 'function') && getDeepResearchArmed();
   const _pplxKey = (apiKeysByProvider["PERPLEXITY"] || "").trim();
+  const _gemKey  = (apiKeysByProvider["GOOGLE GEMINI"] || "").trim();
 
   if (_drArmed) {
-    // Validation clé Perplexity uniquement (le 1er message ira sur sonar-deep-research)
-    if (!_pplxKey) {
-      showApiError(`⚠ Recherche approfondie : clé API Perplexity manquante. Cliquez sur 🔑 pour l'ajouter (format pplx-…).`);
+    // Le moteur (Perplexity ou Gemini) est choisi dans le popup → ici on vérifie juste
+    // qu'au moins une des deux clés existe. La validation fine se fait après le popup.
+    if (!_pplxKey && !_gemKey) {
+      showApiError(`⚠ Recherche approfondie : aucune clé API Perplexity ni Google Gemini configurée. Cliquez sur 🔑 pour en ajouter une.`);
       return;
     }
   } else if (isTripleCheckOn()) {
@@ -8090,6 +8316,15 @@ async function send() {
     if (!_drOpts) {
       console.log('[BrAInShift] 🔬 Recherche approfondie annulée par l\'utilisateur (popup).');
       return; // le texte reste dans le textarea, le mode reste armé
+    }
+    // Validation de la clé du moteur choisi (avant de pousser le message)
+    if (_drOpts.engine === 'gemini' && !_gemKey) {
+      showApiError(`⚠ Recherche approfondie Gemini : clé API Google Gemini manquante. Cliquez sur 🔑 pour l'ajouter.`);
+      return;
+    }
+    if (_drOpts.engine === 'perplexity' && !_pplxKey) {
+      showApiError(`⚠ Recherche approfondie Perplexity : clé API manquante (format pplx-…). Cliquez sur 🔑.`);
+      return;
     }
   }
 
@@ -8218,26 +8453,36 @@ async function send() {
     // ── 🔬 RECHERCHE APPROFONDIE : si armée, on intercepte ici (avant Triple Check) ──
     const _tripleCheckActiveThisTurn = !_drArmed && isTripleCheckOn();
     if (_drArmed) {
-      console.log('[BrAInShift] 🔬 Lancement sonar-deep-research (effort=' + _drOpts.effort + ', academic=' + _drOpts.academic + ')…');
-      // Indicateur de progression dédié
+      const _engine = _drOpts.engine || 'perplexity';
+      console.log(`[BrAInShift] 🔬 Lancement recherche approfondie — moteur=${_engine}, effort=${_drOpts.effort}, academic=${_drOpts.academic}…`);
       const drProg = document.getElementById('drProgress');
+      const drProgLabel = document.getElementById('drProgressLabel');
       if (drProg) drProg.classList.add('visible');
+      if (drProgLabel) drProgLabel.textContent = _engine === 'gemini' ? 'Recherche Gemini en cours…' : 'Recherche Perplexity en cours…';
+      const _drProvider = _engine === 'gemini' ? "GOOGLE GEMINI" : "PERPLEXITY";
       try {
-        const drRes = await callPerplexityDeepResearch(_pplxKey, c.messages, _drOpts);
+        let drRes, drModel;
+        if (_engine === 'gemini') {
+          drRes = await callGeminiDeepResearch(_gemKey, c.messages, _drOpts);
+          drModel = drRes.modelUsed; // gemini-deep-research ou -max
+        } else {
+          drRes = await callPerplexityDeepResearch(_pplxKey, c.messages, _drOpts);
+          drModel = DEEP_RESEARCH_MODEL;
+        }
         responseContent = drRes.content;
-        // Coût précis (base + citation + reasoning + search)
         let _drCost = 0;
-        if (window._lastUsage && window._lastUsage.model === DEEP_RESEARCH_MODEL) {
-          _drCost = recordApiCall(DEEP_RESEARCH_MODEL, window._lastUsage.input, window._lastUsage.output, 'deepResearch', window._lastUsage.extra);
+        if (window._lastUsage && window._lastUsage.model === drModel) {
+          _drCost = recordApiCall(drModel, window._lastUsage.input, window._lastUsage.output, 'deepResearch', window._lastUsage.extra);
         }
         incrementDeepResearchUsage();
-        console.log(`[BrAInShift] 🔬 Recherche terminée — ${fmtUSD(_drCost)} (${drRes.sourceCount} source(s), ${window._lastUsage?.extra?.searchQueries || 0} recherche(s))`);
+        console.log(`[BrAInShift] 🔬 Recherche terminée (${_engine}) — ${fmtUSD(_drCost)} (${drRes.sourceCount} source(s))`);
         c.messages.push({
           role: "assistant",
           content: responseContent,
-          provider: "PERPLEXITY",
-          model: DEEP_RESEARCH_MODEL,
+          provider: _drProvider,
+          model: drModel,
           _deepResearch: true,
+          _deepResearchEngine: _engine,
           _deepResearchSources: drRes.sourceCount,
           _deepResearchSearches: window._lastUsage?.extra?.searchQueries || 0,
           _cost: _drCost,
@@ -8246,20 +8491,21 @@ async function send() {
         });
       } catch (e) {
         console.error('[BrAInShift] 🔬 Recherche approfondie échec:', e.message);
-        showApiError(`🔬 Recherche approfondie : ${e.message}`);
+        showApiError(`🔬 Recherche approfondie (${_engine}) : ${e.message}`);
         c.messages.push({
           role: "assistant",
           content: "❌ Recherche approfondie échouée : " + e.message,
-          provider: "PERPLEXITY",
-          model: DEEP_RESEARCH_MODEL,
+          provider: _drProvider,
+          model: _engine === 'gemini' ? (_drOpts.effort === 'high' ? 'gemini-deep-research-max' : 'gemini-deep-research') : DEEP_RESEARCH_MODEL,
           _deepResearch: true,
+          _deepResearchEngine: _engine,
           _deepResearchError: true
         });
       } finally {
         if (drProg) drProg.classList.remove('visible');
+        if (drProgLabel) drProgLabel.textContent = 'Recherche approfondie en cours…';
       }
       // One-shot : on désarme automatiquement après la recherche.
-      // Les questions suivantes utiliseront le modèle sélectionné, avec le rapport en contexte.
       setDeepResearchArmed(false);
       // Skip Triple Check + routage normal ci-dessous
     } else if (_tripleCheckActiveThisTurn) {
