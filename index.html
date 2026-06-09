@@ -6096,11 +6096,11 @@ function buildRequestParams(model, apiType) {
   }
 
   // ── GPT-5.x via Responses API ───────────────────────────────
+  // Ce sont des modèles de raisonnement : OpenAI n'accepte QUE la température
+  // par défaut (1) et rejette toute autre valeur ("Unsupported parameter: temperature"),
+  // ainsi que top_p custom. On omet donc ces paramètres → l'API applique son défaut.
   if (apiType === "responses") {
-    const out = { max_output_tokens: maxT, ...stop };
-    if (valid(temp, 0, 2)) out.temperature = temp;
-    if (valid(topP, 0, 1) && topP > 0) out.top_p = topP;
-    return out;
+    return { max_output_tokens: maxT, ...stop };
   }
 
   // ── Anthropic Claude ────────────────────────────────────────
@@ -6252,6 +6252,60 @@ async function fetchWithRetry(url, options, maxRetries = 3) {
 }
 
 /**
+ * V44 — Auto-adaptation des paramètres selon le modèle.
+ * Certains modèles (GPT-5 de raisonnement, o-series…) rejettent des paramètres
+ * comme temperature, top_p, penalties. Plutôt qu'une matrice codée en dur (fragile,
+ * car gpt-5.4-mini accepte temperature alors que gpt-5.5 non), on détecte le paramètre
+ * refusé dans l'erreur de l'API, on le retire, et on relance — pour TOUT modèle.
+ */
+const _unsupportedParamsByModel = {}; // cache session : model → Set(paramètres refusés)
+
+function unsupportedParamFromError(errObj) {
+  if (!errObj) return null;
+  const code = errObj.code || '';
+  const msg  = errObj.message || '';
+  const looksUnsupported =
+    code === 'unsupported_parameter' || code === 'unsupported_value' ||
+    /unsupported (parameter|value)/i.test(msg) ||
+    /is not supported with this model/i.test(msg) ||
+    /does not support .* with this model/i.test(msg);
+  if (!looksUnsupported) return null;
+  if (errObj.param) return errObj.param;           // champ structuré OpenAI (le plus fiable)
+  const m = msg.match(/'([a-zA-Z_]+)'/);           // sinon, nom entre quotes dans le message
+  return m ? m[1] : null;
+}
+
+/**
+ * POST JSON avec retrait automatique des paramètres non supportés.
+ * `body` est muté (paramètres fautifs supprimés). Renvoie le JSON parsé.
+ */
+async function postJsonAdaptingParams(url, headers, body) {
+  // Pré-retirer les paramètres déjà connus comme refusés pour ce modèle (évite un aller-retour)
+  const known = _unsupportedParamsByModel[body.model];
+  if (known) known.forEach(p => { if (p in body) delete body[p]; });
+
+  const stripped = [];
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const r = await fetchWithRetry(url, { method: "POST", headers, body: JSON.stringify(body) });
+    const d = await r.json();
+    const bad = d.error ? unsupportedParamFromError(d.error) : null;
+    if (bad && (bad in body)) {
+      delete body[bad];
+      if (!_unsupportedParamsByModel[body.model]) _unsupportedParamsByModel[body.model] = new Set();
+      _unsupportedParamsByModel[body.model].add(bad);
+      stripped.push(bad);
+      console.warn(`[BrAInShift] ⚙ '${bad}' non supporté par ${body.model} → retiré, nouvelle tentative.`);
+      continue;
+    }
+    if (stripped.length) console.log(`[BrAInShift] ⚙ Paramètres auto-adaptés pour ${body.model} : ${stripped.join(', ')}`);
+    return d;
+  }
+  // Garde-fou : si 6 retraits n'ont pas suffi, dernier essai et on renvoie tel quel
+  const r = await fetchWithRetry(url, { method: "POST", headers, body: JSON.stringify(body) });
+  return await r.json();
+}
+
+/**
  * OpenAI & DeepSeek utilisent le format Chat Completions.
  * DeepSeek est compatible OpenAI mais sur son propre endpoint.
  */
@@ -6287,16 +6341,10 @@ async function callOpenAICompatible(endpoint, key, model, messages, apiType) {
   // Note : web search n'est PAS supporté en Chat Completions standard.
   // Pour GPT-4.x avec web search → routé vers Responses API dans send().
 
-  const r = await fetchWithRetry(endpoint, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": "Bearer " + key
-    },
-    body: JSON.stringify(body)
-  });
-
-  const d = await r.json();
+  const d = await postJsonAdaptingParams(endpoint, {
+    "Content-Type": "application/json",
+    "Authorization": "Bearer " + key
+  }, body);
 
   // Gestion d'erreur structurée
   if (d.error) throw new Error(`[${d.error.code || "API"}] ${d.error.message}`);
@@ -6638,16 +6686,10 @@ async function callOpenAIResponses(key, model, messages) {
     body.tools = [{ type: "web_search", search_context_size: "medium" }];
   }
 
-  const r = await fetchWithRetry("https://api.openai.com/v1/responses", {
-    method: "POST",
-    headers: {
-      "Content-Type":  "application/json",
-      "Authorization": "Bearer " + key
-    },
-    body: JSON.stringify(body)
-  });
-
-  const d = await r.json();
+  const d = await postJsonAdaptingParams("https://api.openai.com/v1/responses", {
+    "Content-Type":  "application/json",
+    "Authorization": "Bearer " + key
+  }, body);
   if (d.error) throw new Error(`[OpenAI ${d.error.code || "API"}] ${d.error.message}`);
 
   // V17 — Capture de l'usage pour le tracking de coût
