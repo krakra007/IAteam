@@ -3403,6 +3403,9 @@ function renameChat(id) {
 function deleteChat(id) {
   const chatToDelete = S.chats.find(c => c.id === id);
   const chatTitle = chatToDelete?.title || 'inconnu';
+  // [FIX ANTI-PERTE] Confirmation explicite (comme pour les projets) — évite la suppression
+  // accidentelle, surtout sur tactile où le menu s'ouvre par appui long.
+  if (!confirm(`Supprimer définitivement la conversation « ${chatTitle} » ?\n\nCette action crée un marqueur de suppression propagé à toutes vos machines.`)) return;
   S.chats = S.chats.filter(c => c.id !== id);
   if (S.activeChat === id) S.activeChat = S.chats[0]?.id || null;
   // V42 — Tombstone : marquer la suppression pour empêcher le pull de la ramener.
@@ -9991,17 +9994,38 @@ async function ghPull() {
     // Filtrer chats/projets tombstonés du pull
     let _filteredChats = 0;
     if (raw.chats) {
-      S.chats = raw.chats.filter(c => {
-        if (S.tombstones.chats[c.id]) { _filteredChats++; return false; }
-        return true;
-      });
+      // [FIX ANTI-PERTE] Fusion (union) au lieu de remplacement : ne JAMAIS supprimer une
+      // conversation présente seulement en local (jamais poussée). Même logique que ghPullSilent :
+      // tombstone prioritaire, sinon on conserve la version la plus complète (plus de messages).
+      const remoteMap = new Map(raw.chats.map(c => [c.id, c]));
+      const localMap  = new Map(S.chats.map(c => [c.id, c]));
+      const mergedChats = [];
+      const allIds = new Set([...remoteMap.keys(), ...localMap.keys()]);
+      for (const id of allIds) {
+        if (S.tombstones.chats[id]) { _filteredChats++; continue; }
+        const local = localMap.get(id), remote = remoteMap.get(id);
+        if (local && !remote)      mergedChats.push(local);
+        else if (remote && !local) mergedChats.push(remote);
+        else {
+          const ll = Array.isArray(local.messages)  ? local.messages.length  : 0;
+          const rl = Array.isArray(remote.messages) ? remote.messages.length : 0;
+          mergedChats.push(ll >= rl ? local : remote);
+        }
+      }
+      S.chats = mergedChats;
     }
     let _filteredProjs = 0;
     if (raw.projects) {
-      S.projects = raw.projects.filter(p => {
-        if (S.tombstones.projects[p.id]) { _filteredProjs++; return false; }
-        return true;
-      });
+      // [FIX ANTI-PERTE] Union aussi pour les projets : on préserve les projets locaux non poussés.
+      const remoteMap = new Map(raw.projects.map(p => [p.id, p]));
+      const localMap  = new Map(S.projects.map(p => [p.id, p]));
+      const mergedProj = [];
+      const allIds = new Set([...remoteMap.keys(), ...localMap.keys()]);
+      for (const id of allIds) {
+        if (S.tombstones.projects[id]) { _filteredProjs++; continue; }
+        mergedProj.push(localMap.get(id) || remoteMap.get(id));
+      }
+      S.projects = mergedProj;
     }
     if (_filteredChats > 0 || _filteredProjs > 0) {
       console.log(`[BrAInShift] 🪦 Pull manuel : ${_filteredChats} chat(s) et ${_filteredProjs} projet(s) bloqués par tombstones`);
