@@ -3018,6 +3018,23 @@ function renderApiKeys() {
       }
     });
 
+    // [FIX PERPLEXITY] Auto-enregistrement dès qu'on quitte le champ (blur/Entrée),
+    // sans dépendre du bouton global. Écrit la clé en mémoire ET dans le coffre chiffré.
+    input.addEventListener("change", async () => {
+      const v = input.value.trim();
+      apiKeysByProvider[name] = v;
+      await persistVault();
+      const statusEl = el("keyStatus_" + name.replace(/\s/g, "_"));
+      if (statusEl) {
+        const dot  = statusEl.querySelector(".key-dot");
+        const text = statusEl.querySelector("span:last-child");
+        dot.style.background = v ? "#22c55e" : "#6b7280";
+        text.style.color     = v ? "#22c55e" : "#6b7280";
+        text.textContent     = v ? "✓ Enregistrée" : "Non configurée";
+      }
+      input.classList.toggle("has-key", !!v);
+    });
+
     // Bouton Tester
     const testBtn = row.querySelector("[data-test]");
     testBtn.onclick = () => testApiKey(name, input.value.trim());
