@@ -2602,6 +2602,84 @@ const providerKeysEl = el("providerKeys");
 const apiKeysByProvider = JSON.parse(localStorage.getItem("apiKeysByProvider") || "{}");
 PROVIDERS.forEach(p => { if (!(p in apiKeysByProvider)) apiKeysByProvider[p] = ""; });
 
+// ============================================================
+// COFFRE CHIFFRÉ DES CLÉS API — AES-GCM 256 + PBKDF2 (Web Crypto)
+// Les clés ne sont JAMAIS écrites en clair dans localStorage.
+// ============================================================
+const VAULT_STORE = "apiKeysVault";   // remplace l'ancien "apiKeysByProvider"
+const KDF_ITER    = 250000;           // ↑ = plus sûr mais plus lent au déverrouillage
+
+let _vaultKey     = null;   // CryptoKey dérivée — en mémoire seulement, jamais persistée
+let _vaultSaltB64 = null;   // sel PBKDF2 (non secret) — réutilisé entre les sauvegardes
+
+const _b64 = {
+  enc: buf => btoa(String.fromCharCode(...new Uint8Array(buf))),
+  dec: str => Uint8Array.from(atob(str), c => c.charCodeAt(0)),
+};
+
+async function _deriveKey(passphrase, saltBytes) {
+  const base = await crypto.subtle.importKey(
+    "raw", new TextEncoder().encode(passphrase), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey(
+    { name: "PBKDF2", salt: saltBytes, iterations: KDF_ITER, hash: "SHA-256" },
+    base, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+}
+
+async function _encryptVault(obj) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const pt = new TextEncoder().encode(JSON.stringify(obj));
+  const ct = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, _vaultKey, pt);
+  return { salt: _vaultSaltB64, iv: _b64.enc(iv), ct: _b64.enc(ct) };
+}
+
+// Déverrouille (ou crée) le coffre au démarrage. Remplit apiKeysByProvider en mémoire.
+async function unlockVault() {
+  const raw = localStorage.getItem(VAULT_STORE);
+
+  // ── Premier usage : pas encore de coffre → on en crée un ──
+  if (!raw) {
+    const pass = prompt("🔐 Créez une passphrase pour protéger vos clés API\n(elle ne sera jamais stockée — retenez-la bien) :");
+    if (!pass) return false;                     // annulé → clés non persistées cette session
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    _vaultSaltB64 = _b64.enc(salt);
+    _vaultKey = await _deriveKey(pass, salt);
+    // Migration : récupère d'éventuelles clés en clair de l'ancienne version
+    const legacy = JSON.parse(localStorage.getItem("apiKeysByProvider") || "{}");
+    Object.assign(apiKeysByProvider, legacy);
+    localStorage.setItem(VAULT_STORE, JSON.stringify(await _encryptVault(apiKeysByProvider)));
+    localStorage.removeItem("apiKeysByProvider");   // on efface le clair résiduel
+    return true;
+  }
+
+  // ── Coffre existant : on déchiffre (3 essais) ──
+  const stored = JSON.parse(raw);
+  _vaultSaltB64 = stored.salt;
+  const saltBytes = _b64.dec(stored.salt);
+  for (let i = 0; i < 3; i++) {
+    const pass = prompt(i === 0
+      ? "🔓 Passphrase pour déverrouiller vos clés API :"
+      : "❌ Passphrase incorrecte. Réessayez :");
+    if (!pass) return false;
+    try {
+      _vaultKey = await _deriveKey(pass, saltBytes);
+      const pt = await crypto.subtle.decrypt(
+        { name: "AES-GCM", iv: _b64.dec(stored.iv) }, _vaultKey, _b64.dec(stored.ct));
+      Object.assign(apiKeysByProvider, JSON.parse(new TextDecoder().decode(pt)));
+      return true;                                 // déchiffrement réussi = bonne passphrase
+    } catch (e) {
+      _vaultKey = null;                            // mauvaise passphrase → GCM lève une erreur
+    }
+  }
+  alert("Trop de tentatives — clés verrouillées pour cette session.");
+  return false;
+}
+
+// Réécrit le coffre chiffré. À appeler à chaque modification des clés.
+async function persistVault() {
+  if (!_vaultKey) return;                          // coffre non déverrouillé → on n'écrit rien
+  localStorage.setItem(VAULT_STORE, JSON.stringify(await _encryptVault(apiKeysByProvider)));
+}
+
 // ─────────────────────────────────────────────────
 // SAVE
 // ─────────────────────────────────────────────────
@@ -2629,7 +2707,7 @@ function save() {
     localStorage.setItem("activeProject",      S.activeProject || "");
     localStorage.setItem("model",              S.model);
     localStorage.setItem("params",             JSON.stringify(S.params));
-    localStorage.setItem("apiKeysByProvider",  JSON.stringify(apiKeysByProvider));
+    // [SÉCURITÉ] Clés API retirées de save() : persistées chiffrées via persistVault()
     localStorage.setItem("favoriteModels",     JSON.stringify(S.favoriteModels || []));
     // V42 — Persister les tombstones pour qu'ils survivent au rechargement
     localStorage.setItem("tombstones",         JSON.stringify(S.tombstones || { chats: {}, projects: {} }));
@@ -10444,6 +10522,7 @@ el("saveApiKeyBtn").onclick = async () => {
     apiKeysByProvider[inp.dataset.provider] = inp.value.trim();
   });
   save();
+  await persistVault();   // [SÉCURITÉ] chiffre et stocke les clés (AES-GCM)
   // Feedback visuel bouton vert
   const btn = el("saveApiKeyBtn");
   btn.textContent = "✅ Clés enregistrées !";
@@ -10774,6 +10853,8 @@ save();
 renderApiKeys();
 renderModels();
 renderParams();
+// [SÉCURITÉ] Déverrouillage du coffre chiffré au lancement, puis rafraîchit l'affichage des clés
+unlockVault().then(ok => { if (ok) renderApiKeys(); });
 // Appliquer les quotas de conversations au démarrage (gère les états déjà au-dessus de la limite)
 enforceChatLimitsWithToast();
 // V32 — Migrer costStatsDaily depuis l'ancien format mono-machine si nécessaire
