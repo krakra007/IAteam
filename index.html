@@ -2086,6 +2086,18 @@ const MODEL_GROUPS = [
       "ministral-8b-latest",      // Ministral 8B — efficace, vision, $0.10/M in
       "open-mistral-nemo",        // Nemo 12B — multilingue, open-source
     ]
+  },
+  // ── Perplexity (Sonar — recherche web intégrée) ───
+  // API compatible OpenAI (Chat Completions) — endpoint https://api.perplexity.ai/chat/completions
+  // ⚠ Les appels directs depuis le navigateur peuvent être bloqués par CORS (cf. test de clé).
+  // Le modèle sonar-deep-research reste géré par la fonction dédiée "Recherche approfondie".
+  {
+    label: "🔎 Perplexity — Sonar (recherche web)",
+    models: [
+      "sonar",                 // recherche rapide, économique
+      "sonar-pro",             // recherche avancée, réponses plus longues + citations
+      "sonar-reasoning-pro",   // raisonnement avancé avec recherche web (émet une section <think>)
+    ]
   }
 ];
 
@@ -3995,6 +4007,17 @@ function latexToUnicodeHtml(latex) {
 function formatAssistantContent(text) {
   if (!text) return '';
 
+  // [Reasoning] Extraire les sections <think>…</think> AVANT le nettoyage HTML
+  // (sanitizeModelResponse renvoie textContent et supprimerait les balises). On remplace
+  // chaque bloc par un marqueur texte, réinjecté en bloc dépliable après le rendu markdown.
+  const _thinkBlocks = [];
+  text = text.replace(/<think>([\s\S]*?)<\/think>/gi, (_, inner) => {
+    const t = inner.trim();
+    if (!t) return '';
+    _thinkBlocks.push(t);
+    return `\n\nXTHINKMARK${_thinkBlocks.length - 1}ENDX\n\n`;
+  });
+
   // Nettoyer le HTML brut éventuel du modèle
   text = sanitizeModelResponse(text);
 
@@ -4233,6 +4256,19 @@ function formatAssistantContent(text) {
   html = html.replace(/(?<!<[^>]*)\^\{([^}]{1,10})\}/g, (_, s) =>
     [...s].map(c => supMap2[c.toLowerCase()] || c).join('')
   );
+
+  // [Reasoning] Réinjecter les sections <think> en blocs dépliables, après le rendu markdown.
+  if (_thinkBlocks.length) {
+    _thinkBlocks.forEach((t, i) => {
+      const rendered = (typeof marked !== 'undefined')
+        ? marked.parse(t, { gfm: true, breaks: false })
+        : t.replace(/\n/g, '<br>');
+      const details = `<details class="thinking-block"><summary>💭 Raisonnement du modèle</summary>${rendered}</details>`;
+      // marked enveloppe souvent le marqueur isolé dans un <p> : on gère les deux cas.
+      html = html.replace(new RegExp(`<p>\\s*XTHINKMARK${i}ENDX\\s*</p>`, 'g'), details)
+                 .replace(new RegExp(`XTHINKMARK${i}ENDX`, 'g'), details);
+    });
+  }
 
   return html;
 }
@@ -5863,6 +5899,15 @@ function renderParams() {
     caps.tempMax     = 1.5;      // Mistral: max 1.5
     caps.top_p       = true;
     // Mistral : pas de penalties, pas de top_k, pas de web search API native
+  } else if (provider === 'PERPLEXITY') {
+    caps.temperature = true;
+    caps.tempMax     = 2;        // Perplexity Sonar : 0–2
+    caps.top_p       = true;
+    caps.top_k       = true;
+    // Recherche web NATIVE et toujours active (intégrée à Sonar) — pas un toggle désactivable.
+    caps.webSearchNative = true;
+    // Le raisonnement dépend du MODÈLE choisi (sonar-reasoning-pro), pas d'un toggle.
+    caps.reasoningNative = /reasoning/i.test(m);
   }
 
   // Helpers UI
@@ -5935,14 +5980,14 @@ function renderParams() {
     </div>
 
     <!-- RÉFLEXION ÉTENDUE -->
-    <div class="params-section" ${opac(caps.thinking)}>
+    <div class="params-section" ${opac(caps.thinking || caps.reasoningNative)}>
       <div class="params-section-title">Réflexion étendue (Thinking)</div>
 
       <div class="p-toggle">
         <label>Activer le thinking</label>
-        <label class="toggle-switch"><input type="checkbox" id="t_think" ${caps.thinking && P.thinking?'checked':''} ${dis(caps.thinking)}><span class="toggle-slider"></span></label>
+        <label class="toggle-switch"><input type="checkbox" id="t_think" ${(caps.thinking && P.thinking) || caps.reasoningNative?'checked':''} ${dis(caps.thinking)}><span class="toggle-slider"></span></label>
       </div>
-      <div class="p-hint" style="margin-top:-8px;margin-bottom:10px">${caps.thinking ? 'Claude montre son raisonnement. Sonnet 4.5+.' : `Non supporté par ${provider === 'ANTHROPIC' ? 'ce modèle Claude' : provider}.`}</div>
+      <div class="p-hint" style="margin-top:-8px;margin-bottom:10px">${caps.thinking ? 'Claude montre son raisonnement. Sonnet 4.5+.' : caps.reasoningNative ? 'Raisonnement natif de ce modèle Sonar (chaîne de pensée toujours active). Non réglable ici.' : caps.webSearchNative ? 'Pour activer le raisonnement, choisissez le modèle sonar-reasoning-pro.' : `Non supporté par ${provider === 'ANTHROPIC' ? 'ce modèle Claude' : provider}.`}</div>
 
       <div class="p-row" id="thinkingBudgetRow" style="display:${caps.thinking && P.thinking?'block':'none'}">
         <div class="p-row-head"><label>Niveau d'effort</label><span class="p-val" id="v_thinkbudget">${P.thinkingEffort || 'high'}</span></div>
@@ -5962,14 +6007,14 @@ function renderParams() {
     </div>
 
     <!-- RECHERCHE WEB -->
-    <div class="params-section" ${opac(caps.webSearch)}>
+    <div class="params-section" ${opac(caps.webSearch || caps.webSearchNative)}>
       <div class="params-section-title">Recherche Web (Web Search)</div>
 
       <div class="p-toggle">
         <label><span class="p-toggle-icon">🌐</span> Activer la recherche web</label>
-        <label class="toggle-switch"><input type="checkbox" id="t_websearch" ${caps.webSearch && P.webSearch?'checked':''} ${dis(caps.webSearch)}><span class="toggle-slider"></span></label>
+        <label class="toggle-switch"><input type="checkbox" id="t_websearch" ${(caps.webSearch && P.webSearch) || caps.webSearchNative?'checked':''} ${dis(caps.webSearch)}><span class="toggle-slider"></span></label>
       </div>
-      <div class="p-hint" style="margin-top:-8px;margin-bottom:4px">${caps.webSearch ? 'Le modèle cherchera sur internet quand c\'est pertinent.<br>Supporté : Claude, GPT-4/5, Gemini.' : `Non supporté par ${provider}.`}</div>
+      <div class="p-hint" style="margin-top:-8px;margin-bottom:4px">${caps.webSearch ? 'Le modèle cherchera sur internet quand c\'est pertinent.<br>Supporté : Claude, GPT-4/5, Gemini.' : caps.webSearchNative ? 'Recherche web native, intégrée à Sonar — toujours active (non désactivable).' : `Non supporté par ${provider}.`}</div>
     </div>
 
     <!-- 🔬 RECHERCHE APPROFONDIE -->
@@ -6281,6 +6326,18 @@ function buildRequestParams(model, apiType) {
     const out = { max_tokens: maxT, ...stop };
     if (valid(temp, 0, 1.5)) out.temperature = temp;
     if (valid(topP, 0, 1) && topP > 0) out.top_p = topP;
+    return out;
+  }
+
+  // ── Perplexity Sonar ────────────────────────────────────────
+  // max_tokens (PAS max_completion_tokens), temperature (0–2), top_p, top_k.
+  // On omet les penalties (sémantique particulière chez Perplexity) et seed
+  // (non supporté) pour éviter tout rejet de paramètre.
+  if (apiType === "perplexity") {
+    const out = { max_tokens: maxT, ...stop };
+    if (valid(temp, 0, 2)) out.temperature = temp;
+    if (valid(topP, 0, 1) && topP > 0) out.top_p = topP;
+    if (topK > 0) out.top_k = topK;
     return out;
   }
 
@@ -7695,6 +7752,8 @@ async function callModelForTripleCheck(modelName, messages) {
       result = await callOpenAICompatible("https://api.mistral.ai/v1/chat/completions", key, modelName, messages, "mistral");
     } else if (provider === "DEEPSEEK") {
       result = await callOpenAICompatible("https://api.deepseek.com/chat/completions", key, modelName, messages, "deepseek");
+    } else if (provider === "PERPLEXITY") {
+      result = await callOpenAICompatible("https://api.perplexity.ai/chat/completions", key, modelName, messages, "perplexity");
     } else if (isGPT5Model(modelName)) {
       result = await callOpenAIResponses(key, modelName, messages);
     } else {
@@ -8674,6 +8733,13 @@ async function send() {
       responseContent = await callOpenAICompatible(
         "https://api.deepseek.com/chat/completions",
         key, S.model, c.messages, "deepseek"
+      );
+
+    } else if (provider === "PERPLEXITY") {
+      // Perplexity Sonar — API compatible OpenAI (Chat Completions), recherche web intégrée
+      responseContent = await callOpenAICompatible(
+        "https://api.perplexity.ai/chat/completions",
+        key, S.model, c.messages, "perplexity"
       );
 
     } else if (isGPT5Model(S.model)) {
