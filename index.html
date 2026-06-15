@@ -2759,6 +2759,17 @@ function isLockedProject(p) { return !!lockedModelForProject(p); }
 // Compat : ancien nom conservé (encore utilisé en aval) = projet figé.
 function isShortAnswersProject(p) { return isLockedProject(p); }
 
+// Parmi les projets figés, ceux où le profil « Short » est VERROUILLÉ (non
+// modifiable). Les autres projets figés (ex. Dust) n'ont « Short » qu'EN DÉFAUT :
+// il est appliqué à l'entrée, mais l'utilisateur peut ensuite choisir un autre prompt.
+const PROFILE_LOCKED_PROJECTS = new Set(["short answers"]);
+function isProfileLockedProject(p) {
+  return !!(p && PROFILE_LOCKED_PROJECTS.has(_lockKey(p.name)));
+}
+function isProfileLockedActive() {
+  return isProfileLockedProject(getActiveProjectForLock());
+}
+
 // Seed unique du projet « Dust » (modèle figé gpt-oss-120b + réponses courtes).
 // Ne se recrée pas si l'utilisateur le supprime ensuite (drapeau localStorage).
 function ensureDustProject() {
@@ -2850,17 +2861,24 @@ function enforceShortAnswersLock() {
       }
     }
 
-    // 3) Activer le profil système "Short" (et stasher l'état précédent à la première entrée)
+    // 3) Profil système « Short »
+    //    - projet à profil VERROUILLÉ (Short answers) : forcé à chaque render
+    //    - projet à profil PAR DÉFAUT (Dust) : appliqué uniquement à la 1re entrée,
+    //      puis l'utilisateur reste libre de choisir un autre prompt.
     const shortId = ensureShortProfile();
-    if (!hasStash) {
-      // C'est notre première entrée dans le projet : on mémorise les profils actifs courants
-      // pour pouvoir les restaurer à la sortie. La persistance localStorage survit aux rechargements.
+    const profileLocked = isProfileLockedProject(activeLockProj);
+    const firstEntry = !hasStash;
+    if (firstEntry) {
+      // 1re entrée dans le projet : mémoriser les profils actifs courants
+      // pour les restaurer à la sortie (persiste au rechargement).
       localStorage.setItem(stashKey, JSON.stringify(S.activeProfiles || []));
     }
-    const cur = S.activeProfiles || [];
-    if (cur.length !== 1 || cur[0] !== shortId) {
-      S.activeProfiles = [shortId];
-      _changed = true;
+    if (profileLocked || firstEntry) {
+      const cur = S.activeProfiles || [];
+      if (cur.length !== 1 || cur[0] !== shortId) {
+        S.activeProfiles = [shortId];
+        _changed = true;
+      }
     }
   } else if (hasStash) {
     // On vient de sortir du projet : restaurer les profils précédents
@@ -9203,8 +9221,9 @@ function renderProfiles() {
       const a = e.target.dataset.a;
       if (a === "edit")  { openProfileEditor(p.id); return; }
       if (a === "clone") { cloneProfile(p.id);       return; }
-      // Verrou Short answers : interdire toute modification des profils actifs
-      if (isShortAnswersActive()) {
+      // Verrou profil : interdire le changement uniquement dans les projets
+      // à profil VERROUILLÉ (Short answers). Dust n'a Short qu'en défaut → modifiable.
+      if (isProfileLockedActive()) {
         showCopyToast('🔒 Verrouillé sur le profil "Short" dans ce projet', true);
         return;
       }
