@@ -2860,8 +2860,31 @@ function enforceShortAnswersLock() {
 const FREE_CHATS_LIMIT    = 20;
 const PROJECT_CHATS_LIMIT = 30;
 
+// Plafonds spécifiques par projet — override du défaut PROJECT_CHATS_LIMIT.
+// Clé = nom de projet NORMALISÉ (minuscules, accents retirés, espaces rognés).
+// Pour relever un projet : ajouter une entrée ici.
+const PROJECT_LIMIT_OVERRIDES = {
+  "chimie organique": 40,
+};
+
+function _normalizeProjName(name) {
+  return (name || "")
+    .toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // retire les accents
+    .replace(/\s+/g, " ")                              // compacte les espaces internes
+    .trim();
+}
+
+// Plafond applicable à un projet donné (override éventuel, sinon défaut).
+function _projectLimit(project) {
+  if (!project) return PROJECT_CHATS_LIMIT;
+  const ov = PROJECT_LIMIT_OVERRIDES[_normalizeProjName(project.name)];
+  return ov != null ? ov : PROJECT_CHATS_LIMIT;
+}
+
 function _chatCountsTowardQuota(c) {
   if (!c) return false;
+  if (c._archived) return false;          // archivé = hors quota, jamais re-compté
   if (c._starred) return false;
   if (c.id === S.activeChat) return false;
   if (c.title === "Nouveau chat" && Array.isArray(c.messages) && c.messages.length === 0) return false;
@@ -2878,10 +2901,14 @@ function _quotaUsage() {
   return { free, byProject };
 }
 
+// V43 — Les conversations qui dépassent le quota ne sont plus SUPPRIMÉES :
+// elles sont ARCHIVÉES (flag _archived). Elles restent dans S.chats, sont
+// synchronisées vers GitHub, et restent récupérables via la section "Archives"
+// ou le menu ⋯ d'une conversation. Plus aucune perte de données ici.
 function enforceChatLimits() {
-  const toRemove = new Set();
-  let deletedFree = 0;
-  let deletedProj = 0;
+  const toArchive = new Set();
+  let archivedFree = 0;
+  let archivedProj = 0;
   const projectsTouched = new Set();
 
   // 1) Conversations libres : on garde les FREE_CHATS_LIMIT plus récentes (parmi les "comptables")
@@ -2889,29 +2916,34 @@ function enforceChatLimits() {
     .filter(c => !c.projectId && _chatCountsTowardQuota(c))
     .sort((a, b) => (b._lastActivity || 0) - (a._lastActivity || 0));
   if (freeCountable.length > FREE_CHATS_LIMIT) {
-    freeCountable.slice(FREE_CHATS_LIMIT).forEach(c => toRemove.add(c.id));
-    deletedFree = freeCountable.length - FREE_CHATS_LIMIT;
+    freeCountable.slice(FREE_CHATS_LIMIT).forEach(c => toArchive.add(c.id));
+    archivedFree = freeCountable.length - FREE_CHATS_LIMIT;
   }
 
-  // 2) Par projet : même logique, plafond PROJECT_CHATS_LIMIT
+  // 2) Par projet : même logique, plafond propre à chaque projet (override possible)
   S.projects.forEach(p => {
+    const lim = _projectLimit(p);
     const projCountable = S.chats
       .filter(c => c.projectId === p.id && _chatCountsTowardQuota(c))
       .sort((a, b) => (b._lastActivity || 0) - (a._lastActivity || 0));
-    if (projCountable.length > PROJECT_CHATS_LIMIT) {
-      projCountable.slice(PROJECT_CHATS_LIMIT).forEach(c => toRemove.add(c.id));
-      deletedProj += projCountable.length - PROJECT_CHATS_LIMIT;
+    if (projCountable.length > lim) {
+      projCountable.slice(lim).forEach(c => toArchive.add(c.id));
+      archivedProj += projCountable.length - lim;
       projectsTouched.add(p.id);
     }
   });
 
-  if (toRemove.size === 0) return null;
+  if (toArchive.size === 0) return null;
 
-  S.chats = S.chats.filter(c => !toRemove.has(c.id));
+  // Archivage (et NON suppression) : on marque les conversations concernées.
+  const now = Date.now();
+  S.chats.forEach(c => {
+    if (toArchive.has(c.id)) { c._archived = true; c._archivedAt = now; }
+  });
   return {
-    total: toRemove.size,
-    deletedFree,
-    deletedProj,
+    total: toArchive.size,
+    archivedFree,
+    archivedProj,
     projectsTouched: projectsTouched.size
   };
 }
@@ -2920,17 +2952,15 @@ function enforceChatLimitsWithToast() {
   const r = enforceChatLimits();
   if (!r || typeof showCopyToast !== 'function') return r;
   const parts = [];
-  if (r.deletedFree) {
-    const s = r.deletedFree > 1 ? 's' : '';
-    parts.push(`${r.deletedFree} libre${s}`);
+  if (r.archivedFree) {
+    const s = r.archivedFree > 1 ? 's' : '';
+    parts.push(`${r.archivedFree} libre${s}`);
   }
-  if (r.deletedProj) {
-    const s = r.deletedProj > 1 ? 's' : '';
+  if (r.archivedProj) {
     const projWord = r.projectsTouched > 1 ? `${r.projectsTouched} projets` : '1 projet';
-    parts.push(`${r.deletedProj} dans ${projWord}`);
+    parts.push(`${r.archivedProj} dans ${projWord}`);
   }
-  const limits = `${FREE_CHATS_LIMIT} libres · ${PROJECT_CHATS_LIMIT}/projet`;
-  showCopyToast(`🗑 ${r.total} conversation${r.total>1?'s':''} ancienne${r.total>1?'s':''} supprimée${r.total>1?'s':''} (${parts.join(', ')}) — limites ${limits}`, 'info');
+  showCopyToast(`🗄 ${r.total} conversation${r.total>1?'s':''} ancienne${r.total>1?'s':''} archivée${r.total>1?'s':''} (${parts.join(', ')}) — récupérable dans « Archives »`, 'info');
   return r;
 }
 
@@ -3511,7 +3541,8 @@ function chatRow(c, indent = false) {
   const d = document.createElement("div");
   d.className = "item" + (c.id === S.activeChat ? " active" : "");
   if (indent) d.style.marginLeft = "18px";
-  
+  if (c._archived) d.style.opacity = "0.55";   // visuel "archivé"
+
   // Date — SEULEMENT si _lastActivity existe (ne jamais inventer une date)
   const dateStr = c._lastActivity ? formatChatDate(c._lastActivity) : '';
   
@@ -3521,6 +3552,7 @@ function chatRow(c, indent = false) {
   
   // Sous-titre : date + modèle séparés par un ·
   const parts = [dateStr, modelName].filter(Boolean);
+  if (c._archived) parts.unshift('🗄 archivé');
   const subTag = parts.length ? `<span class='chat-model-tag'>${parts.join(' · ')}</span>` : '';
   
   // Étoile (visible pour les chats dans un projet)
@@ -3630,10 +3662,16 @@ function openChatContextMenu(chatId, anchor) {
     menu.appendChild(empty);
   }
 
-  // Divider + Supprimer
+  // Divider + Archiver/Désarchiver + Supprimer
   const divider = document.createElement('div');
   divider.className = 'ctx-divider';
   menu.appendChild(divider);
+
+  const archItem = document.createElement('div');
+  archItem.className = 'ctx-item';
+  archItem.setAttribute('data-action', chat._archived ? 'unarchive' : 'archive');
+  archItem.innerHTML = chat._archived ? '📤 Désarchiver' : '🗄 Archiver';
+  menu.appendChild(archItem);
 
   const delItem = document.createElement('div');
   delItem.className = 'ctx-item danger';
@@ -3646,6 +3684,18 @@ function openChatContextMenu(chatId, anchor) {
     const action = e.target.closest('[data-action]')?.dataset.action;
     if (action === 'rename') { closeChatContextMenu(); renameChat(chatId); }
     else if (action === 'delete') { closeChatContextMenu(); deleteChat(chatId); }
+    else if (action === 'archive') {
+      closeChatContextMenu();
+      chat._archived = true; chat._archivedAt = Date.now();
+      save(); render();
+    }
+    else if (action === 'unarchive') {
+      closeChatContextMenu();
+      chat._archived = false; delete chat._archivedAt;
+      // Protection : on épingle (★) pour éviter une ré-archivage automatique si le quota est plein.
+      chat._starred = true;
+      save(); render();
+    }
     else if (action === 'star') {
       closeChatContextMenu();
       chat._starred = !chat._starred;
@@ -3755,11 +3805,12 @@ function renderChats() {
 
   S.projects.forEach(p => {
     const isCollapsed = !!collapsed[p.id];
-    const projectChats = chatsByRecency.filter(c => c.projectId === p.id);
+    const projectChats = chatsByRecency.filter(c => c.projectId === p.id && !c._archived);
+    const projLim  = _projectLimit(p);
     const projUsed = usage.byProject[p.id] || 0;
-    const projRatio = projUsed / PROJECT_CHATS_LIMIT;
+    const projRatio = projUsed / projLim;
     const projCls = projRatio >= 0.9 ? ' danger' : projRatio >= 0.7 ? ' warn' : '';
-    const projCounterTitle = `Conversations non-étoilées : ${projUsed} / ${PROJECT_CHATS_LIMIT}.&#10;Au-delà, les plus anciennes sont supprimées automatiquement.&#10;Étoiler (★) protège une conversation.`;
+    const projCounterTitle = `Conversations non-étoilées : ${projUsed} / ${projLim}.&#10;Au-delà, les plus anciennes sont ARCHIVÉES automatiquement (jamais supprimées).&#10;Étoiler (★) protège une conversation.`;
     const h = document.createElement("div");
     h.className = "item project-item" + (p.id === S.activeProject ? " active" : "");
     h.style.borderLeftColor = p.color || PROJECT_COLORS[0];
@@ -3772,7 +3823,7 @@ function renderChats() {
         <span class='name' title='${p.name}'>${p.name}</span>
         ${projModelTag}
       </div>
-      <span class='quota-counter${projCls}' title='${projCounterTitle}'>${projUsed}/${PROJECT_CHATS_LIMIT}</span>
+      <span class='quota-counter${projCls}' title='${projCounterTitle}'>${projUsed}/${projLim}</span>
       <button class='icon-btn' data-a='addchat' title='Nouveau chat'>＋</button>
       <button class='icon-btn proj-more-btn' data-a='more' title='Plus d\\'options'>⋯</button>
     `;
@@ -3806,13 +3857,31 @@ function renderChats() {
   const freeUsed = usage.free;
   const freeRatio = freeUsed / FREE_CHATS_LIMIT;
   const freeCls = freeRatio >= 0.9 ? ' danger' : freeRatio >= 0.7 ? ' warn' : '';
-  const freeCounterHtml = `<span class="quota-counter${freeCls}" title="Conversations non-étoilées : ${freeUsed} / ${FREE_CHATS_LIMIT}.&#10;Au-delà de ${FREE_CHATS_LIMIT}, les plus anciennes sont supprimées automatiquement.&#10;Étoiler une conversation (★) la protège.">${freeUsed}/${FREE_CHATS_LIMIT}</span>`;
+  const freeCounterHtml = `<span class="quota-counter${freeCls}" title="Conversations non-étoilées : ${freeUsed} / ${FREE_CHATS_LIMIT}.&#10;Au-delà de ${FREE_CHATS_LIMIT}, les plus anciennes sont ARCHIVÉES automatiquement (jamais supprimées).&#10;Étoiler une conversation (★) la protège.">${freeUsed}/${FREE_CHATS_LIMIT}</span>`;
   const gTitle = document.createElement("div");
   gTitle.className = "group-title";
   gTitle.innerHTML = `<span>Conversations générales ${freeCounterHtml}</span><button class='icon-btn' id='newGeneralBtn' title='Nouvelle conversation'>＋</button>`;
   w.appendChild(gTitle);
 
-  chatsByRecency.filter(c => !c.projectId).forEach(c => w.appendChild(chatRow(c, false)));
+  chatsByRecency.filter(c => !c.projectId && !c._archived).forEach(c => w.appendChild(chatRow(c, false)));
+
+  // — Archives (masquées par défaut) —
+  // Conversations archivées automatiquement (quota dépassé) ou à la main.
+  // Elles ne sont JAMAIS supprimées et restent synchronisées vers GitHub.
+  const archivedChats = chatsByRecency.filter(c => c._archived);
+  if (archivedChats.length) {
+    const showArch = !!renderChats._showArchives;
+    const aTitle = document.createElement("div");
+    aTitle.className = "group-title";
+    aTitle.style.cursor = "pointer";
+    aTitle.title = "Conversations archivées automatiquement quand un quota est dépassé.\nElles ne sont jamais supprimées. Cliquez une conversation pour l'ouvrir, ou « Désarchiver » dans le menu ⋯.";
+    aTitle.innerHTML = `<span>${showArch ? '▼' : '▶'} 🗄 Archives <span class="quota-counter">${archivedChats.length}</span></span>`;
+    aTitle.onclick = () => { renderChats._showArchives = !renderChats._showArchives; renderChats(); };
+    w.appendChild(aTitle);
+    if (showArch) {
+      archivedChats.forEach(c => w.appendChild(chatRow(c, false)));
+    }
+  }
 
   el("newProjectBtn").onclick = e => { e.stopPropagation(); createProject(); };
   el("newGeneralBtn").onclick = e => { e.stopPropagation(); createChat(null); };
