@@ -2003,15 +2003,15 @@ const MODEL_GROUPS = [
       "gpt-5.4-nano"           // ultra-rapide / très économique
     ]
   },
-  // ── OpenAI GPT-4.x / o-series (Chat Completions) ─
+  // ── OpenAI GPT-4.x (Chat Completions) ─
   // Restent disponibles via API (Chat Completions)
+  // NOTE : la série « o » (o3, o4-mini…) a été retirée — modèles legacy,
+  // remplacés par le mode raisonnement de la famille GPT-5.
   {
-    label: "OpenAI GPT-4 / o-series",
+    label: "OpenAI GPT-4",
     models: [
       "gpt-4.1",               // stable, bon rapport qualité/coût
-      "gpt-4.1-mini",          // léger, rapide
-      "o3",                    // raisonnement avancé (pas de sampling)
-      "o4-mini"                // raisonnement rapide et économique
+      "gpt-4.1-mini"           // léger, rapide
     ]
   },
   // ── Google Gemini ─────────────────────────────────
@@ -2736,15 +2736,45 @@ function save() {
 const activeChat = () => S.chats.find(c => c.id === S.activeChat);
 
 // ─────────────────────────────────────────────────
-// VERROU MODÈLE — projet "Short answers"
-// Quand un projet s'appelle "Short answers" (sensible aux espaces,
-// insensible à la casse), son modèle est figé sur mistral-small-latest
-// pour économiser les coûts. Le sélecteur est désactivé.
+// VERROU MODÈLE — projets « figés »
+// Un projet dont le nom (normalisé : sans casse ni espaces superflus) figure
+// dans LOCKED_PROJECTS voit son modèle FIGÉ sur la valeur associée, et active
+// automatiquement le profil système « Short » (réponses concises) pour économiser.
 // ─────────────────────────────────────────────────
-const SHORT_ANSWERS_LOCKED_MODEL = "mistral-small-latest";
-function isShortAnswersProject(p) {
-  return !!(p && typeof p.name === "string" &&
-            p.name.trim().toLowerCase() === "short answers");
+const LOCKED_PROJECTS = {
+  "short answers": "mistral-small-latest",   // réponses courtes, modèle éco
+  "dust":          "openai/gpt-oss-120b",    // vie courante, raisonnement open-weight (Groq)
+};
+function _lockKey(name) {
+  return (typeof name === "string")
+    ? name.trim().toLowerCase().replace(/\s+/g, " ")
+    : "";
+}
+// Modèle figé d'un projet, ou null si le projet n'est pas verrouillé.
+function lockedModelForProject(p) {
+  if (!p || typeof p.name !== "string") return null;
+  return LOCKED_PROJECTS[_lockKey(p.name)] || null;
+}
+function isLockedProject(p) { return !!lockedModelForProject(p); }
+// Compat : ancien nom conservé (encore utilisé en aval) = projet figé.
+function isShortAnswersProject(p) { return isLockedProject(p); }
+
+// Seed unique du projet « Dust » (modèle figé gpt-oss-120b + réponses courtes).
+// Ne se recrée pas si l'utilisateur le supprime ensuite (drapeau localStorage).
+function ensureDustProject() {
+  try {
+    if (localStorage.getItem("dustProjectSeeded") === "1") return;
+    const exists = S.projects.some(p => _lockKey(p.name) === "dust");
+    if (!exists) {
+      S.projects.unshift({
+        id: crypto.randomUUID(),
+        name: "Dust",
+        color: (typeof PROJECT_COLORS !== "undefined" && PROJECT_COLORS[0]) || "#888",
+        defaultModel: LOCKED_PROJECTS["dust"],
+      });
+    }
+    localStorage.setItem("dustProjectSeeded", "1");
+  } catch (_) { /* localStorage indisponible : on ignore */ }
 }
 function getActiveProjectForLock() {
   // ─── CORRECTIF BUG (verrou Short answers fuyant hors du projet) ───
@@ -2790,22 +2820,25 @@ function ensureShortProfile() {
 function enforceShortAnswersLock() {
   let _changed = false;
 
-  // Pour TOUS les projets "Short answers" : forcer le defaultModel
+  // Pour TOUS les projets figés : forcer le defaultModel sur leur modèle verrouillé
   S.projects.forEach(p => {
-    if (isShortAnswersProject(p) && p.defaultModel !== SHORT_ANSWERS_LOCKED_MODEL) {
-      p.defaultModel = SHORT_ANSWERS_LOCKED_MODEL;
+    const lm = lockedModelForProject(p);
+    if (lm && p.defaultModel !== lm) {
+      p.defaultModel = lm;
       _changed = true;
     }
   });
 
-  const inSA = isShortAnswersActive();
+  const activeLockProj    = getActiveProjectForLock();
+  const activeLockedModel = lockedModelForProject(activeLockProj);
+  const inSA = !!activeLockedModel;
   const stashKey = "saStashedProfiles";
   const hasStash = localStorage.getItem(stashKey) !== null;
 
   if (inSA) {
-    // 1) Verrouiller le modèle
-    if (S.model !== SHORT_ANSWERS_LOCKED_MODEL) {
-      S.model = SHORT_ANSWERS_LOCKED_MODEL;
+    // 1) Verrouiller le modèle sur celui du projet figé
+    if (S.model !== activeLockedModel) {
+      S.model = activeLockedModel;
       window._userChangedModel = false;
       _changed = true;
     }
@@ -3370,14 +3403,15 @@ function setProjectDefaultModel(projectId, anchor) {
   if (!p) return;
   // Fermer tout popup existant
   document.querySelectorAll('.proj-model-popup').forEach(e => e.remove());
-  // Verrou "Short answers" — afficher un message au lieu du sélecteur
-  if (isShortAnswersProject(p)) {
-    p.defaultModel = SHORT_ANSWERS_LOCKED_MODEL;
+  // Verrou projet figé — afficher un message au lieu du sélecteur
+  const lockedM = lockedModelForProject(p);
+  if (lockedM) {
+    p.defaultModel = lockedM;
     save();
     const lockPopup = document.createElement('div');
     lockPopup.className = 'proj-model-popup';
     lockPopup.style.cssText = 'position:fixed;z-index:9999;background:#1a1a22;border:1px solid #ff720055;border-radius:10px;padding:14px 16px;min-width:280px;max-width:320px;box-shadow:0 8px 32px rgba(0,0,0,.5);font-size:13px;line-height:1.5;color:#e0e2e8';
-    lockPopup.innerHTML = `<div style="color:#ff7200;font-weight:600;margin-bottom:8px">🔒 Modèle verrouillé</div><div style="color:#9ca3af">Le projet <b style="color:#e0e2e8">"Short answers"</b> est figé sur <code style="background:#ffffff10;padding:2px 6px;border-radius:4px;color:#ff7200">mistral-small-latest</code> pour économiser les coûts. Cette restriction ne peut pas être modifiée tant que le projet porte ce nom.</div>`;
+    lockPopup.innerHTML = `<div style="color:#ff7200;font-weight:600;margin-bottom:8px">🔒 Modèle verrouillé</div><div style="color:#9ca3af">Le projet <b style="color:#e0e2e8">"${p.name}"</b> est figé sur <code style="background:#ffffff10;padding:2px 6px;border-radius:4px;color:#ff7200">${lockedM}</code> pour économiser les coûts. Cette restriction ne peut pas être modifiée tant que le projet porte ce nom.</div>`;
     document.body.appendChild(lockPopup);
     const rectL = anchor.getBoundingClientRect();
     lockPopup.style.top = Math.min(rectL.bottom + 4, window.innerHeight - 180) + 'px';
@@ -7248,8 +7282,6 @@ const TOKEN_PRICES = {
   'gpt-5.4-nano':               { input: 0.10,  output: 0.40 },
   'gpt-4.1':                    { input: 2.00,  output: 8.00 },
   'gpt-4.1-mini':               { input: 0.40,  output: 1.60 },
-  'o3':                         { input: 2.00,  output: 8.00 },
-  'o4-mini':                    { input: 1.10,  output: 4.40 },
 
   // ── Anthropic Claude ──
   'claude-opus-4-8':            { input: 15.00, output: 75.00 },
@@ -11031,6 +11063,8 @@ renderModels();
 renderParams();
 // [SÉCURITÉ] Déverrouillage du coffre chiffré au lancement, puis rafraîchit l'affichage des clés
 unlockVault().then(ok => { if (ok) renderApiKeys(); });
+// Créer (une seule fois) le projet « Dust » figé sur gpt-oss-120b + réponses courtes
+ensureDustProject();
 // Appliquer les quotas de conversations au démarrage (gère les états déjà au-dessus de la limite)
 enforceChatLimitsWithToast();
 // V32 — Migrer costStatsDaily depuis l'ancien format mono-machine si nécessaire
