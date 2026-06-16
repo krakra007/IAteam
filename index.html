@@ -180,6 +180,11 @@
 
     /* ── Barre de haut ── */
     .top{display:flex;justify-content:space-between;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--top);position:sticky;top:0;z-index:5}
+    .force-word-btn{position:absolute;left:50%;transform:translateX(-50%);top:9px;border:1px solid var(--line);background:transparent;color:var(--text);padding:7px 14px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;white-space:nowrap;transition:all .15s;z-index:6}
+    .force-word-btn.off{opacity:.65}
+    .force-word-btn.off:hover{opacity:1}
+    .force-word-btn.on{background:#1f6feb;border-color:#1f6feb;color:#fff;opacity:1;box-shadow:0 0 0 3px #1f6feb33}
+    @media (max-width:760px){ .force-word-btn{padding:7px 10px;font-size:0} .force-word-btn .fw-icon{font-size:16px} }
     .btn{border:1px solid var(--line);background:transparent;color:var(--text);padding:8px 10px;border-radius:8px;cursor:pointer}
     select,input{background:#222;border:1px solid var(--line);color:var(--text);border-radius:8px;padding:8px;font-family:inherit}
     #modelSelect{display:none}
@@ -1666,6 +1671,8 @@
         <span id="tcProgress" class="tc-progress" style="display:none"></span>
         <span id="drProgress" class="dr-progress"><span class="dr-dot"></span><span id="drProgressLabel">Recherche approfondie en cours…</span></span>
       </div>
+      <!-- 📄 Bouton « Word forcé » — impose la création d'un fichier Word à la prochaine réponse, quels que soient les mots du prompt -->
+      <button class="force-word-btn off" id="forceWordBtn" title="📄 Forcer Word — la prochaine réponse sera produite en document Word téléchargeable, quels que soient les mots du prompt. Cliquer pour activer."><span class="fw-icon">📄</span><span class="fw-label">Word</span></button>
       <div style="display:flex;gap:8px;align-items:center;position:relative">
         <!-- Badge coût du jour (cumulé des appels API d'aujourd'hui) -->
         <div class="daily-cost-badge zero" id="dailyCostBadge" title="Aucun appel API aujourd'hui">
@@ -8206,6 +8213,39 @@ function updateDeepResearchBtn() {
   else if (dd && typeof isTripleCheckOn === 'function' && !isTripleCheckOn()) dd.classList.remove('tc-disabled');
 }
 
+// ─────────────────────────────────────────────────
+// 📄 WORD FORCÉ — impose la création d'un document Word à la prochaine réponse,
+// quels que soient les mots du prompt (contourne la détection par mots-clés).
+// Mode « armé pour le prochain message » (one-shot), comme la recherche approfondie.
+// ─────────────────────────────────────────────────
+function getForceWord() { return localStorage.getItem('forceWordArmed') === '1'; }
+function setForceWord(on) { localStorage.setItem('forceWordArmed', on ? '1' : '0'); updateForceWordBtn(); }
+function toggleForceWord() {
+  setForceWord(!getForceWord());
+  console.log('[BrAInShift] 📄 Word forcé ' + (getForceWord() ? 'ARMÉ (prochaine réponse)' : 'désarmé'));
+}
+function updateForceWordBtn() {
+  const armed = getForceWord();
+  const btn = document.getElementById('forceWordBtn');
+  if (!btn) return;
+  btn.classList.toggle('on', armed);
+  btn.classList.toggle('off', !armed);
+  btn.title = armed
+    ? '📄 Word forcé ACTIVÉ — votre prochaine réponse sera produite en document Word (.docx) quel que soit le libellé de la demande. Cliquer pour annuler.'
+    : '📄 Forcer Word — la prochaine réponse sera produite en document Word téléchargeable, quels que soient les mots du prompt. Cliquer pour activer.';
+}
+
+// Consigne injectée dans le system prompt quand le mode Word forcé est armé.
+const FORCE_WORD_INSTRUCTION = `
+
+[MODE WORD FORCÉ — PRIORITÉ ABSOLUE SUR TOUTE AUTRE RÈGLE]
+L'utilisateur a activé le mode « Word forcé ». Pour CETTE réponse, tu DOIS produire un document Word téléchargeable, quels que soient les mots employés dans sa demande (même « note », « résumé », « explique », « définis », « compare », etc.).
+RÈGLES IMPÉRATIVES :
+1. Optionnellement UNE courte phrase d'introduction, puis place TOUT le contenu du document dans UN SEUL bloc \`\`\`markdown … \`\`\`.
+2. À l'intérieur de ce bloc, n'utilise AUCUN autre bloc de code (interdits : \`\`\`yaml, \`\`\`swift, \`\`\`text, \`\`\`json, \`\`\`mermaid, etc.) et AUCUNE clôture \`\`\` interne. Les schémas/diagrammes doivent être rendus en texte simple, en liste, ou en tableau — jamais dans un bloc de code.
+3. Markdown propre uniquement : titre « # », sections « ## »/« ### », listes « - », tableaux avec « | ». Commence directement par le titre, sans préambule verbeux.
+Cette consigne prime sur la règle qui réserve les fichiers Word aux demandes contenant des mots-clés explicites.`;
+
 // ── Compteur de limite quotidienne (par jour calendaire, toutes machines confondues localement) ──
 function getDeepResearchUsageToday() {
   const today = new Date().toISOString().slice(0, 10);
@@ -8934,7 +8974,7 @@ async function send() {
         const truncPptx = responseContent.match(/```pptx\s*\n([\s\S]{100,})/);
         if (truncPptx) pptxMatch = truncPptx;
       }
-      if (pptxMatch && pptxMatch[1].length > 100 && !isExplicitNoFilePptx) {
+      if (pptxMatch && pptxMatch[1].length > 100 && !isExplicitNoFilePptx && !((typeof getForceWord === 'function') && getForceWord())) {
         const pptxContent = pptxMatch[1].trim();
         const titleMatch = pptxContent.match(/^#\s+(.+)/m);
         const pptxTitle = titleMatch ? titleMatch[1].replace(/[*_#]/g, '').trim() : c.title || 'Présentation';
@@ -8963,6 +9003,8 @@ async function send() {
       const isPptxRequest = /\b(power\s*point|pptx|présentation|presentation|diaporama|slides?|diapositives?)\b/i.test(userPromptLower);
       const isExplicitNoFile = /\b(ne\s+pas\s+créer|pas\s+de\s+(fichier|document|word)|répondre?\s+(ici|dans\s+(la|le)\s*(fenêtre|chat|dialogue))|sans\s+(fichier|document))\b/i.test(userPromptLower);
       const isWordRequest = /\b(document\s+word|fichier\s+word|\.docx|créer?\s+(un|le|ce|mon)?\s*(document|fichier|rapport)|produire?\s+(un|le)?\s*(document|fichier|rapport)|génère[rz]?\s+(un|le)?\s*(document|fichier|rapport)|document\s+(professionnel|téléchargeable)|document\s+à\s+télécharger)\b/i.test(userPromptLower);
+      // 📄 Mode Word forcé armé pour ce message → on impose le document Word
+      const forceWordArmed = (typeof getForceWord === 'function') && getForceWord();
 
       // ── MÉMOIRE DE CONTEXTE : si un artifact a déjà été produit dans cette conversation,
       // tout nouveau bloc markdown/pptx s'ouvre automatiquement dans le même format ──
@@ -8984,8 +9026,9 @@ async function send() {
         const docTitle = titleMatch ? titleMatch[1].replace(/[*_#]/g, '').trim() : c.title || 'Document';
 
         // Déterminer le format : PPTX ou Word ?
-        const shouldPptx = (isPptxRequest || prevArtifactLang === 'pptx') && !isExplicitNoFile;
-        const shouldWord = (isWordRequest || isConversationInDocMode) && !isExplicitNoFile && !shouldPptx;
+        // Word forcé prime : il désactive pptx et impose Word.
+        const shouldPptx = (isPptxRequest || prevArtifactLang === 'pptx') && !isExplicitNoFile && !forceWordArmed;
+        const shouldWord = (isWordRequest || isConversationInDocMode || forceWordArmed) && !isExplicitNoFile && !shouldPptx;
 
         if (shouldPptx) {
           // → PowerPoint
@@ -9033,6 +9076,21 @@ async function send() {
             lastMsg._artifactLang = 'html';
           }
           setTimeout(() => openArtifact(code, 'html', title), 300);
+        } else if (forceWordArmed && !isExplicitNoFile && responseContent.replace(/```/g,'').trim().length > 150) {
+          // 📄 FILET DE SÉCURITÉ — Word forcé mais le modèle n'a pas émis de bloc ```markdown :
+          // on enveloppe toute la réponse comme document Word téléchargeable.
+          let body = responseContent.trim()
+            .replace(/^```[a-zA-Z]*\s*\n?/, '')   // retire un éventuel fence externe d'ouverture
+            .replace(/\n?```\s*$/, '')            // et de fermeture
+            .trim();
+          const titleMatchFW = body.match(/^#\s+(.+)/m) || body.match(/^##\s+(.+)/m);
+          const docTitleFW = titleMatchFW ? titleMatchFW[1].replace(/[*_#]/g, '').trim() : (c.title || 'Document');
+          const lastMsgFW = c.messages[c.messages.length - 1];
+          if (lastMsgFW && lastMsgFW.role === 'assistant') {
+            lastMsgFW._artifactContent = body;
+            lastMsgFW._artifactTitle = docTitleFW;
+          }
+          setTimeout(() => openDocumentArtifact(body, docTitleFW), 300);
         }
         // 3) Pas de bloc code spécial → on ne force PAS l'artifact.
         // L'utilisateur peut toujours cliquer 📄 sous le message pour l'ouvrir en document.
@@ -9041,6 +9099,9 @@ async function send() {
         }
       } // fin else pptx
     }
+    // 📄 Word forcé est « one-shot » : on le désarme après ce message.
+    // (les réponses suivantes restent en mode document via la mémoire de contexte)
+    if (typeof getForceWord === 'function' && getForceWord()) setForceWord(false);
 
   } catch (e) {
     let errMsg = e.message;
@@ -9174,7 +9235,12 @@ Objectif : réponses précises, à jour, et sourcées.\n\n`;
     prompt = base + (prompts.length ? prompts.join('\n\n---\n\n') : SYSTEM_PROMPT);
   }
   // Toujours ajouter les capacités plateforme
-  return prompt + PLATFORM_CAPABILITIES;
+  let _finalPrompt = prompt + PLATFORM_CAPABILITIES;
+  // Mode Word forcé armé → ajouter la consigne impérative de création de document Word
+  if (typeof getForceWord === 'function' && getForceWord()) {
+    _finalPrompt += FORCE_WORD_INSTRUCTION;
+  }
+  return _finalPrompt;
 }
 
 function updateProfileChip() {
@@ -10638,6 +10704,9 @@ if (_drBtn) _drBtn.onclick = () => {
 };
 const _drBannerCancel = el("drBannerCancel");
 if (_drBannerCancel) _drBannerCancel.onclick = () => setDeepResearchArmed(false);
+// 📄 Bouton Word forcé (arme/désarme pour le prochain message)
+const _fwBtn = el("forceWordBtn");
+if (_fwBtn) _fwBtn.onclick = () => toggleForceWord();
 el("stopBtn").onclick = () => {
   if (_currentAbortController) {
     window._userAborted = true;
@@ -10900,6 +10969,7 @@ initGithubPanel();
 updateSyncBadge(); // Initialiser la pastille de sync (état idle au démarrage)
 updateTripleCheckBtn(); // V15 — Initialiser l'état visuel du bouton Triple Check
 updateDeepResearchBtn(); // 🔬 Initialiser l'état du bouton + bannière Recherche approfondie
+if (typeof updateForceWordBtn === 'function') updateForceWordBtn(); // 📄 Initialiser l'état du bouton Word forcé
 
 // Tampon de version — permet de confirmer dans la console (F12) quelle version tourne réellement.
 const BRAINSHIFT_VERSION = 'V45 — double moteur de recherche approfondie (Perplexity + Gemini)';
