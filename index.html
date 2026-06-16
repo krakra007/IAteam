@@ -8832,6 +8832,11 @@ async function send() {
   const text = promptEl.value.trim();
   if (!text && !pendingFiles.length) return;
 
+  // 🔬 MODE TRAÇAGE — déclenché par la commande "/trace …" (one-shot ce tour).
+  // Récupération PubMed vérifiée + analyse sourcée (sonar-pro), au lieu du routage normal.
+  const _traceThisTurn = !_drArmed && (typeof isTripleCheckOn === 'function' ? !isTripleCheckOn() : true)
+    && typeof text === 'string' && text.trim().toLowerCase().startsWith('/trace');
+
   // 🔬 Popup de confirmation AVANT de pousser le message (annulation = on ne touche à rien)
   let _drOpts = null;
   if (_drArmed) {
@@ -8923,7 +8928,7 @@ async function send() {
 
     // 🎨 DÉTECTION AUTO : demande d'image → OpenAI gpt-image-1 (V39, ex-Gemini)
     // (désactivée en mode Recherche approfondie : la question part sur sonar-deep-research)
-    if (!_drArmed && isImageGenerationRequest(text)) {
+    if (!_drArmed && !_traceThisTurn && isImageGenerationRequest(text)) {
       const openaiKey = (apiKeysByProvider["OPENAI"] || "").trim();
       if (!openaiKey) {
         console.warn('[BrAInShift] 🎨 Clé OpenAI manquante pour génération d\'image');
@@ -9083,6 +9088,28 @@ async function send() {
       console.log('[BrAInShift] 🔺 Mode Triple Check désactivé automatiquement (one-shot V19)');
       setTripleCheckMode('off');
       // Skip le routage normal ci-dessous
+    } else if (_traceThisTurn) {
+      // 🔬 TRAÇAGE — PubMed (E-utilities) + analyse sourcée via sonar-pro.
+      // Tout le travail est dans le module autonome window.__brainshiftTrace.
+      const drProg = document.getElementById('drProgress');
+      const drProgLabel = document.getElementById('drProgressLabel');
+      if (drProg) drProg.classList.add('visible');
+      if (drProgLabel) drProgLabel.textContent = 'Traçage PubMed en cours…';
+      try {
+        await window.__brainshiftTrace.run(c, text, (apiKeysByProvider["PERPLEXITY"] || "").trim());
+      } catch (e) {
+        console.error('[BrAInShift] 🔬 Traçage échec:', e.message);
+        c.messages.push({
+          role: "assistant",
+          content: "❌ Traçage échoué : " + e.message,
+          provider: "PERPLEXITY", model: "sonar-pro",
+          _tracing: true, _tracingError: true
+        });
+      } finally {
+        if (drProg) drProg.classList.remove('visible');
+        if (drProgLabel) drProgLabel.textContent = 'Recherche approfondie en cours…';
+      }
+      // Skip le routage normal ci-dessous
     } else if (provider === "ANTHROPIC") {
       responseContent = await callAnthropic(key, S.model, c.messages, _streamSink);
 
@@ -9132,7 +9159,7 @@ async function send() {
     // On stocke provider ET modèle pour badge + sidebar (sauf si déjà fait par Triple Check ou Recherche approfondie)
     // V23 — On utilise le flag local capturé en début de tour, pas isTripleCheckOn() qui aurait
     // été remis à false par le one-shot V19, causant un double push (bug V22).
-    if (!_tripleCheckActiveThisTurn && !_drArmed) {
+    if (!_tripleCheckActiveThisTurn && !_drArmed && !_traceThisTurn) {
       // V17 — Calcul du coût pour cet appel + attachement au message
       let _msgCost = 0;
       if (window._lastUsage && window._lastUsage.model === S.model) {
@@ -11574,6 +11601,226 @@ loadModelsFromApi();
       }
     }, { passive: true });
   }
+})();
+</script>
+<script>
+/* ====================================================================
+ * BrAInShift — Module TRAÇAGE (PubMed E-utilities + analyse sourcée)
+ * Ajout 100% additif. Déclenché par la commande "/trace <piste>".
+ * Ne modifie aucune fonction existante ; ne dépend que de fetch + des
+ * arguments passés par send() (la conversation c et la clé Perplexity).
+ * ==================================================================== */
+(function () {
+  "use strict";
+
+  /* ---- Prompt système « Traçage » ---------------------------------- */
+  const TRACING_SYSTEM_PROMPT = `RÔLE
+Tu es un assistant de traçage bibliographique en oncologie/biomédecine. À partir d'une affirmation issue d'un rapport (ou d'une question), tu remontes aux sources primaires, tu les évalues, et tu cartographies l'état de la recherche — sans jamais fabriquer de référence.
+
+SOURCES & RÈGLE D'OR
+- Un bloc « RÉSULTATS PUBMED » est injecté dans le message. C'est ta source de vérité : tu ne cites QUE des articles qui y figurent (avec leur PMID/DOI/lien réels).
+- Tu n'inventes JAMAIS un PMID, un DOI, un titre, une date ou un nom d'auteur. Si une information n'est pas dans les sources fournies, tu écris « à vérifier » et tu proposes la requête PubMed à lancer (voir PROCHAINES REQUÊTES).
+- Recherche web : à réserver à ce que PubMed ne couvre pas — statut d'une préimpression, page d'une équipe, essais sur ClinicalTrials.gov. Le web ne remplace pas la référence PubMed pour une affirmation scientifique.
+
+MÉTHODE (à appliquer dans cet ordre)
+1. SOURCE PRIMAIRE — Identifie l'article original derrière l'affirmation. Distingue explicitement préimpression (non relue, ex. bioRxiv) et version revue par les pairs. Corrige toute date ou tout détail erroné du point de départ, et signale la correction.
+2. LECTURE CRITIQUE — Pour la source clé : quel modèle expérimental (cellules, animal, humain) ? Qu'est-ce qui est démontré vs seulement suggéré ? Quelles limites les auteurs reconnaissent-ils eux-mêmes ?
+3. CHAÎNAGE DE CITATIONS — Arrière (références fondatrices), avant (« cited by » : qui a cité depuis), latéral (articles similaires). Appuie-toi sur les blocs fournis ; s'il en manque, demande la requête correspondante.
+4. CARTOGRAPHIE — Repère une revue récente du domaine pour situer hypothèses concurrentes et questions ouvertes.
+5. SUIVI — Identifie l'équipe/les auteurs récurrents et les molécules/cibles citées ; chaque cible est une piste de recherche à part entière.
+6. MATURITÉ TRANSLATIONNELLE — Situe la piste sur l'échelle : in vitro → modèle animal → humain → essai clinique. Vérifie ClinicalTrials.gov. Calibre l'enthousiasme en conséquence.
+
+FORMAT DE SORTIE
+- Chaque affirmation factuelle est suivie de son identifiant vérifiable (PMID, DOI ou lien).
+- Distingue visiblement ce qui est établi de ce qui est exploratoire ou contesté.
+- Marque toute préimpression comme « non revue par les pairs ».
+- Termine toujours par : (a) une ligne « Maturité » résumant la distance à la clinique, et (b) un bloc PROCHAINES REQUÊTES.
+
+PROCHAINES REQUÊTES (pour relancer le module)
+Propose 1 à 4 requêtes PubMed précises, une par ligne, au format exact :
+  QUERY:: <termes de recherche en anglais> | YEARS:: <min>-<max> | WHY:: <ce que ça vérifie>
+N'écris rien d'autre dans ce bloc, pour qu'il soit parsable automatiquement.
+
+INTERDICTIONS
+Jamais de référence inventée. Pas d'affirmation de date/chiffre absent des sources. En cas de doute : « à vérifier » + la requête à lancer.
+Ne RECOPIE JAMAIS le bloc « RÉSULTATS PUBMED » dans ta réponse : il te sert de matériau, pas de contenu à restituer. Cite un article par son PMID uniquement quand c'est utile dans l'analyse. Ne répète jamais une même ligne ni une même référence ; si tu te surprends à dresser une longue liste, arrête-toi.`;
+
+  /* ---- PubMed (NCBI E-utilities) ------------------------------------ */
+  const PUBMED = {
+    base: "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/",
+    tool: "BrAInShift",
+    email: "contact@brainshift.local", // ← remplace par un email de contact réel
+    apiKey: "",                        // ← (optionnel) clé NCBI → 10 req/s
+    minIntervalMs: 350,                // throttle ~3 req/s sans clé
+  };
+  let _last = 0;
+  async function throttle() {
+    const iv = PUBMED.apiKey ? 110 : PUBMED.minIntervalMs;
+    const w = _last + iv - Date.now();
+    if (w > 0) await new Promise(r => setTimeout(r, w));
+    _last = Date.now();
+  }
+  async function eutils(endpoint, params, json = true) {
+    await throttle();
+    const sp = new URLSearchParams({
+      tool: PUBMED.tool, email: PUBMED.email,
+      ...(PUBMED.apiKey ? { api_key: PUBMED.apiKey } : {}), ...params
+    });
+    let res;
+    try { res = await fetch(PUBMED.base + endpoint + "?" + sp.toString()); }
+    catch (e) { throw new Error("PubMed injoignable (" + endpoint + ") : " + e.message); }
+    if (!res.ok) throw new Error("PubMed " + endpoint + " HTTP " + res.status);
+    return json ? res.json() : res.text();
+  }
+  async function pubmedSearch(query, opts = {}) {
+    const { retmax = 15, sort = "relevance", minYear, maxYear } = opts;
+    const params = { db: "pubmed", term: query, retmode: "json", retmax: String(retmax), sort };
+    if (minYear || maxYear) {
+      params.datetype = "pdat";
+      params.mindate = String(minYear || 1900);
+      params.maxdate = String(maxYear || new Date().getFullYear());
+    }
+    const d = await eutils("esearch.fcgi", params);
+    const r = d.esearchresult || {};
+    return { count: Number(r.count || 0), pmids: r.idlist || [] };
+  }
+  async function pubmedSummaries(pmids) {
+    if (!pmids || !pmids.length) return [];
+    const d = await eutils("esummary.fcgi", { db: "pubmed", id: pmids.join(","), retmode: "json" });
+    const result = d.result || {};
+    return (result.uids || []).map(uid => {
+      const it = result[uid] || {};
+      const ids = it.articleids || [];
+      const doi = (ids.find(x => x.idtype === "doi") || {}).value || "";
+      const date = it.sortpubdate || it.pubdate || "";
+      const year = (String(date).match(/\d{4}/) || [""])[0];
+      return {
+        pmid: uid, title: it.title || "",
+        authors: (it.authors || []).map(a => a.name),
+        journal: it.fulljournalname || it.source || "",
+        year, doi, url: "https://pubmed.ncbi.nlm.nih.gov/" + uid + "/"
+      };
+    });
+  }
+  function dedupByPmid(records) {
+    const seen = new Map();
+    for (const r of records) if (!seen.has(r.pmid)) seen.set(r.pmid, r);
+    return [...seen.values()];
+  }
+  async function pubmedTrace(query, opts = {}) {
+    const { pmids, count } = await pubmedSearch(query, opts);
+    const records = dedupByPmid(await pubmedSummaries(pmids));
+    return { query, count, records };
+  }
+  function formatForModel(t) {
+    const lines = t.records.map((r, i) =>
+      "[" + (i + 1) + "] PMID " + r.pmid + " (" + r.year + ") — " + r.title +
+      "\n    Auteurs : " + r.authors.slice(0, 6).join(", ") + (r.authors.length > 6 ? " et al." : "") +
+      "\n    Journal : " + r.journal + (r.doi ? " — DOI " + r.doi : "") +
+      "\n    Lien : " + r.url
+    );
+    return "RÉSULTATS PUBMED (requête : \"" + t.query + "\", " + t.count + " hits, " +
+      t.records.length + " affichés)\nSource vérifiée — utilise UNIQUEMENT ces références, n'en invente aucune.\n\n" +
+      lines.join("\n\n");
+  }
+  function parseNextQueries(text) {
+    const re = /QUERY::\s*(.+?)\s*\|\s*YEARS::\s*(\d{4})?\s*-?\s*(\d{4})?\s*\|\s*WHY::\s*(.+)/gi;
+    const out = []; let m;
+    while ((m = re.exec(text)) !== null) {
+      out.push({ query: m[1].trim(), minYear: m[2] ? Number(m[2]) : 2021, maxYear: m[3] ? Number(m[3]) : null, why: m[4].trim() });
+    }
+    return out;
+  }
+
+  /* ---- Perplexity (sonar / sonar-pro) ------------------------------- */
+  function flattenHistory(messages) {
+    return messages.filter(m => m.role === "user" || m.role === "assistant").map(m => {
+      let content = m.content;
+      if (Array.isArray(content)) {
+        content = content.map(b => {
+          if (b.type === "text") return b.text || "";
+          if (b.type === "document" && b._extractedText) return "📄 " + (b.title || "document") + " :\n" + b._extractedText;
+          return "";
+        }).filter(Boolean).join("\n\n");
+      }
+      return { role: m.role, content };
+    });
+  }
+  async function pplxCall(key, body) {
+    const r = await fetch("https://api.perplexity.ai/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + key },
+      body: JSON.stringify(body)
+    });
+    let d;
+    try { d = await r.json(); } catch (e) { throw new Error("Réponse Perplexity illisible (HTTP " + r.status + ")."); }
+    if (d.error) throw new Error(d.error.message || "erreur Perplexity");
+    if (!r.ok) throw new Error("HTTP " + r.status + " — " + (d.error && d.error.message || "échec Perplexity"));
+    return d;
+  }
+  async function seedToQuery(seed, key) {
+    const sys = "Convertis l'affirmation en UNE requête PubMed en anglais. Réponds UNIQUEMENT par une ligne : QUERY:: <termes anglais> | YEARS:: <min>-<max> | WHY:: <but>. Rien d'autre.";
+    const d = await pplxCall(key, { model: "sonar", messages: [{ role: "system", content: sys }, { role: "user", content: seed }], max_tokens: 300 });
+    const out = (d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content) || "";
+    return parseNextQueries(out)[0] || { query: seed, minYear: 2021, maxYear: null };
+  }
+  async function sonarTrace(key, messages, question, pubmedBlock) {
+    // On exclut les réponses de Traçage précédentes (_tracing) de l'historique :
+    // si l'une a dégénéré en liste répétée, elle empoisonnerait le contexte et le
+    // modèle prolongerait la boucle. RAPPORT0 (non _tracing) reste, lui, en contexte.
+    const hist = flattenHistory(messages.filter(m => !m._tracing).slice(0, -1));
+    const chat = [{ role: "system", content: TRACING_SYSTEM_PROMPT }, ...hist, { role: "user", content: question + "\n\n" + pubmedBlock }];
+    const d = await pplxCall(key, { model: "sonar-pro", messages: chat, max_tokens: 2500 });
+    let content = (d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content) || "";
+    if (!content) throw new Error("Réponse vide de sonar-pro.");
+    const sr = Array.isArray(d.search_results) ? d.search_results : null;
+    if (sr && sr.length && !/##\s*Sources/i.test(content)) {
+      content += "\n\n## Sources web\n\n" + sr.map((s, i) => {
+        const t = s.title || s.url || ("Source " + (i + 1));
+        return s.url ? (i + 1) + ". [" + t + "](" + s.url + ")" + (s.date ? " — " + s.date : "") : (i + 1) + ". " + t;
+      }).join("\n");
+    }
+    return content;
+  }
+
+  /* ---- Orchestration d'un tour de Traçage --------------------------- */
+  async function run(c, rawText, key) {
+    const seed = String(rawText).replace(/^\s*\/trace\s*/i, "").trim();
+    if (!seed) {
+      c.messages.push({
+        role: "assistant",
+        content: "🔬 **Mode Traçage** — usage : `/trace <piste ou question>`.\n\nExemple : `/trace calcium endothélial et extravasation des cellules cancéreuses`.\n\nLe module interroge PubMed (vrais PMID/DOI), puis produit une analyse sourcée et un bloc PROCHAINES REQUÊTES à relancer.",
+        provider: "PERPLEXITY", model: "sonar-pro", _tracing: true
+      });
+      return;
+    }
+    if (!key) throw new Error("clé API Perplexity manquante (format pplx-…). Cliquez sur 🔑 pour l'ajouter.");
+
+    // 1) Piste → requête PubMed (anglais)
+    let q;
+    try { q = await seedToQuery(seed, key); }
+    catch (e) { q = { query: seed, minYear: 2021, maxYear: null }; }
+
+    // 2) Récupération vérifiée sur PubMed
+    const traced = await pubmedTrace(q.query, { retmax: 15, minYear: q.minYear, maxYear: q.maxYear || new Date().getFullYear() });
+    const block = formatForModel(traced);
+
+    // 3) Analyse sourcée (sonar-pro : web + prompt « Traçage »), RAPPORT0 conservé en contexte
+    const answer = await sonarTrace(key, c.messages, seed, block);
+
+    // 4) Stockage (le rendu est géré par le tail de send())
+    c.messages.push({
+      role: "assistant",
+      content: answer,
+      provider: "PERPLEXITY", model: "sonar-pro",
+      _tracing: true,
+      _tracingQuery: q.query,
+      _tracingPubmedCount: traced.records.length
+    });
+  }
+
+  window.__brainshiftTrace = { run, pubmedTrace, formatForModel, parseNextQueries, seedToQuery, PUBMED };
+  console.log("[BrAInShift] 🔬 Module Traçage chargé — commande : /trace <piste>");
 })();
 </script>
 </body>
