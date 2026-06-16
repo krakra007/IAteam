@@ -6789,10 +6789,30 @@ async function callAnthropic(key, model, messages) {
     }
   }
 
-  if (thinking) {
+  if (thinking && text) {
     return `<details class="thinking-block"><summary>💭 Réflexion du modèle</summary>\n\n${thinking}\n</details>\n\n${text}`;
   }
-  return text || JSON.stringify(d);
+  if (text) return text;
+
+  // ── Pas de texte renvoyé : diagnostic clair au lieu d'un JSON brut illisible ──
+  const stop = d.stop_reason || '(inconnu)';
+  const types = (d.content || []).map(b => b.type).join(', ') || 'aucun';
+  const hadThinking = (d.content || []).some(b => b.type === 'thinking' || b.type === 'redacted_thinking');
+
+  if (thinking) {
+    // Le raisonnement est visible mais aucune réponse finale n'a été produite
+    return `<details class="thinking-block" open><summary>💭 Réflexion du modèle (interrompue avant la réponse)</summary>\n\n${thinking}\n</details>\n\n⚠ **Le modèle n'a pas produit de réponse finale** (stop_reason: \`${stop}\`). Le budget de tokens a probablement été consommé par le raisonnement étendu — désactivez « Extended thinking » dans ⚙ ou augmentez \`max_tokens\`.`;
+  }
+  if (stop === 'max_tokens') {
+    return `⚠ **Réponse vide — limite de tokens atteinte.**\n\nLe modèle a atteint \`max_tokens\` avant d'écrire du texte` +
+      (hadThinking || S.params.thinking
+        ? ` : le budget a été consommé par le **raisonnement étendu**. Désactivez « Extended thinking » dans ⚙, ou augmentez \`max_tokens\`, puis réessayez.`
+        : `. Augmentez \`max_tokens\` dans ⚙ puis réessayez.`) +
+      `\n\n*(Diagnostic : stop_reason=${stop}, blocs reçus=${types}. Des tokens ont été facturés pour cette tentative.)*`;
+  }
+  return `⚠ **Réponse sans contenu textuel** (stop_reason: \`${stop}\`, blocs reçus : ${types}).\n\nLe modèle n'a renvoyé aucun texte. Réessayez` +
+    (S.params.thinking ? `, ou désactivez « Extended thinking » dans ⚙ si cela se reproduit.` : `.`) +
+    `\n\n*(Des tokens ont pu être facturés pour cette tentative.)*`;
 }
 
 /**
@@ -8729,6 +8749,9 @@ async function send() {
 
   try {
     let responseContent;
+    // Éviter tout coût « fantôme » : on repart d'un usage vierge. Si un appel échoue
+    // avant de renvoyer son usage, aucun coût périmé d'un appel précédent ne sera attribué.
+    window._lastUsage = null;
 
     // 🎨 DÉTECTION AUTO : demande d'image → OpenAI gpt-image-1 (V39, ex-Gemini)
     // (désactivée en mode Recherche approfondie : la question part sur sonar-deep-research)
@@ -9089,7 +9112,7 @@ async function send() {
             lastMsg._artifactLang = 'html';
           }
           setTimeout(() => openArtifact(code, 'html', title), 300);
-        } else if (forceWordArmed && !isExplicitNoFile && responseContent.replace(/```/g,'').trim().length > 150) {
+        } else if (forceWordArmed && !isExplicitNoFile && !/^\s*[⚠❌]/.test(responseContent) && responseContent.replace(/```/g,'').trim().length > 150) {
           // 📄 FILET DE SÉCURITÉ — Word forcé mais le modèle n'a pas émis de bloc ```markdown :
           // on enveloppe toute la réponse comme document Word téléchargeable.
           let body = responseContent.trim()
