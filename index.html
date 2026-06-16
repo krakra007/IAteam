@@ -5440,16 +5440,27 @@ async function generateDocxFromMarkdown(rawMarkdown, chatTitle) {
       },
       footers: {
         default: new Footer({
-          children: [new Paragraph({
-            alignment: AlignmentType.CENTER,
-            border: { top: { style: BorderStyle.SINGLE, size: 1, color: COL.lightLine, space: 4 } },
-            children: [
-              new TextRun({ text: 'Page ', font: 'Calibri', size: 16, color: COL.grey }),
-              new TextRun({ children: [PageNumber.CURRENT], font: 'Calibri', size: 16, color: COL.grey }),
-              new TextRun({ text: ' / ', font: 'Calibri', size: 16, color: COL.grey }),
-              new TextRun({ children: [PageNumber.TOTAL_PAGES], font: 'Calibri', size: 16, color: COL.grey }),
-            ]
-          })]
+          children: [
+            // Mention obligatoire — sur chaque page de chaque document généré
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              border: { top: { style: BorderStyle.SINGLE, size: 1, color: COL.lightLine, space: 4 } },
+              spacing: { after: 40 },
+              children: [
+                new TextRun({ text: 'Rédaction assistée par IA • Supervision et validation humaines.', font: 'Calibri', size: 15, color: COL.grey, italics: true })
+              ]
+            }),
+            // Pagination
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [
+                new TextRun({ text: 'Page ', font: 'Calibri', size: 16, color: COL.grey }),
+                new TextRun({ children: [PageNumber.CURRENT], font: 'Calibri', size: 16, color: COL.grey }),
+                new TextRun({ text: ' / ', font: 'Calibri', size: 16, color: COL.grey }),
+                new TextRun({ children: [PageNumber.TOTAL_PAGES], font: 'Calibri', size: 16, color: COL.grey }),
+              ]
+            })
+          ]
         })
       },
       children: children
@@ -6645,7 +6656,105 @@ async function postJsonAdaptingParams(url, headers, body) {
  * OpenAI & DeepSeek utilisent le format Chat Completions.
  * DeepSeek est compatible OpenAI mais sur son propre endpoint.
  */
-async function callOpenAICompatible(endpoint, key, model, messages, apiType) {
+// ═══════════════════════════════════════════════════════════════
+// STREAMING (réponse progressive) — V44
+// Infrastructure commune. Garde-fou : toute erreur de flux lève une exception
+// → l'appelant retombe sur l'appel complet (non-streaming) existant.
+// ═══════════════════════════════════════════════════════════════
+
+// Bulle d'aperçu en direct dans #messages (texte brut, throttlé via rAF).
+// Le rendu markdown final est fait par render() à la fin de send().
+function makeStreamUI() {
+  const box = el('messages');
+  if (!box) return { update() {}, done() {} };
+  // Masquer l'indicateur « réfléchit » pendant le flux
+  const brain = box.querySelector('.typing-brain');
+  if (brain) { const tr = brain.closest('.msg-row') || brain.parentElement; if (tr) tr.style.display = 'none'; }
+  const row = document.createElement('div');
+  row.className = 'msg-row assistant';
+  row.id = '_streamRow';
+  const wrap = document.createElement('div');
+  const bodyEl = document.createElement('div');
+  bodyEl.className = 'assistant-body';
+  bodyEl.style.whiteSpace = 'pre-wrap';
+  wrap.appendChild(bodyEl);
+  row.appendChild(wrap);
+  box.appendChild(row);
+  box.scrollTop = box.scrollHeight;
+  let raf = null, latest = '';
+  const flush = () => { raf = null; bodyEl.textContent = latest; box.scrollTop = box.scrollHeight; };
+  return {
+    update(t) { latest = t; if (!raf) raf = requestAnimationFrame(flush); },
+    done() { if (raf) cancelAnimationFrame(raf); const r = document.getElementById('_streamRow'); if (r) r.remove(); }
+  };
+}
+
+// Lecture d'un flux SSE : appelle onData(payload) pour chaque ligne « data: … ».
+async function _readSSE(resp, onData) {
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder('utf-8');
+  let buf = '';
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      let nl;
+      while ((nl = buf.indexOf('\n')) >= 0) {
+        const line = buf.slice(0, nl).replace(/\r$/, '');
+        buf = buf.slice(nl + 1);
+        if (line.startsWith('data:')) onData(line.slice(5).trim());
+      }
+    }
+  } finally {
+    try { reader.releaseLock(); } catch (_) {}
+  }
+}
+
+// Streaming générique. kind = 'openai' | 'anthropic'. Renvoie le texte complet,
+// remplit window._lastUsage, et appelle onText(texteCumulé) à chaque fragment.
+async function streamChat(kind, url, headers, body, model, onText) {
+  const controller = new AbortController();
+  _currentAbortController = controller;
+  const timer = setTimeout(() => controller.abort(), kind === 'anthropic' ? 150000 : 360000);
+  try {
+    const resp = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body), signal: controller.signal });
+    if (!resp.ok || !resp.body) {
+      let errTxt = '';
+      try { errTxt = await resp.text(); } catch (_) {}
+      throw new Error(`HTTP ${resp.status}${errTxt ? ' — ' + errTxt.slice(0, 300) : ''}`);
+    }
+    let full = '', uIn = 0, uOut = 0;
+    await _readSSE(resp, (payload) => {
+      if (payload === '[DONE]') return;
+      let obj; try { obj = JSON.parse(payload); } catch (_) { return; }
+      if (kind === 'openai') {
+        const delta = obj.choices?.[0]?.delta?.content;
+        if (delta) { full += delta; onText(full); }
+        if (obj.usage) { uIn = obj.usage.prompt_tokens || uIn; uOut = obj.usage.completion_tokens || uOut; }
+      } else { // anthropic
+        const t = obj.type;
+        if (t === 'message_start' && obj.message?.usage) {
+          uIn = obj.message.usage.input_tokens || uIn; uOut = obj.message.usage.output_tokens || uOut;
+        } else if (t === 'content_block_delta' && obj.delta?.type === 'text_delta') {
+          full += obj.delta.text || ''; onText(full);
+        } else if (t === 'message_delta' && obj.usage) {
+          uOut = obj.usage.output_tokens || uOut;
+        } else if (t === 'error') {
+          throw new Error(obj.error?.message || 'Erreur de flux Anthropic');
+        }
+      }
+    });
+    if (uIn || uOut) window._lastUsage = { model, input: uIn, output: uOut };
+    if (!full.trim()) throw new Error('Flux vide (aucun texte reçu)'); // → repli sur appel complet
+    return full;
+  } finally {
+    clearTimeout(timer);
+    _currentAbortController = null;
+  }
+}
+
+async function callOpenAICompatible(endpoint, key, model, messages, apiType, onText) {
   // Préparer les messages avec system prompt en tête
   const chatMessages = [
     { role: "system", content: getActiveSystemPrompt() },
@@ -6677,6 +6786,21 @@ async function callOpenAICompatible(endpoint, key, model, messages, apiType) {
   // Note : web search n'est PAS supporté en Chat Completions standard.
   // Pour GPT-4.x avec web search → routé vers Responses API dans send().
 
+  // ── Streaming (si demandé) avec repli automatique sur l'appel complet ──
+  if (onText && S.params.streaming) {
+    try {
+      const sBody = { ...body, stream: true };
+      if (/groq\.com|openai\.com/.test(endpoint)) sBody.stream_options = { include_usage: true };
+      return await streamChat('openai', endpoint, {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + key
+      }, sBody, model, onText);
+    } catch (e) {
+      if (e.name === 'AbortError') throw e; // Stop utilisateur → ne pas relancer
+      console.warn('[BrAInShift] Streaming échoué → repli sur appel complet :', e.message);
+    }
+  }
+
   const d = await postJsonAdaptingParams(endpoint, {
     "Content-Type": "application/json",
     "Authorization": "Bearer " + key
@@ -6700,7 +6824,7 @@ async function callOpenAICompatible(endpoint, key, model, messages, apiType) {
  *  - Paramètre : max_tokens (pas max_completion_tokens)
  *  - Pas de frequency_penalty / presence_penalty / n / seed
  */
-async function callAnthropic(key, model, messages) {
+async function callAnthropic(key, model, messages, onText) {
   const hasPdf = messages.some(m =>
     Array.isArray(m.content) && m.content.some(b => b.type === 'document')
   );
@@ -6764,6 +6888,19 @@ async function callAnthropic(key, model, messages) {
   // Note : adaptive thinking active automatiquement interleaved thinking, pas besoin de beta header
   if (betas.length) headers["anthropic-beta"] = betas.join(",");
 
+  // ── Streaming (si demandé et compatible) avec repli automatique ──
+  // On évite le streaming quand thinking / web search / PDF sont actifs (réponse
+  // multi-blocs plus complexe à streamer proprement) : l'appel complet gère ces cas.
+  if (onText && S.params.streaming && !S.params.thinking && !S.params.webSearch && !hasPdf) {
+    try {
+      return await streamChat('anthropic', "https://api.anthropic.com/v1/messages",
+        headers, { ...body, stream: true }, model, onText);
+    } catch (e) {
+      if (e.name === 'AbortError') throw e;
+      console.warn('[BrAInShift] Streaming Anthropic échoué → repli complet :', e.message);
+    }
+  }
+
   const r = await fetchWithRetry("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers,
@@ -6819,7 +6956,7 @@ async function callAnthropic(key, model, messages) {
  * Google Gemini — endpoint compatible OpenAI disponible
  * via l'API generativelanguage.googleapis.com
  */
-async function callGemini(key, model, messages) {
+async function callGemini(key, model, messages, onText) {
   // ── Si recherche web activée → API native Gemini (seule à supporter google_search)
   if (S.params.webSearch) {
     return callGeminiNative(key, model, messages);
@@ -6863,8 +7000,22 @@ async function callGemini(key, model, messages) {
     ...buildRequestParams(model, "gemini")
   };
 
+  // ── Streaming (si demandé) avec repli automatique ──
+  const _gemEndpoint = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+  if (onText && S.params.streaming) {
+    try {
+      return await streamChat('openai', _gemEndpoint, {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + key
+      }, { ...geminiBody, stream: true, stream_options: { include_usage: true } }, model, onText);
+    } catch (e) {
+      if (e.name === 'AbortError') throw e;
+      console.warn('[BrAInShift] Streaming Gemini échoué → repli complet :', e.message);
+    }
+  }
+
   const r = await fetchWithRetry(
-    "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+    _gemEndpoint,
     {
       method: "POST",
       headers: {
@@ -7067,7 +7218,7 @@ async function callOpenAIResponses(key, model, messages) {
  * Ultra-rapide (LPU), modèles open source.
  * Pas de frequency_penalty ni presence_penalty pour certains modèles.
  */
-async function callGroq(key, model, messages) {
+async function callGroq(key, model, messages, onText) {
   const groqMessages = [
     { role: "system", content: getActiveSystemPrompt() },
     ...messages
@@ -7093,6 +7244,19 @@ async function callGroq(key, model, messages) {
     messages: groqMessages,
     ...buildRequestParams(model, "groq")
   };
+
+  // ── Streaming (si demandé) avec repli automatique ──
+  if (onText && S.params.streaming) {
+    try {
+      return await streamChat('openai', "https://api.groq.com/openai/v1/chat/completions", {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + key
+      }, { ...body, stream: true, stream_options: { include_usage: true } }, model, onText);
+    } catch (e) {
+      if (e.name === 'AbortError') throw e;
+      console.warn('[BrAInShift] Streaming Groq échoué → repli complet :', e.message);
+    }
+  }
 
   const r = await fetchWithRetry("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
@@ -8747,11 +8911,15 @@ async function send() {
     console.log('[BrAInShift] mhchem (\\ce{}):', _mhchemOk ? '✅ chargé' : '❌ non chargé (chimie utilisera LaTeX manuel)');
   }
 
+  let _streamUI = null;   // 📡 bulle de streaming live (déclarée ici pour être visible dans finally)
   try {
     let responseContent;
     // Éviter tout coût « fantôme » : on repart d'un usage vierge. Si un appel échoue
     // avant de renvoyer son usage, aucun coût périmé d'un appel précédent ne sera attribué.
     window._lastUsage = null;
+    // 📡 Streaming : bulle live alimentée par les appels solo. Création paresseuse :
+    // la bulle n'apparaît qu'au 1er fragment réellement streamé.
+    const _streamSink = (txt) => { if (!_streamUI) _streamUI = makeStreamUI(); _streamUI.update(txt); };
 
     // 🎨 DÉTECTION AUTO : demande d'image → OpenAI gpt-image-1 (V39, ex-Gemini)
     // (désactivée en mode Recherche approfondie : la question part sur sonar-deep-research)
@@ -8916,33 +9084,33 @@ async function send() {
       setTripleCheckMode('off');
       // Skip le routage normal ci-dessous
     } else if (provider === "ANTHROPIC") {
-      responseContent = await callAnthropic(key, S.model, c.messages);
+      responseContent = await callAnthropic(key, S.model, c.messages, _streamSink);
 
     } else if (provider === "GOOGLE GEMINI") {
-      responseContent = await callGemini(key, S.model, c.messages);
+      responseContent = await callGemini(key, S.model, c.messages, _streamSink);
 
     } else if (provider === "GROQ") {
-      responseContent = await callGroq(key, S.model, c.messages);
+      responseContent = await callGroq(key, S.model, c.messages, _streamSink);
 
     } else if (provider === "MISTRAL") {
       // Mistral AI — API compatible OpenAI (Chat Completions)
       responseContent = await callOpenAICompatible(
         "https://api.mistral.ai/v1/chat/completions",
-        key, S.model, c.messages, "mistral"
+        key, S.model, c.messages, "mistral", _streamSink
       );
 
     } else if (provider === "DEEPSEEK") {
       // BUG CORRIGÉ : endpoint DeepSeek propre + apiType dédié (max_tokens au lieu de max_completion_tokens)
       responseContent = await callOpenAICompatible(
         "https://api.deepseek.com/chat/completions",
-        key, S.model, c.messages, "deepseek"
+        key, S.model, c.messages, "deepseek", _streamSink
       );
 
     } else if (provider === "PERPLEXITY") {
       // Perplexity Sonar — API compatible OpenAI (Chat Completions), recherche web intégrée
       responseContent = await callOpenAICompatible(
         "https://api.perplexity.ai/chat/completions",
-        key, S.model, c.messages, "perplexity"
+        key, S.model, c.messages, "perplexity", _streamSink
       );
 
     } else if (isGPT5Model(S.model)) {
@@ -8954,10 +9122,10 @@ async function send() {
       responseContent = await callOpenAIResponses(key, S.model, c.messages);
 
     } else {
-      // GPT-4.x, o-series → Chat Completions classique
+      // GPT-4.x → Chat Completions classique
       responseContent = await callOpenAICompatible(
         "https://api.openai.com/v1/chat/completions",
-        key, S.model, c.messages
+        key, S.model, c.messages, undefined, _streamSink
       );
     }
 
@@ -9166,6 +9334,8 @@ async function send() {
     c.messages.push({ role: "assistant", content: "❌ Erreur : " + errMsg, provider, model: S.model });
     showApiError(e.message);
   } finally {
+    // Retirer la bulle de streaming live (le rendu markdown final est fait par render())
+    if (_streamUI) { _streamUI.done(); _streamUI = null; }
     isWaitingResponse = false;
     waitingStartTime = 0;
     if (waitingTimerInterval) { clearInterval(waitingTimerInterval); waitingTimerInterval = null; }
