@@ -2770,22 +2770,43 @@ function isProfileLockedActive() {
   return isProfileLockedProject(getActiveProjectForLock());
 }
 
-// Seed unique du projet « Dust » (modèle figé gpt-oss-120b + réponses courtes).
-// Ne se recrée pas si l'utilisateur le supprime ensuite (drapeau localStorage).
-function ensureDustProject() {
-  try {
-    if (localStorage.getItem("dustProjectSeeded") === "1") return;
-    const exists = S.projects.some(p => _lockKey(p.name) === "dust");
-    if (!exists) {
-      S.projects.unshift({
-        id: crypto.randomUUID(),
-        name: "Dust",
-        color: (typeof PROJECT_COLORS !== "undefined" && PROJECT_COLORS[0]) || "#888",
-        defaultModel: LOCKED_PROJECTS["dust"],
-      });
-    }
-    localStorage.setItem("dustProjectSeeded", "1");
-  } catch (_) { /* localStorage indisponible : on ignore */ }
+// (Auto-création du projet « Dust » retirée — le projet est créé manuellement par
+//  l'utilisateur. La config de verrou ci-dessus reste active : tout projet nommé
+//  « Dust » est automatiquement figé sur gpt-oss-120b avec le profil « Short » par défaut.)
+
+// Fusionne les projets FIGÉS qui partagent le même nom verrouillé (ex. deux
+// « Dust » créés par seed sur des machines différentes avant ce correctif).
+// Le survivant est choisi de façon DÉTERMINISTE (id le plus petit) pour que
+// toutes les machines convergent sur le même ; les doublons sont tombstonés.
+function dedupeLockedProjects() {
+  const groups = {};
+  S.projects.forEach(p => {
+    if (!lockedModelForProject(p)) return;
+    const k = _lockKey(p.name);
+    (groups[k] = groups[k] || []).push(p);
+  });
+  if (!S.tombstones) S.tombstones = { chats: {}, projects: {} };
+  if (!S.tombstones.projects) S.tombstones.projects = {};
+  const toRemove = new Set();
+  const now = Date.now();
+  Object.values(groups).forEach(list => {
+    if (list.length < 2) return;
+    const canonical = list.slice().sort((a, b) => String(a.id).localeCompare(String(b.id)))[0];
+    list.forEach(p => {
+      if (p.id === canonical.id) return;
+      // Rapatrier les conversations du doublon vers le survivant
+      S.chats.forEach(c => { if (c.projectId === p.id) c.projectId = canonical.id; });
+      // Tombstone → empêche la résurrection via la synchro sur toutes les machines
+      S.tombstones.projects[p.id] = now;
+      toRemove.add(p.id);
+    });
+  });
+  if (toRemove.size) {
+    S.projects = S.projects.filter(p => !toRemove.has(p.id));
+    if (S.activeProject && toRemove.has(S.activeProject)) S.activeProject = null;
+    console.log(`[BrAInShift] 🧹 ${toRemove.size} projet(s) figé(s) en double fusionné(s)`);
+  }
+  return toRemove.size;
 }
 function getActiveProjectForLock() {
   // ─── CORRECTIF BUG (verrou Short answers fuyant hors du projet) ───
@@ -9770,6 +9791,9 @@ async function ghPullSilent() {
         mergedProj.push(local || remote);
       }
       S.projects = mergedProj;
+      // Fusionner d'éventuels doublons de projets figés arrivés par la synchro
+      // (ex. « Dust » semé avec des ids différents avant le correctif d'id fixe).
+      if (typeof dedupeLockedProjects === 'function') dedupeLockedProjects();
       if (_resurrectedProjSkipped > 0) {
         console.log(`[BrAInShift] 🪦 ${_resurrectedProjSkipped} projet(s) supprimés bloqués (tombstones respectés)`);
       }
@@ -11082,8 +11106,8 @@ renderModels();
 renderParams();
 // [SÉCURITÉ] Déverrouillage du coffre chiffré au lancement, puis rafraîchit l'affichage des clés
 unlockVault().then(ok => { if (ok) renderApiKeys(); });
-// Créer (une seule fois) le projet « Dust » figé sur gpt-oss-120b + réponses courtes
-ensureDustProject();
+// Fusionner d'éventuels doublons de projets figés (ex. deux « Dust » synchronisés)
+dedupeLockedProjects();
 // Appliquer les quotas de conversations au démarrage (gère les états déjà au-dessus de la limite)
 enforceChatLimitsWithToast();
 // V32 — Migrer costStatsDaily depuis l'ancien format mono-machine si nécessaire
