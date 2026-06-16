@@ -9018,10 +9018,24 @@ async function send() {
         console.log(`[BrAInShift Artifact v4] 📌 Contexte conversation : artifact précédent détecté (${prevArtifactLang}) → mode continuation`);
       }
 
-      let mdMatch = responseContent.match(/```markdown\s*\n([\s\S]+?)```/) || responseContent.match(/```markdown\s*\n([\s\S]{300,})/);
+      // Détection ROBUSTE du bloc document ```markdown.
+      // Les modèles peu obéissants (ex. Gemini) insèrent parfois des fences ``` INTERNES.
+      // Avec un match non-greedy, le document était tronqué au premier ``` interne et le
+      // reste fuyait dans le chat. On prend donc TOUT le contenu après l'ouverture
+      // ```markdown, on retire la clôture finale éventuelle, puis les fences internes
+      // parasites (les titres « ### » piégés dans un bloc de code redeviennent de vrais titres).
+      const mdOpen = responseContent.match(/```markdown[ \t]*\r?\n/);
+      let mdContent = null, chatHead = '';
+      if (mdOpen) {
+        mdContent = responseContent.slice(mdOpen.index + mdOpen[0].length)
+          .replace(/\r?\n?```[ \t]*\s*$/, '')                   // clôture finale ``` éventuelle
+          .replace(/^[ \t]*```[a-zA-Z0-9_-]*[ \t]*$/gm, '')     // fences internes parasites → supprimés
+          .replace(/\n{3,}/g, '\n\n')                           // compacter les lignes vides laissées
+          .trim();
+        chatHead = responseContent.slice(0, mdOpen.index).trim(); // texte d'intro avant le bloc
+      }
 
-      if (mdMatch && mdMatch[1].length > 300) {
-        const mdContent = mdMatch[1].trim();
+      if (mdContent && mdContent.length > 300) {
         const titleMatch = mdContent.match(/^#\s+(.+)/m) || mdContent.match(/^##\s+(.+)/m);
         const docTitle = titleMatch ? titleMatch[1].replace(/[*_#]/g, '').trim() : c.title || 'Document';
 
@@ -9030,12 +9044,12 @@ async function send() {
         const shouldPptx = (isPptxRequest || prevArtifactLang === 'pptx') && !isExplicitNoFile && !forceWordArmed;
         const shouldWord = (isWordRequest || isConversationInDocMode || forceWordArmed) && !isExplicitNoFile && !shouldPptx;
 
+        const lastMsg = c.messages[c.messages.length - 1];
         if (shouldPptx) {
           // → PowerPoint
           const slideCount = (mdContent.match(/^##\s+/gm) || []).length + (mdContent.match(/^#\s+/m) ? 1 : 0);
-          const lastMsg = c.messages[c.messages.length - 1];
           if (lastMsg && lastMsg.role === 'assistant') {
-            lastMsg.content = responseContent.replace(/```markdown\s*\n[\s\S]+?(?:```|$)/, `\n\n📊 **${docTitle}** — ${slideCount} slides → *PowerPoint généré*\n`);
+            lastMsg.content = (chatHead ? chatHead + '\n\n' : '') + `📊 **${docTitle}** — ${slideCount} slides → *PowerPoint généré*\n`;
             lastMsg._artifactContent = mdContent; lastMsg._artifactTitle = docTitle; lastMsg._artifactLang = 'pptx';
           }
           setTimeout(() => {
@@ -9044,11 +9058,10 @@ async function send() {
             el('artifactDownloadBtn').onclick = () => generatePptxFromMarkdown(mdContent, docTitle);
           }, 300);
         } else if (shouldWord) {
-          // → Document Word (demande explicite OU continuation de conversation document)
+          // → Document Word — tout le document part dans l'artifact, le chat ne garde que l'intro + badge
           const lineCount = mdContent.split('\n').length;
-          const lastMsg = c.messages[c.messages.length - 1];
           if (lastMsg && lastMsg.role === 'assistant') {
-            lastMsg.content = responseContent.replace(/```markdown\s*\n[\s\S]+?(?:```|$)/, `\n\n📄 **${docTitle}** — ${lineCount} lignes → *ouvert dans le panneau Artifact*\n`);
+            lastMsg.content = (chatHead ? chatHead + '\n\n' : '') + `📄 **${docTitle}** — ${lineCount} lignes → *ouvert dans le panneau Artifact*\n`;
             lastMsg._artifactContent = mdContent; lastMsg._artifactTitle = docTitle;
           }
           setTimeout(() => openDocumentArtifact(mdContent, docTitle), 300);
