@@ -11971,13 +11971,46 @@ Ne RECOPIE JAMAIS le bloc « RÉSULTATS PUBMED » dans ta réponse : il te sert 
     return { type: type, id: id, status: status, context: ctx, actual: actual || "", notes: notes || [] };
   }
 
+  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  // fetch avec retry sur ERREUR RÉSEAU (Failed to fetch) — jamais sur un code HTTP
+  async function fetchRetry(url, tries) {
+    tries = tries || 3; var lastErr;
+    for (var i = 0; i < tries; i++) {
+      try { return await fetch(url); }
+      catch (e) { lastErr = e; if (i < tries - 1) await sleep(400 * (i + 1)); }
+    }
+    throw lastErr;
+  }
+  // Crossref avec repli : si le DOI est introuvable (souvent un identifiant d'URL
+  // collé au bout), on retente en retirant le dernier segment.
+  async function crossrefFetch(doi) {
+    var candidate = doi;
+    for (var i = 0; i < 3; i++) {
+      var url = "https://api.crossref.org/works/" + encodeURIComponent(candidate)
+        + (CONFIG.crossrefMailto ? "?mailto=" + encodeURIComponent(CONFIG.crossrefMailto) : "");
+      var r = await fetchRetry(url);
+      if (r.status !== 404) return { resp: r, doi: candidate };
+      var cut = candidate.replace(/\/[^/]+$/, "");
+      if (cut === candidate || (cut.match(/\//g) || []).length < 1) return { resp: r, doi: candidate };
+      candidate = cut;
+    }
+    return null;
+  }
+  // exécute des tâches avec une concurrence limitée (évite de saturer les API)
+  async function runLimited(jobs, limit) {
+    var out = new Array(jobs.length), idx = 0;
+    async function worker() { while (idx < jobs.length) { var c = idx++; out[c] = await jobs[c](); } }
+    var ws = []; for (var i = 0; i < Math.min(limit, jobs.length); i++) ws.push(worker());
+    await Promise.all(ws); return out;
+  }
+
   async function verifyPmid(pmid, ctx) {
     var url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&retmode=json&id="
       + encodeURIComponent(pmid)
       + (CONFIG.ncbiApiKey ? "&api_key=" + CONFIG.ncbiApiKey : "")
       + (CONFIG.ncbiEmail ? "&email=" + encodeURIComponent(CONFIG.ncbiEmail) : "");
     try {
-      var r = await fetch(url);
+      var r = await fetchRetry(url);
       var j = await r.json();
       var rec = j && j.result && j.result[pmid];
       if (!rec || rec.error) return result("PMID", pmid, "introuvable", ctx);
@@ -11990,26 +12023,24 @@ Ne RECOPIE JAMAIS le bloc « RÉSULTATS PUBMED » dans ta réponse : il te sert 
   }
 
   async function verifyDoi(doi, ctx) {
-    var url = "https://api.crossref.org/works/" + encodeURIComponent(doi)
-      + (CONFIG.crossrefMailto ? "?mailto=" + encodeURIComponent(CONFIG.crossrefMailto) : "");
     try {
-      var r = await fetch(url);
-      if (r.status === 404) return result("DOI", doi, "introuvable", ctx);
-      var j = await r.json();
+      var got = await crossrefFetch(doi);
+      if (!got || got.resp.status === 404) return result("DOI", doi, "introuvable", ctx);
+      var j = await got.resp.json();
       var msg = j && j.message; if (!msg) return result("DOI", doi, "introuvable", ctx);
       var title = (msg.title && msg.title[0]) || "";
       var journal = (msg["container-title"] && msg["container-title"][0]) || "";
       var year = (msg.issued && msg.issued["date-parts"] && msg.issued["date-parts"][0] && msg.issued["date-parts"][0][0]) || "";
       var author = (msg.author && msg.author[0] && msg.author[0].family) || "";
       var actual = (author ? author + " — " : "") + title + " — " + journal + (year ? " (" + year + ")" : "");
-      return judge("DOI", doi, ctx, actual, title, journal, year);
+      return judge("DOI", got.doi, ctx, actual, title, journal, year);
     } catch (e) { return result("DOI", doi, "erreur", ctx, "", ["réseau: " + e.message]); }
   }
 
   async function verifyNct(nct, ctx) {
     var url = "https://clinicaltrials.gov/api/v2/studies/" + encodeURIComponent(nct) + "?format=json";
     try {
-      var r = await fetch(url);
+      var r = await fetchRetry(url);
       if (r.status === 404) return result("NCT", nct, "introuvable", ctx);
       var j = await r.json();
       var ps = j && j.protocolSection; if (!ps) return result("NCT", nct, "introuvable", ctx);
@@ -12073,11 +12104,13 @@ Ne RECOPIE JAMAIS le bloc « RÉSULTATS PUBMED » dans ta réponse : il te sert 
     var ids = extractIdentifiers(text);
     var jobs = ids.map(function (it) {
       var ctx = contextFor(text, it.id);
-      if (it.type === "PMID") return verifyPmid(it.id, ctx);
-      if (it.type === "DOI") return verifyDoi(it.id, ctx);
-      return verifyNct(it.id, ctx);
+      return function () {
+        if (it.type === "PMID") return verifyPmid(it.id, ctx);
+        if (it.type === "DOI") return verifyDoi(it.id, ctx);
+        return verifyNct(it.id, ctx);
+      };
     });
-    var checked = await Promise.all(jobs);
+    var checked = await runLimited(jobs, 3);
     return { checked: checked, unsourcedTrials: unsourcedTrials(text) };
   }
 
