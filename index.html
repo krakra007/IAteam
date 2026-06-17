@@ -11824,5 +11824,521 @@ Ne RECOPIE JAMAIS le bloc « RÉSULTATS PUBMED » dans ta réponse : il te sert 
   console.log("[BrAInShift] 🔬 Module Traçage chargé — commande : /trace <piste>");
 })();
 </script>
+
+<script>
+/* ============================================================================
+   BrAInShift — Module VÉRIFICATION DES SOURCES (Couche 1, déterministe)
+   ----------------------------------------------------------------------------
+   Vérifie chaque PMID / DOI / NCT d'un rapport contre une API autoritaire :
+     - PMID -> NCBI E-utilities (esummary)
+     - DOI  -> Crossref
+     - NCT  -> ClinicalTrials.gov API v2
+   Pour chacun : ✅ confirmé / ⚠️ trouvé mais incohérent / ❌ introuvable.
+   Ne dépend que de fetch. N'écrit JAMAIS dans le rapport : il signale, il ne
+   corrige pas. Le verdict vient toujours de l'API, jamais d'un modèle.
+   Expose window.__brainshiftVerify.
+   ============================================================================ */
+(function () {
+  "use strict";
+
+  var CONFIG = {
+    // Optionnels : améliorent les quotas / la politesse des API.
+    ncbiEmail: "",      // ex. "toi@exemple.fr"
+    ncbiApiKey: "",     // clé NCBI si tu en as une
+    crossrefMailto: "", // ex. "toi@exemple.fr"
+    titleOverlapMin: 0.30 // seuil sous lequel un titre est jugé non concordant
+  };
+
+  // ---- utilitaires de comparaison ------------------------------------------
+  function stripDiacritics(s) {
+    return (s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  }
+  function norm(s) {
+    return stripDiacritics(String(s || "")).toLowerCase();
+  }
+  var STOP = new Set(("a an the of for and or in on to with vs et le la les des du de "
+    + "un une dans pour sur the a al et").split(/\s+/));
+  function tokens(s) {
+    return norm(s).split(/[^a-z0-9]+/).filter(function (t) { return t.length > 2 && !STOP.has(t); });
+  }
+  function overlap(claimText, actualText) {
+    // fraction des tokens du texte RÉEL retrouvés dans le contexte du rapport
+    var a = new Set(tokens(claimText));
+    var b = tokens(actualText);
+    if (!b.length) return 0;
+    var hit = 0; b.forEach(function (t) { if (a.has(t)) hit++; });
+    return hit / b.length;
+  }
+  function yearIn(s) {
+    var m = String(s || "").match(/(19|20)\d{2}/g);
+    return m ? m.map(Number) : [];
+  }
+
+  // ---- extraction des identifiants -----------------------------------------
+  function extractIdentifiers(text) {
+    var found = [];
+    var seen = new Set();
+    function push(type, id) {
+      var key = type + ":" + id.toLowerCase();
+      if (!seen.has(key)) { seen.add(key); found.push({ type: type, id: id }); }
+    }
+    var re;
+    // NCT
+    re = /NCT\d{8}/gi; var m;
+    while ((m = re.exec(text))) push("NCT", m[0].toUpperCase());
+    // DOI (on coupe la ponctuation finale)
+    re = /10\.\d{4,9}\/[-._;()/:a-z0-9]+/gi;
+    while ((m = re.exec(text))) push("DOI", m[0].replace(/[).,;]+$/, ""));
+    // PMID (forme explicite uniquement, pour éviter les nombres ambigus)
+    re = /PMID:?\s*(\d{6,9})/gi;
+    while ((m = re.exec(text))) push("PMID", m[1]);
+    return found;
+  }
+
+  // contexte = ligne(s) contenant l'identifiant (ce que le rapport AFFIRME)
+  function contextFor(text, id) {
+    var lines = text.split(/\r?\n/);
+    var hits = lines.filter(function (l) { return l.indexOf(id) !== -1 || l.toUpperCase().indexOf(id.toUpperCase()) !== -1; });
+    return (hits.join(" ") || "").slice(0, 400);
+  }
+
+  // affirmations d'essai SANS NCT (couche 3 légère) ---------------------------
+  function unsourcedTrials(text) {
+    var out = [];
+    var sentences = text.split(/(?<=[.!?])\s+|\r?\n/);
+    var trialRe = /\b(essai|étude clinique|clinical trial|phase\s+(?:i{1,3}|[123])\b)/i;
+    sentences.forEach(function (s) {
+      if (trialRe.test(s) && !/NCT\d{8}/i.test(s) && s.length > 30) {
+        out.push(s.trim().slice(0, 220));
+      }
+    });
+    return out.slice(0, 8);
+  }
+
+  // ---- vérificateurs par API ------------------------------------------------
+  function result(type, id, status, ctx, actual, notes) {
+    return { type: type, id: id, status: status, context: ctx, actual: actual || "", notes: notes || [] };
+  }
+
+  async function verifyPmid(pmid, ctx) {
+    var url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&retmode=json&id="
+      + encodeURIComponent(pmid)
+      + (CONFIG.ncbiApiKey ? "&api_key=" + CONFIG.ncbiApiKey : "")
+      + (CONFIG.ncbiEmail ? "&email=" + encodeURIComponent(CONFIG.ncbiEmail) : "");
+    try {
+      var r = await fetch(url);
+      var j = await r.json();
+      var rec = j && j.result && j.result[pmid];
+      if (!rec || rec.error) return result("PMID", pmid, "introuvable", ctx);
+      var title = rec.title || "";
+      var journal = rec.fulljournalname || rec.source || "";
+      var year = (yearIn(rec.pubdate)[0]) || "";
+      var actual = title + " — " + journal + (year ? " (" + year + ")" : "");
+      return judge("PMID", pmid, ctx, actual, title, journal, year);
+    } catch (e) { return result("PMID", pmid, "erreur", ctx, "", ["réseau: " + e.message]); }
+  }
+
+  async function verifyDoi(doi, ctx) {
+    var url = "https://api.crossref.org/works/" + encodeURIComponent(doi)
+      + (CONFIG.crossrefMailto ? "?mailto=" + encodeURIComponent(CONFIG.crossrefMailto) : "");
+    try {
+      var r = await fetch(url);
+      if (r.status === 404) return result("DOI", doi, "introuvable", ctx);
+      var j = await r.json();
+      var msg = j && j.message; if (!msg) return result("DOI", doi, "introuvable", ctx);
+      var title = (msg.title && msg.title[0]) || "";
+      var journal = (msg["container-title"] && msg["container-title"][0]) || "";
+      var year = (msg.issued && msg.issued["date-parts"] && msg.issued["date-parts"][0] && msg.issued["date-parts"][0][0]) || "";
+      var author = (msg.author && msg.author[0] && msg.author[0].family) || "";
+      var actual = (author ? author + " — " : "") + title + " — " + journal + (year ? " (" + year + ")" : "");
+      return judge("DOI", doi, ctx, actual, title, journal, year);
+    } catch (e) { return result("DOI", doi, "erreur", ctx, "", ["réseau: " + e.message]); }
+  }
+
+  async function verifyNct(nct, ctx) {
+    var url = "https://clinicaltrials.gov/api/v2/studies/" + encodeURIComponent(nct) + "?format=json";
+    try {
+      var r = await fetch(url);
+      if (r.status === 404) return result("NCT", nct, "introuvable", ctx);
+      var j = await r.json();
+      var ps = j && j.protocolSection; if (!ps) return result("NCT", nct, "introuvable", ctx);
+      var idm = ps.identificationModule || {};
+      var title = idm.officialTitle || idm.briefTitle || "";
+      var status = (ps.statusModule && ps.statusModule.overallStatus) || "";
+      var phases = (ps.designModule && ps.designModule.phases) || [];
+      var conds = (ps.conditionsModule && ps.conditionsModule.conditions) || [];
+      var actual = title + " — [" + status + (phases.length ? " · " + phases.join("/") : "") + "]"
+        + (conds.length ? " · " + conds.slice(0, 3).join(", ") : "");
+      // on compare le contexte au titre + conditions (souvent ce que le rapport cite)
+      return judge("NCT", nct, ctx, actual, title + " " + conds.join(" "), "", "");
+    } catch (e) { return result("NCT", nct, "erreur", ctx, "", ["réseau: " + e.message]); }
+  }
+
+  // ---- arbitrage : confirmé / incohérent ------------------------------------
+  function judge(type, id, ctx, actual, actualTitle, actualJournal, actualYear) {
+    var notes = [];
+    var ov = overlap(ctx, actualTitle);
+    if (ov < CONFIG.titleOverlapMin) notes.push("le titre réel ne correspond pas à ce que cite le rapport");
+    if (actualYear) {
+      var ys = yearIn(ctx);
+      if (ys.length && ys.indexOf(Number(actualYear)) === -1)
+        notes.push("année : rapport=" + ys.join("/") + " · réel=" + actualYear);
+    }
+    if (actualJournal) {
+      var jo = overlap(ctx, actualJournal);
+      if (jo < 0.5) notes.push("journal réel : « " + actualJournal + " »");
+    }
+    var status = notes.length ? "incoherent" : "confirme";
+    return result(type, id, status, ctx, actual, notes);
+  }
+
+  // ---- orchestration --------------------------------------------------------
+  async function verifyReport(text) {
+    var ids = extractIdentifiers(text);
+    var jobs = ids.map(function (it) {
+      var ctx = contextFor(text, it.id);
+      if (it.type === "PMID") return verifyPmid(it.id, ctx);
+      if (it.type === "DOI") return verifyDoi(it.id, ctx);
+      return verifyNct(it.id, ctx);
+    });
+    var checked = await Promise.all(jobs);
+    return { checked: checked, unsourcedTrials: unsourcedTrials(text) };
+  }
+
+  // ---- UI : panneau de fiabilité --------------------------------------------
+  var BADGE = {
+    confirme:   { t: "✅ confirmé",   c: "#1d9e75" },
+    incoherent: { t: "⚠️ incohérent", c: "#d08a00" },
+    introuvable:{ t: "❌ introuvable", c: "#cc3b3b" },
+    erreur:     { t: "⛔ erreur réseau", c: "#888" }
+  };
+
+  function renderPanel(data, mount) {
+    var c = data.checked;
+    var n = { confirme: 0, incoherent: 0, introuvable: 0, erreur: 0 };
+    c.forEach(function (x) { n[x.status] = (n[x.status] || 0) + 1; });
+    var html = "";
+    html += "<div style='font:600 14px system-ui;margin:0 0 10px'>Fiabilité des sources — "
+      + c.length + " identifiant(s) vérifié(s)</div>";
+    html += "<div style='font:13px system-ui;margin:0 0 12px;color:#444'>"
+      + "<span style='color:#1d9e75'>✅ " + n.confirme + "</span> &nbsp; "
+      + "<span style='color:#d08a00'>⚠️ " + n.incoherent + "</span> &nbsp; "
+      + "<span style='color:#cc3b3b'>❌ " + n.introuvable + "</span>"
+      + (n.erreur ? " &nbsp; <span style='color:#888'>⛔ " + n.erreur + "</span>" : "")
+      + "</div>";
+    if (!c.length) html += "<div style='font:13px system-ui;color:#888'>Aucun PMID / DOI / NCT détecté dans le texte.</div>";
+    c.forEach(function (x) {
+      var b = BADGE[x.status] || BADGE.erreur;
+      html += "<div style='border:1px solid #e3e3e3;border-left:4px solid " + b.c
+        + ";border-radius:8px;padding:9px 11px;margin:0 0 9px;font:13px system-ui'>"
+        + "<div><b>" + x.type + " " + x.id + "</b> &nbsp; <span style='color:" + b.c + ";font-weight:600'>" + b.t + "</span></div>";
+      if (x.actual) html += "<div style='color:#222;margin:4px 0 0'><i>Réel&nbsp;:</i> " + escapeHtml(x.actual) + "</div>";
+      if (x.notes && x.notes.length) html += "<div style='color:#b35900;margin:4px 0 0'>↳ " + x.notes.map(escapeHtml).join(" · ") + "</div>";
+      html += "</div>";
+    });
+    if (data.unsourcedTrials && data.unsourcedTrials.length) {
+      html += "<div style='font:600 13px system-ui;margin:14px 0 6px;color:#b35900'>Affirmations d'essai sans NCT (invérifiables)</div>";
+      data.unsourcedTrials.forEach(function (s) {
+        html += "<div style='border:1px dashed #d6b36a;border-radius:8px;padding:7px 10px;margin:0 0 7px;font:12.5px system-ui;color:#5a4a20'>"
+          + escapeHtml(s) + "</div>";
+      });
+    }
+    html += "<div style='font:11px system-ui;color:#999;margin-top:10px'>"
+      + "Verdicts issus de NCBI E-utilities, Crossref et ClinicalTrials.gov. "
+      + "Le module signale, il ne modifie jamais le rapport.</div>";
+    mount.innerHTML = html;
+  }
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"]/g, function (ch) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch];
+    });
+  }
+
+  // ---- bouton flottant + overlay (zéro couplage avec l'app) -----------------
+  function injectButton() {
+    if (document.getElementById("bsv-btn")) return;
+    var btn = document.createElement("button");
+    btn.id = "bsv-btn";
+    btn.textContent = "🔎 Vérifier les sources";
+    btn.style.cssText = "position:fixed;right:18px;bottom:18px;z-index:99998;"
+      + "background:#1f3864;color:#fff;border:0;border-radius:24px;padding:11px 16px;"
+      + "font:600 13px system-ui;cursor:pointer;box-shadow:0 3px 12px rgba(0,0,0,.25)";
+    btn.onclick = openOverlay;
+    document.body.appendChild(btn);
+  }
+
+  function openOverlay(prefill) {
+    var ov = document.createElement("div");
+    ov.id = "bsv-overlay";
+    ov.style.cssText = "position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.45);"
+      + "display:flex;align-items:center;justify-content:center;padding:24px";
+    var box = document.createElement("div");
+    box.style.cssText = "background:#fff;max-width:720px;width:100%;max-height:86vh;overflow:auto;"
+      + "border-radius:14px;padding:20px 22px;box-shadow:0 12px 40px rgba(0,0,0,.3)";
+    box.innerHTML =
+      "<div style='display:flex;justify-content:space-between;align-items:center;margin:0 0 12px'>"
+      + "<div style='font:700 16px system-ui;color:#1f3864'>Vérification des sources</div>"
+      + "<button id='bsv-close' style='border:0;background:#eee;border-radius:8px;padding:6px 10px;cursor:pointer;font:600 13px system-ui'>Fermer</button></div>"
+      + "<div style='font:13px system-ui;color:#555;margin:0 0 8px'>Colle ici le rapport (RAPPORT0) à vérifier :</div>"
+      + "<textarea id='bsv-input' style='width:100%;height:160px;box-sizing:border-box;border:1px solid #ccc;border-radius:8px;padding:10px;font:13px/1.4 ui-monospace,monospace'></textarea>"
+      + "<div style='margin:10px 0 14px'><button id='bsv-run' style='background:#1f3864;color:#fff;border:0;border-radius:8px;padding:10px 16px;font:600 13px system-ui;cursor:pointer'>Vérifier</button></div>"
+      + "<div id='bsv-out'></div>";
+    ov.appendChild(box);
+    document.body.appendChild(ov);
+    var input = box.querySelector("#bsv-input");
+    var out = box.querySelector("#bsv-out");
+    if (prefill) input.value = prefill;
+    box.querySelector("#bsv-close").onclick = function () { ov.remove(); };
+    ov.onclick = function (e) { if (e.target === ov) ov.remove(); };
+    box.querySelector("#bsv-run").onclick = async function () {
+      var t = input.value.trim();
+      if (!t) { out.innerHTML = "<div style='font:13px system-ui;color:#888'>Colle un rapport d'abord.</div>"; return; }
+      out.innerHTML = "<div style='font:13px system-ui;color:#1f3864'>Vérification en cours…</div>";
+      try { renderPanel(await verifyReport(t), out); }
+      catch (e) { out.innerHTML = "<div style='font:13px system-ui;color:#cc3b3b'>Erreur : " + escapeHtml(e.message) + "</div>"; }
+    };
+  }
+
+  // ---- API publique ---------------------------------------------------------
+  window.__brainshiftVerify = {
+    config: CONFIG,
+    verifyReport: verifyReport,
+    verifyPmid: verifyPmid, verifyDoi: verifyDoi, verifyNct: verifyNct,
+    extractIdentifiers: extractIdentifiers,
+    renderPanel: renderPanel,
+    open: openOverlay
+  };
+
+  if (document.readyState === "loading")
+    document.addEventListener("DOMContentLoaded", injectButton);
+  else injectButton();
+
+  console.log("🔎 Module Vérification des sources chargé (window.__brainshiftVerify)");
+})();
+
+</script>
+
+<script>
+/* ============================================================================
+   BrAInShift — Modules ARCHITECTE (brief) + PISTES→TRACER (couche 2)
+   ----------------------------------------------------------------------------
+   - Architecte : transforme un sujet brut en brief de recherche approfondie,
+     via Perplexity sonar (grounding léger pour repérer les pièges de cadrage).
+     N'écrit pas la réponse : produit le brief, éditable, à copier.
+   - Pistes→Tracer : extrait les pistes d'un RAPPORT0 et stage une commande
+     /trace dans le champ de saisie (ou la copie) — branche la couche 2 sur
+     ton module Traçage existant.
+   Ne dépendent que de fetch. Exposent window.__brainshiftArchitect / __brainshiftLeads.
+   ============================================================================ */
+(function () {
+  "use strict";
+
+  var ARCHITECT_PROMPT = [
+"RÔLE",
+"Tu es un architecte de requêtes de recherche approfondie. Tu NE réponds PAS à la question.",
+"Ta seule tâche : transformer le sujet brut fourni en un brief de recherche optimal. Ta sortie",
+"sera injectée TELLE QUELLE comme requête dans un moteur de recherche approfondie. Rédige pour",
+"ce moteur, pas pour un lecteur humain.",
+"",
+"MÉTHODE (raisonne dans cet ordre avant d'écrire)",
+"1. Intention réelle — reformule ce que l'utilisateur cherche vraiment, au-delà de ses mots.",
+"2. Pièges de cadrage — identifie les confusions fréquentes, les termes qu'on amalgame à tort,",
+"   les formulations trop larges, et tout ce qui ferait dériver un moteur générique. Déduis-en",
+"   ce qu'il faut EXCLURE explicitement.",
+"3. Crux — repère ce qui rend la question non triviale, là où les réponses faciles se trompent.",
+"4. Décomposition — découpe en sous-questions précises, chacune répondable et vérifiable.",
+"5. Maturité — savoir établi (peu de recherche utile) ou front mouvant (citations datées",
+"   indispensables) ; calibre le bornage temporel en conséquence.",
+"",
+"SORTIE (exactement cette structure)",
+"PIÈGES DE CADRAGE IDENTIFIÉS — 2 à 4 puces : chaque dérive anticipée et la décision prise.",
+"OBJECTIF — 1 à 3 phrases : ce que le rapport doit produire et la distinction clé à tenir.",
+"PÉRIMÈTRE — À inclure : … / À EXCLURE : … (reprends les exclusions issues des pièges)",
+"QUESTIONS PRÉCISES — 4 à 7 sous-questions numérotées, nommant les entités/candidats pertinents.",
+"BORNAGE TEMPOREL — fenêtre prioritaire récente + tolérance pour les sources fondatrices.",
+"EXIGENCES DE SORTIE — une source primaire avec identifiant (PMID/DOI/NCT) par affirmation ;",
+"   étiqueter chaque agent outil-de-recherche vs candidat-clinique ; distinguer établi/émergent/",
+"   spéculatif ; signaler échecs et impasses ; interdire les généralités ; TERMINE par un",
+"   classement de maturité et 3 à 5 pistes formulées comme des requêtes prêtes à tracer.",
+"",
+"CONTRAINTES",
+"- Sois spécifique : nomme les acteurs du domaine quand tes connaissances le permettent.",
+"- Si le domaine t'est peu familier, dis-le en tête et signale les zones à vérifier — n'invente rien.",
+"- N'invente jamais un nom de molécule, un identifiant, une équipe ou un essai : ce sont des",
+"  pistes à vérifier par le moteur, pas des faits assénés."
+  ].join("\n");
+
+  function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
+  function getKey(){ return localStorage.getItem("bs_pplx_key") || ""; }
+  function setKey(k){ try{ localStorage.setItem("bs_pplx_key", k||""); }catch(e){} }
+
+  // ---- appel Perplexity -----------------------------------------------------
+  async function callSonar(system, user, model) {
+    var key = getKey();
+    if (!key) throw new Error("Renseigne ta clé Perplexity (champ ci-dessus).");
+    var r = await fetch("https://api.perplexity.ai/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + key },
+      body: JSON.stringify({
+        model: model || "sonar",
+        temperature: 0.2,
+        max_tokens: 1500,
+        messages: [{ role: "system", content: system }, { role: "user", content: user }]
+      })
+    });
+    if (!r.ok) throw new Error("Perplexity " + r.status + " — " + (await r.text()).slice(0, 200));
+    var j = await r.json();
+    return (j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content) || "(réponse vide)";
+  }
+
+  // ---- overlay générique ----------------------------------------------------
+  function overlay(titleTxt, bodyHtml, onMount) {
+    var ov = document.createElement("div");
+    ov.style.cssText = "position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:24px";
+    var box = document.createElement("div");
+    box.style.cssText = "background:#fff;max-width:760px;width:100%;max-height:88vh;overflow:auto;border-radius:14px;padding:20px 22px;box-shadow:0 12px 40px rgba(0,0,0,.3)";
+    box.innerHTML = "<div style='display:flex;justify-content:space-between;align-items:center;margin:0 0 12px'>"
+      + "<div style='font:700 16px system-ui;color:#1f3864'>" + esc(titleTxt) + "</div>"
+      + "<button class='bs-x' style='border:0;background:#eee;border-radius:8px;padding:6px 10px;cursor:pointer;font:600 13px system-ui'>Fermer</button></div>"
+      + bodyHtml;
+    ov.appendChild(box); document.body.appendChild(ov);
+    box.querySelector(".bs-x").onclick = function(){ ov.remove(); };
+    ov.onclick = function(e){ if(e.target===ov) ov.remove(); };
+    if (onMount) onMount(box, ov);
+    return box;
+  }
+
+  var keyFieldHtml =
+    "<div style='font:13px system-ui;color:#555;margin:0 0 4px'>Clé Perplexity (mémorisée dans ce navigateur) :</div>"
+    + "<input id='bs-key' type='password' placeholder='pplx-…' style='width:100%;box-sizing:border-box;border:1px solid #ccc;border-radius:8px;padding:8px;font:13px system-ui;margin:0 0 12px'>";
+
+  // ---- ARCHITECTE -----------------------------------------------------------
+  function openArchitect() {
+    var body = keyFieldHtml
+      + "<div style='font:13px system-ui;color:#555;margin:0 0 4px'>Sujet brut :</div>"
+      + "<textarea id='bs-topic' placeholder='ex. stratégies pour bloquer les microfilaments d'actine dans les cellules métastatiques' style='width:100%;height:90px;box-sizing:border-box;border:1px solid #ccc;border-radius:8px;padding:10px;font:13px system-ui'></textarea>"
+      + "<div style='margin:10px 0 8px;display:flex;gap:8px;align-items:center'>"
+      + "<button id='bs-gen' style='background:#1f3864;color:#fff;border:0;border-radius:8px;padding:10px 16px;font:600 13px system-ui;cursor:pointer'>Générer le brief</button>"
+      + "<select id='bs-model' style='border:1px solid #ccc;border-radius:8px;padding:8px;font:13px system-ui'><option value='sonar'>sonar (web)</option><option value='sonar-pro'>sonar-pro</option></select>"
+      + "<span style='font:12px system-ui;color:#888'>température basse, web activé</span></div>"
+      + "<div id='bs-arch-out'></div>";
+    overlay("Architecte de recherche approfondie", body, function (box) {
+      box.querySelector("#bs-key").value = getKey();
+      box.querySelector("#bs-key").oninput = function(e){ setKey(e.target.value.trim()); };
+      var out = box.querySelector("#bs-arch-out");
+      box.querySelector("#bs-gen").onclick = async function () {
+        var topic = box.querySelector("#bs-topic").value.trim();
+        if (!topic) { out.innerHTML = "<div style='font:13px system-ui;color:#888'>Saisis un sujet.</div>"; return; }
+        out.innerHTML = "<div style='font:13px system-ui;color:#1f3864'>Construction du brief…</div>";
+        try {
+          var brief = await callSonar(ARCHITECT_PROMPT, topic, box.querySelector("#bs-model").value);
+          out.innerHTML = "<div style='font:600 13px system-ui;margin:14px 0 6px;color:#1f3864'>Brief (relis/édite avant de lancer) :</div>"
+            + "<textarea id='bs-brief' style='width:100%;height:300px;box-sizing:border-box;border:1px solid #ccc;border-radius:8px;padding:10px;font:12.5px/1.45 ui-monospace,monospace'></textarea>"
+            + "<div style='margin:8px 0 0;display:flex;gap:8px'>"
+            + "<button id='bs-copy' style='background:#1d9e75;color:#fff;border:0;border-radius:8px;padding:9px 14px;font:600 13px system-ui;cursor:pointer'>Copier le brief</button>"
+            + "<span style='font:12px system-ui;color:#888;align-self:center'>Puis arme la recherche approfondie et colle-le.</span></div>";
+          out.querySelector("#bs-brief").value = brief;
+          out.querySelector("#bs-copy").onclick = function () {
+            navigator.clipboard.writeText(out.querySelector("#bs-brief").value).then(function(){
+              out.querySelector("#bs-copy").textContent = "✅ Copié";
+            });
+          };
+        } catch (e) { out.innerHTML = "<div style='font:13px system-ui;color:#cc3b3b'>" + esc(e.message) + "</div>"; }
+      };
+    });
+  }
+
+  // ---- PISTES -> TRACER (couche 2) ------------------------------------------
+  function extractLeads(text) {
+    var leads = [];
+    // 1) bloc "PISTES À APPROFONDIR" : lignes numérotées / entre guillemets
+    var block = text.split(/PISTES?\s+À\s+APPROFONDIR/i)[1] || "";
+    var re = /["“«]\s*([^"”»]{8,160})\s*["”»]/g, m;
+    while ((m = re.exec(block))) leads.push(m[1].trim());
+    if (!leads.length) { // sinon, lignes numérotées du bloc
+      (block.match(/^\s*\d+[\.\)]\s+.{8,160}$/gm) || []).forEach(function (l) {
+        leads.push(l.replace(/^\s*\d+[\.\)]\s+/, "").trim());
+      });
+    }
+    // 2) à défaut : tout le texte, requêtes entre guillemets
+    if (!leads.length) { while ((m = re.exec(text))) leads.push(m[1].trim()); }
+    // dédup
+    var seen = {}; return leads.filter(function (x) { var k=x.toLowerCase(); if(seen[k])return false; seen[k]=1; return true; }).slice(0, 12);
+  }
+
+  function stageTrace(query) {
+    var cmd = "/trace " + query;
+    // tenter de remplir le champ de saisie de l'app
+    var el = document.querySelector("textarea:not([id^=bs-]):not([id=bsv-input])")
+      || document.querySelector("[contenteditable='true']");
+    if (el) {
+      if (el.tagName === "TEXTAREA") {
+        el.value = cmd;
+        el.dispatchEvent(new Event("input", { bubbles: true }));
+      } else { el.textContent = cmd; el.dispatchEvent(new Event("input", { bubbles: true })); }
+      el.focus();
+      return "staged";
+    }
+    if (navigator.clipboard) { navigator.clipboard.writeText(cmd); return "copied"; }
+    return "none";
+  }
+
+  function openLeads() {
+    var body =
+      "<div style='font:13px system-ui;color:#555;margin:0 0 8px'>Colle le RAPPORT0 — j'en extrais les pistes, et tu lances un Traçage en un clic.</div>"
+      + "<textarea id='bs-rep' style='width:100%;height:140px;box-sizing:border-box;border:1px solid #ccc;border-radius:8px;padding:10px;font:12.5px/1.4 ui-monospace,monospace'></textarea>"
+      + "<div style='margin:10px 0 12px'><button id='bs-extract' style='background:#1f3864;color:#fff;border:0;border-radius:8px;padding:10px 16px;font:600 13px system-ui;cursor:pointer'>Extraire les pistes</button></div>"
+      + "<div id='bs-leads-out'></div>";
+    overlay("Pistes → Tracer (couche 2)", body, function (box, ov) {
+      var out = box.querySelector("#bs-leads-out");
+      box.querySelector("#bs-extract").onclick = function () {
+        var leads = extractLeads(box.querySelector("#bs-rep").value);
+        if (!leads.length) { out.innerHTML = "<div style='font:13px system-ui;color:#888'>Aucune piste détectée (cherche un bloc « PISTES À APPROFONDIR »).</div>"; return; }
+        var html = "<div style='font:600 13px system-ui;margin:0 0 8px;color:#1f3864'>" + leads.length + " piste(s) :</div>";
+        leads.forEach(function (q, i) {
+          html += "<div style='display:flex;gap:8px;align-items:center;border:1px solid #e3e3e3;border-radius:8px;padding:8px 10px;margin:0 0 7px'>"
+            + "<button data-i='" + i + "' class='bs-trace' style='background:#1d9e75;color:#fff;border:0;border-radius:7px;padding:6px 12px;font:600 12px system-ui;cursor:pointer;white-space:nowrap'>Tracer</button>"
+            + "<span style='font:12.5px system-ui;color:#333'>" + esc(q) + "</span></div>";
+        });
+        html += "<div id='bs-trace-msg' style='font:12px system-ui;color:#1d9e75;margin-top:6px'></div>";
+        out.innerHTML = html;
+        Array.prototype.forEach.call(out.querySelectorAll(".bs-trace"), function (b) {
+          b.onclick = function () {
+            var r = stageTrace(leads[+b.getAttribute("data-i")]);
+            var msg = out.querySelector("#bs-trace-msg");
+            if (r === "staged") { msg.textContent = "✅ Commande /trace insérée dans le champ de saisie — ferme et envoie."; ov.remove(); }
+            else if (r === "copied") msg.textContent = "📋 Commande /trace copiée — colle-la dans le chat et envoie.";
+            else msg.textContent = "Impossible d'insérer ; copie manuelle : /trace " + leads[+b.getAttribute("data-i")];
+          };
+        });
+      };
+    });
+  }
+
+  // ---- boutons flottants ----------------------------------------------------
+  function fab(id, label, bottom, onClick) {
+    if (document.getElementById(id)) return;
+    var b = document.createElement("button");
+    b.id = id; b.textContent = label;
+    b.style.cssText = "position:fixed;right:18px;bottom:" + bottom + "px;z-index:99998;"
+      + "background:#1f3864;color:#fff;border:0;border-radius:24px;padding:11px 16px;"
+      + "font:600 13px system-ui;cursor:pointer;box-shadow:0 3px 12px rgba(0,0,0,.25)";
+    b.onclick = onClick; document.body.appendChild(b);
+  }
+  function inject() {
+    fab("bs-arch-btn", "🧭 Architecte", 118, openArchitect);
+    fab("bs-leads-btn", "🎯 Pistes → Tracer", 68, openLeads);
+    // le bouton "🔎 Vérifier les sources" (couche 1) est injecté par son propre module à 18px
+  }
+
+  window.__brainshiftArchitect = { open: openArchitect, prompt: ARCHITECT_PROMPT, callSonar: callSonar };
+  window.__brainshiftLeads = { open: openLeads, extractLeads: extractLeads, stageTrace: stageTrace };
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", inject);
+  else inject();
+  console.log("🧭 Modules Architecte + Pistes→Tracer chargés");
+})();
+
+</script>
 </body>
 </html>
