@@ -11898,19 +11898,34 @@ Ne RECOPIE JAMAIS le bloc « RÉSULTATS PUBMED » dans ta réponse : il te sert 
   // contexte = ligne(s) contenant l'identifiant (ce que le rapport AFFIRME)
   function contextFor(text, id) {
     var lines = text.split(/\r?\n/);
-    var hits = lines.filter(function (l) { return l.indexOf(id) !== -1 || l.toUpperCase().indexOf(id.toUpperCase()) !== -1; });
-    return (hits.join(" ") || "").slice(0, 400);
+    var up = id.toUpperCase();
+    var ctx = [];
+    for (var i = 0; i < lines.length; i++) {
+      if (lines[i].toUpperCase().indexOf(up) !== -1) {
+        if (i > 0) ctx.push(lines[i - 1]);
+        ctx.push(lines[i]);
+        if (i < lines.length - 1) ctx.push(lines[i + 1]);
+      }
+    }
+    return ctx.join(" ").slice(0, 600);
   }
 
   // affirmations d'essai SANS NCT (couche 3 légère) ---------------------------
   function unsourcedTrials(text) {
     var out = [];
+    var seen = new Set();
     var sentences = text.split(/(?<=[.!?])\s+|\r?\n/);
-    var trialRe = /\b(essai|étude clinique|clinical trial|phase\s+(?:i{1,3}|[123])\b)/i;
+    var trialRe = /\b(essai clinique|étude clinique|clinical trial|essai de phase)\b/i;
     sentences.forEach(function (s) {
-      if (trialRe.test(s) && !/NCT\d{8}/i.test(s) && s.length > 30) {
-        out.push(s.trim().slice(0, 220));
-      }
+      var t = s.trim();
+      if (t.length <= 40) return;
+      if (/NCT\d{8}/i.test(t)) return;
+      if (/statut\s+de\s+d[eé]veloppement/i.test(t)) return; // simple étiquette, pas un claim d'essai
+      if (!trialRe.test(t)) return;
+      var clip = t.slice(0, 220);
+      if (seen.has(clip)) return;
+      seen.add(clip);
+      out.push(clip);
     });
     return out.slice(0, 8);
   }
@@ -11967,29 +11982,54 @@ Ne RECOPIE JAMAIS le bloc « RÉSULTATS PUBMED » dans ta réponse : il te sert 
       var status = (ps.statusModule && ps.statusModule.overallStatus) || "";
       var phases = (ps.designModule && ps.designModule.phases) || [];
       var conds = (ps.conditionsModule && ps.conditionsModule.conditions) || [];
+      var aim = ps.armsInterventionsModule || {};
+      var interventions = (aim.interventions || []).map(function (iv) { return iv.name || ""; });
       var actual = title + " — [" + status + (phases.length ? " · " + phases.join("/") : "") + "]"
         + (conds.length ? " · " + conds.slice(0, 3).join(", ") : "");
-      // on compare le contexte au titre + conditions (souvent ce que le rapport cite)
-      return judge("NCT", nct, ctx, actual, title + " " + conds.join(" "), "", "");
+      // cohérence jugée sur médicaments + pathologies réels (signal cross-langue fiable),
+      // jamais sur le titre officiel complet que le rapport ne recopie pas.
+      return judgeNct(nct, ctx, actual, interventions, conds);
     } catch (e) { return result("NCT", nct, "erreur", ctx, "", ["réseau: " + e.message]); }
   }
 
   // ---- arbitrage : confirmé / incohérent ------------------------------------
+  // PMID / DOI : un identifiant qui résout est confirmé ; seule une CONTRADICTION
+  // d'année (fiable malgré la paraphrase) le rétrograde en incohérent.
   function judge(type, id, ctx, actual, actualTitle, actualJournal, actualYear) {
     var notes = [];
-    var ov = overlap(ctx, actualTitle);
-    if (ov < CONFIG.titleOverlapMin) notes.push("le titre réel ne correspond pas à ce que cite le rapport");
     if (actualYear) {
       var ys = yearIn(ctx);
       if (ys.length && ys.indexOf(Number(actualYear)) === -1)
         notes.push("année : rapport=" + ys.join("/") + " · réel=" + actualYear);
     }
-    if (actualJournal) {
-      var jo = overlap(ctx, actualJournal);
-      if (jo < 0.5) notes.push("journal réel : « " + actualJournal + " »");
-    }
-    var status = notes.length ? "incoherent" : "confirme";
-    return result(type, id, status, ctx, actual, notes);
+    return result(type, id, notes.length ? "incoherent" : "confirme", ctx, actual, notes);
+  }
+
+  // termes trop génériques pour prouver qu'un NCT vise le bon essai
+  var GENERIC = new Set(("study trial clinical phase cancer carcinoma tumor tumour tumeur "
+    + "treatment therapy patients subjects advanced solid disease syndrome syndromes risk "
+    + "randomized placebo available best evaluate efficacy safety open label dose finding "
+    + "multicenter versus first line relapsed refractory metastatic stage human adult effects "
+    + "study1 group combination").split(/\s+/));
+  function distinctiveTokens(arr) {
+    var out = new Set();
+    (arr || []).forEach(function (s) {
+      tokens(s).forEach(function (t) { if (t.length >= 4 && !GENERIC.has(t)) out.add(t); });
+    });
+    return out;
+  }
+
+  // NCT : cohérent dès qu'un terme distinctif (médicament ou pathologie) du registre réel
+  // se retrouve dans le contexte cité ; sinon l'essai pointe ailleurs → incohérent.
+  function judgeNct(nct, ctx, actual, interventions, conditions) {
+    var key = distinctiveTokens((interventions || []).concat(conditions || []));
+    if (!key.size) return result("NCT", nct, "confirme", ctx, actual, []);
+    var hay = " " + norm(ctx) + " ";
+    var shared = false;
+    key.forEach(function (t) { if (hay.indexOf(t) !== -1) shared = true; });
+    if (shared) return result("NCT", nct, "confirme", ctx, actual, []);
+    return result("NCT", nct, "incoherent", ctx, actual,
+      ["l'essai réel ne partage ni médicament ni pathologie avec ce que cite le rapport"]);
   }
 
   // ---- orchestration --------------------------------------------------------
@@ -12059,8 +12099,8 @@ Ne RECOPIE JAMAIS le bloc « RÉSULTATS PUBMED » dans ta réponse : il te sert 
     if (document.getElementById("bsv-btn")) return;
     var btn = document.createElement("button");
     btn.id = "bsv-btn";
-    btn.textContent = "🔎 Vérifier les sources";
-    btn.style.cssText = "position:fixed;right:18px;bottom:18px;z-index:99998;"
+    btn.textContent = "2 · 🔎 Vérifier";
+    btn.style.cssText = "position:fixed;right:18px;bottom:68px;z-index:99998;"
       + "background:#1f3864;color:#fff;border:0;border-radius:24px;padding:11px 16px;"
       + "font:600 13px system-ui;cursor:pointer;box-shadow:0 3px 12px rgba(0,0,0,.25)";
     btn.onclick = function () { openOverlay(); };
@@ -12326,8 +12366,8 @@ Ne RECOPIE JAMAIS le bloc « RÉSULTATS PUBMED » dans ta réponse : il te sert 
     b.onclick = onClick; document.body.appendChild(b);
   }
   function inject() {
-    fab("bs-arch-btn", "🧭 Architecte", 118, openArchitect);
-    fab("bs-leads-btn", "🎯 Pistes → Tracer", 68, openLeads);
+    fab("bs-arch-btn", "1 · 🧭 Architecte", 118, openArchitect);
+    fab("bs-leads-btn", "3 · 🎯 Tracer", 18, openLeads);
     // le bouton "🔎 Vérifier les sources" (couche 1) est injecté par son propre module à 18px
   }
 
