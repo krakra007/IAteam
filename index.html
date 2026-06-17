@@ -11724,6 +11724,20 @@ Ne RECOPIE JAMAIS le bloc « RÉSULTATS PUBMED » dans ta réponse : il te sert 
       t.records.length + " affichés)\nSource vérifiée — utilise UNIQUEMENT ces références, n'en invente aucune.\n\n" +
       lines.join("\n\n");
   }
+  // Rendu LISIBLE des enregistrements PubMed réellement récupérés, affiché tel quel
+  // à l'utilisateur — indépendamment de ce que le modèle choisit de citer.
+  function renderPubmedSources(t) {
+    if (!t.records || !t.records.length) {
+      return "## Sources PubMed (vérifiées)\n\n_Aucun enregistrement PubMed récupéré pour la requête « " + t.query + " » (" + t.count + " hit(s))._ Requête peut-être trop étroite — réessaie via un item du bloc PROCHAINES REQUÊTES ou une formulation plus large.";
+    }
+    var lines = t.records.map(function (r) {
+      return "- **PMID " + r.pmid + "** — " + r.title + " (" + r.year + "). " + r.journal +
+        (r.doi ? " · DOI : " + r.doi : "") + " · " + r.url;
+    });
+    return "## Sources PubMed (vérifiées — récupérées directement de PubMed)\n\n" +
+      "_Requête : « " + t.query + " » — " + t.count + " résultats, " + t.records.length + " affichés. Ces identifiants peuvent être recollés dans 🔎 Vérifier._\n\n" +
+      lines.join("\n");
+  }
   function parseNextQueries(text) {
     const re = /QUERY::\s*(.+?)\s*\|\s*YEARS::\s*(\d{4})?\s*-?\s*(\d{4})?\s*\|\s*WHY::\s*(.+)/gi;
     const out = []; let m;
@@ -11765,12 +11779,32 @@ Ne RECOPIE JAMAIS le bloc « RÉSULTATS PUBMED » dans ta réponse : il te sert 
     const out = (d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content) || "";
     return parseNextQueries(out)[0] || { query: seed, minYear: 2021, maxYear: null };
   }
+  // Perplexity exige une alternance stricte user/assistant après le(s) message(s)
+  // système. Retirer les réponses _tracing peut laisser deux "user" de suite
+  // (typiquement au 2ᵉ trace) → on fusionne les rôles consécutifs, et on démarre sur user.
+  function sanitizeAlternation(msgs) {
+    var out = [];
+    for (var i = 0; i < msgs.length; i++) {
+      var m = msgs[i];
+      if (!m || !m.content) continue;
+      if (out.length && out[out.length - 1].role === m.role) {
+        out[out.length - 1].content += "\n\n" + m.content;
+      } else {
+        out.push({ role: m.role, content: m.content });
+      }
+    }
+    while (out.length && out[0].role !== "user") out.shift();
+    return out;
+  }
+
   async function sonarTrace(key, messages, question, pubmedBlock) {
     // On exclut les réponses de Traçage précédentes (_tracing) de l'historique :
     // si l'une a dégénéré en liste répétée, elle empoisonnerait le contexte et le
     // modèle prolongerait la boucle. RAPPORT0 (non _tracing) reste, lui, en contexte.
-    const hist = flattenHistory(messages.filter(m => !m._tracing).slice(0, -1));
-    const chat = [{ role: "system", content: TRACING_SYSTEM_PROMPT }, ...hist, { role: "user", content: question + "\n\n" + pubmedBlock }];
+    const hist = flattenHistory(messages.filter(m => !m._tracing).slice(0, -1))
+      .filter(m => !(m.role === "user" && /^\s*\/trace\b/i.test(m.content || ""))); // retire les commandes /trace
+    const body = sanitizeAlternation(hist.concat([{ role: "user", content: question + "\n\n" + pubmedBlock }]));
+    const chat = [{ role: "system", content: TRACING_SYSTEM_PROMPT }].concat(body);
     const d = await pplxCall(key, { model: "sonar-pro", messages: chat, max_tokens: 2500 });
     let content = (d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content) || "";
     if (!content) throw new Error("Réponse vide de sonar-pro.");
@@ -11810,9 +11844,11 @@ Ne RECOPIE JAMAIS le bloc « RÉSULTATS PUBMED » dans ta réponse : il te sert 
     const answer = await sonarTrace(key, c.messages, seed, block);
 
     // 4) Stockage (le rendu est géré par le tail de send())
+    //    On affiche TOUJOURS les vraies références PubMed récupérées (PMID/DOI),
+    //    indépendamment de ce que le modèle a choisi de citer.
     c.messages.push({
       role: "assistant",
-      content: answer,
+      content: answer + "\n\n" + renderPubmedSources(traced),
       provider: "PERPLEXITY", model: "sonar-pro",
       _tracing: true,
       _tracingQuery: q.query,
