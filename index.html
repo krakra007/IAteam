@@ -12063,7 +12063,7 @@ Ne RECOPIE JAMAIS le bloc « RÉSULTATS PUBMED » dans ta réponse : il te sert 
     btn.style.cssText = "position:fixed;right:18px;bottom:18px;z-index:99998;"
       + "background:#1f3864;color:#fff;border:0;border-radius:24px;padding:11px 16px;"
       + "font:600 13px system-ui;cursor:pointer;box-shadow:0 3px 12px rgba(0,0,0,.25)";
-    btn.onclick = openOverlay;
+    btn.onclick = function () { openOverlay(); };
     document.body.appendChild(btn);
   }
 
@@ -12087,7 +12087,7 @@ Ne RECOPIE JAMAIS le bloc « RÉSULTATS PUBMED » dans ta réponse : il te sert 
     document.body.appendChild(ov);
     var input = box.querySelector("#bsv-input");
     var out = box.querySelector("#bsv-out");
-    if (prefill) input.value = prefill;
+    if (prefill && typeof prefill === "string") input.value = prefill;
     box.querySelector("#bsv-close").onclick = function () { ov.remove(); };
     ov.onclick = function (e) { if (e.target === ov) ov.remove(); };
     box.querySelector("#bsv-run").onclick = async function () {
