@@ -12290,20 +12290,39 @@ Ne RECOPIE JAMAIS le bloc « RÉSULTATS PUBMED » dans ta réponse : il te sert 
 
   // ---- PISTES -> TRACER (couche 2) ------------------------------------------
   function extractLeads(text) {
-    var leads = [];
-    // 1) bloc "PISTES À APPROFONDIR" : lignes numérotées / entre guillemets
-    var block = text.split(/PISTES?\s+À\s+APPROFONDIR/i)[1] || "";
-    var re = /["“«]\s*([^"”»]{8,160})\s*["”»]/g, m;
-    while ((m = re.exec(block))) leads.push(m[1].trim());
-    if (!leads.length) { // sinon, lignes numérotées du bloc
-      (block.match(/^\s*\d+[\.\)]\s+.{8,160}$/gm) || []).forEach(function (l) {
-        leads.push(l.replace(/^\s*\d+[\.\)]\s+/, "").trim());
-      });
+    // toUpperCase conserve la longueur (accents 1:1) → les index restent alignés
+    var U = text.toUpperCase();
+    var markers = [
+      "PISTES À APPROFONDIR", "PISTES A APPROFONDIR",
+      "PISTES À TRACER", "PISTES A TRACER",
+      "REQUÊTES PRÊTES À TRACER", "REQUETES PRETES A TRACER", "REQUÊTES PRETES A TRACER",
+      "REQUÊTES À TRACER", "REQUETES A TRACER",
+      "PROCHAINES REQUÊTES", "PROCHAINES REQUETES",
+      "PISTES LES PLUS PROMETTEUSES", "PISTES PROMETTEUSES",
+      "READY TO TRACE", "QUERIES TO TRACE", "NEXT QUERIES", "FOLLOW-UP QUERIES"
+    ];
+    // dernière occurrence : la liste est en fin de rapport, pas dans la prose
+    var idx = -1;
+    markers.forEach(function (mk) { var p = U.lastIndexOf(mk); if (p > idx) idx = p; });
+    if (idx === -1) return []; // pas de bloc fiable → zéro piste (mieux que du bruit)
+    var block = text.slice(idx);
+
+    function clean(s) {
+      return s.replace(/^\s*\d+[\.\)]\s*/, "")
+              .replace(/^[\-*•]\s*/, "")
+              .replace(/^["“«]\s*/, "").replace(/\s*["”»][\s:.]*$/, "")
+              .trim();
     }
-    // 2) à défaut : tout le texte, requêtes entre guillemets
-    if (!leads.length) { while ((m = re.exec(text))) leads.push(m[1].trim()); }
-    // dédup
-    var seen = {}; return leads.filter(function (x) { var k=x.toLowerCase(); if(seen[k])return false; seen[k]=1; return true; }).slice(0, 12);
+    function looksLikeLead(s) { return s && s.length >= 25 && s.split(/\s+/).length >= 4; }
+
+    var got = [], m;
+    (block.match(/^\s*\d+[\.\)]\s+.{15,220}$/gm) || []).forEach(function (l) { got.push(clean(l)); });
+    var re = /["“«]\s*([^"”»]{25,220})\s*["”»]/g;
+    while ((m = re.exec(block))) got.push(clean(m[1]));
+
+    got = got.filter(looksLikeLead);
+    var seen = {};
+    return got.filter(function (x) { var k = x.toLowerCase(); if (seen[k]) return false; seen[k] = 1; return true; }).slice(0, 12);
   }
 
   function stageTrace(query) {
@@ -12326,14 +12345,28 @@ Ne RECOPIE JAMAIS le bloc « RÉSULTATS PUBMED » dans ta réponse : il te sert 
   function openLeads() {
     var body =
       "<div style='font:13px system-ui;color:#555;margin:0 0 8px'>Colle le RAPPORT0 — j'en extrais les pistes, et tu lances un Traçage en un clic.</div>"
-      + "<textarea id='bs-rep' style='width:100%;height:140px;box-sizing:border-box;border:1px solid #ccc;border-radius:8px;padding:10px;font:12.5px/1.4 ui-monospace,monospace'></textarea>"
-      + "<div style='margin:10px 0 12px'><button id='bs-extract' style='background:#1f3864;color:#fff;border:0;border-radius:8px;padding:10px 16px;font:600 13px system-ui;cursor:pointer'>Extraire les pistes</button></div>"
-      + "<div id='bs-leads-out'></div>";
+      + "<textarea id='bs-rep' style='width:100%;height:130px;box-sizing:border-box;border:1px solid #ccc;border-radius:8px;padding:10px;font:12.5px/1.4 ui-monospace,monospace'></textarea>"
+      + "<div style='margin:10px 0 4px'><button id='bs-extract' style='background:#1f3864;color:#fff;border:0;border-radius:8px;padding:10px 16px;font:600 13px system-ui;cursor:pointer'>Extraire les pistes</button></div>"
+      + "<div id='bs-leads-out'></div>"
+      + "<div style='border-top:1px solid #eee;margin:14px 0 0;padding:12px 0 0'>"
+      + "<div style='font:13px system-ui;color:#555;margin:0 0 4px'>Ou saisis / colle une piste à tracer toi-même :</div>"
+      + "<div style='display:flex;gap:8px'>"
+      + "<input id='bs-manual' placeholder='ex. résistance à imételstat dans les SMD, 2023-2026' style='flex:1;box-sizing:border-box;border:1px solid #ccc;border-radius:8px;padding:9px;font:13px system-ui'>"
+      + "<button id='bs-manual-go' style='background:#1d9e75;color:#fff;border:0;border-radius:8px;padding:9px 14px;font:600 13px system-ui;cursor:pointer;white-space:nowrap'>Tracer</button>"
+      + "</div>"
+      + "<div id='bs-manual-msg' style='font:12px system-ui;color:#1d9e75;margin-top:6px'></div>"
+      + "</div>";
     overlay("Pistes → Tracer (couche 2)", body, function (box, ov) {
       var out = box.querySelector("#bs-leads-out");
+      function applyStage(query, msgEl) {
+        var r = stageTrace(query);
+        if (r === "staged") { msgEl.textContent = "✅ Commande /trace insérée dans le champ de saisie — ferme et envoie."; ov.remove(); }
+        else if (r === "copied") msgEl.textContent = "📋 Commande /trace copiée — colle-la dans le chat et envoie.";
+        else msgEl.textContent = "Copie manuelle : /trace " + query;
+      }
       box.querySelector("#bs-extract").onclick = function () {
         var leads = extractLeads(box.querySelector("#bs-rep").value);
-        if (!leads.length) { out.innerHTML = "<div style='font:13px system-ui;color:#888'>Aucune piste détectée (cherche un bloc « PISTES À APPROFONDIR »).</div>"; return; }
+        if (!leads.length) { out.innerHTML = "<div style='font:13px system-ui;color:#888'>Aucune piste détectée automatiquement (bloc « Pistes à approfondir » absent ou différent) — utilise le champ « saisis une piste » ci-dessous.</div>"; return; }
         var html = "<div style='font:600 13px system-ui;margin:0 0 8px;color:#1f3864'>" + leads.length + " piste(s) :</div>";
         leads.forEach(function (q, i) {
           html += "<div style='display:flex;gap:8px;align-items:center;border:1px solid #e3e3e3;border-radius:8px;padding:8px 10px;margin:0 0 7px'>"
@@ -12343,14 +12376,14 @@ Ne RECOPIE JAMAIS le bloc « RÉSULTATS PUBMED » dans ta réponse : il te sert 
         html += "<div id='bs-trace-msg' style='font:12px system-ui;color:#1d9e75;margin-top:6px'></div>";
         out.innerHTML = html;
         Array.prototype.forEach.call(out.querySelectorAll(".bs-trace"), function (b) {
-          b.onclick = function () {
-            var r = stageTrace(leads[+b.getAttribute("data-i")]);
-            var msg = out.querySelector("#bs-trace-msg");
-            if (r === "staged") { msg.textContent = "✅ Commande /trace insérée dans le champ de saisie — ferme et envoie."; ov.remove(); }
-            else if (r === "copied") msg.textContent = "📋 Commande /trace copiée — colle-la dans le chat et envoie.";
-            else msg.textContent = "Impossible d'insérer ; copie manuelle : /trace " + leads[+b.getAttribute("data-i")];
-          };
+          b.onclick = function () { applyStage(leads[+b.getAttribute("data-i")], out.querySelector("#bs-trace-msg")); };
         });
+      };
+      box.querySelector("#bs-manual-go").onclick = function () {
+        var q = box.querySelector("#bs-manual").value.trim();
+        var msg = box.querySelector("#bs-manual-msg");
+        if (!q) { msg.style.color = "#cc3b3b"; msg.textContent = "Saisis une piste d'abord."; return; }
+        msg.style.color = "#1d9e75"; applyStage(q, msg);
       };
     });
   }
