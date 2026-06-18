@@ -11810,15 +11810,31 @@ Même si des messages précédents parlent de formulation, de traduction, de wor
       "TÂCHE : effectue un TRAÇAGE bibliographique de l'affirmation/piste ci-dessous "
       + "(remonte aux sources primaires, évalue-les, cartographie l'état de la recherche). "
       + "Ce n'est PAS une demande de reformulation, de traduction, ni de proposition de titre. "
-      + "Sois SYNTHÉTIQUE et hiérarchise (va à l'essentiel, pas d'exhaustivité encyclopédique) : "
-      + "garde impérativement assez de place pour TERMINER ta réponse par une ligne « Maturité » "
-      + "puis un bloc PROCHAINES REQUÊTES. Ces deux éléments finaux sont OBLIGATOIRES.\n\n"
+      + "CONTRAINTE DE LONGUEUR : limite le corps de l'analyse à ~700 mots, en sections courtes "
+      + "et hiérarchisées (pas d'exhaustivité encyclopédique), afin de RÉSERVER la fin à une ligne "
+      + "« Maturité » puis un bloc PROCHAINES REQUÊTES. Ces deux éléments finaux sont OBLIGATOIRES "
+      + "et doivent apparaître en toute fin de réponse.\n\n"
       + "AFFIRMATION / PISTE À TRACER :\n" + question;
     const body = sanitizeAlternation(hist.concat([{ role: "user", content: framedQuestion + "\n\n" + pubmedBlock }]));
     const chat = [{ role: "system", content: TRACING_SYSTEM_PROMPT }].concat(body);
     const d = await pplxCall(key, { model: "sonar-pro", messages: chat, max_tokens: 4000 });
     let content = (d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content) || "";
     if (!content) throw new Error("Réponse vide de sonar-pro.");
+
+    // Garde-fou : la queue « Maturité » + PROCHAINES REQUÊTES est obligatoire
+    // (elle alimente la boucle de relance). Si elle manque — typiquement réponse
+    // tronquée pour cause de longueur — on la régénère via un petit appel dédié.
+    const finish = (d.choices && d.choices[0] && d.choices[0].finish_reason) || "";
+    const hasTail = /PROCHAINES\s+REQU/i.test(content) && /Maturit/i.test(content);
+    if (!hasTail) {
+      try {
+        const tail = await ensureTail(key, question, content, pubmedBlock);
+        if (tail) {
+          const cut = (finish === "length") ? " *(complétée automatiquement : réponse principale tronquée)*" : "";
+          content = content.replace(/\s+$/, "") + "\n\n" + tail + cut;
+        }
+      } catch (e) { /* en cas d'échec du complément, on garde le corps tel quel */ }
+    }
     const sr = Array.isArray(d.search_results) ? d.search_results : null;
     if (sr && sr.length && !/##\s*Sources/i.test(content)) {
       content += "\n\n## Sources web\n\n" + sr.map((s, i) => {
@@ -11829,7 +11845,28 @@ Même si des messages précédents parlent de formulation, de traduction, de wor
     return content;
   }
 
-  /* ---- Élargissement de requête (fallback 0 hit) ------------------- */
+  // Régénère UNIQUEMENT la fin obligatoire (ligne « Maturité » + bloc PROCHAINES
+  // REQUÊTES), à partir de l'analyse déjà produite et du bloc PubMed. Utilise
+  // sonar (peu coûteux) et n'est appelée que si la réponse principale a perdu sa
+  // queue. Le bloc PROCHAINES REQUÊTES respecte le format parsable attendu.
+  async function ensureTail(key, question, analysis, pubmedBlock) {
+    const sys =
+      "À partir de l'analyse de traçage et du bloc PubMed fournis, écris UNIQUEMENT la fin manquante : "
+      + "(1) une ligne commençant par « Maturité : » résumant la distance à la clinique, puis "
+      + "(2) un bloc commençant par « PROCHAINES REQUÊTES » contenant 1 à 4 lignes au format EXACT : "
+      + "QUERY:: <termes de recherche en anglais> | YEARS:: <min>-<max> | WHY:: <ce que ça vérifie>. "
+      + "N'écris RIEN d'autre : pas de réintroduction, pas de résumé, pas de liste de sources.";
+    const usr = "PISTE : " + question
+      + "\n\nFIN DE L'ANALYSE DÉJÀ PRODUITE :\n" + String(analysis).slice(-3000)
+      + "\n\n" + pubmedBlock;
+    const d = await pplxCall(key, {
+      model: "sonar",
+      messages: [{ role: "system", content: sys }, { role: "user", content: usr }],
+      max_tokens: 700
+    });
+    return (d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content || "").trim();
+  }
+
   // Ramène une phrase à un noyau de mots-clés exploitable par PubMed :
   // supprime les parenthèses (ex. « (phase 3 … trial) »), la ponctuation
   // et les mots vides, puis garde au plus 6 termes significatifs.
