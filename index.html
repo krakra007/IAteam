@@ -11810,11 +11810,13 @@ Même si des messages précédents parlent de formulation, de traduction, de wor
       "TÂCHE : effectue un TRAÇAGE bibliographique de l'affirmation/piste ci-dessous "
       + "(remonte aux sources primaires, évalue-les, cartographie l'état de la recherche). "
       + "Ce n'est PAS une demande de reformulation, de traduction, ni de proposition de titre. "
-      + "Termine impérativement par une ligne « Maturité » puis un bloc PROCHAINES REQUÊTES.\n\n"
+      + "Sois SYNTHÉTIQUE et hiérarchise (va à l'essentiel, pas d'exhaustivité encyclopédique) : "
+      + "garde impérativement assez de place pour TERMINER ta réponse par une ligne « Maturité » "
+      + "puis un bloc PROCHAINES REQUÊTES. Ces deux éléments finaux sont OBLIGATOIRES.\n\n"
       + "AFFIRMATION / PISTE À TRACER :\n" + question;
     const body = sanitizeAlternation(hist.concat([{ role: "user", content: framedQuestion + "\n\n" + pubmedBlock }]));
     const chat = [{ role: "system", content: TRACING_SYSTEM_PROMPT }].concat(body);
-    const d = await pplxCall(key, { model: "sonar-pro", messages: chat, max_tokens: 2500 });
+    const d = await pplxCall(key, { model: "sonar-pro", messages: chat, max_tokens: 4000 });
     let content = (d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content) || "";
     if (!content) throw new Error("Réponse vide de sonar-pro.");
     const sr = Array.isArray(d.search_results) ? d.search_results : null;
