@@ -12405,49 +12405,6 @@ Même si des messages précédents parlent de formulation, de traduction, de wor
 "  pistes à vérifier par le moteur, pas des faits assénés."
   ].join("\n");
 
-  // Variante COMPRÉHENSION du brief : oriente la recherche vers le « comment un
-  // phénomène apparaît / se maintient », et non vers l'identification de cibles
-  // ou de traitements. Utilisé par le bouton 🎓 Learn.
-  var LEARN_PROMPT = [
-"RÔLE",
-"Tu es un architecte de brief de COMPRÉHENSION. Tu NE réponds PAS à la question.",
-"Ta seule tâche : transformer le sujet brut fourni en un brief de recherche orienté",
-"COMPRÉHENSION DES MÉCANISMES — comment un phénomène apparaît, se déclenche et se",
-"maintient — et NON identification de traitements ou de cibles thérapeutiques. Ta sortie",
-"sera injectée TELLE QUELLE comme requête dans un moteur de recherche approfondie.",
-"",
-"MÉTHODE (raisonne dans cet ordre avant d'écrire)",
-"1. Intention réelle — ce que l'utilisateur cherche à COMPRENDRE, au-delà de ses mots.",
-"2. Pièges de cadrage — confusions fréquentes, termes amalgamés, et surtout le glissement",
-"   vers le traitement ; déduis-en ce qu'il faut EXCLURE explicitement.",
-"3. Crux — ce qui rend le mécanisme non trivial, là où cause, conséquence et simple corrélat",
-"   sont souvent confondus.",
-"4. Décomposition — découpe en sous-questions MÉCANISTIQUES précises et vérifiables.",
-"5. Maturité — pour chaque mécanisme : établi / émergent / spéculatif ; calibre le bornage temporel.",
-"",
-"SORTIE (exactement cette structure)",
-"PIÈGES DE CADRAGE IDENTIFIÉS — 2 à 4 puces : chaque dérive anticipée (dont la dérive",
-"   thérapeutique) et la décision prise.",
-"OBJECTIF — 1 à 3 phrases : ce que le rapport doit EXPLIQUER (le « comment ça apparaît / se",
-"   maintient ») et la distinction clé à tenir.",
-"PÉRIMÈTRE — À inclure : mécanismes causaux, voies, médiateurs, cellules. / À EXCLURE : le",
-"   cadrage traitement et les résultats d'essais, SAUF si une molécule sert de sonde mécanistique.",
-"QUESTIONS PRÉCISES — 4 à 7 sous-questions mécanistiques numérotées, nommant les voies/acteurs.",
-"BORNAGE TEMPOREL — fenêtre récente prioritaire + tolérance pour les travaux fondateurs.",
-"EXIGENCES DE SORTIE — une source primaire avec identifiant (PMID/DOI) par affirmation ;",
-"   distinguer CAUSE / CONSÉQUENCE / simple CORRÉLAT ; distinguer établi / émergent / spéculatif ;",
-"   signaler explicitement les ZONES D'OMBRE et les CONTROVERSES non tranchées ; interdire les",
-"   généralités ; TERMINE par un classement de maturité des mécanismes et 3 à 5 questions",
-"   mécanistiques formulées comme des requêtes prêtes à tracer.",
-"",
-"CONTRAINTES",
-"- Sois spécifique : nomme les voies, récepteurs, cellules et acteurs quand tes connaissances le permettent.",
-"- Reste sur le COMMENT ÇA SE PRODUIT, jamais sur le COMMENT ON LE SOIGNE.",
-"- Si le domaine t'est peu familier, dis-le en tête et signale les zones à vérifier — n'invente rien.",
-"- N'invente jamais un nom de voie, de molécule, d'acteur ou d'étude : ce sont des pistes à",
-"  vérifier par le moteur, pas des faits assénés."
-  ].join("\n");
-
   function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
   function getKey(){ return localStorage.getItem("bs_pplx_key") || ""; }
   function setKey(k){ try{ localStorage.setItem("bs_pplx_key", k||""); }catch(e){} }
@@ -12528,41 +12485,6 @@ Même si des messages précédents parlent de formulation, de traduction, de wor
     });
   }
 
-  // ---- LEARN : brief de compréhension (jumeau de l'Architecte) ---------------
-  function openLearn() {
-    var body = keyFieldHtml
-      + "<div style='font:13px system-ui;color:#555;margin:0 0 4px'>Sujet brut (à comprendre) :</div>"
-      + "<textarea id='bs-topic' placeholder='ex. mécanismes d’activation des mastocytes à l’origine de l’urticaire chronique spontanée' style='width:100%;height:90px;box-sizing:border-box;border:1px solid #ccc;border-radius:8px;padding:10px;font:13px system-ui'></textarea>"
-      + "<div style='margin:10px 0 8px;display:flex;gap:8px;align-items:center'>"
-      + "<button id='bs-gen' style='background:#1f3864;color:#fff;border:0;border-radius:8px;padding:10px 16px;font:600 13px system-ui;cursor:pointer'>Générer le brief</button>"
-      + "<select id='bs-model' style='border:1px solid #ccc;border-radius:8px;padding:8px;font:13px system-ui'><option value='sonar'>sonar (web)</option><option value='sonar-pro'>sonar-pro</option></select>"
-      + "<span style='font:12px system-ui;color:#888'>orienté mécanismes, pas traitement</span></div>"
-      + "<div id='bs-arch-out'></div>";
-    overlay("🎓 Learn — brief de compréhension (mécanismes)", body, function (box) {
-      box.querySelector("#bs-key").value = getKey();
-      box.querySelector("#bs-key").oninput = function(e){ setKey(e.target.value.trim()); };
-      var out = box.querySelector("#bs-arch-out");
-      box.querySelector("#bs-gen").onclick = async function () {
-        var topic = box.querySelector("#bs-topic").value.trim();
-        if (!topic) { out.innerHTML = "<div style='font:13px system-ui;color:#888'>Saisis un sujet.</div>"; return; }
-        out.innerHTML = "<div style='font:13px system-ui;color:#1f3864'>Construction du brief de compréhension…</div>";
-        try {
-          var brief = await callSonar(LEARN_PROMPT, topic, box.querySelector("#bs-model").value);
-          out.innerHTML = "<div style='font:600 13px system-ui;margin:14px 0 6px;color:#1f3864'>Brief de compréhension (relis/édite avant de lancer) :</div>"
-            + "<textarea id='bs-brief' style='width:100%;height:300px;box-sizing:border-box;border:1px solid #ccc;border-radius:8px;padding:10px;font:12.5px/1.45 ui-monospace,monospace'></textarea>"
-            + "<div style='margin:8px 0 0;display:flex;gap:8px'>"
-            + "<button id='bs-copy' style='background:#1d9e75;color:#fff;border:0;border-radius:8px;padding:9px 14px;font:600 13px system-ui;cursor:pointer'>Copier le brief</button>"
-            + "<span style='font:12px system-ui;color:#888;align-self:center'>Puis arme la recherche approfondie et colle-le.</span></div>";
-          out.querySelector("#bs-brief").value = brief;
-          out.querySelector("#bs-copy").onclick = function () {
-            navigator.clipboard.writeText(out.querySelector("#bs-brief").value).then(function(){
-              out.querySelector("#bs-copy").textContent = "✅ Copié";
-            });
-          };
-        } catch (e) { out.innerHTML = "<div style='font:13px system-ui;color:#cc3b3b'>" + esc(e.message) + "</div>"; }
-      };
-    });
-  }
   function extractLeads(text) {
     // toUpperCase conserve la longueur (accents 1:1) → les index restent alignés
     var U = text.toUpperCase();
@@ -12674,13 +12596,11 @@ Même si des messages précédents parlent de formulation, de traduction, de wor
   }
   function inject() {
     fab("bs-arch-btn", "1 · 🧭 Architecte", 118, openArchitect);
-    fab("bs-learn-btn", "🎓 Learn", 168, openLearn);
     fab("bs-leads-btn", "3 · 🎯 Tracer", 18, openLeads);
     // le bouton "🔎 Vérifier les sources" (couche 1) est injecté par son propre module à 18px
   }
 
   window.__brainshiftArchitect = { open: openArchitect, prompt: ARCHITECT_PROMPT, callSonar: callSonar };
-  window.__brainshiftLearn = { open: openLearn, prompt: LEARN_PROMPT };
   window.__brainshiftLeads = { open: openLeads, extractLeads: extractLeads, stageTrace: stageTrace };
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", inject);
