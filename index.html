@@ -11777,7 +11777,7 @@ Ne RECOPIE JAMAIS le bloc « RÉSULTATS PUBMED » dans ta réponse : il te sert 
     const sys = "Convertis l'affirmation en UNE requête PubMed en anglais. Réponds UNIQUEMENT par une ligne : QUERY:: <termes anglais> | YEARS:: <min>-<max> | WHY:: <but>. Rien d'autre.";
     const d = await pplxCall(key, { model: "sonar", messages: [{ role: "system", content: sys }, { role: "user", content: seed }], max_tokens: 300 });
     const out = (d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content) || "";
-    return parseNextQueries(out)[0] || { query: seed, minYear: 2021, maxYear: null };
+    return parseNextQueries(out)[0] || { query: broadenQuery(seed) || seed, minYear: 2021, maxYear: null };
   }
   // Perplexity exige une alternance stricte user/assistant après le(s) message(s)
   // système. Retirer les réponses _tracing peut laisser deux "user" de suite
@@ -11818,6 +11818,22 @@ Ne RECOPIE JAMAIS le bloc « RÉSULTATS PUBMED » dans ta réponse : il te sert 
     return content;
   }
 
+  /* ---- Élargissement de requête (fallback 0 hit) ------------------- */
+  // Ramène une phrase à un noyau de mots-clés exploitable par PubMed :
+  // supprime les parenthèses (ex. « (phase 3 … trial) »), la ponctuation
+  // et les mots vides, puis garde au plus 6 termes significatifs.
+  function broadenQuery(q) {
+    var STOP = /\b(the|a|an|of|in|on|to|for|and|or|after|with|without|despite|patients?|study|studies|trial|trials|phase|response|responses|failure|insufficient|inadequate|incomplete|versus|vs)\b/gi;
+    var s = String(q || "")
+      .replace(/\([^)]*\)/g, " ")          // retire les parenthèses
+      .replace(/[^\p{L}\p{N}\s-]/gu, " ")  // ponctuation → espace
+      .replace(STOP, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    var words = s.split(" ").filter(function (w) { return w.length > 2; });
+    return words.slice(0, 6).join(" ");
+  }
+
   /* ---- Orchestration d'un tour de Traçage --------------------------- */
   async function run(c, rawText, key) {
     const seed = String(rawText).replace(/^\s*\/trace\s*/i, "").trim();
@@ -11834,11 +11850,25 @@ Ne RECOPIE JAMAIS le bloc « RÉSULTATS PUBMED » dans ta réponse : il te sert 
     // 1) Piste → requête PubMed (anglais)
     let q;
     try { q = await seedToQuery(seed, key); }
-    catch (e) { q = { query: seed, minYear: 2021, maxYear: null }; }
+    catch (e) { q = { query: broadenQuery(seed) || seed, minYear: 2021, maxYear: null }; }
 
-    // 2) Récupération vérifiée sur PubMed
-    const traced = await pubmedTrace(q.query, { retmax: 15, minYear: q.minYear, maxYear: q.maxYear || new Date().getFullYear() });
-    const block = formatForModel(traced);
+    // 2) Récupération vérifiée sur PubMed — avec élargissement si 0 hit.
+    let traced = await pubmedTrace(q.query, { retmax: 15, minYear: q.minYear, maxYear: q.maxYear || new Date().getFullYear() });
+    let broadenedNote = "";
+    if (!traced.count) {
+      const bq = broadenQuery(q.query);
+      if (bq && bq.toLowerCase() !== String(q.query).toLowerCase().trim()) {
+        // 2 bis) on retente sur le noyau de mots-clés, sans bornes d'années.
+        try {
+          const retry = await pubmedTrace(bq, { retmax: 15 });
+          if (retry.count) {
+            traced = retry;
+            broadenedNote = "⚠️ Requête initiale trop étroite (0 hit) — élargie automatiquement à « " + bq + " » (bornes d'années retirées). Affine via PROCHAINES REQUÊTES si besoin.";
+          }
+        } catch (e) { /* on garde le résultat à 0 hit ci-dessous */ }
+      }
+    }
+    const block = (broadenedNote ? broadenedNote + "\n\n" : "") + formatForModel(traced);
 
     // 3) Analyse sourcée (sonar-pro : web + prompt « Traçage »), RAPPORT0 conservé en contexte
     const answer = await sonarTrace(key, c.messages, seed, block);
@@ -11848,7 +11878,7 @@ Ne RECOPIE JAMAIS le bloc « RÉSULTATS PUBMED » dans ta réponse : il te sert 
     //    indépendamment de ce que le modèle a choisi de citer.
     c.messages.push({
       role: "assistant",
-      content: answer + "\n\n" + renderPubmedSources(traced),
+      content: (broadenedNote ? broadenedNote + "\n\n" : "") + answer + "\n\n" + renderPubmedSources(traced),
       provider: "PERPLEXITY", model: "sonar-pro",
       _tracing: true,
       _tracingQuery: q.query,
