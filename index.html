@@ -11774,7 +11774,7 @@ Ne RECOPIE JAMAIS le bloc « RÉSULTATS PUBMED » dans ta réponse : il te sert 
     return d;
   }
   async function seedToQuery(seed, key) {
-    const sys = "Convertis l'affirmation en UNE requête PubMed en anglais. Réponds UNIQUEMENT par une ligne : QUERY:: <termes anglais> | YEARS:: <min>-<max> | WHY:: <but>. Rien d'autre.";
+    const sys = "Convertis l'affirmation en UNE requête PubMed PRÉCISE en anglais. Identifie le sujet central (maladie/condition ou objet biologique) et fais-en une clause OBLIGATOIRE reliée par AND ; mets les synonymes d'intervention/molécule dans un groupe entre parenthèses relié par OR ; ne laisse JAMAIS le sujet central uniquement dans un groupe OR avec des noms de molécules. Forme attendue, ex. : (chronic spontaneous urticaria) AND (omalizumab) AND (refractory OR failure OR inadequate response). Réponds UNIQUEMENT par une ligne : QUERY:: <requête anglaise> | YEARS:: <min>-<max> | WHY:: <but>. Rien d'autre.";
     const d = await pplxCall(key, { model: "sonar", messages: [{ role: "system", content: sys }, { role: "user", content: seed }], max_tokens: 300 });
     const out = (d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content) || "";
     return parseNextQueries(out)[0] || { query: broadenQuery(seed) || seed, minYear: 2021, maxYear: null };
@@ -11834,6 +11834,34 @@ Ne RECOPIE JAMAIS le bloc « RÉSULTATS PUBMED » dans ta réponse : il te sert 
     return words.slice(0, 6).join(" ");
   }
 
+  // Ancres THÉMATIQUES : on retire du noyau de mots-clés les noms de molécules
+  // (suffixes d'anticorps/inhibiteurs : -mab, -nib, -tinib…) et les mots
+  // médicaux génériques, pour ne garder que ce qui identifie le SUJET (maladie,
+  // objet biologique). Sert à écarter les titres hors-indication.
+  function topicAnchors(seed) {
+    var DRUG = /(mab|nib|tinib|ciclib|lisib|parib|degib|sertib|metinib|zomib|afenib|ridib)$/i;
+    var GENERIC = /^(chronic|acute|severe|moderate|mild|treatment|treatments|therapy|therapies|disease|disorder|syndrome|patient|patients|adult|adults|child|children|clinical|efficacy|safety|management|review|update|human|cell|cells)$/i;
+    return broadenQuery(seed).split(" ").filter(function (w) {
+      return w.length > 2 && !DRUG.test(w) && !GENERIC.test(w);
+    });
+  }
+  // Écarte les enregistrements PubMed dont le TITRE ne contient aucune ancre
+  // thématique (ex. papier « omalizumab » dans la polypose/asthme/allergie
+  // alimentaire pour un trace d'urticaire). Garde-fou : si aucune ancre fiable
+  // OU si le filtre supprimerait tout, on ne filtre rien.
+  function filterRelevant(records, seed) {
+    var anchors = topicAnchors(seed);
+    if (!anchors.length || !records || !records.length) return { kept: records || [], dropped: 0 };
+    var kept = [], dropped = 0;
+    for (var i = 0; i < records.length; i++) {
+      var title = String(records[i].title || "").toLowerCase();
+      var hit = anchors.some(function (a) { return title.indexOf(a.toLowerCase()) !== -1; });
+      if (hit) kept.push(records[i]); else dropped++;
+    }
+    if (!kept.length) return { kept: records, dropped: 0 };
+    return { kept: kept, dropped: dropped };
+  }
+
   /* ---- Orchestration d'un tour de Traçage --------------------------- */
   async function run(c, rawText, key) {
     const seed = String(rawText).replace(/^\s*\/trace\s*/i, "").trim();
@@ -11868,7 +11896,16 @@ Ne RECOPIE JAMAIS le bloc « RÉSULTATS PUBMED » dans ta réponse : il te sert 
         } catch (e) { /* on garde le résultat à 0 hit ci-dessous */ }
       }
     }
-    const block = (broadenedNote ? broadenedNote + "\n\n" : "") + formatForModel(traced);
+    // 2 ter) Filtre de pertinence : écarte les titres sans ancre thématique
+    //        (ex. omalizumab dans une autre indication). Garde-fou intégré.
+    let precisionNote = "";
+    const rel = filterRelevant(traced.records, seed);
+    if (rel.dropped) {
+      precisionNote = "🔎 Filtre de pertinence : " + rel.dropped + " référence(s) hors-sujet écartée(s) (titre sans ancre thématique).";
+      traced = { query: traced.query, count: traced.count, records: rel.kept };
+    }
+    const notes = [broadenedNote, precisionNote].filter(Boolean).join("\n");
+    const block = (notes ? notes + "\n\n" : "") + formatForModel(traced);
 
     // 3) Analyse sourcée (sonar-pro : web + prompt « Traçage »), RAPPORT0 conservé en contexte
     const answer = await sonarTrace(key, c.messages, seed, block);
@@ -11878,7 +11915,7 @@ Ne RECOPIE JAMAIS le bloc « RÉSULTATS PUBMED » dans ta réponse : il te sert 
     //    indépendamment de ce que le modèle a choisi de citer.
     c.messages.push({
       role: "assistant",
-      content: (broadenedNote ? broadenedNote + "\n\n" : "") + answer + "\n\n" + renderPubmedSources(traced),
+      content: (notes ? notes + "\n\n" : "") + answer + "\n\n" + renderPubmedSources(traced),
       provider: "PERPLEXITY", model: "sonar-pro",
       _tracing: true,
       _tracingQuery: q.query,
