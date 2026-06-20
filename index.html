@@ -1630,7 +1630,7 @@
 </head>
 <body>
 <!-- VERSION_FIXED_V26 — 3 juin 2026 — Fix : "adaptive thinking" envoyé à Sonnet 4.5 → 400. Restriction aux modèles 4.6+ + désactivation du thinking pendant Triple Check -->
-<!-- VERSION_FIXED_V43 — 20 juin 2026 — Fix : Opus 4.8 (et 4.9/5.x à venir) recevait "thinking.type.enabled" → 400. Détection du format de thinking désormais basée sur la VERSION (claudeThinkingMode) : adaptive pour 4.6+, enabled pour 4.0–4.5, omis sinon. Effort figé par modèle (xhigh/max réservés à Opus) via claudeEffortForModel. -->
+<!-- VERSION_FIXED_V43 — 20 juin 2026 — Fix : Opus 4.8 (et 4.9/5.x à venir) recevait "thinking.type.enabled" → 400. Détection du format de thinking désormais basée sur la VERSION (claudeThinkingMode) : adaptive pour 4.6+, enabled pour 4.0–4.5, omis sinon. Effort figé par modèle (xhigh/max réservés à Opus) via claudeEffortForModel. Fix timeout : Anthropic passait de 150 s → 5–12 min selon thinking/effort (anthropicTimeoutMs), message d'erreur adapté au vrai navigateur (plus de "Edge" en dur sur Chrome). -->
 <div class="app">
   <!-- Backdrop pour fermer la sidebar sur tablette (invisible sur desktop) -->
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
@@ -6574,13 +6574,40 @@ function buildRequestParams(model, apiType) {
 // FETCH AVEC RETRY AUTOMATIQUE (429 / 529 / erreurs réseau)
 // Backoff exponentiel : 1s → 2s → 4s (3 tentatives max)
 // ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// TIMEOUT ADAPTATIF ANTHROPIC (V43) + détection navigateur
+// Opus 4.8 et les modèles de raisonnement avec thinking adaptive peuvent
+// légitimement réfléchir plusieurs minutes à effort élevé. Comme le streaming
+// est désactivé quand le thinking est actif, TOUTE la réponse (raisonnement +
+// texte) doit arriver d'un bloc : l'ancien plafond de 150 s coupait Opus en
+// plein raisonnement. On dimensionne le délai selon thinking + effort.
+// ─────────────────────────────────────────────────────────────
+function anthropicTimeoutMs() {
+  if (!S.params.thinking) return 300000; // 5 min — baseline confortable
+  const effort = String(S.params.thinkingEffort || 'high').toLowerCase();
+  if (effort === 'max' || effort === 'xhigh') return 720000; // 12 min
+  if (effort === 'high') return 600000;                      // 10 min
+  return 480000;                                             // low / medium : 8 min
+}
+
+/** Nom lisible du navigateur courant (pour des messages d'erreur exacts). */
+function detectBrowserName() {
+  const ua = (typeof navigator !== 'undefined' && navigator.userAgent) || '';
+  if (/Edg\//.test(ua))                              return 'Edge';
+  if (/OPR\/|Opera/.test(ua))                        return 'Opera';
+  if (/Firefox\//.test(ua))                          return 'Firefox';
+  if (/Chrome\//.test(ua) && !/Edg\//.test(ua))      return 'Chrome';
+  if (/Safari\//.test(ua) && !/Chrome\//.test(ua))   return 'Safari';
+  return 'votre navigateur';
+}
+
 async function fetchWithRetry(url, options, maxRetries = 3, timeoutMs = null) {
-  // Timeout adapté. Les modèles de raisonnement (GPT-5.x, o-series, Opus avec thinking,
-  // Gemini Pro) sur gros contexte peuvent légitimement dépasser 2-3 min : on relève donc
-  // nettement les délais par rapport à l'ancien 60/120s pensé pour du chat court.
-  // (Note : sur Edge, le navigateur peut couper les connexions longues avant ce délai.)
+  // Timeout adapté. Les modèles de raisonnement (GPT-5.x, o-series, Opus avec
+  // thinking adaptive, Gemini Pro) sur gros contexte peuvent légitimement dépasser
+  // plusieurs minutes : pour Anthropic on calcule le délai selon thinking + effort
+  // (voir anthropicTimeoutMs), au lieu d'un plafond fixe de 150 s trop court.
   const isAnthropic = url.includes('api.anthropic.com');
-  const TIMEOUT_MS = timeoutMs || (isAnthropic ? 150000 : 360000);
+  const TIMEOUT_MS = timeoutMs || (isAnthropic ? anthropicTimeoutMs() : 360000);
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       const controller = new AbortController();
@@ -6639,7 +6666,20 @@ async function fetchWithRetry(url, options, maxRetries = 3, timeoutMs = null) {
         // On NE retente PAS sur timeout : un appel de raisonnement qui dépasse le délai
         // ne sera pas « réparé » en le relançant — ça ne ferait que multiplier l'attente
         // et le coût (chaque tentative peut être facturée). On échoue tout de suite.
-        throw new Error(`Timeout : le modèle n'a pas répondu en ${TIMEOUT_MS/1000}s. ${isAnthropic ? 'Anthropic sur Edge est souvent bloqué — essayez un autre modèle.' : 'Réessayez en coupant la recherche web, en raccourcissant la demande, ou avec un autre modèle.'}`);
+        let advice;
+        if (isAnthropic) {
+          const browser = detectBrowserName();
+          if (browser === 'Edge') {
+            advice = 'Edge coupe souvent les connexions longues vers Anthropic — essayez Chrome, Safari ou Firefox, ou un autre modèle.';
+          } else if (S.params.thinking) {
+            advice = `Avec « Extended thinking » à effort « ${S.params.thinkingEffort || 'high'} », Opus peut dépasser ce délai. Baissez le niveau d'effort dans ⚙, désactivez le thinking, ou réessayez.`;
+          } else {
+            advice = 'Réessayez, raccourcissez la demande, ou choisissez un modèle plus rapide (Sonnet / Haiku).';
+          }
+        } else {
+          advice = 'Réessayez en coupant la recherche web, en raccourcissant la demande, ou avec un autre modèle.';
+        }
+        throw new Error(`Timeout : le modèle n'a pas répondu en ${TIMEOUT_MS/1000}s. ${advice}`);
       }
       // Erreur réseau (Failed to fetch) — retry sauf dernière tentative
       if (attempt < maxRetries) {
@@ -6771,7 +6811,7 @@ async function _readSSE(resp, onData) {
 async function streamChat(kind, url, headers, body, model, onText) {
   const controller = new AbortController();
   _currentAbortController = controller;
-  const timer = setTimeout(() => controller.abort(), kind === 'anthropic' ? 150000 : 360000);
+  const timer = setTimeout(() => controller.abort(), kind === 'anthropic' ? anthropicTimeoutMs() : 360000);
   try {
     const resp = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body), signal: controller.signal });
     if (!resp.ok || !resp.body) {
@@ -6967,7 +7007,7 @@ async function callAnthropic(key, model, messages, onText) {
     method: "POST",
     headers,
     body: JSON.stringify(body)
-  }, 1); // 1 seul retry pour Anthropic (Edge bloque souvent → ne pas gaspiller les tokens)
+  }, 1); // 1 seul retry pour Anthropic : un appel de raisonnement long ne se « répare » pas en le relançant → ne pas gaspiller les tokens
 
   const d = await r.json();
 
