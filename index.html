@@ -1630,7 +1630,7 @@
 </head>
 <body>
 <!-- VERSION_FIXED_V26 — 3 juin 2026 — Fix : "adaptive thinking" envoyé à Sonnet 4.5 → 400. Restriction aux modèles 4.6+ + désactivation du thinking pendant Triple Check -->
-<!-- VERSION_FIXED_V43 — 20 juin 2026 — Fix : Opus 4.8 (et 4.9/5.x à venir) recevait "thinking.type.enabled" → 400. Détection du format de thinking désormais basée sur la VERSION (claudeThinkingMode) : adaptive pour 4.6+, enabled pour 4.0–4.5, omis sinon. Effort figé par modèle (xhigh/max réservés à Opus) via claudeEffortForModel. Fix timeout : Anthropic passait de 150 s → 5–12 min selon thinking/effort (anthropicTimeoutMs), message d'erreur adapté au vrai navigateur (plus de "Edge" en dur sur Chrome). -->
+<!-- VERSION_FIXED_V43 — 20 juin 2026 — Fix : Opus 4.8 (et 4.9/5.x à venir) recevait "thinking.type.enabled" → 400. Détection du format de thinking désormais basée sur la VERSION (claudeThinkingMode) : adaptive pour 4.6+, enabled pour 4.0–4.5, omis sinon. Effort figé par modèle (xhigh/max réservés à Opus) via claudeEffortForModel. Fix timeout : Anthropic passait de 150 s → 5–12 min selon thinking/effort (anthropicTimeoutMs), message d'erreur adapté au vrai navigateur (plus de "Edge" en dur sur Chrome). Fix Architecte : callSonar (Perplexity) avait un fetch nu sans timeout/retry → "Failed to fetch" sur sujets lourds ; ajout AbortController (240 s) + retries + max_tokens 1500→4000. -->
 <div class="app">
   <!-- Backdrop pour fermer la sidebar sur tablette (invisible sur desktop) -->
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
@@ -12511,23 +12511,73 @@ Même si des messages précédents parlent de formulation, de traduction, de wor
   function getKey(){ return localStorage.getItem("bs_pplx_key") || ""; }
   function setKey(k){ try{ localStorage.setItem("bs_pplx_key", k||""); }catch(e){} }
 
-  // ---- appel Perplexity -----------------------------------------------------
+  // ---- appel Perplexity (robuste : timeout + retries + erreurs claires) -----
+  // V43 — l'ancien fetch nu (sans timeout ni retry) échouait en "Failed to fetch"
+  // sur les sujets lourds (sonar-pro + recherche web). On ajoute AbortController,
+  // des retries sur erreurs transitoires/réseau, et des messages exploitables.
+  function _bsBrowser() {
+    try { if (typeof detectBrowserName === "function") return detectBrowserName(); } catch (e) {}
+    var ua = (typeof navigator !== "undefined" && navigator.userAgent) || "";
+    if (/Edg\//.test(ua))    return "Edge";
+    if (/Firefox\//.test(ua))return "Firefox";
+    if (/Chrome\//.test(ua)) return "Chrome";
+    if (/Safari\//.test(ua)) return "Safari";
+    return "votre navigateur";
+  }
+
   async function callSonar(system, user, model) {
     var key = getKey();
     if (!key) throw new Error("Renseigne ta clé Perplexity (champ ci-dessus).");
-    var r = await fetch("https://api.perplexity.ai/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + key },
-      body: JSON.stringify({
-        model: model || "sonar",
-        temperature: 0.2,
-        max_tokens: 1500,
-        messages: [{ role: "system", content: system }, { role: "user", content: user }]
-      })
+
+    var TIMEOUT_MS  = 240000; // 4 min — sonar-pro + web sur sujet dense peut être long
+    var MAX_RETRIES = 2;
+    var payload = JSON.stringify({
+      model: model || "sonar",
+      temperature: 0.2,
+      max_tokens: 4000,        // 1500 tronquait les briefs complets (pièges+périmètre+7 sous-questions)
+      messages: [{ role: "system", content: system }, { role: "user", content: user }]
     });
-    if (!r.ok) throw new Error("Perplexity " + r.status + " — " + (await r.text()).slice(0, 200));
-    var j = await r.json();
-    return (j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content) || "(réponse vide)";
+
+    for (var attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      var controller = new AbortController();
+      var timer = setTimeout(function () { controller.abort(); }, TIMEOUT_MS);
+      try {
+        var r = await fetch("https://api.perplexity.ai/chat/completions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": "Bearer " + key },
+          body: payload,
+          signal: controller.signal
+        });
+        clearTimeout(timer);
+
+        // Erreurs transitoires (rate-limit / surcharge) → retry avec backoff
+        if ((r.status === 429 || r.status === 503 || r.status === 529) && attempt < MAX_RETRIES) {
+          var ra = r.headers.get("retry-after");
+          var wait = ra ? Number(ra) * 1000 : Math.pow(2, attempt) * 1000;
+          await new Promise(function (ok) { setTimeout(ok, wait); });
+          continue;
+        }
+        if (!r.ok) throw new Error("Perplexity " + r.status + " — " + (await r.text()).slice(0, 200));
+        var j = await r.json();
+        return (j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content) || "(réponse vide)";
+      } catch (e) {
+        clearTimeout(timer);
+        if (e && e.name === "AbortError") {
+          // Un timeout ne se "répare" pas en relançant → on échoue tout de suite.
+          throw new Error(
+            "Délai dépassé (" + (TIMEOUT_MS / 1000) + "s) sans réponse de Perplexity. "
+            + "Le sujet est lourd : réessaie, raccourcis-le, ou choisis le modèle « sonar » (plus rapide que sonar-pro). "
+            + "Si " + _bsBrowser() + " coupe les connexions longues, essaie un autre navigateur."
+          );
+        }
+        // Erreur réseau (Failed to fetch) → retry sauf à la dernière tentative
+        if (attempt < MAX_RETRIES) {
+          await new Promise(function (ok) { setTimeout(ok, Math.pow(2, attempt) * 1000); });
+          continue;
+        }
+        throw new Error("Échec réseau vers Perplexity : " + ((e && e.message) || e) + ". Vérifie ta connexion et ta clé API, puis réessaie.");
+      }
+    }
   }
 
   // ---- overlay générique ----------------------------------------------------
