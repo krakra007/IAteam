@@ -1630,7 +1630,7 @@
 </head>
 <body>
 <!-- VERSION_FIXED_V26 — 3 juin 2026 — Fix : "adaptive thinking" envoyé à Sonnet 4.5 → 400. Restriction aux modèles 4.6+ + désactivation du thinking pendant Triple Check -->
-<!-- VERSION_FIXED_V43 — 20 juin 2026 — Fix : Opus 4.8 (et 4.9/5.x à venir) recevait "thinking.type.enabled" → 400. Détection du format de thinking désormais basée sur la VERSION (claudeThinkingMode) : adaptive pour 4.6+, enabled pour 4.0–4.5, omis sinon. Effort figé par modèle (xhigh/max réservés à Opus) via claudeEffortForModel. Fix timeout : Anthropic passait de 150 s → 5–12 min selon thinking/effort (anthropicTimeoutMs), message d'erreur adapté au vrai navigateur (plus de "Edge" en dur sur Chrome). Fix Architecte : callSonar (Perplexity) avait un fetch nu sans timeout/retry → "Failed to fetch" sur sujets lourds ; ajout AbortController (240 s) + retries + max_tokens 1500→4000. Architecte : le brief peut désormais être généré par Claude (header navigateur dédié) ou Gemini, en contournant le CORS de Perplexity — sélecteur par défaut sur Claude. -->
+<!-- VERSION_FIXED_V43 — 20 juin 2026 — Fix : Opus 4.8 (et 4.9/5.x à venir) recevait "thinking.type.enabled" → 400. Détection du format de thinking désormais basée sur la VERSION (claudeThinkingMode) : adaptive pour 4.6+, enabled pour 4.0–4.5, omis sinon. Effort figé par modèle (xhigh/max réservés à Opus) via claudeEffortForModel. Fix timeout : Anthropic passait de 150 s → 5–12 min selon thinking/effort (anthropicTimeoutMs), message d'erreur adapté au vrai navigateur (plus de "Edge" en dur sur Chrome). Fix Architecte : callSonar (Perplexity) avait un fetch nu sans timeout/retry → "Failed to fetch" sur sujets lourds ; ajout AbortController (240 s) + retries + max_tokens 1500→4000. Architecte : le brief peut désormais être généré par Claude (header navigateur dédié) ou Gemini, en contournant le CORS de Perplexity — sélecteur par défaut sur Claude. Recherche approfondie : ajout d'un 3ᵉ moteur « Claude » (callClaudeWebSearch, outil web_search_20250305 exécuté côté serveur Anthropic) — tout passe par api.anthropic.com, donc tout-Anthropic et sans CORS ; défini par défaut. Tracer : l'analyse (pplxCall) bascule sur Claude (sonnet/haiku) via api.anthropic.com — la récupération PubMed (vrais PMID) reste inchangée, et la section « Sources web » bruyante disparaît. Vérifier (NCBI/CrossRef/ClinicalTrials) n'utilisait aucun LLM. Pipeline désormais 100 % Anthropic, sans CORS. -->
 <div class="app">
   <!-- Backdrop pour fermer la sidebar sur tablette (invisible sur desktop) -->
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
@@ -1946,6 +1946,7 @@ Exemple pour la chimie :
         <div class="dr-modal-row">
           <label for="drModalEngine">Moteur de recherche</label>
           <select id="drModalEngine">
+            <option value="claude">Claude — web search (tout-Anthropic, sans CORS)</option>
             <option value="perplexity">Perplexity — sonar-deep-research</option>
             <option value="gemini">Gemini — Deep Research (preview)</option>
           </select>
@@ -2135,7 +2136,7 @@ const DEF = {
   deepResearchDailyLimit: 5,        // garde-fou anti-surcoût : nb max de recherches/jour (0 = illimité)
   deepResearchAcademic: true,       // search_mode "academic" → priorise les sources scientifiques
   deepResearchEffort: 'medium',     // reasoning_effort : low | medium | high
-  deepResearchEngine: 'perplexity'  // moteur de recherche approfondie : 'perplexity' | 'gemini'
+  deepResearchEngine: 'claude'  // moteur de recherche approfondie : 'claude' | 'perplexity' | 'gemini'
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -5593,6 +5594,8 @@ function renderMessages() {
           const sd = nbSearch ? ` · ${nbSearch} recherche${nbSearch > 1 ? 's' : ''}` : '';
           const engineName = m._deepResearchEngine === 'gemini'
             ? `Gemini · ${m.model || 'deep-research'}`
+            : m._deepResearchEngine === 'claude'
+            ? `Claude · ${m.model || CLAUDE_DR_MODEL} + web`
             : 'sonar-deep-research';
           badge.innerHTML = `<span class="dr-badge">🔬 Recherche approfondie — ${engineName}${detail}${sd}</span>`;
         }
@@ -6237,12 +6240,13 @@ function renderParams() {
       <div class="params-section-title">🔬 Recherche approfondie</div>
 
       <div class="p-row">
-        <div class="p-row-head"><label>Moteur par défaut</label><span class="p-val" id="v_drengine">${P.deepResearchEngine === 'gemini' ? 'Gemini' : 'Perplexity'}</span></div>
+        <div class="p-row-head"><label>Moteur par défaut</label><span class="p-val" id="v_drengine">${P.deepResearchEngine === 'gemini' ? 'Gemini' : P.deepResearchEngine === 'perplexity' ? 'Perplexity' : 'Claude'}</span></div>
         <select id="r_drengine" style="width:100%;padding:6px 10px;background:#1e1e24;color:#e0e2e8;border:1px solid var(--line);border-radius:6px;font-size:13px">
-          <option value="perplexity" ${(!P.deepResearchEngine||P.deepResearchEngine==='perplexity')?'selected':''}>Perplexity — sonar-deep-research (~$0.30-1.30, 2-5 min)</option>
+          <option value="claude" ${(!P.deepResearchEngine||P.deepResearchEngine==='claude')?'selected':''}>Claude — web search (tout-Anthropic, sans CORS)</option>
+          <option value="perplexity" ${P.deepResearchEngine==='perplexity'?'selected':''}>Perplexity — sonar-deep-research (~$0.30-1.30, 2-5 min)</option>
           <option value="gemini" ${P.deepResearchEngine==='gemini'?'selected':''}>Gemini — Deep Research preview (~$1-7, 5-20 min)</option>
         </select>
-        <div class="p-hint">Choix modifiable aussi à chaque lancement. Perplexity = sources académiques ; Gemini = navigation web large (index Google).</div>
+        <div class="p-hint">Choix modifiable aussi à chaque lancement. <b>Claude = recommandé</b> (passe par api.anthropic.com, jamais bloqué par le CORS). Perplexity = sources académiques ; Gemini = navigation web large.</div>
       </div>
 
       <div class="p-row">
@@ -6340,7 +6344,7 @@ function renderParams() {
     drEngineSel.onchange = () => {
       S.params.deepResearchEngine = drEngineSel.value;
       const lbl = document.getElementById('v_drengine');
-      if (lbl) lbl.textContent = drEngineSel.value === 'gemini' ? 'Gemini' : 'Perplexity';
+      if (lbl) lbl.textContent = drEngineSel.value === 'gemini' ? 'Gemini' : drEngineSel.value === 'perplexity' ? 'Perplexity' : 'Claude';
       save();
     };
   }
@@ -8461,6 +8465,110 @@ Ta version corrigée (texte intégral) :`
 // ─────────────────────────────────────────────────────────────
 
 const DEEP_RESEARCH_MODEL = 'sonar-deep-research';
+// 🔭 Moteur recherche approfondie TOUT-ANTHROPIC (web_search exécuté côté serveur).
+const CLAUDE_DR_MODEL = 'claude-sonnet-4-6';
+
+/**
+ * 🔭 Recherche approfondie via Claude + outil web_search (V43, tout-Anthropic).
+ * Tout le trafic passe par api.anthropic.com (autorisé en navigateur via le header
+ * dédié) et la recherche s'exécute CÔTÉ SERVEUR Anthropic → AUCUN problème de CORS,
+ * contrairement aux appels directs vers api.perplexity.ai.
+ * Renvoie { content, sourceCount } et remplit window._lastUsage.
+ */
+async function callClaudeWebSearch(key, messages, opts) {
+  opts = opts || {};
+  // effort → profondeur (nombre max de recherches autorisées)
+  const maxUses = opts.effort === 'high' ? 20 : opts.effort === 'low' ? 6 : 12;
+
+  let sys = getActiveSystemPrompt();
+  sys += "\n\nTu mènes une RECHERCHE APPROFONDIE. Utilise l'outil de recherche web de façon répétée pour couvrir le sujet sous plusieurs angles, recoupe les sources, et cite systématiquement tes sources. Termine par une section « ## Sources » listant les références utilisées (titre + URL).";
+  if (opts.academic) sys += "\n\nPRIORISE les sources scientifiques primaires et les revues à comité de lecture (pubmed.ncbi.nlm.nih.gov, doi.org, journaux académiques) plutôt que des blogs ou contenus secondaires. Indique les identifiants (PMID/DOI) quand ils existent.";
+
+  // Historique aplati en texte (pas de blocs structurés → pas de tool_result en historique).
+  const msgs = messages
+    .filter(m => m.role === 'user' || m.role === 'assistant')
+    .map(m => {
+      if (Array.isArray(m.content)) {
+        const txt = m.content.map(b => {
+          if (b.type === 'text') return b.text || '';
+          if (b.type === 'document' && b._extractedText) return `📄 ${b.title || 'document'} :\n${b._extractedText}`;
+          if (b.type === 'image')  return '[image jointe]';
+          if (b.type === 'document') return `[fichier joint : ${b.title || 'document'}]`;
+          return '';
+        }).filter(Boolean).join('\n\n');
+        return { role: m.role, content: txt };
+      }
+      return { role: m.role, content: m.content };
+    });
+
+  const body = {
+    model: CLAUDE_DR_MODEL,
+    max_tokens: 8000,
+    system: sys,
+    messages: msgs,
+    tools: [{ type: "web_search_20250305", name: "web_search", max_uses: maxUses }]
+  };
+
+  const controller = new AbortController();
+  _currentAbortController = controller;
+  const timer = setTimeout(() => controller.abort(), 600000); // 10 min
+
+  let r, d;
+  try {
+    r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal
+    });
+  } catch (e) {
+    clearTimeout(timer); _currentAbortController = null;
+    if (e.name === 'AbortError') {
+      if (window._userAborted) { window._userAborted = false; throw new Error('⏹ Recherche annulée.'); }
+      throw new Error('La recherche Claude a dépassé 10 min sans réponse. Réessayez.');
+    }
+    throw e;
+  }
+  clearTimeout(timer); _currentAbortController = null;
+
+  try { d = await r.json(); } catch (e) { throw new Error(`Réponse Anthropic illisible (HTTP ${r.status}).`); }
+  if (d.error) throw new Error(`[${d.error.type || 'API'}] ${d.error.message || 'erreur Anthropic'}`);
+  if (!r.ok)   throw new Error(`HTTP ${r.status} — ${(d.error && d.error.message) || 'échec de la requête Anthropic'}`);
+
+  const blocks = Array.isArray(d.content) ? d.content : [];
+  let content = blocks.filter(b => b.type === 'text').map(b => b.text || '').join('');
+  if (!content) throw new Error('Réponse vide de Claude (recherche web).');
+
+  // Sources : agrège les résultats des blocs web_search_tool_result (dédupliqués par URL).
+  const seen = {}, sources = [];
+  blocks.forEach(b => {
+    if (b.type === 'web_search_tool_result' && Array.isArray(b.content)) {
+      b.content.forEach(res => {
+        const url = res && res.url;
+        if (url && !seen[url]) { seen[url] = 1; sources.push({ title: res.title || url, url: url }); }
+      });
+    }
+  });
+  if (sources.length && !/##\s*Sources/i.test(content)) {
+    content += '\n\n## Sources\n\n' + sources.map((s, i) => `${i + 1}. [${s.title}](${s.url})`).join('\n');
+  }
+
+  const u = d.usage || {};
+  const searchCount = (u.server_tool_use && u.server_tool_use.web_search_requests) || sources.length || 0;
+  window._lastUsage = {
+    model: CLAUDE_DR_MODEL,
+    input:  u.input_tokens  || 0,
+    output: u.output_tokens || 0,
+    extra:  { searchQueries: searchCount }
+  };
+
+  return { content, sourceCount: sources.length };
+}
 
 /** Le mode est-il armé pour la prochaine question ? (persisté en localStorage) */
 function getDeepResearchArmed() {
@@ -8572,7 +8680,7 @@ function showDeepResearchConfirm(queryText) {
     const effortLabelEl = el('drModalEffortLabel');
 
     qEl.textContent = queryText && queryText.length ? queryText : '(question vide — joindre un fichier ?)';
-    engineEl.value  = S.params.deepResearchEngine  || 'perplexity';
+    engineEl.value  = S.params.deepResearchEngine  || 'claude';
     effortEl.value  = S.params.deepResearchEffort  || 'medium';
     acadEl.checked  = S.params.deepResearchAcademic !== false;
 
@@ -8586,6 +8694,11 @@ function showDeepResearchConfirm(queryText) {
         durationEl.textContent  = 'Durée estimée : ~5 à 20 minutes (gardez l\'onglet ouvert)';
         costEstEl.textContent   = isMax ? '$3 – $7' : '$1 – $3';
         effortLabelEl.textContent = 'Profondeur (Low/Med = standard, High = Max)';
+      } else if (engine === 'claude') {
+        modelNameEl.textContent = CLAUDE_DR_MODEL + ' + web search';
+        durationEl.textContent  = 'Durée estimée : ~1 à 4 minutes — passe par api.anthropic.com (sans CORS)';
+        costEstEl.textContent   = '$0.10 – $0.60 (+ ~$0.01/recherche web)';
+        effortLabelEl.textContent = 'Profondeur (nombre de recherches : Low≈6 / Med≈12 / High≈20)';
       } else {
         modelNameEl.textContent = 'sonar-deep-research';
         durationEl.textContent  = 'Durée estimée : ~2 à 5 minutes (gardez l\'onglet ouvert)';
@@ -8903,6 +9016,7 @@ async function send() {
   const _drArmed = (typeof getDeepResearchArmed === 'function') && getDeepResearchArmed();
   const _pplxKey = (apiKeysByProvider["PERPLEXITY"] || "").trim();
   const _gemKey  = (apiKeysByProvider["GOOGLE GEMINI"] || "").trim();
+  const _clKey   = (apiKeysByProvider["ANTHROPIC"] || "").trim();
 
   if (_drArmed) {
     // Le moteur (Perplexity ou Gemini) est choisi dans le popup → ici on vérifie juste
@@ -8954,6 +9068,10 @@ async function send() {
     }
     if (_drOpts.engine === 'perplexity' && !_pplxKey) {
       showApiError(`⚠ Recherche approfondie Perplexity : clé API manquante (format pplx-…). Cliquez sur 🔑.`);
+      return;
+    }
+    if (_drOpts.engine === 'claude' && !_clKey) {
+      showApiError(`⚠ Recherche approfondie Claude : clé API Anthropic manquante. Cliquez sur 🔑.`);
       return;
     }
   }
@@ -9095,13 +9213,16 @@ async function send() {
       const drProg = document.getElementById('drProgress');
       const drProgLabel = document.getElementById('drProgressLabel');
       if (drProg) drProg.classList.add('visible');
-      if (drProgLabel) drProgLabel.textContent = _engine === 'gemini' ? 'Recherche Gemini en cours…' : 'Recherche Perplexity en cours…';
-      const _drProvider = _engine === 'gemini' ? "GOOGLE GEMINI" : "PERPLEXITY";
+      if (drProgLabel) drProgLabel.textContent = _engine === 'gemini' ? 'Recherche Gemini en cours…' : _engine === 'claude' ? 'Recherche Claude en cours…' : 'Recherche Perplexity en cours…';
+      const _drProvider = _engine === 'gemini' ? "GOOGLE GEMINI" : _engine === 'claude' ? "ANTHROPIC" : "PERPLEXITY";
       try {
         let drRes, drModel;
         if (_engine === 'gemini') {
           drRes = await callGeminiDeepResearch(_gemKey, c.messages, _drOpts);
           drModel = drRes.modelUsed; // gemini-deep-research ou -max
+        } else if (_engine === 'claude') {
+          drRes = await callClaudeWebSearch(_clKey, c.messages, _drOpts);
+          drModel = CLAUDE_DR_MODEL;
         } else {
           drRes = await callPerplexityDeepResearch(_pplxKey, c.messages, _drOpts);
           drModel = DEEP_RESEARCH_MODEL;
@@ -9133,7 +9254,7 @@ async function send() {
           role: "assistant",
           content: "❌ Recherche approfondie échouée : " + e.message,
           provider: _drProvider,
-          model: _engine === 'gemini' ? (_drOpts.effort === 'high' ? 'gemini-deep-research-max' : 'gemini-deep-research') : DEEP_RESEARCH_MODEL,
+          model: _engine === 'gemini' ? (_drOpts.effort === 'high' ? 'gemini-deep-research-max' : 'gemini-deep-research') : _engine === 'claude' ? CLAUDE_DR_MODEL : DEEP_RESEARCH_MODEL,
           _deepResearch: true,
           _deepResearchEngine: _engine,
           _deepResearchError: true
@@ -9191,20 +9312,20 @@ async function send() {
       setTripleCheckMode('off');
       // Skip le routage normal ci-dessous
     } else if (_traceThisTurn) {
-      // 🔬 TRAÇAGE — PubMed (E-utilities) + analyse sourcée via sonar-pro.
+      // 🔬 TRAÇAGE — PubMed (E-utilities, vrais PMID) + analyse via Claude (tout-Anthropic).
       // Tout le travail est dans le module autonome window.__brainshiftTrace.
       const drProg = document.getElementById('drProgress');
       const drProgLabel = document.getElementById('drProgressLabel');
       if (drProg) drProg.classList.add('visible');
       if (drProgLabel) drProgLabel.textContent = 'Traçage PubMed en cours…';
       try {
-        await window.__brainshiftTrace.run(c, text, (apiKeysByProvider["PERPLEXITY"] || "").trim());
+        await window.__brainshiftTrace.run(c, text, (apiKeysByProvider["ANTHROPIC"] || "").trim());
       } catch (e) {
         console.error('[BrAInShift] 🔬 Traçage échec:', e.message);
         c.messages.push({
           role: "assistant",
           content: "❌ Traçage échoué : " + e.message,
-          provider: "PERPLEXITY", model: "sonar-pro",
+          provider: "ANTHROPIC", model: "claude-sonnet-4-6",
           _tracing: true, _tracingError: true
         });
       } finally {
@@ -11866,17 +11987,54 @@ Même si des messages précédents parlent de formulation, de traduction, de wor
       return { role: m.role, content };
     });
   }
+  // ── V43 : appels d'analyse du Traçage basculés sur CLAUDE (tout-Anthropic, sans CORS). ──
+  // On conserve la SIGNATURE et la FORME DE RETOUR de l'ancien appel Perplexity
+  // (d.choices[0].message.content / finish_reason) pour ne PAS toucher les appelants
+  // (seedToQuery, sonarTrace, ensureTail). Pas de recherche web ici : l'analyse s'appuie
+  // sur le bloc PubMed déjà vérifié, ce qui supprime la dérive de « Sources web » qu'on
+  // observait avec sonar. La récupération PubMed (vrais PMID) reste indépendante.
+  function _traceModel(m) { return /pro/i.test(m || "") ? "claude-sonnet-4-6" : "claude-haiku-4-5-20251001"; }
   async function pplxCall(key, body) {
-    const r = await fetch("https://api.perplexity.ai/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + key },
-      body: JSON.stringify(body)
-    });
-    let d;
-    try { d = await r.json(); } catch (e) { throw new Error("Réponse Perplexity illisible (HTTP " + r.status + ")."); }
-    if (d.error) throw new Error(d.error.message || "erreur Perplexity");
-    if (!r.ok) throw new Error("HTTP " + r.status + " — " + (d.error && d.error.message || "échec Perplexity"));
-    return d;
+    // body : { model:"sonar"|"sonar-pro", messages:[{role,content}...], max_tokens }
+    var sys = (body.messages || []).filter(function (m) { return m.role === "system"; })
+      .map(function (m) { return m.content; }).join("\n\n");
+    var msgs = (body.messages || []).filter(function (m) { return m.role === "user" || m.role === "assistant"; })
+      .map(function (m) { return { role: m.role, content: typeof m.content === "string" ? m.content : String(m.content || "") }; });
+    if (!msgs.length || msgs[0].role !== "user") msgs.unshift({ role: "user", content: "." });
+
+    var controller = new AbortController();
+    var timer = setTimeout(function () { controller.abort(); }, 180000);
+    var r, d;
+    try {
+      r = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": key,
+          "anthropic-version": "2023-06-01",
+          "anthropic-dangerous-direct-browser-access": "true"
+        },
+        body: JSON.stringify({
+          model: _traceModel(body.model),
+          max_tokens: body.max_tokens || 2000,
+          system: sys || undefined,
+          messages: msgs
+        }),
+        signal: controller.signal
+      });
+    } catch (e) {
+      clearTimeout(timer);
+      if (e && e.name === "AbortError") throw new Error("Analyse Claude : délai dépassé (180s) — réessaie.");
+      throw new Error("Échec réseau vers Anthropic : " + ((e && e.message) || e));
+    }
+    clearTimeout(timer);
+    try { d = await r.json(); } catch (e) { throw new Error("Réponse Anthropic illisible (HTTP " + r.status + ")."); }
+    if (d.error) throw new Error(d.error.message || "erreur Anthropic");
+    if (!r.ok) throw new Error("HTTP " + r.status + " — " + (d.error && d.error.message || "échec Anthropic"));
+    var text = (Array.isArray(d.content) ? d.content : []).filter(function (b) { return b.type === "text"; })
+      .map(function (b) { return b.text || ""; }).join("");
+    var finish = d.stop_reason === "max_tokens" ? "length" : "stop";
+    return { choices: [{ message: { content: text }, finish_reason: finish }] };
   }
   async function seedToQuery(seed, key) {
     const sys = "Convertis l'affirmation en UNE requête PubMed PRÉCISE en anglais. Identifie le sujet central (maladie/condition ou objet biologique) et fais-en une clause OBLIGATOIRE reliée par AND ; mets les synonymes d'intervention/molécule dans un groupe entre parenthèses relié par OR ; ne laisse JAMAIS le sujet central uniquement dans un groupe OR avec des noms de molécules. Forme attendue, ex. : (chronic spontaneous urticaria) AND (omalizumab) AND (refractory OR failure OR inadequate response). Réponds UNIQUEMENT par une ligne : QUERY:: <requête anglaise> | YEARS:: <min>-<max> | WHY:: <but>. Rien d'autre.";
@@ -12026,11 +12184,11 @@ Même si des messages précédents parlent de formulation, de traduction, de wor
       c.messages.push({
         role: "assistant",
         content: "🔬 **Mode Traçage** — usage : `/trace <piste ou question>`.\n\nExemple : `/trace calcium endothélial et extravasation des cellules cancéreuses`.\n\n📚 **Mode revues** — préfixe ta piste par `reviews:` (ou ajoute `--reviews`) pour ne récupérer que des articles de synthèse / méta-analyses, idéal pour documenter le savoir établi d'un domaine. Ex. : `/trace reviews: chronic spontaneous urticaria pathophysiology`.\n\nLe module interroge PubMed (vrais PMID/DOI), puis produit une analyse sourcée et un bloc PROCHAINES REQUÊTES à relancer.",
-        provider: "PERPLEXITY", model: "sonar-pro", _tracing: true
+        provider: "ANTHROPIC", model: "claude-sonnet-4-6", _tracing: true
       });
       return;
     }
-    if (!key) throw new Error("clé API Perplexity manquante (format pplx-…). Cliquez sur 🔑 pour l'ajouter.");
+    if (!key) throw new Error("clé API Anthropic manquante. Cliquez sur 🔑 pour l'ajouter.");
 
     // 1) Piste → requête PubMed (anglais)
     let q;
@@ -12079,7 +12237,7 @@ Même si des messages précédents parlent de formulation, de traduction, de wor
     c.messages.push({
       role: "assistant",
       content: (notes ? notes + "\n\n" : "") + answer + "\n\n" + renderPubmedSources(traced),
-      provider: "PERPLEXITY", model: "sonar-pro",
+      provider: "ANTHROPIC", model: "claude-sonnet-4-6",
       _tracing: true,
       _tracingQuery: q.query,
       _tracingPubmedCount: traced.records.length
