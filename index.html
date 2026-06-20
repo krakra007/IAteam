@@ -12575,7 +12575,14 @@ Même si des messages précédents parlent de formulation, de traduction, de wor
           await new Promise(function (ok) { setTimeout(ok, Math.pow(2, attempt) * 1000); });
           continue;
         }
-        throw new Error("Échec réseau vers Perplexity : " + ((e && e.message) || e) + ". Vérifie ta connexion et ta clé API, puis réessaie.");
+        var raw = (e && e.message) || String(e);
+        // "Failed to fetch" / "Load failed" = la requête n'a jamais abouti (aucun code HTTP).
+        // Ce n'est PAS un problème de clé (une clé invalide renverrait un 401).
+        var isNet = /failed to fetch|load failed|networkerror/i.test(raw);
+        var hint = isNet
+          ? " — la requête n'a jamais abouti (aucun code HTTP). Cause la plus probable : l'API Perplexity bloque les appels directs depuis le navigateur (CORS), ou une extension / ad-blocker / VPN / pare-feu / proxy d'entreprise bloque api.perplexity.ai. Teste en navigation privée (extensions désactivées) ou sur un autre réseau. Ce n'est pas un souci de clé (sinon ce serait un 401)."
+          : "";
+        throw new Error("Échec réseau vers Perplexity : " + raw + "." + hint);
       }
     }
   }
