@@ -1630,6 +1630,7 @@
 </head>
 <body>
 <!-- VERSION_FIXED_V26 — 3 juin 2026 — Fix : "adaptive thinking" envoyé à Sonnet 4.5 → 400. Restriction aux modèles 4.6+ + désactivation du thinking pendant Triple Check -->
+<!-- VERSION_FIXED_V43 — 20 juin 2026 — Fix : Opus 4.8 (et 4.9/5.x à venir) recevait "thinking.type.enabled" → 400. Détection du format de thinking désormais basée sur la VERSION (claudeThinkingMode) : adaptive pour 4.6+, enabled pour 4.0–4.5, omis sinon. Effort figé par modèle (xhigh/max réservés à Opus) via claudeEffortForModel. -->
 <div class="app">
   <!-- Backdrop pour fermer la sidebar sur tablette (invisible sur desktop) -->
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
@@ -2151,6 +2152,52 @@ function isGPT5Model(model) {
 /** Modèles de raisonnement o-series (pas de paramètres de sampling) */
 function isOSeriesModel(model) {
   return /^o[1-9](-|$)/i.test(model) || model === "o3" || model === "o1";
+}
+
+// ─────────────────────────────────────────────────────────────
+// THINKING ANTHROPIC — SOURCE UNIQUE DE VÉRITÉ (V43)
+// Détermine, à partir du NUMÉRO DE VERSION du modèle Claude, le format
+// de réflexion étendue à envoyer à l'API. Robuste face aux nouveaux
+// modèles (Opus 4.8, 4.9, 5.x…) sans avoir à maintenir une liste figée.
+//
+//   'adaptive' → API moderne : { thinking:{type:"adaptive"}, output_config:{effort} }
+//                Claude 4.6 et + (Sonnet 4.6, Opus 4.6 / 4.7 / 4.8…).
+//                ⚠ budget_tokens est REJETÉ par ces modèles (déprécié dès 4.6,
+//                  rejeté dès Opus 4.7) → c'était la cause de l'erreur
+//                  "thinking.type.enabled is not supported for this model".
+//   'enabled'  → API classique : { thinking:{type:"enabled", budget_tokens} }
+//                Modèles Claude 4.0–4.5 qui supportent encore le budget (ex. Sonnet 4.5).
+//   null       → pas de réflexion étendue (Haiku, modèles legacy 3.x…).
+// ─────────────────────────────────────────────────────────────
+function claudeThinkingMode(model) {
+  const s = String(model || '');
+  // Haiku : pas de thinking étendu géré sur la plateforme (cohérent avec caps.thinking).
+  if (/haiku/i.test(s)) return null;
+  const mm = /(?:sonnet|opus)-(\d+)-(\d+)/i.exec(s);
+  if (!mm) {
+    // Repli prudent : un sonnet/opus non versionné connu → format classique sûr.
+    return /sonnet|opus/i.test(s) ? 'enabled' : null;
+  }
+  const major = parseInt(mm[1], 10);
+  const minor = parseInt(mm[2], 10);
+  if (major > 4) return 'adaptive';               // Claude 5.x et au-delà
+  if (major === 4 && minor >= 6) return 'adaptive'; // 4.6, 4.7, 4.8, 4.9…
+  if (major === 4) return 'enabled';              // 4.0–4.5 : budget_tokens encore accepté
+  return null;                                     // 3.x et antérieurs
+}
+
+/**
+ * FIGE la valeur d'effort selon le modèle (mode adaptive uniquement).
+ * Valeurs valides API : low | medium | high | xhigh | max.
+ * "xhigh" et "max" sont des niveaux maximaux réservés aux modèles Opus :
+ * pour les autres (Sonnet 4.6…) on rabat sur "high" afin d'éviter un rejet 400.
+ */
+function claudeEffortForModel(effort, model) {
+  const valid = ['low', 'medium', 'high', 'xhigh', 'max'];
+  let e = String(effort || 'high').toLowerCase();
+  if (!valid.includes(e)) e = 'high';
+  if ((e === 'max' || e === 'xhigh') && !/opus/i.test(String(model || ''))) return 'high';
+  return e;
 }
 
 
@@ -6015,6 +6062,7 @@ function renderParams() {
     max_tokens:       true,     // toujours supporté
     streaming:        true,
     thinking:         false,
+    thinkAdaptive:    false,
     webSearch:        false,
   };
 
@@ -6023,8 +6071,14 @@ function renderParams() {
     caps.tempMax     = 1;        // Anthropic: max 1.0
     caps.top_p       = !oSeries;
     caps.top_k       = !oSeries; // Anthropic supporte top_k
-    caps.thinking    = /sonnet|opus/i.test(m);
-    caps.webSearch   = true;
+    // V43 — capacité thinking alignée sur la source unique de vérité
+    // (claudeThinkingMode). caps.thinkAdaptive sert à figer l'UI : pour les
+    // modèles 4.6+ (Opus 4.8…) le budget de tokens n'a plus de sens, seul
+    // l'effort est pertinent.
+    const _tm = claudeThinkingMode(S.model);
+    caps.thinking      = _tm !== null;
+    caps.thinkAdaptive = _tm === 'adaptive';
+    caps.webSearch     = true;
   } else if (provider === 'OPENAI') {
     if (oSeries) {
       // o1, o3, o4 : aucun paramètre de sampling
@@ -6147,7 +6201,7 @@ function renderParams() {
         <label>Activer le thinking</label>
         <label class="toggle-switch"><input type="checkbox" id="t_think" ${(caps.thinking && P.thinking) || caps.reasoningNative?'checked':''} ${dis(caps.thinking)}><span class="toggle-slider"></span></label>
       </div>
-      <div class="p-hint" style="margin-top:-8px;margin-bottom:10px">${caps.thinking ? 'Claude montre son raisonnement. Sonnet 4.5+.' : caps.reasoningNative ? 'Raisonnement natif de ce modèle Sonar (chaîne de pensée toujours active). Non réglable ici.' : caps.webSearchNative ? 'Pour activer le raisonnement, choisissez le modèle sonar-reasoning-pro.' : `Non supporté par ${provider === 'ANTHROPIC' ? 'ce modèle Claude' : provider}.`}</div>
+      <div class="p-hint" style="margin-top:-8px;margin-bottom:10px">${caps.thinking ? (caps.thinkAdaptive ? 'Réflexion <b>adaptive</b> (Claude 4.6+, dont Opus 4.8) : pilotée par le niveau d\'effort ci-dessous.' : 'Claude montre son raisonnement (Claude 4.5).') : caps.reasoningNative ? 'Raisonnement natif de ce modèle Sonar (chaîne de pensée toujours active). Non réglable ici.' : caps.webSearchNative ? 'Pour activer le raisonnement, choisissez le modèle sonar-reasoning-pro.' : `Non supporté par ${provider === 'ANTHROPIC' ? 'ce modèle Claude' : provider}.`}</div>
 
       <div class="p-row" id="thinkingBudgetRow" style="display:${caps.thinking && P.thinking?'block':'none'}">
         <div class="p-row-head"><label>Niveau d'effort</label><span class="p-val" id="v_thinkbudget">${P.thinkingEffort || 'high'}</span></div>
@@ -6155,9 +6209,10 @@ function renderParams() {
           <option value="low" ${P.thinkingEffort==='low'?'selected':''}>Low — rapide, thinking minimal</option>
           <option value="medium" ${P.thinkingEffort==='medium'?'selected':''}>Medium — équilibré</option>
           <option value="high" ${(!P.thinkingEffort||P.thinkingEffort==='high')?'selected':''}>High — recommandé</option>
-          <option value="max" ${P.thinkingEffort==='max'?'selected':''}>Max — réflexion maximale</option>
+          <option value="xhigh" ${P.thinkingEffort==='xhigh'?'selected':''}>XHigh — approfondi (Opus)</option>
+          <option value="max" ${P.thinkingEffort==='max'?'selected':''}>Max — réflexion maximale (Opus)</option>
         </select>
-        <div class="p-hint">Contrôle la profondeur de réflexion du modèle.</div>
+        <div class="p-hint">Contrôle la profondeur de réflexion. « XHigh » et « Max » ne s'appliquent qu'aux modèles Opus ; sur les autres, l'effort est ramené à « High ».</div>
       </div>
 
       <div class="p-toggle" id="showThinkingRow" style="display:${caps.thinking && P.thinking?'flex':'none'}">
@@ -6856,19 +6911,26 @@ async function callAnthropic(key, model, messages, onText) {
     body.tools = [{ type: "web_search_20250305", name: "web_search", max_uses: 5 }];
   }
 
-  // Thinking (extended thinking) — V26 :
-  // - format "adaptive" : uniquement modèles 4.6+ (Sonnet 4.6, Opus 4.6, Opus 4.7…)
-  // - format "enabled" + budget_tokens : modèles 4.5 et antérieurs qui supportent thinking
+  // Thinking (extended thinking) — V43 :
+  // Le format est désormais déterminé par la VERSION du modèle via claudeThinkingMode()
+  // (source unique de vérité), ce qui couvre automatiquement Opus 4.8 et les futurs
+  // modèles 4.9 / 5.x sans liste à maintenir.
+  // - 'adaptive' : Claude 4.6+ → { thinking:{type:"adaptive"}, output_config:{effort} }
+  // - 'enabled'  : Claude 4.0–4.5 → { thinking:{type:"enabled", budget_tokens} }
+  // - null       : modèle sans thinking (Haiku, legacy) → on n'envoie RIEN (paramètre figé/omis).
   // - Triple Check : on désactive complètement le thinking (window._tripleCheckInProgress)
   //   car le prompt validateur fait déjà le travail, le thinking est redondant et coûteux.
   const _suppressThinking = window._tripleCheckInProgress === true;
-  if (S.params.thinking && /sonnet|opus/i.test(model) && !_suppressThinking) {
-    const isAdaptiveCompatible = /sonnet-4-6|sonnet-4-7|opus-4-6|opus-4-7/i.test(model);
-    if (isAdaptiveCompatible) {
+  const _thinkMode = claudeThinkingMode(model);
+  if (S.params.thinking && _thinkMode && !_suppressThinking) {
+    if (_thinkMode === 'adaptive') {
+      // API moderne (Claude 4.6+ : Sonnet 4.6, Opus 4.6 / 4.7 / 4.8…).
+      // Le "budget de tokens" n'existe plus pour ces modèles : on pilote la réflexion
+      // UNIQUEMENT via output_config.effort, en figeant l'effort selon le modèle.
       body.thinking = { type: "adaptive" };
-      body.output_config = { effort: S.params.thinkingEffort || "high" };
+      body.output_config = { effort: claudeEffortForModel(S.params.thinkingEffort, model) };
     } else {
-      // Format classique : extended thinking avec budget
+      // API classique (Claude 4.0–4.5) : extended thinking avec budget de tokens.
       body.thinking = { type: "enabled", budget_tokens: S.params.thinkingBudget || 10240 };
     }
     if (body.max_tokens < 16000) body.max_tokens = 16000;
