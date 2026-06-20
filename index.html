@@ -1630,7 +1630,7 @@
 </head>
 <body>
 <!-- VERSION_FIXED_V26 — 3 juin 2026 — Fix : "adaptive thinking" envoyé à Sonnet 4.5 → 400. Restriction aux modèles 4.6+ + désactivation du thinking pendant Triple Check -->
-<!-- VERSION_FIXED_V43 — 20 juin 2026 — Fix : Opus 4.8 (et 4.9/5.x à venir) recevait "thinking.type.enabled" → 400. Détection du format de thinking désormais basée sur la VERSION (claudeThinkingMode) : adaptive pour 4.6+, enabled pour 4.0–4.5, omis sinon. Effort figé par modèle (xhigh/max réservés à Opus) via claudeEffortForModel. Fix timeout : Anthropic passait de 150 s → 5–12 min selon thinking/effort (anthropicTimeoutMs), message d'erreur adapté au vrai navigateur (plus de "Edge" en dur sur Chrome). Fix Architecte : callSonar (Perplexity) avait un fetch nu sans timeout/retry → "Failed to fetch" sur sujets lourds ; ajout AbortController (240 s) + retries + max_tokens 1500→4000. -->
+<!-- VERSION_FIXED_V43 — 20 juin 2026 — Fix : Opus 4.8 (et 4.9/5.x à venir) recevait "thinking.type.enabled" → 400. Détection du format de thinking désormais basée sur la VERSION (claudeThinkingMode) : adaptive pour 4.6+, enabled pour 4.0–4.5, omis sinon. Effort figé par modèle (xhigh/max réservés à Opus) via claudeEffortForModel. Fix timeout : Anthropic passait de 150 s → 5–12 min selon thinking/effort (anthropicTimeoutMs), message d'erreur adapté au vrai navigateur (plus de "Edge" en dur sur Chrome). Fix Architecte : callSonar (Perplexity) avait un fetch nu sans timeout/retry → "Failed to fetch" sur sujets lourds ; ajout AbortController (240 s) + retries + max_tokens 1500→4000. Architecte : le brief peut désormais être généré par Claude (header navigateur dédié) ou Gemini, en contournant le CORS de Perplexity — sélecteur par défaut sur Claude. -->
 <div class="app">
   <!-- Backdrop pour fermer la sidebar sur tablette (invisible sur desktop) -->
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
@@ -12587,6 +12587,91 @@ Même si des messages précédents parlent de formulation, de traduction, de wor
     }
   }
 
+  // ---- Repli "navigateur-compatible" : Claude / Gemini ----------------------
+  // V43 — Perplexity bloque souvent les appels directs depuis le navigateur (CORS)
+  // → "Failed to fetch". Claude (header dédié anthropic-dangerous-direct-browser-access)
+  // et Gemini (autorisé par Google côté client) fonctionnent, eux, dans le navigateur.
+  // On réutilise les clés déjà saisies dans le coffre principal de la plateforme.
+  function _mainKey(provider) {
+    try { return (apiKeysByProvider[provider] || "").trim(); } catch (e) { return ""; }
+  }
+
+  async function callClaudeBrief(system, user, model) {
+    var key = _mainKey("ANTHROPIC");
+    if (!key) throw new Error("Aucune clé Anthropic dans la plateforme. Renseigne-la via le dropdown 🔑, ou choisis un autre moteur.");
+    var TIMEOUT_MS = 180000;
+    var controller = new AbortController();
+    var timer = setTimeout(function () { controller.abort(); }, TIMEOUT_MS);
+    try {
+      var r = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": key,
+          "anthropic-version": "2023-06-01",
+          "anthropic-dangerous-direct-browser-access": "true"
+        },
+        body: JSON.stringify({
+          model: model || "claude-sonnet-4-6",
+          max_tokens: 4000,
+          system: system,
+          messages: [{ role: "user", content: user }]
+        }),
+        signal: controller.signal
+      });
+      clearTimeout(timer);
+      if (!r.ok) throw new Error("Anthropic " + r.status + " — " + (await r.text()).slice(0, 200));
+      var j = await r.json();
+      var txt = (j.content || []).filter(function (b) { return b.type === "text"; }).map(function (b) { return b.text; }).join("");
+      return txt || "(réponse vide)";
+    } catch (e) {
+      clearTimeout(timer);
+      if (e && e.name === "AbortError") throw new Error("Claude : délai dépassé (" + (TIMEOUT_MS / 1000) + "s) — réessaie.");
+      throw e;
+    }
+  }
+
+  async function callGeminiBrief(system, user, model) {
+    var key = _mainKey("GOOGLE GEMINI");
+    if (!key) throw new Error("Aucune clé Gemini dans la plateforme. Renseigne-la via le dropdown 🔑, ou choisis un autre moteur.");
+    var TIMEOUT_MS = 180000;
+    var controller = new AbortController();
+    var timer = setTimeout(function () { controller.abort(); }, TIMEOUT_MS);
+    try {
+      var r = await fetch(
+        "https://generativelanguage.googleapis.com/v1beta/models/" + (model || "gemini-2.5-flash") + ":generateContent?key=" + encodeURIComponent(key),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: system }] },
+            contents: [{ role: "user", parts: [{ text: user }] }],
+            generationConfig: { temperature: 0.2, maxOutputTokens: 4000 }
+          }),
+          signal: controller.signal
+        }
+      );
+      clearTimeout(timer);
+      if (!r.ok) throw new Error("Gemini " + r.status + " — " + (await r.text()).slice(0, 200));
+      var j = await r.json();
+      if (j.error) throw new Error("Gemini " + (j.error.code || "") + " — " + j.error.message);
+      var parts = (j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts) || [];
+      var txt = parts.map(function (p) { return p.text || ""; }).join("");
+      return txt || "(réponse vide)";
+    } catch (e) {
+      clearTimeout(timer);
+      if (e && e.name === "AbortError") throw new Error("Gemini : délai dépassé (" + (TIMEOUT_MS / 1000) + "s) — réessaie.");
+      throw e;
+    }
+  }
+
+  // Répartiteur : choisit le moteur selon le modèle choisi dans le menu.
+  async function generateBrief(system, topic, model) {
+    if (/^sonar/i.test(model))  return callSonar(system, topic, model);
+    if (/^gemini/i.test(model)) return callGeminiBrief(system, topic, model);
+    return callClaudeBrief(system, topic, model); // claude-* par défaut (navigateur-compatible)
+  }
+
   // ---- overlay générique ----------------------------------------------------
   function overlay(titleTxt, bodyHtml, onMount) {
     var ov = document.createElement("div");
@@ -12615,8 +12700,18 @@ Même si des messages précédents parlent de formulation, de traduction, de wor
       + "<textarea id='bs-topic' placeholder='ex. stratégies pour bloquer les microfilaments d'actine dans les cellules métastatiques' style='width:100%;height:90px;box-sizing:border-box;border:1px solid #ccc;border-radius:8px;padding:10px;font:13px system-ui'></textarea>"
       + "<div style='margin:10px 0 8px;display:flex;gap:8px;align-items:center'>"
       + "<button id='bs-gen' style='background:#1f3864;color:#fff;border:0;border-radius:8px;padding:10px 16px;font:600 13px system-ui;cursor:pointer'>Générer le brief</button>"
-      + "<select id='bs-model' style='border:1px solid #ccc;border-radius:8px;padding:8px;font:13px system-ui'><option value='sonar'>sonar (web)</option><option value='sonar-pro'>sonar-pro</option></select>"
-      + "<span style='font:12px system-ui;color:#888'>température basse, web activé</span></div>"
+      + "<select id='bs-model' style='border:1px solid #ccc;border-radius:8px;padding:8px;font:13px system-ui'>"
+      + "<optgroup label='Navigateur-compatible (recommandé)'>"
+      + "<option value='claude-sonnet-4-6'>Claude Sonnet 4.6</option>"
+      + "<option value='claude-opus-4-8'>Claude Opus 4.8</option>"
+      + "<option value='gemini-2.5-flash'>Gemini 2.5 Flash</option>"
+      + "</optgroup>"
+      + "<optgroup label='Perplexity — web, souvent bloqué (CORS)'>"
+      + "<option value='sonar'>sonar (web)</option>"
+      + "<option value='sonar-pro'>sonar-pro</option>"
+      + "</optgroup>"
+      + "</select>"
+      + "<span style='font:12px system-ui;color:#888'>Claude/Gemini marchent dans le navigateur ; Perplexity ajoute le web mais échoue souvent (CORS).</span></div>"
       + "<div id='bs-arch-out'></div>";
     overlay("Architecte de recherche approfondie", body, function (box) {
       box.querySelector("#bs-key").value = getKey();
@@ -12627,7 +12722,7 @@ Même si des messages précédents parlent de formulation, de traduction, de wor
         if (!topic) { out.innerHTML = "<div style='font:13px system-ui;color:#888'>Saisis un sujet.</div>"; return; }
         out.innerHTML = "<div style='font:13px system-ui;color:#1f3864'>Construction du brief…</div>";
         try {
-          var brief = await callSonar(ARCHITECT_PROMPT, topic, box.querySelector("#bs-model").value);
+          var brief = await generateBrief(ARCHITECT_PROMPT, topic, box.querySelector("#bs-model").value);
           out.innerHTML = "<div style='font:600 13px system-ui;margin:14px 0 6px;color:#1f3864'>Brief (relis/édite avant de lancer) :</div>"
             + "<textarea id='bs-brief' style='width:100%;height:300px;box-sizing:border-box;border:1px solid #ccc;border-radius:8px;padding:10px;font:12.5px/1.45 ui-monospace,monospace'></textarea>"
             + "<div style='margin:8px 0 0;display:flex;gap:8px'>"
@@ -12759,7 +12854,7 @@ Même si des messages précédents parlent de formulation, de traduction, de wor
     // le bouton "🔎 Vérifier les sources" (couche 1) est injecté par son propre module à 18px
   }
 
-  window.__brainshiftArchitect = { open: openArchitect, prompt: ARCHITECT_PROMPT, callSonar: callSonar };
+  window.__brainshiftArchitect = { open: openArchitect, prompt: ARCHITECT_PROMPT, callSonar: callSonar, generateBrief: generateBrief };
   window.__brainshiftLeads = { open: openLeads, extractLeads: extractLeads, stageTrace: stageTrace };
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", inject);
