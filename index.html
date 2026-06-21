@@ -1558,7 +1558,8 @@
 </head>
 <body>
 <!-- VERSION_FIXED_V26 — 3 juin 2026 — Fix : "adaptive thinking" envoyé à Sonnet 4.5 → 400. Restriction aux modèles 4.6+ + désactivation du thinking pendant Triple Check -->
-<!-- VERSION_FIXED_V46 — 21 juin 2026 — Nettoyage : retrait complet du pipeline de recherche médicale approfondie (Recherche approfondie Perplexity/Gemini/Claude, modules Architecte, Vérifier, Tracer/Traçage PubMed). Retour à la plateforme multi-IA / multi-projet. Conserve les correctifs V43 : Opus 4.8 (format thinking adaptive 4.6+, enabled 4.0–4.5), effort figé par modèle, timeouts Anthropic adaptatifs, Triple Check (ÉCO/PREMIUM), tracking des coûts, sync multi-device. Perplexity reste disponible comme fournisseur de chat normal (sonar / sonar-pro / sonar-reasoning-pro). -->
+<!-- VERSION_FIXED_V46 — 21 juin 2026 — Nettoyage : retrait complet du pipeline de recherche médicale approfondie (Recherche approfondie Perplexity/Gemini/Claude, modules Architecte, Vérifier, Tracer/Traçage PubMed). Retour à la plateforme multi-IA / multi-projet. Conserve les correctifs V43 : Opus 4.8 (format thinking adaptive 4.6+, enabled 4.0–4.5), effort figé par modèle, timeouts Anthropic adaptatifs, Triple Check (ÉCO/PREMIUM), tracking des coûts, sync multi-device. Perplexity reste disponible comme fournisseur de chat normal (sonar / sonar-pro / sonar-reasoning-pro).
+     V47 — 21 juin 2026 — Vérification web des modèles : Groq retire 4 modèles dépréciés le 17/06 (llama-3.1-8b, llama-3.3-70b, qwen3-32b, llama-4-scout) → remplacés par gpt-oss-120b/20b + qwen3.6-27b ; modèle image Gemini migré du preview (arrêt 25/06) vers la version GA gemini-3.1-flash-image ; tarifs corrigés : gpt-5.5 (5/30), gpt-5.5-pro (30/180), gemini-3.1-pro (2/12), ajout du tarif sonar-reasoning-pro (2/8) qui manquait. -->
 <div class="app">
   <!-- Backdrop pour fermer la sidebar sur tablette (invisible sur desktop) -->
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
@@ -1927,18 +1928,15 @@ const MODEL_GROUPS = [
     ]
   },
   // ── Groq (Open Source, ultra-rapide via LPU) ──────
-  // Source : console.groq.com/docs/models — mai 2026
-  // ⚠ moonshotai/kimi-k2-instruct-0905 DÉPRÉCIÉ → remplacé par gpt-oss-120b
-  // ⚠ llama-4-maverick DÉPRÉCIÉ → remplacé par gpt-oss-120b
+  // Source : console.groq.com/docs/models — juin 2026
+  // ⚠ Dépréciés le 17/06/2026 (free + dev tier) : llama-3.1-8b-instant, llama-3.3-70b-versatile,
+  //   qwen/qwen3-32b, meta-llama/llama-4-scout → remplacés par gpt-oss-120b/20b et qwen3.6-27b.
   {
     label: "🚀 Groq — Open Source",
     models: [
       "openai/gpt-oss-120b",  // reasoning, le plus puissant sur Groq
       "openai/gpt-oss-20b",   // rapide, bon rapport perf/coût
-      "qwen/qwen3-32b",       // Alibaba, reasoning, structured output
-      "meta-llama/llama-4-scout-17b-16e-instruct",  // Meta, multimodal
-      "llama-3.3-70b-versatile",   // Meta, généraliste
-      "llama-3.1-8b-instant"       // Meta, ultra-rapide
+      "qwen/qwen3.6-27b",     // 🆕 Qwen 3.6 27B — le plus intelligent sur Groq (remplace qwen3-32b)
     ]
   },
   // ── Mistral AI ─────────────────────────────────────
@@ -7337,7 +7335,7 @@ async function callGeminiImages(apiKey, messages) {
     generationConfig: { responseModalities: ['TEXT', 'IMAGE'] }
   };
   const r = await fetchWithRetry(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image:generateContent?key=${apiKey}`,
     { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
   );
 
@@ -7350,7 +7348,7 @@ async function callGeminiImages(apiKey, messages) {
   // on tombe sur des valeurs estimées prudentes (l'image elle-même domine le coût de toute façon).
   const _u = extractUsage(d);
   window._lastUsage = {
-    model: 'gemini-3.1-flash-image-preview',
+    model: 'gemini-3.1-flash-image',
     input:  _u?.input  ?? 0,
     output: _u?.output ?? 1120  // 1120 tokens = 1 image 1024×1024 par défaut
   };
@@ -7390,14 +7388,14 @@ const TOKEN_PRICES = {
   'gemini-2.5-flash':           { input: 0.15,  output: 0.60 },
   'gemini-2.5-flash-lite':      { input: 0.075, output: 0.30 },
   'gemini-2.5-pro':             { input: 1.25,  output: 5.00 },
-  'gemini-3.1-pro-preview':     { input: 2.50,  output: 10.00 },
+  'gemini-3.1-pro-preview':     { input: 2.00,  output: 12.00 },
   'gemini-3.1-flash-lite':      { input: 0.075, output: 0.30 },
   'gemini-3.5-flash':           { input: 0.30,  output: 1.20 },
-  'gemini-3.1-flash-image-preview': { input: 0.25, output: 60.00 }, // ⚠ tarif spécial : voir computeCost — flat $0.067 par image 1024px + tokens d'entrée
+  'gemini-3.1-flash-image': { input: 0.25, output: 60.00 }, // ⚠ tarif spécial : voir computeCost — flat $0.067 par image 1024px + tokens d'entrée
 
   // ── OpenAI ──
-  'gpt-5.5':                    { input: 5.00,  output: 20.00 },
-  'gpt-5.5-pro':                { input: 15.00, output: 60.00 },
+  'gpt-5.5':                    { input: 5.00,  output: 30.00 },
+  'gpt-5.5-pro':                { input: 30.00, output: 180.00 },
   'gpt-5.4':                    { input: 2.50,  output: 10.00 },
   'gpt-5.4-mini':               { input: 0.40,  output: 1.60 },
   'gpt-5.4-nano':               { input: 0.10,  output: 0.40 },
@@ -7413,12 +7411,9 @@ const TOKEN_PRICES = {
   'claude-haiku-4-5-20251001':  { input: 1.00,  output: 5.00 },
 
   // ── Groq (généralement gratuit jusqu'à un quota, prix indicatifs) ──
-  'openai/gpt-oss-120b':                          { input: 0.15,  output: 0.75 },
+  'openai/gpt-oss-120b':                          { input: 0.15,  output: 0.60 },
   'openai/gpt-oss-20b':                           { input: 0.10,  output: 0.50 },
-  'qwen/qwen3-32b':                               { input: 0.29,  output: 0.59 },
-  'meta-llama/llama-4-scout-17b-16e-instruct':    { input: 0.11,  output: 0.34 },
-  'llama-3.3-70b-versatile':                      { input: 0.59,  output: 0.79 },
-  'llama-3.1-8b-instant':                         { input: 0.05,  output: 0.08 },
+  'qwen/qwen3.6-27b':                             { input: 0.40,  output: 1.20 },
 
   // ── DeepSeek ──
   'deepseek-v4-pro':            { input: 0.55,  output: 2.19 },
@@ -7440,7 +7435,8 @@ const TOKEN_PRICES = {
 
   // ── Perplexity Sonar ──
   'sonar-pro':                  { input: 3.00,  output: 15.00 },
-  'sonar':                      { input: 1.00,  output: 1.00 }
+  'sonar':                      { input: 1.00,  output: 1.00 },
+  'sonar-reasoning-pro':        { input: 2.00,  output: 8.00 }
 };
 
 // Variable globale : usage du dernier appel API (rempli par les fonctions callXxx)
@@ -7483,7 +7479,7 @@ function computeCost(model, inputTokens, outputTokens, extra) {
   // V38 — Gemini Image Preview : tarification image spécifique.
   // 1 image 1024×1024 ≈ 1120 tokens d'image ≈ $0.067 (output tokens à $60/1M)
   // Variations : 512px = $0.045, 4K = $0.151. On facture flat 1024px.
-  if (model === 'gemini-3.1-flash-image-preview') {
+  if (model === 'gemini-3.1-flash-image') {
     const inputCost = (inputTokens * 0.25) / 1_000_000;
     const imageCost = 0.067;
     return inputCost + imageCost;
@@ -10485,7 +10481,7 @@ updateTripleCheckBtn(); // V15 — Initialiser l'état visuel du bouton Triple C
 if (typeof updateForceWordBtn === 'function') updateForceWordBtn(); // 📄 Initialiser l'état du bouton Word forcé
 
 // Tampon de version — permet de confirmer dans la console (F12) quelle version tourne réellement.
-const BRAINSHIFT_VERSION = 'V46 — plateforme multi-IA / multi-projet (modules recherche médicale retirés)';
+const BRAINSHIFT_VERSION = 'V47 — multi-IA / multi-projet ; modèles & tarifs vérifiés (21/06/2026)';
 console.log('%c[BrAInShift] ' + BRAINSHIFT_VERSION, 'color:#7c3aed;font-weight:bold');
 
 // ── Pull automatique à l'ouverture ──
