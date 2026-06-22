@@ -326,7 +326,6 @@
     .badge-gemini{background:#4285f422;color:#7baaf7;border:1px solid #4285f444}
     .badge-groq{background:#f5501622;color:#f55016;border:1px solid #f5501644}
     .badge-mistral{background:#ff720022;color:#ff7200;border:1px solid #ff720044}
-    .badge-perplexity{background:#20808d22;color:#41b9c9;border:1px solid #20808d55}
 
     /* ── Typing ── */
     .typing{display:flex;align-items:center;gap:10px;color:#b8bec8;font-size:14px;padding:8px 0}
@@ -1558,8 +1557,9 @@
 </head>
 <body>
 <!-- VERSION_FIXED_V26 — 3 juin 2026 — Fix : "adaptive thinking" envoyé à Sonnet 4.5 → 400. Restriction aux modèles 4.6+ + désactivation du thinking pendant Triple Check -->
-<!-- VERSION_FIXED_V46 — 21 juin 2026 — Nettoyage : retrait complet du pipeline de recherche médicale approfondie (Recherche approfondie Perplexity/Gemini/Claude, modules Architecte, Vérifier, Tracer/Traçage PubMed). Retour à la plateforme multi-IA / multi-projet. Conserve les correctifs V43 : Opus 4.8 (format thinking adaptive 4.6+, enabled 4.0–4.5), effort figé par modèle, timeouts Anthropic adaptatifs, Triple Check (ÉCO/PREMIUM), tracking des coûts, sync multi-device. Perplexity reste disponible comme fournisseur de chat normal (sonar / sonar-pro / sonar-reasoning-pro).
-     V47 — 21 juin 2026 — Vérification web des modèles : Groq retire 4 modèles dépréciés le 17/06 (llama-3.1-8b, llama-3.3-70b, qwen3-32b, llama-4-scout) → remplacés par gpt-oss-120b/20b + qwen3.6-27b ; modèle image Gemini migré du preview (arrêt 25/06) vers la version GA gemini-3.1-flash-image ; tarifs corrigés : gpt-5.5 (5/30), gpt-5.5-pro (30/180), gemini-3.1-pro (2/12), ajout du tarif sonar-reasoning-pro (2/8) qui manquait. -->
+<!-- VERSION_FIXED_V46 — 21 juin 2026 — Nettoyage : retrait complet du pipeline de recherche médicale approfondie (Recherche approfondie Perplexity/Gemini/Claude, modules Architecte, Vérifier, Tracer/Traçage PubMed). Retour à la plateforme multi-IA / multi-projet. Conserve les correctifs V43 : Opus 4.8 (format thinking adaptive 4.6+, enabled 4.0–4.5), effort figé par modèle, timeouts Anthropic adaptatifs, Triple Check (ÉCO/PREMIUM), tracking des coûts, sync multi-device.
+     V47 — 21 juin 2026 — Vérification web des modèles : Groq retire 4 modèles dépréciés le 17/06 (llama-3.1-8b, llama-3.3-70b, qwen3-32b, llama-4-scout) → remplacés par gpt-oss-120b/20b + qwen3.6-27b ; modèle image Gemini migré du preview (arrêt 25/06) vers la version GA gemini-3.1-flash-image ; tarifs corrigés : gpt-5.5 (5/30), gpt-5.5-pro (30/180), gemini-3.1-pro (2/12).
+     V48 — 22 juin 2026 — Retrait complet du fournisseur Perplexity (Sonar) : modèles, clé API, badge, tarifs, capacités, routage et test de clé. Les appels Sonar étaient bloqués par CORS depuis le navigateur. Fournisseurs restants : Anthropic, OpenAI, DeepSeek, Google Gemini, Groq, Mistral. -->
 <div class="app">
   <!-- Backdrop pour fermer la sidebar sur tablette (invisible sur desktop) -->
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
@@ -1966,17 +1966,6 @@ const MODEL_GROUPS = [
       "ministral-3b-latest",      // Ministral 3B — tiny, vision, $0.04/M in
       "ministral-8b-latest",      // Ministral 8B — efficace, vision, $0.10/M in
       "open-mistral-nemo",        // Nemo 12B — multilingue, open-source
-    ]
-  },
-  // ── Perplexity (Sonar — recherche web intégrée) ───
-  // API compatible OpenAI (Chat Completions) — endpoint https://api.perplexity.ai/chat/completions
-  // ⚠ Les appels directs depuis le navigateur peuvent être bloqués par CORS (cf. test de clé).
-  {
-    label: "🔎 Perplexity — Sonar (recherche web)",
-    models: [
-      "sonar",                 // recherche rapide, économique
-      "sonar-pro",             // recherche avancée, réponses plus longues + citations
-      "sonar-reasoning-pro",   // raisonnement avancé avec recherche web (émet une section <think>)
     ]
   }
 ];
@@ -2530,7 +2519,7 @@ const apiErrorEl = el("apiError");
 // ─────────────────────────────────────────────────
 // CLÉS API — 4 fournisseurs
 // ─────────────────────────────────────────────────
-const PROVIDERS = ["ANTHROPIC", "OPENAI", "DEEPSEEK", "GOOGLE GEMINI", "GROQ", "MISTRAL", "PERPLEXITY"];
+const PROVIDERS = ["ANTHROPIC", "OPENAI", "DEEPSEEK", "GOOGLE GEMINI", "GROQ", "MISTRAL"];
 const providerKeysEl = el("providerKeys");
 const apiKeysByProvider = JSON.parse(localStorage.getItem("apiKeysByProvider") || "{}");
 PROVIDERS.forEach(p => { if (!(p in apiKeysByProvider)) apiKeysByProvider[p] = ""; });
@@ -2579,6 +2568,7 @@ async function unlockVault() {
     // Migration : récupère d'éventuelles clés en clair de l'ancienne version
     const legacy = JSON.parse(localStorage.getItem("apiKeysByProvider") || "{}");
     Object.assign(apiKeysByProvider, legacy);
+    delete apiKeysByProvider["PERPLEXITY"];         // V48 — fournisseur retiré
     localStorage.setItem(VAULT_STORE, JSON.stringify(await _encryptVault(apiKeysByProvider)));
     localStorage.removeItem("apiKeysByProvider");   // on efface le clair résiduel
     return true;
@@ -2598,6 +2588,7 @@ async function unlockVault() {
       const pt = await crypto.subtle.decrypt(
         { name: "AES-GCM", iv: _b64.dec(stored.iv) }, _vaultKey, _b64.dec(stored.ct));
       Object.assign(apiKeysByProvider, JSON.parse(new TextDecoder().decode(pt)));
+      delete apiKeysByProvider["PERPLEXITY"];        // V48 — fournisseur retiré : purge la clé orpheline
       return true;                                 // déchiffrement réussi = bonne passphrase
     } catch (e) {
       _vaultKey = null;                            // mauvaise passphrase → GCM lève une erreur
@@ -2966,7 +2957,6 @@ function inferProviderFromModel(model) {
   if (m.startsWith("gemini"))   return "GOOGLE GEMINI";
   if (m.startsWith("deepseek")) return "DEEPSEEK";
   if (m.startsWith("mistral") || m.startsWith("codestral") || m.startsWith("devstral") || m.startsWith("magistral") || m.startsWith("ministral") || m.startsWith("open-mistral")) return "MISTRAL";
-  if (m.startsWith("sonar")) return "PERPLEXITY";
   // Groq models — détection par préfixe de famille ou nom connu
   const GROQ_MODELS = MODEL_GROUPS.find(g => g.label.includes("Groq"))?.models || [];
   if (GROQ_MODELS.includes(model)) return "GROQ";
@@ -2980,8 +2970,7 @@ function providerBadgeHtml(provider) {
     "DEEPSEEK":     ["badge-deepseek",  "DeepSeek"],
     "GOOGLE GEMINI":["badge-gemini",    "Gemini"],
     "GROQ":         ["badge-groq",      "Groq"],
-    "MISTRAL":      ["badge-mistral",   "Mistral"],
-    "PERPLEXITY":   ["badge-perplexity","Perplexity"]
+    "MISTRAL":      ["badge-mistral",   "Mistral"]
   };
   const [cls, label] = map[provider] || ["badge-openai", provider];
   return `<span class="provider-badge ${cls}">${label}</span>`;
@@ -3000,8 +2989,7 @@ function renderApiKeys() {
     "DEEPSEEK":     { color:"#7b9cf7", icon:"🔵", placeholder:"sk-..." },
     "GOOGLE GEMINI":{ color:"#7baaf7", icon:"🔷", placeholder:"AIza..." },
     "GROQ":         { color:"#f55016", icon:"🔴", placeholder:"gsk_..." },
-    "MISTRAL":      { color:"#ff7200", icon:"🟧", placeholder:"mistral-..." },
-    "PERPLEXITY":   { color:"#20808d", icon:"🟦", placeholder:"pplx-..." }
+    "MISTRAL":      { color:"#ff7200", icon:"🟧", placeholder:"mistral-..." }
   };
 
   container.innerHTML = "";
@@ -3053,7 +3041,7 @@ function renderApiKeys() {
       }
     });
 
-    // [FIX PERPLEXITY] Auto-enregistrement dès qu'on quitte le champ (blur/Entrée),
+    // Auto-enregistrement dès qu'on quitte le champ (blur/Entrée),
     // sans dépendre du bouton global. Écrit la clé en mémoire ET dans le coffre chiffré.
     input.addEventListener("change", async () => {
       const v = input.value.trim();
@@ -3119,35 +3107,10 @@ async function testApiKey(provider, key) {
       });
       ok = r.status === 200;
       msg = ok ? "Clé valide ✓" : `Erreur ${r.status}`;
-    } else if (provider === "PERPLEXITY") {
-      // Pas d'endpoint GET /models fiable chez Perplexity → on teste par un appel minimal
-      // au modèle le moins cher (sonar). Perplexity impose max_tokens >= 16. Coût négligeable.
-      // Un échec réseau ici (Failed to fetch sans code HTTP) = blocage CORS du navigateur.
-      const r = await fetch("https://api.perplexity.ai/chat/completions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + key },
-        body: JSON.stringify({ model: "sonar", messages: [{ role: "user", content: "ping" }], max_tokens: 16 })
-      });
-      ok = r.status === 200;
-      if (ok) {
-        msg = "Clé valide ✓";
-      } else if (r.status === 401) {
-        msg = "Erreur 401 — clé refusée (vérifiez qu'elle commence par pplx- et que le compte a du crédit API)";
-      } else {
-        let detail = "";
-        try { const d = await r.json(); detail = d?.error?.message ? ` — ${d.error.message}` : ""; } catch (_) {}
-        msg = `Erreur ${r.status}${detail}`;
-      }
     }
     resEl.innerHTML = `<span style="color:${ok?'#22c55e':'#f87171'}">${ok?'✅':'❌'} ${msg}</span>`;
   } catch(e) {
-    // "Failed to fetch" / "Load failed" sans code HTTP = la requête n'a jamais abouti.
-    // Cause la plus fréquente pour un fournisseur appelé depuis un navigateur : blocage CORS.
-    const isNetwork = /failed to fetch|load failed|networkerror/i.test(e.message || "");
-    const hint = (provider === "PERPLEXITY" && isNetwork)
-      ? " — l'API Perplexity bloque probablement les appels directs depuis le navigateur (CORS). Un proxy est nécessaire."
-      : "";
-    resEl.innerHTML = `<span style="color:#f87171">❌ ${e.message}${hint}</span>`;
+    resEl.innerHTML = `<span style="color:#f87171">❌ ${e.message}</span>`;
   }
 }
 
@@ -5966,15 +5929,6 @@ function renderParams() {
     caps.tempMax     = 1.5;      // Mistral: max 1.5
     caps.top_p       = true;
     // Mistral : pas de penalties, pas de top_k, pas de web search API native
-  } else if (provider === 'PERPLEXITY') {
-    caps.temperature = true;
-    caps.tempMax     = 2;        // Perplexity Sonar : 0–2
-    caps.top_p       = true;
-    caps.top_k       = true;
-    // Recherche web NATIVE et toujours active (intégrée à Sonar) — pas un toggle désactivable.
-    caps.webSearchNative = true;
-    // Le raisonnement dépend du MODÈLE choisi (sonar-reasoning-pro), pas d'un toggle.
-    caps.reasoningNative = /reasoning/i.test(m);
   }
 
   // Helpers UI
@@ -6047,14 +6001,14 @@ function renderParams() {
     </div>
 
     <!-- RÉFLEXION ÉTENDUE -->
-    <div class="params-section" ${opac(caps.thinking || caps.reasoningNative)}>
+    <div class="params-section" ${opac(caps.thinking)}>
       <div class="params-section-title">Réflexion étendue (Thinking)</div>
 
       <div class="p-toggle">
         <label>Activer le thinking</label>
-        <label class="toggle-switch"><input type="checkbox" id="t_think" ${(caps.thinking && P.thinking) || caps.reasoningNative?'checked':''} ${dis(caps.thinking)}><span class="toggle-slider"></span></label>
+        <label class="toggle-switch"><input type="checkbox" id="t_think" ${(caps.thinking && P.thinking)?'checked':''} ${dis(caps.thinking)}><span class="toggle-slider"></span></label>
       </div>
-      <div class="p-hint" style="margin-top:-8px;margin-bottom:10px">${caps.thinking ? (caps.thinkAdaptive ? 'Réflexion <b>adaptive</b> (Claude 4.6+, dont Opus 4.8) : pilotée par le niveau d\'effort ci-dessous.' : 'Claude montre son raisonnement (Claude 4.5).') : caps.reasoningNative ? 'Raisonnement natif de ce modèle Sonar (chaîne de pensée toujours active). Non réglable ici.' : caps.webSearchNative ? 'Pour activer le raisonnement, choisissez le modèle sonar-reasoning-pro.' : `Non supporté par ${provider === 'ANTHROPIC' ? 'ce modèle Claude' : provider}.`}</div>
+      <div class="p-hint" style="margin-top:-8px;margin-bottom:10px">${caps.thinking ? (caps.thinkAdaptive ? 'Réflexion <b>adaptive</b> (Claude 4.6+, dont Opus 4.8) : pilotée par le niveau d\'effort ci-dessous.' : 'Claude montre son raisonnement (Claude 4.5).') : `Non supporté par ${provider === 'ANTHROPIC' ? 'ce modèle Claude' : provider}.`}</div>
 
       <div class="p-row" id="thinkingBudgetRow" style="display:${caps.thinking && P.thinking?'block':'none'}">
         <div class="p-row-head"><label>Niveau d'effort</label><span class="p-val" id="v_thinkbudget">${P.thinkingEffort || 'high'}</span></div>
@@ -6075,14 +6029,14 @@ function renderParams() {
     </div>
 
     <!-- RECHERCHE WEB -->
-    <div class="params-section" ${opac(caps.webSearch || caps.webSearchNative)}>
+    <div class="params-section" ${opac(caps.webSearch)}>
       <div class="params-section-title">Recherche Web (Web Search)</div>
 
       <div class="p-toggle">
         <label><span class="p-toggle-icon">🌐</span> Activer la recherche web</label>
-        <label class="toggle-switch"><input type="checkbox" id="t_websearch" ${(caps.webSearch && P.webSearch) || caps.webSearchNative?'checked':''} ${dis(caps.webSearch)}><span class="toggle-slider"></span></label>
+        <label class="toggle-switch"><input type="checkbox" id="t_websearch" ${(caps.webSearch && P.webSearch)?'checked':''} ${dis(caps.webSearch)}><span class="toggle-slider"></span></label>
       </div>
-      <div class="p-hint" style="margin-top:-8px;margin-bottom:4px">${caps.webSearch ? 'Le modèle cherchera sur internet quand c\'est pertinent.<br>Supporté : Claude, GPT-4/5, Gemini.' : caps.webSearchNative ? 'Recherche web native, intégrée à Sonar — toujours active (non désactivable).' : `Non supporté par ${provider}.`}</div>
+      <div class="p-hint" style="margin-top:-8px;margin-bottom:4px">${caps.webSearch ? 'Le modèle cherchera sur internet quand c\'est pertinent.<br>Supporté : Claude, GPT-4/5, Gemini.' : `Non supporté par ${provider}.`}</div>
     </div>
 
     <!-- V40 — RÉFLEXION ÉTENDUE GEMINI -->
@@ -6168,7 +6122,7 @@ function updateActiveModelChip() {
   const lastMsg = c ? [...(c.messages||[])].reverse().find(m => m.role==="assistant" && m.model) : null;
   const providerColors = {
     "ANTHROPIC":"#c8621a","OPENAI":"#10a37f","DEEPSEEK":"#7b9cf7",
-    "GOOGLE GEMINI":"#7baaf7","GROQ":"#f55016","MISTRAL":"#ff7200","PERPLEXITY":"#41b9c9"
+    "GOOGLE GEMINI":"#7baaf7","GROQ":"#f55016","MISTRAL":"#ff7200"
   };
   if (lastMsg && lastMsg.model) {
     const col = providerColors[lastMsg.provider] || "#9ca3af";
@@ -6328,18 +6282,6 @@ function buildRequestParams(model, apiType) {
     const out = { max_tokens: maxT, ...stop };
     if (valid(temp, 0, 1.5)) out.temperature = temp;
     if (valid(topP, 0, 1) && topP > 0) out.top_p = topP;
-    return out;
-  }
-
-  // ── Perplexity Sonar ────────────────────────────────────────
-  // max_tokens (PAS max_completion_tokens), temperature (0–2), top_p, top_k.
-  // On omet les penalties (sémantique particulière chez Perplexity) et seed
-  // (non supporté) pour éviter tout rejet de paramètre.
-  if (apiType === "perplexity") {
-    const out = { max_tokens: maxT, ...stop };
-    if (valid(temp, 0, 2)) out.temperature = temp;
-    if (valid(topP, 0, 1) && topP > 0) out.top_p = topP;
-    if (topK > 0) out.top_k = topK;
     return out;
   }
 
@@ -7431,12 +7373,7 @@ const TOKEN_PRICES = {
   'mistral-medium-3-1-latest':  { input: 1.00,  output: 3.00 },
   'ministral-3b-latest':        { input: 0.04,  output: 0.04 },
   'ministral-8b-latest':        { input: 0.10,  output: 0.10 },
-  'open-mistral-nemo':          { input: 0.15,  output: 0.15 },
-
-  // ── Perplexity Sonar ──
-  'sonar-pro':                  { input: 3.00,  output: 15.00 },
-  'sonar':                      { input: 1.00,  output: 1.00 },
-  'sonar-reasoning-pro':        { input: 2.00,  output: 8.00 }
+  'open-mistral-nemo':          { input: 0.15,  output: 0.15 }
 };
 
 // Variable globale : usage du dernier appel API (rempli par les fonctions callXxx)
@@ -7929,8 +7866,6 @@ async function callModelForTripleCheck(modelName, messages) {
       result = await callOpenAICompatible("https://api.mistral.ai/v1/chat/completions", key, modelName, messages, "mistral");
     } else if (provider === "DEEPSEEK") {
       result = await callOpenAICompatible("https://api.deepseek.com/chat/completions", key, modelName, messages, "deepseek");
-    } else if (provider === "PERPLEXITY") {
-      result = await callOpenAICompatible("https://api.perplexity.ai/chat/completions", key, modelName, messages, "perplexity");
     } else if (isGPT5Model(modelName)) {
       result = await callOpenAIResponses(key, modelName, messages);
     } else {
@@ -8291,7 +8226,6 @@ async function send() {
     const _streamSink = (txt) => { if (!_streamUI) _streamUI = makeStreamUI(); _streamUI.update(txt); };
 
     // 🎨 DÉTECTION AUTO : demande d'image → OpenAI gpt-image-1 (V39, ex-Gemini)
-    // (désactivée en mode Recherche approfondie : la question part sur sonar-deep-research)
     if (isImageGenerationRequest(text)) {
       const openaiKey = (apiKeysByProvider["OPENAI"] || "").trim();
       if (!openaiKey) {
@@ -8416,13 +8350,6 @@ async function send() {
       responseContent = await callOpenAICompatible(
         "https://api.deepseek.com/chat/completions",
         key, S.model, c.messages, "deepseek", _streamSink
-      );
-
-    } else if (provider === "PERPLEXITY") {
-      // Perplexity Sonar — API compatible OpenAI (Chat Completions), recherche web intégrée
-      responseContent = await callOpenAICompatible(
-        "https://api.perplexity.ai/chat/completions",
-        key, S.model, c.messages, "perplexity", _streamSink
       );
 
     } else if (isGPT5Model(S.model)) {
@@ -8634,8 +8561,7 @@ async function send() {
         "DEEPSEEK": "api.deepseek.com",
         "GOOGLE GEMINI": "generativelanguage.googleapis.com",
         "GROQ": "api.groq.com",
-        "MISTRAL": "api.mistral.ai",
-        "PERPLEXITY": "api.perplexity.ai"
+        "MISTRAL": "api.mistral.ai"
       };
       const host = providerUrls[provider] || '?';
       hints.push(`Vérifiez que ${host} est accessible (ouvrez https://${host} dans un nouvel onglet).`);
@@ -10482,7 +10408,7 @@ updateTripleCheckBtn(); // V15 — Initialiser l'état visuel du bouton Triple C
 if (typeof updateForceWordBtn === 'function') updateForceWordBtn(); // 📄 Initialiser l'état du bouton Word forcé
 
 // Tampon de version — permet de confirmer dans la console (F12) quelle version tourne réellement.
-const BRAINSHIFT_VERSION = 'V47 — multi-IA / multi-projet ; modèles & tarifs vérifiés (21/06/2026)';
+const BRAINSHIFT_VERSION = 'V48 — multi-IA / multi-projet ; Perplexity retiré (22/06/2026)';
 console.log('%c[BrAInShift] ' + BRAINSHIFT_VERSION, 'color:#7c3aed;font-weight:bold');
 
 // ── Pull automatique à l'ouverture ──
