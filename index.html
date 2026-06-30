@@ -1559,7 +1559,8 @@
 <!-- VERSION_FIXED_V26 — 3 juin 2026 — Fix : "adaptive thinking" envoyé à Sonnet 4.5 → 400. Restriction aux modèles 4.6+ + désactivation du thinking pendant Triple Check -->
 <!-- VERSION_FIXED_V46 — 21 juin 2026 — Nettoyage : retrait complet du pipeline de recherche médicale approfondie (Recherche approfondie Perplexity/Gemini/Claude, modules Architecte, Vérifier, Tracer/Traçage PubMed). Retour à la plateforme multi-IA / multi-projet. Conserve les correctifs V43 : Opus 4.8 (format thinking adaptive 4.6+, enabled 4.0–4.5), effort figé par modèle, timeouts Anthropic adaptatifs, Triple Check (ÉCO/PREMIUM), tracking des coûts, sync multi-device.
      V47 — 21 juin 2026 — Vérification web des modèles : Groq retire 4 modèles dépréciés le 17/06 (llama-3.1-8b, llama-3.3-70b, qwen3-32b, llama-4-scout) → remplacés par gpt-oss-120b/20b + qwen3.6-27b ; modèle image Gemini migré du preview (arrêt 25/06) vers la version GA gemini-3.1-flash-image ; tarifs corrigés : gpt-5.5 (5/30), gpt-5.5-pro (30/180), gemini-3.1-pro (2/12).
-     V48 — 22 juin 2026 — Retrait complet du fournisseur Perplexity (Sonar) : modèles, clé API, badge, tarifs, capacités, routage et test de clé. Les appels Sonar étaient bloqués par CORS depuis le navigateur. Fournisseurs restants : Anthropic, OpenAI, DeepSeek, Google Gemini, Groq, Mistral. -->
+     V48 — 22 juin 2026 — Retrait complet du fournisseur Perplexity (Sonar) : modèles, clé API, badge, tarifs, capacités, routage et test de clé. Les appels Sonar étaient bloqués par CORS depuis le navigateur. Fournisseurs restants : Anthropic, OpenAI, DeepSeek, Google Gemini, Groq, Mistral.
+     V49 — 30 juin 2026 — Vérification web des modèles & tarifs (6 fournisseurs). Anthropic : ajout de claude-sonnet-5 (tarif intro 2/10 jusqu'au 31/08/2026) ; correction MAJEURE des tarifs Opus 4.8/4.7/4.6 (15/75 → 5/25) ; Fable 5/Mythos 5 existent mais accès SUSPENDU → non exposés. Correctif claudeThinkingMode() : la regex exigeait deux niveaux de version (sonnet-4-6) et faisait retomber claude-sonnet-5 sur 'enabled' → 400 ; elle accepte désormais les ID à un seul niveau. Gemini : 3.1-pro passe en GA (suppression du suffixe -preview) ; tarifs corrigés (3.5-flash 0.30/1.20 → 1.50/9, 2.5-flash 0.15/0.60 → 0.30/2.50, 2.5-flash-lite, 3.1-flash-lite, 2.5-pro sortie). OpenAI : gpt-5.4 sortie 10 → 15, mini et nano corrigés ; GPT-5.6 (preview limitée) signalé mais non exposé. DeepSeek : v4-pro baisse permanente -75% (0.435/0.87), v4-flash et alias sortie 0.55 → 0.28. Groq : gpt-oss-20b 0.10/0.50 → 0.075/0.30 ; qwen3.6-27b laissé mais marqué non confirmé. Mistral : Medium 3.5 sortie 7.50, Large 3 (0.50/1.50), Small 4 (0.10/0.30), Magistral Medium sortie 5. -->
 <div class="app">
   <!-- Backdrop pour fermer la sidebar sur tablette (invisible sur desktop) -->
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
@@ -1861,17 +1862,21 @@ Exemple pour la chimie :
 // ─────────────────────────────────────────────────
 const MODEL_GROUPS = [
   // ── Anthropic Claude ──────────────────────────────
-  // Source : docs.anthropic.com — juin 2026
-  // 🆕 Claude Opus 4.8 sorti le 28 mai 2026 — nouveau flagship pour reasoning + agentic coding
+  // Source : platform.claude.com/docs — vérifié 30 juin 2026
+  // 🆕 Claude Sonnet 5 (juin 2026) — nouveau Sonnet courant, tarif intro 2/10 jusqu'au 31/08/2026.
+  //    Claude Opus 4.8 (28 mai 2026) reste le flagship Opus.
+  // ⚠ Fable 5 (claude-fable-5) et Mythos 5 (claude-mythos-5) existent mais l'accès API est
+  //   SUSPENDU (directive d'export, juin 2026) → non exposés ici pour éviter des erreurs.
   {
     label: "Anthropic Claude",
     models: [
-      "claude-opus-4-8",       // 🆕 nouveau flagship (mai 2026), reasoning + long-horizon coding
-      "claude-opus-4-7",       // précédent flagship (avril 2026), coding avancé, vision HD
-      "claude-sonnet-4-6",     // meilleur rapport vitesse/intelligence
+      "claude-opus-4-8",       // flagship Opus (28 mai 2026), reasoning + long-horizon coding
+      "claude-sonnet-5",       // 🆕 Sonnet courant (juin 2026) — tarif intro 2/10 jusqu'au 31/08/2026
+      "claude-opus-4-7",       // Opus précédent (avril 2026), coding avancé, vision HD
+      "claude-sonnet-4-6",     // Sonnet précédent, bon rapport vitesse/intelligence
       "claude-haiku-4-5-20251001", // le plus rapide / économique
-      "claude-opus-4-6",       // opus précédent (context 1M tokens)
-      "claude-sonnet-4-5"      // sonnet précédent (stable, retraite ≥ 29/09/2026)
+      "claude-opus-4-6",       // Opus antérieur (context 1M tokens)
+      "claude-sonnet-4-5"      // Sonnet antérieur (stable, retraite ≥ 29/09/2026)
     ]
   },
   // ── OpenAI GPT-5.x (Responses API) ────────────────
@@ -1899,16 +1904,17 @@ const MODEL_GROUPS = [
     ]
   },
   // ── Google Gemini ─────────────────────────────────
-  // Source : ai.google.dev/gemini-api/docs/models — 20 mai 2026
-  // 🆕 gemini-3.5-flash lancé le 19 mai 2026 (Google I/O) — bat 3.1 Pro sur coding/agents
-  // ⚠ gemini-2.0-flash DÉPRÉCIÉ (arrêt 1er juin 2026)
-  // ⚠ gemini-3.5-pro attendu en juin 2026 (pas encore dispo)
+  // Source : ai.google.dev/gemini-api/docs — vérifié 30 juin 2026
+  // gemini-3.5-flash : GA depuis I/O (19 mai 2026), flagship Flash agentic+coding (1.50/9).
+  // gemini-3.1-pro : désormais GA (le suffixe -preview a disparu), context 2M.
+  // ⚠ gemini-2.0-flash a été ARRÊTÉ le 1er juin 2026.
+  // ⚠ gemini-3.5-pro toujours pas confirmé en GA au 30/06/2026 → non listé.
   {
     label: "Google Gemini",
     models: [
-      "gemini-3.5-flash",           // 🆕 I/O 2026, flagship agentic+coding, 289 tok/s, 1M ctx
-      "gemini-3.1-pro-preview",     // raisonnement avancé, grounding, 2M context
-      "gemini-3.1-flash-lite",      // GA 25 mai 2026, ultra économique
+      "gemini-3.5-flash",           // I/O 2026, flagship Flash agentic+coding, 1M ctx
+      "gemini-3.1-pro",             // GA — raisonnement avancé, grounding, 2M context
+      "gemini-3.1-flash-lite",      // GA, économique
       "gemini-2.5-pro",             // stable production, thinking adaptatif
       "gemini-2.5-flash",           // économique stable
       "gemini-2.5-flash-lite"       // très économique stable
@@ -1948,7 +1954,7 @@ const MODEL_GROUPS = [
     models: [
       "mistral-medium-latest",    // 🆕 Medium 3.5 (avr 2026) — 128B dense, 256K ctx, vision, $1.5/M in
       "mistral-small-latest",     // Small 4 (mars 2026) — 119B MoE, reasoning configurable, $0.15/M in
-      "mistral-large-latest",     // Large 3 (déc 2025) — 675B MoE, flagship open-weight, $2/M in
+      "mistral-large-latest",     // Large 3 (déc 2025) — flagship cost-efficient, $0.50/M in
     ]
   },
   {
@@ -2029,13 +2035,16 @@ function claudeThinkingMode(model) {
   const s = String(model || '');
   // Haiku : pas de thinking étendu géré sur la plateforme (cohérent avec caps.thinking).
   if (/haiku/i.test(s)) return null;
-  const mm = /(?:sonnet|opus)-(\d+)-(\d+)/i.exec(s);
+  // Accepte les ID à deux niveaux (sonnet-4-6, opus-4-8) ET à un seul niveau
+  // (sonnet-5, opus-5…). Sans cela, "claude-sonnet-5" retombait sur 'enabled'
+  // et déclenchait un 400 (budget_tokens rejeté par les modèles 5.x).
+  const mm = /(?:sonnet|opus)-(\d+)(?:-(\d+))?/i.exec(s);
   if (!mm) {
     // Repli prudent : un sonnet/opus non versionné connu → format classique sûr.
     return /sonnet|opus/i.test(s) ? 'enabled' : null;
   }
   const major = parseInt(mm[1], 10);
-  const minor = parseInt(mm[2], 10);
+  const minor = mm[2] != null ? parseInt(mm[2], 10) : 0;
   if (major > 4) return 'adaptive';               // Claude 5.x et au-delà
   if (major === 4 && minor >= 6) return 'adaptive'; // 4.6, 4.7, 4.8, 4.9…
   if (major === 4) return 'enabled';              // 4.0–4.5 : budget_tokens encore accepté
@@ -7326,50 +7335,52 @@ async function callGeminiImages(apiKey, messages) {
 // ─────────────────────────────────────────────────────────────
 
 const TOKEN_PRICES = {
-  // ── Google Gemini ──
-  'gemini-2.5-flash':           { input: 0.15,  output: 0.60 },
-  'gemini-2.5-flash-lite':      { input: 0.075, output: 0.30 },
-  'gemini-2.5-pro':             { input: 1.25,  output: 5.00 },
-  'gemini-3.1-pro-preview':     { input: 2.00,  output: 12.00 },
-  'gemini-3.1-flash-lite':      { input: 0.075, output: 0.30 },
-  'gemini-3.5-flash':           { input: 0.30,  output: 1.20 },
+  // ── Google Gemini ── (vérifié 30/06/2026 — ai.google.dev/gemini-api/docs/pricing)
+  'gemini-2.5-flash':           { input: 0.30,  output: 2.50 },  // corrigé : 0.15/0.60 était le tarif Batch
+  'gemini-2.5-flash-lite':      { input: 0.10,  output: 0.40 },  // corrigé
+  'gemini-2.5-pro':             { input: 1.25,  output: 10.00 }, // corrigé (sortie 10, pas 5) ; ≤200K tokens
+  'gemini-3.1-pro':             { input: 2.00,  output: 12.00 }, // GA (ex -preview) ; ≤200K, x2/x1.5 au-delà
+  'gemini-3.1-flash-lite':      { input: 0.25,  output: 1.50 },  // corrigé
+  'gemini-3.5-flash':           { input: 1.50,  output: 9.00 },  // corrigé (était 0.30/1.20 — facteur ~7)
   'gemini-3.1-flash-image': { input: 0.25, output: 60.00 }, // ⚠ tarif spécial : voir computeCost — flat $0.067 par image 1024px + tokens d'entrée
 
-  // ── OpenAI ──
+  // ── OpenAI ── (vérifié 30/06/2026 — developers.openai.com/api/docs/pricing)
   'gpt-5.5':                    { input: 5.00,  output: 30.00 },
   'gpt-5.5-pro':                { input: 30.00, output: 180.00 },
-  'gpt-5.4':                    { input: 2.50,  output: 10.00 },
-  'gpt-5.4-mini':               { input: 0.40,  output: 1.60 },
-  'gpt-5.4-nano':               { input: 0.10,  output: 0.40 },
+  'gpt-5.4':                    { input: 2.50,  output: 15.00 }, // corrigé (sortie 15, pas 10)
+  'gpt-5.4-mini':               { input: 0.75,  output: 4.50 },  // corrigé
+  'gpt-5.4-nano':               { input: 0.20,  output: 1.25 },  // corrigé
   'gpt-4.1':                    { input: 2.00,  output: 8.00 },
   'gpt-4.1-mini':               { input: 0.40,  output: 1.60 },
+  // ℹ Famille GPT-5.6 (Sol 5/30, Terra 2.5/15, Luna 1/6) en preview limitée → non exposée.
 
-  // ── Anthropic Claude ──
-  'claude-opus-4-8':            { input: 15.00, output: 75.00 },
-  'claude-opus-4-7':            { input: 15.00, output: 75.00 },
-  'claude-opus-4-6':            { input: 15.00, output: 75.00 },
+  // ── Anthropic Claude ── (vérifié 30/06/2026 — platform.claude.com/docs/pricing)
+  'claude-opus-4-8':            { input: 5.00,  output: 25.00 }, // corrigé (était 15/75)
+  'claude-opus-4-7':            { input: 5.00,  output: 25.00 }, // corrigé
+  'claude-opus-4-6':            { input: 5.00,  output: 25.00 }, // corrigé
+  'claude-sonnet-5':            { input: 2.00,  output: 10.00 }, // 🆕 tarif intro jusqu'au 31/08/2026 (ensuite ~3/15)
   'claude-sonnet-4-6':          { input: 3.00,  output: 15.00 },
   'claude-sonnet-4-5':          { input: 3.00,  output: 15.00 },
   'claude-haiku-4-5-20251001':  { input: 1.00,  output: 5.00 },
 
-  // ── Groq (généralement gratuit jusqu'à un quota, prix indicatifs) ──
+  // ── Groq ── (vérifié 30/06/2026 — console.groq.com/docs/models)
   'openai/gpt-oss-120b':                          { input: 0.15,  output: 0.60 },
-  'openai/gpt-oss-20b':                           { input: 0.10,  output: 0.50 },
-  'qwen/qwen3.6-27b':                             { input: 0.40,  output: 1.20 },
+  'openai/gpt-oss-20b':                           { input: 0.075, output: 0.30 }, // corrigé (officiel Groq)
+  'qwen/qwen3.6-27b':                             { input: 0.40,  output: 1.20 }, // ⚠ cible de migration annoncée par Groq, non confirmée dans la liste publique au 30/06 — vérifier l'ID/tarif
 
-  // ── DeepSeek ──
-  'deepseek-v4-pro':            { input: 0.55,  output: 2.19 },
-  'deepseek-v4-flash':          { input: 0.14,  output: 0.55 },
-  'deepseek-chat':              { input: 0.14,  output: 0.55 },
-  'deepseek-reasoner':          { input: 0.55,  output: 2.19 },
+  // ── DeepSeek ── (vérifié 30/06/2026 — api-docs.deepseek.com/quick_start/pricing)
+  'deepseek-v4-pro':            { input: 0.435, output: 0.87 }, // corrigé : baisse permanente -75% (depuis 31/05/2026)
+  'deepseek-v4-flash':          { input: 0.14,  output: 0.28 }, // corrigé (sortie 0.28)
+  'deepseek-chat':              { input: 0.14,  output: 0.28 }, // alias → v4-flash (fin 24/07/2026)
+  'deepseek-reasoner':          { input: 0.14,  output: 0.28 }, // alias → v4-flash thinking (fin 24/07/2026)
 
-  // ── Mistral ──
-  'mistral-medium-latest':      { input: 1.50,  output: 4.50 },
-  'mistral-small-latest':       { input: 0.15,  output: 0.45 },
-  'mistral-large-latest':       { input: 2.00,  output: 6.00 },
+  // ── Mistral ── (vérifié 30/06/2026 — mistral.ai/pricing)
+  'mistral-medium-latest':      { input: 1.50,  output: 7.50 }, // Medium 3.5 — sortie corrigée (était 4.50)
+  'mistral-small-latest':       { input: 0.10,  output: 0.30 }, // Small 4 — corrigé
+  'mistral-large-latest':       { input: 0.50,  output: 1.50 }, // Large 3 — flagship cost-efficient, corrigé (était 2/6)
   'codestral-latest':           { input: 0.30,  output: 0.90 },
   'devstral-small-latest':      { input: 0.15,  output: 0.45 },
-  'magistral-medium-latest':    { input: 2.00,  output: 6.00 },
+  'magistral-medium-latest':    { input: 2.00,  output: 5.00 }, // sortie corrigée (était 6.00)
   'mistral-medium-3-1-latest':  { input: 1.00,  output: 3.00 },
   'ministral-3b-latest':        { input: 0.04,  output: 0.04 },
   'ministral-8b-latest':        { input: 0.10,  output: 0.10 },
