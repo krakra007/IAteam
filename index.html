@@ -326,6 +326,7 @@
     .badge-gemini{background:#4285f422;color:#7baaf7;border:1px solid #4285f444}
     .badge-groq{background:#f5501622;color:#f55016;border:1px solid #f5501644}
     .badge-mistral{background:#ff720022;color:#ff7200;border:1px solid #ff720044}
+    .badge-zai{background:#6366f122;color:#8b8ef5;border:1px solid #6366f144}
 
     /* ── Typing ── */
     .typing{display:flex;align-items:center;gap:10px;color:#b8bec8;font-size:14px;padding:8px 0}
@@ -1560,7 +1561,8 @@
 <!-- VERSION_FIXED_V46 — 21 juin 2026 — Nettoyage : retrait complet du pipeline de recherche médicale approfondie (Recherche approfondie Perplexity/Gemini/Claude, modules Architecte, Vérifier, Tracer/Traçage PubMed). Retour à la plateforme multi-IA / multi-projet. Conserve les correctifs V43 : Opus 4.8 (format thinking adaptive 4.6+, enabled 4.0–4.5), effort figé par modèle, timeouts Anthropic adaptatifs, Triple Check (ÉCO/PREMIUM), tracking des coûts, sync multi-device.
      V47 — 21 juin 2026 — Vérification web des modèles : Groq retire 4 modèles dépréciés le 17/06 (llama-3.1-8b, llama-3.3-70b, qwen3-32b, llama-4-scout) → remplacés par gpt-oss-120b/20b + qwen3.6-27b ; modèle image Gemini migré du preview (arrêt 25/06) vers la version GA gemini-3.1-flash-image ; tarifs corrigés : gpt-5.5 (5/30), gpt-5.5-pro (30/180), gemini-3.1-pro (2/12).
      V48 — 22 juin 2026 — Retrait complet du fournisseur Perplexity (Sonar) : modèles, clé API, badge, tarifs, capacités, routage et test de clé. Les appels Sonar étaient bloqués par CORS depuis le navigateur. Fournisseurs restants : Anthropic, OpenAI, DeepSeek, Google Gemini, Groq, Mistral.
-     V49 — 30 juin 2026 — Vérification web des modèles & tarifs (6 fournisseurs). Anthropic : ajout de claude-sonnet-5 (tarif intro 2/10 jusqu'au 31/08/2026) ; correction MAJEURE des tarifs Opus 4.8/4.7/4.6 (15/75 → 5/25) ; Fable 5/Mythos 5 existent mais accès SUSPENDU → non exposés. Correctif claudeThinkingMode() : la regex exigeait deux niveaux de version (sonnet-4-6) et faisait retomber claude-sonnet-5 sur 'enabled' → 400 ; elle accepte désormais les ID à un seul niveau. Gemini : 3.1-pro passe en GA (suppression du suffixe -preview) ; tarifs corrigés (3.5-flash 0.30/1.20 → 1.50/9, 2.5-flash 0.15/0.60 → 0.30/2.50, 2.5-flash-lite, 3.1-flash-lite, 2.5-pro sortie). OpenAI : gpt-5.4 sortie 10 → 15, mini et nano corrigés ; GPT-5.6 (preview limitée) signalé mais non exposé. DeepSeek : v4-pro baisse permanente -75% (0.435/0.87), v4-flash et alias sortie 0.55 → 0.28. Groq : gpt-oss-20b 0.10/0.50 → 0.075/0.30 ; qwen3.6-27b laissé mais marqué non confirmé. Mistral : Medium 3.5 sortie 7.50, Large 3 (0.50/1.50), Small 4 (0.10/0.30), Magistral Medium sortie 5. -->
+     V49 — 30 juin 2026 — Vérification web des modèles & tarifs (6 fournisseurs). Anthropic : ajout de claude-sonnet-5 (tarif intro 2/10 jusqu'au 31/08/2026) ; correction MAJEURE des tarifs Opus 4.8/4.7/4.6 (15/75 → 5/25) ; Fable 5/Mythos 5 existent mais accès SUSPENDU → non exposés. Correctif claudeThinkingMode() : la regex exigeait deux niveaux de version (sonnet-4-6) et faisait retomber claude-sonnet-5 sur 'enabled' → 400 ; elle accepte désormais les ID à un seul niveau. Gemini : 3.1-pro passe en GA (suppression du suffixe -preview) ; tarifs corrigés (3.5-flash 0.30/1.20 → 1.50/9, 2.5-flash 0.15/0.60 → 0.30/2.50, 2.5-flash-lite, 3.1-flash-lite, 2.5-pro sortie). OpenAI : gpt-5.4 sortie 10 → 15, mini et nano corrigés ; GPT-5.6 (preview limitée) signalé mais non exposé. DeepSeek : v4-pro baisse permanente -75% (0.435/0.87), v4-flash et alias sortie 0.55 → 0.28. Groq : gpt-oss-20b 0.10/0.50 → 0.075/0.30 ; qwen3.6-27b laissé mais marqué non confirmé. Mistral : Medium 3.5 sortie 7.50, Large 3 (0.50/1.50), Small 4 (0.10/0.30), Magistral Medium sortie 5.
+     V50 — 30 juin 2026 — Ajout du fournisseur Z.ai (GLM, poids ouverts MIT), API OpenAI-compatible via https://api.z.ai/api/paas/v4/chat/completions. Modèles : glm-5.2 (flagship, 1M ctx, 1.40/4.40) et glm-4.7 (0.60/2.20). Câblage complet : PROVIDERS, inferProviderFromModel (préfixe "glm"), badge .badge-zai, coffre/clé, test de clé (ping chat = valide clé + CORS), apiType "zai" dans buildRequestParams, routage send(), diagnostic réseau. ⚠ À VÉRIFIER : le CORS navigateur d'api.z.ai (serveurs en Chine) — même point qui avait fait retirer Perplexity en V48. Utiliser le bouton « Tester » de la clé Z.ai : s'il répond ✅, le CORS passe ; si « Failed to fetch », un proxy serait nécessaire. -->
 <div class="app">
   <!-- Backdrop pour fermer la sidebar sur tablette (invisible sur desktop) -->
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
@@ -1972,6 +1974,18 @@ const MODEL_GROUPS = [
       "ministral-3b-latest",      // Ministral 3B — tiny, vision, $0.04/M in
       "ministral-8b-latest",      // Ministral 8B — efficace, vision, $0.10/M in
       "open-mistral-nemo",        // Nemo 12B — multilingue, open-source
+    ]
+  },
+  // ── Z.ai — GLM (poids ouverts, licence MIT) ────────
+  // Source : z.ai / docs.z.ai — vérifié 30 juin 2026. API OpenAI-compatible.
+  // Endpoint : https://api.z.ai/api/paas/v4/chat/completions
+  // Flagship courant = GLM-5.2 (13 juin 2026), contexte 1M. GLM-5 (fév.) est déjà 2 gén. en arrière.
+  // ⚠ Serveurs principalement en Chine (~100-200 ms depuis l'UE) ; vérifier le CORS navigateur.
+  {
+    label: "🧠 Z.ai GLM — Open-weight",
+    models: [
+      "glm-5.2",   // flagship agentic + coding (juin 2026), contexte 1M, MIT
+      "glm-4.7"    // tier économique
     ]
   }
 ];
@@ -2528,7 +2542,7 @@ const apiErrorEl = el("apiError");
 // ─────────────────────────────────────────────────
 // CLÉS API — 4 fournisseurs
 // ─────────────────────────────────────────────────
-const PROVIDERS = ["ANTHROPIC", "OPENAI", "DEEPSEEK", "GOOGLE GEMINI", "GROQ", "MISTRAL"];
+const PROVIDERS = ["ANTHROPIC", "OPENAI", "DEEPSEEK", "GOOGLE GEMINI", "GROQ", "MISTRAL", "Z.AI"];
 const providerKeysEl = el("providerKeys");
 const apiKeysByProvider = JSON.parse(localStorage.getItem("apiKeysByProvider") || "{}");
 PROVIDERS.forEach(p => { if (!(p in apiKeysByProvider)) apiKeysByProvider[p] = ""; });
@@ -2965,6 +2979,7 @@ function inferProviderFromModel(model) {
   if (m.startsWith("claude"))   return "ANTHROPIC";
   if (m.startsWith("gemini"))   return "GOOGLE GEMINI";
   if (m.startsWith("deepseek")) return "DEEPSEEK";
+  if (m.startsWith("glm"))      return "Z.AI";
   if (m.startsWith("mistral") || m.startsWith("codestral") || m.startsWith("devstral") || m.startsWith("magistral") || m.startsWith("ministral") || m.startsWith("open-mistral")) return "MISTRAL";
   // Groq models — détection par préfixe de famille ou nom connu
   const GROQ_MODELS = MODEL_GROUPS.find(g => g.label.includes("Groq"))?.models || [];
@@ -2979,7 +2994,8 @@ function providerBadgeHtml(provider) {
     "DEEPSEEK":     ["badge-deepseek",  "DeepSeek"],
     "GOOGLE GEMINI":["badge-gemini",    "Gemini"],
     "GROQ":         ["badge-groq",      "Groq"],
-    "MISTRAL":      ["badge-mistral",   "Mistral"]
+    "MISTRAL":      ["badge-mistral",   "Mistral"],
+    "Z.AI":         ["badge-zai",       "GLM"]
   };
   const [cls, label] = map[provider] || ["badge-openai", provider];
   return `<span class="provider-badge ${cls}">${label}</span>`;
@@ -2998,7 +3014,8 @@ function renderApiKeys() {
     "DEEPSEEK":     { color:"#7b9cf7", icon:"🔵", placeholder:"sk-..." },
     "GOOGLE GEMINI":{ color:"#7baaf7", icon:"🔷", placeholder:"AIza..." },
     "GROQ":         { color:"#f55016", icon:"🔴", placeholder:"gsk_..." },
-    "MISTRAL":      { color:"#ff7200", icon:"🟧", placeholder:"mistral-..." }
+    "MISTRAL":      { color:"#ff7200", icon:"🟧", placeholder:"mistral-..." },
+    "Z.AI":         { color:"#6366f1", icon:"🟣", placeholder:"Clé Z.ai (Bearer)..." }
   };
 
   container.innerHTML = "";
@@ -3113,6 +3130,15 @@ async function testApiKey(provider, key) {
     } else if (provider === "MISTRAL") {
       const r = await fetch("https://api.mistral.ai/v1/models", {
         headers: { "Authorization": "Bearer " + key }
+      });
+      ok = r.status === 200;
+      msg = ok ? "Clé valide ✓" : `Erreur ${r.status}`;
+    } else if (provider === "Z.AI") {
+      // Ping chat minimal : valide la clé ET le CORS navigateur (api.z.ai)
+      const r = await fetch("https://api.z.ai/api/paas/v4/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + key },
+        body: JSON.stringify({ model: "glm-5.2", messages: [{ role: "user", content: "ping" }], max_tokens: 1 })
       });
       ok = r.status === 200;
       msg = ok ? "Clé valide ✓" : `Erreur ${r.status}`;
@@ -6274,6 +6300,17 @@ function buildRequestParams(model, apiType) {
     return out;
   }
 
+  // ── Z.ai GLM (couche OpenAI compat) ─────────────────────────
+  // max_tokens, temperature, top_p. Pas de penalties (GLM peut les rejeter).
+  // Le raisonnement GLM (thinking/reasoning_effort) est un champ hors-standard
+  // non piloté ici → GLM répond en mode par défaut, ce qui convient pour le chat.
+  if (apiType === "zai") {
+    const out = { max_tokens: maxT, ...stop };
+    if (valid(temp, 0, 2)) out.temperature = temp;
+    if (valid(topP, 0, 1) && topP > 0) out.top_p = topP;
+    return out;
+  }
+
   // ── DeepSeek ────────────────────────────────────────────────
   // max_tokens (pas max_completion_tokens), temperature, top_p, penalties, stop.
   if (apiType === "deepseek") {
@@ -7384,7 +7421,11 @@ const TOKEN_PRICES = {
   'mistral-medium-3-1-latest':  { input: 1.00,  output: 3.00 },
   'ministral-3b-latest':        { input: 0.04,  output: 0.04 },
   'ministral-8b-latest':        { input: 0.10,  output: 0.10 },
-  'open-mistral-nemo':          { input: 0.15,  output: 0.15 }
+  'open-mistral-nemo':          { input: 0.15,  output: 0.15 },
+
+  // ── Z.ai (GLM) ── (vérifié 30/06/2026 — z.ai / docs.z.ai)
+  'glm-5.2':                    { input: 1.40,  output: 4.40 }, // entrée en cache ≈ 0.26
+  'glm-4.7':                    { input: 0.60,  output: 2.20 }
 };
 
 // Variable globale : usage du dernier appel API (rempli par les fonctions callXxx)
@@ -8363,6 +8404,13 @@ async function send() {
         key, S.model, c.messages, "deepseek", _streamSink
       );
 
+    } else if (provider === "Z.AI") {
+      // Z.ai GLM — API compatible OpenAI (Chat Completions), endpoint paas/v4
+      responseContent = await callOpenAICompatible(
+        "https://api.z.ai/api/paas/v4/chat/completions",
+        key, S.model, c.messages, "zai", _streamSink
+      );
+
     } else if (isGPT5Model(S.model)) {
       // GPT-5.x → Responses API (/v1/responses)
       responseContent = await callOpenAIResponses(key, S.model, c.messages);
@@ -8572,7 +8620,8 @@ async function send() {
         "DEEPSEEK": "api.deepseek.com",
         "GOOGLE GEMINI": "generativelanguage.googleapis.com",
         "GROQ": "api.groq.com",
-        "MISTRAL": "api.mistral.ai"
+        "MISTRAL": "api.mistral.ai",
+        "Z.AI": "api.z.ai"
       };
       const host = providerUrls[provider] || '?';
       hints.push(`Vérifiez que ${host} est accessible (ouvrez https://${host} dans un nouvel onglet).`);
