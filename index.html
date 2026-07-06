@@ -2691,8 +2691,17 @@ function lockedModelForProject(p) {
   return LOCKED_PROJECTS[_lockKey(p.name)] || null;
 }
 function isLockedProject(p) { return !!lockedModelForProject(p); }
-// Compat : ancien nom conservé (encore utilisé en aval) = projet figé.
-function isShortAnswersProject(p) { return isLockedProject(p); }
+
+// Sous-ensemble de LOCKED_PROJECTS où le modèle est VÉRITABLEMENT verrouillé
+// (sélecteur désactivé, valeur reforcée à chaque rendu, Triple Check coupé).
+// « Dust » n'y figure PAS : il n'a un modèle qu'EN DÉFAUT (pré-rempli à la
+// création / 1re entrée), modifiable librement ensuite par l'utilisateur.
+const MODEL_LOCKED_PROJECTS = new Set(["short answers"]);
+function isModelLockedProject(p) {
+  return !!(p && typeof p.name === "string" && MODEL_LOCKED_PROJECTS.has(_lockKey(p.name)));
+}
+// Compat : ancien nom conservé (encore utilisé en aval) = verrou COMPLET du modèle.
+function isShortAnswersProject(p) { return isModelLockedProject(p); }
 
 // Parmi les projets figés, ceux où le profil « Short » est VERROUILLÉ (non
 // modifiable). Les autres projets figés (ex. Dust) n'ont « Short » qu'EN DÉFAUT :
@@ -2787,10 +2796,15 @@ function ensureShortProfile() {
 function enforceShortAnswersLock() {
   let _changed = false;
 
-  // Pour TOUS les projets figés : forcer le defaultModel sur leur modèle verrouillé
+  // Projets à modèle VERROUILLÉ (ex. Short answers) : forcer le defaultModel
+  // à CHAQUE rendu. Projets à modèle PAR DÉFAUT seulement (ex. Dust) : ne
+  // le pré-remplir qu'une fois (seed), sans jamais écraser un choix ultérieur.
   S.projects.forEach(p => {
     const lm = lockedModelForProject(p);
-    if (lm && p.defaultModel !== lm) {
+    if (!lm) return;
+    if (isModelLockedProject(p)) {
+      if (p.defaultModel !== lm) { p.defaultModel = lm; _changed = true; }
+    } else if (!p.defaultModel) {
       p.defaultModel = lm;
       _changed = true;
     }
@@ -2798,20 +2812,28 @@ function enforceShortAnswersLock() {
 
   const activeLockProj    = getActiveProjectForLock();
   const activeLockedModel = lockedModelForProject(activeLockProj);
+  const modelFullyLocked  = isModelLockedProject(activeLockProj);
   const inSA = !!activeLockedModel;
   const stashKey = "saStashedProfiles";
   const hasStash = localStorage.getItem(stashKey) !== null;
+  const firstEntry = !hasStash;
 
   if (inSA) {
-    // 1) Verrouiller le modèle sur celui du projet figé
-    if (S.model !== activeLockedModel) {
-      S.model = activeLockedModel;
-      window._userChangedModel = false;
-      _changed = true;
+    // 1) Modèle : verrou complet (Short answers) → forcé à chaque rendu.
+    //    Projet à modèle par défaut (Dust) → appliqué UNIQUEMENT à la 1re
+    //    entrée dans le projet ; l'utilisateur reste ensuite libre d'en
+    //    choisir un autre via le sélecteur, non désactivé pour ce cas.
+    if (modelFullyLocked || firstEntry) {
+      if (S.model !== activeLockedModel) {
+        S.model = activeLockedModel;
+        window._userChangedModel = false;
+        _changed = true;
+      }
     }
 
-    // 2) Désactiver Triple Check s'il est actif (les boutons seront aussi grisés)
-    if (typeof isTripleCheckOn === "function" && isTripleCheckOn()) {
+    // 2) Désactiver Triple Check s'il est actif — uniquement pour les
+    //    projets à verrou complet (les boutons ne sont grisés que là aussi).
+    if (modelFullyLocked && typeof isTripleCheckOn === "function" && isTripleCheckOn()) {
       if (typeof setTripleCheckMode === "function") {
         setTripleCheckMode("off");
       }
@@ -2823,7 +2845,6 @@ function enforceShortAnswersLock() {
     //      puis l'utilisateur reste libre de choisir un autre prompt.
     const shortId = ensureShortProfile();
     const profileLocked = isProfileLockedProject(activeLockProj);
-    const firstEntry = !hasStash;
     if (firstEntry) {
       // 1re entrée dans le projet : mémoriser les profils actifs courants
       // pour les restaurer à la sortie (persiste au rechargement).
@@ -3361,9 +3382,11 @@ function setProjectDefaultModel(projectId, anchor) {
   if (!p) return;
   // Fermer tout popup existant
   document.querySelectorAll('.proj-model-popup').forEach(e => e.remove());
-  // Verrou projet figé — afficher un message au lieu du sélecteur
+  // Verrou COMPLET (ex. Short answers) — afficher un message au lieu du sélecteur.
+  // Un projet à modèle PAR DÉFAUT seulement (ex. Dust) passe directement au
+  // sélecteur normal ci-dessous, defaultModel restant librement modifiable.
   const lockedM = lockedModelForProject(p);
-  if (lockedM) {
+  if (lockedM && isModelLockedProject(p)) {
     p.defaultModel = lockedM;
     save();
     const lockPopup = document.createElement('div');
