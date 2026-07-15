@@ -1562,7 +1562,14 @@
      V47 — 21 juin 2026 — Vérification web des modèles : Groq retire 4 modèles dépréciés le 17/06 (llama-3.1-8b, llama-3.3-70b, qwen3-32b, llama-4-scout) → remplacés par gpt-oss-120b/20b + qwen3.6-27b ; modèle image Gemini migré du preview (arrêt 25/06) vers la version GA gemini-3.1-flash-image ; tarifs corrigés : gpt-5.5 (5/30), gpt-5.5-pro (30/180), gemini-3.1-pro (2/12).
      V48 — 22 juin 2026 — Retrait complet du fournisseur Perplexity (Sonar) : modèles, clé API, badge, tarifs, capacités, routage et test de clé. Les appels Sonar étaient bloqués par CORS depuis le navigateur. Fournisseurs restants : Anthropic, OpenAI, DeepSeek, Google Gemini, Groq, Mistral.
      V49 — 30 juin 2026 — Vérification web des modèles & tarifs (6 fournisseurs). Anthropic : ajout de claude-sonnet-5 (tarif intro 2/10 jusqu'au 31/08/2026) ; correction MAJEURE des tarifs Opus 4.8/4.7/4.6 (15/75 → 5/25) ; Fable 5/Mythos 5 existent mais accès SUSPENDU → non exposés. Correctif claudeThinkingMode() : la regex exigeait deux niveaux de version (sonnet-4-6) et faisait retomber claude-sonnet-5 sur 'enabled' → 400 ; elle accepte désormais les ID à un seul niveau. Gemini : 3.1-pro passe en GA (suppression du suffixe -preview) ; tarifs corrigés (3.5-flash 0.30/1.20 → 1.50/9, 2.5-flash 0.15/0.60 → 0.30/2.50, 2.5-flash-lite, 3.1-flash-lite, 2.5-pro sortie). OpenAI : gpt-5.4 sortie 10 → 15, mini et nano corrigés ; GPT-5.6 (preview limitée) signalé mais non exposé. DeepSeek : v4-pro baisse permanente -75% (0.435/0.87), v4-flash et alias sortie 0.55 → 0.28. Groq : gpt-oss-20b 0.10/0.50 → 0.075/0.30 ; qwen3.6-27b laissé mais marqué non confirmé. Mistral : Medium 3.5 sortie 7.50, Large 3 (0.50/1.50), Small 4 (0.10/0.30), Magistral Medium sortie 5.
-     V50 — 30 juin 2026 — Ajout du fournisseur Z.ai (GLM, poids ouverts MIT), API OpenAI-compatible via https://api.z.ai/api/paas/v4/chat/completions. Modèles : glm-5.2 (flagship, 1M ctx, 1.40/4.40) et glm-4.7 (0.60/2.20). Câblage complet : PROVIDERS, inferProviderFromModel (préfixe "glm"), badge .badge-zai, coffre/clé, test de clé (ping chat = valide clé + CORS), apiType "zai" dans buildRequestParams, routage send(), diagnostic réseau. ⚠ À VÉRIFIER : le CORS navigateur d'api.z.ai (serveurs en Chine) — même point qui avait fait retirer Perplexity en V48. Utiliser le bouton « Tester » de la clé Z.ai : s'il répond ✅, le CORS passe ; si « Failed to fetch », un proxy serait nécessaire. -->
+     V50 — 30 juin 2026 — Ajout du fournisseur Z.ai (GLM, poids ouverts MIT), API OpenAI-compatible via https://api.z.ai/api/paas/v4/chat/completions. Modèles : glm-5.2 (flagship, 1M ctx, 1.40/4.40) et glm-4.7 (0.60/2.20). Câblage complet : PROVIDERS, inferProviderFromModel (préfixe "glm"), badge .badge-zai, coffre/clé, test de clé (ping chat = valide clé + CORS), apiType "zai" dans buildRequestParams, routage send(), diagnostic réseau. ⚠ À VÉRIFIER : le CORS navigateur d'api.z.ai (serveurs en Chine) — même point qui avait fait retirer Perplexity en V48. Utiliser le bouton « Tester » de la clé Z.ai : s'il répond ✅, le CORS passe ; si « Failed to fetch », un proxy serait nécessaire.
+     V51 — 14 juillet 2026 — Vérification web des 7 fournisseurs + optimisations.
+       • Anthropic : claude-fable-5 RÉEXPOSÉ (directive d'export levée, redéploiement mondial depuis le 01/07/2026, tarif 10/50). Nouveau mode thinking 'always' (Fable/Mythos) : le champ thinking n'est JAMAIS envoyé (type:"disabled" → 400), seul output_config.effort est piloté. Nouvelle fonction claudeSamplingAllowed() : Fable 5, Sonnet 5, Opus 4.7/4.8 rejettent temperature/top_p/top_k → paramètres omis de la requête et grisés dans l'UI (évite les 400 "Unsupported parameter") ; le forçage temperature=1 en mode thinking ne s'applique plus qu'aux modèles ≤ 4.6. claudeEffortForModel : xhigh/max désormais autorisés sur Sonnet 5 et Fable 5 (restriction maintenue sur Sonnet 4.x seulement).
+       • OpenAI : famille GPT-5.6 en GA depuis le 09/07/2026 → ajout de gpt-5.6 (Sol, 5/30), gpt-5.6-terra (2.50/15), gpt-5.6-luna (1/6). Routage automatique vers la Responses API (déjà couvert par isGPT5Model).
+       • DeepSeek : retrait de deepseek-chat / deepseek-reasoner de la liste (arrêt DÉFINITIF le 24/07/2026 15:59 UTC → 404). Nouvelle table MODEL_MIGRATIONS + migrateModelId() appliquée au chargement, au switch de conversation et aux defaultModel de projet : les utilisateurs encore sur ces alias basculent silencieusement vers deepseek-v4-flash. Tarifs des alias conservés uniquement pour l'affichage des coûts des anciens messages.
+       • Triple Check PREMIUM : phase 3 Sonnet 4.5 → Sonnet 5 (moins cher en tarif intro 2/10 vs 3/15, plus performant ; Sonnet 4.5 part en retraite dès le 29/09/2026).
+       • Gemini / Groq / Mistral / Z.ai : listes revérifiées le 14/07/2026, aucune modification nécessaire (gemini-3.5-flash GA, gpt-oss-120b/20b + qwen3.6-27b, Medium 3.5 / Small 4 / Large 3, glm-5.2 / glm-4.7 tous confirmés).
+       • Optimisations : Set Groq précalculé dans inferProviderFromModel (appelé à chaque rendu de message — évite un find+includes par appel) ; suppression d'une branche morte dans extractUsage (test input_tokens dupliqué) ; garde CURATED_MODELS sur les defaultModel de projet obsolètes. -->
 <div class="app">
   <!-- Backdrop pour fermer la sidebar sur tablette (invisible sur desktop) -->
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
@@ -1864,16 +1871,20 @@ Exemple pour la chimie :
 // ─────────────────────────────────────────────────
 const MODEL_GROUPS = [
   // ── Anthropic Claude ──────────────────────────────
-  // Source : platform.claude.com/docs — vérifié 30 juin 2026
-  // 🆕 Claude Sonnet 5 (juin 2026) — nouveau Sonnet courant, tarif intro 2/10 jusqu'au 31/08/2026.
+  // Source : platform.claude.com/docs — vérifié 14 juillet 2026
+  // 🆕 Claude Fable 5 (classe Mythos) : la directive d'export a été LEVÉE fin juin ;
+  //    Anthropic a redéployé Fable 5 mondialement depuis le 1er juillet 2026 → réexposé ici.
+  //    Tarif 10/50 (2× Opus 4.8). Mythos 5 reste réservé au Project Glasswing → non exposé.
+  //    Claude Sonnet 5 (30 juin 2026) — Sonnet courant, tarif intro 2/10 jusqu'au 31/08/2026.
   //    Claude Opus 4.8 (28 mai 2026) reste le flagship Opus.
-  // ⚠ Fable 5 (claude-fable-5) et Mythos 5 (claude-mythos-5) existent mais l'accès API est
-  //   SUSPENDU (directive d'export, juin 2026) → non exposés ici pour éviter des erreurs.
+  // ⚠ API Fable 5 / Sonnet 5 : thinking toujours actif (thinking:{type:"disabled"} → 400),
+  //   paramètres de sampling non-défaut rejetés → gérés par claudeSamplingAllowed() ci-dessous.
   {
     label: "Anthropic Claude",
     models: [
+      "claude-fable-5",        // 🆕 classe Mythos — le plus capable en GA (rétabli 01/07/2026), 10/50
       "claude-opus-4-8",       // flagship Opus (28 mai 2026), reasoning + long-horizon coding
-      "claude-sonnet-5",       // 🆕 Sonnet courant (juin 2026) — tarif intro 2/10 jusqu'au 31/08/2026
+      "claude-sonnet-5",       // Sonnet courant (30 juin 2026) — tarif intro 2/10 jusqu'au 31/08/2026
       "claude-opus-4-7",       // Opus précédent (avril 2026), coding avancé, vision HD
       "claude-sonnet-4-6",     // Sonnet précédent, bon rapport vitesse/intelligence
       "claude-haiku-4-5-20251001", // le plus rapide / économique
@@ -1882,14 +1893,19 @@ const MODEL_GROUPS = [
     ]
   },
   // ── OpenAI GPT-5.x (Responses API) ────────────────
-  // Source : developers.openai.com — mai 2026
+  // Source : developers.openai.com — vérifié 14 juillet 2026
   // Tous via Responses API (/v1/responses)
+  // 🆕 Famille GPT-5.6 en GA depuis le 9 juillet 2026 : Sol (flagship, alias gpt-5.6),
+  //    Terra (équilibré) et Luna (économique). Contexte 1.05M, sortie max 128K.
   {
     label: "OpenAI GPT-5",
     models: [
-      "gpt-5.5",               // flagship (avril 2026) — raisonnement + coding
-      "gpt-5.5-pro",           // raisonnement maximal, plus lent
-      "gpt-5.4",               // précédent flagship (mars 2026), context 1M
+      "gpt-5.6",               // 🆕 GPT-5.6 Sol (9 juil 2026) — flagship raisonnement + coding, 5/30
+      "gpt-5.6-terra",         // 🆕 équilibre intelligence/coût, 2.50/15
+      "gpt-5.6-luna",          // 🆕 économique haut-volume, 1/6
+      "gpt-5.5",               // flagship précédent (avril 2026)
+      "gpt-5.5-pro",           // raisonnement maximal, plus lent (30/180)
+      "gpt-5.4",               // flagship antérieur (mars 2026), context 1M
       "gpt-5.4-mini",          // rapide / économique
       "gpt-5.4-nano"           // ultra-rapide / très économique
     ]
@@ -1923,16 +1939,16 @@ const MODEL_GROUPS = [
     ]
   },
   // ── DeepSeek ──────────────────────────────────────
-  // Source : api-docs.deepseek.com — mai 2026
-  // V4 lancé 24 avril 2026 (preview), context 1M, mode thinking supporté
-  // ⚠ deepseek-chat/reasoner DÉPRÉCIÉS le 24 juillet 2026
+  // Source : api-docs.deepseek.com — vérifié 14 juillet 2026
+  // V4 lancé 24 avril 2026, context 1M, mode thinking supporté
+  // ⚠ deepseek-chat / deepseek-reasoner RETIRÉS de la liste (V51) : arrêt DÉFINITIF le
+  //   24/07/2026 15:59 UTC (404 après cette date). Une migration automatique au chargement
+  //   bascule les utilisateurs encore sur ces alias vers deepseek-v4-flash (voir MODEL_MIGRATIONS).
   {
     label: "DeepSeek",
     models: [
-      "deepseek-v4-pro",       // flagship 1.6T params, 49B actifs, agent + raisonnement
-      "deepseek-v4-flash",     // 284B params, 13B actifs, rapide/économique
-      "deepseek-chat",         // alias legacy → v4-flash non-thinking (⚠ fin 24/07/2026)
-      "deepseek-reasoner"      // alias legacy → v4-flash thinking (⚠ fin 24/07/2026)
+      "deepseek-v4-pro",       // flagship 1.6T params, agent + raisonnement (0.435/0.87)
+      "deepseek-v4-flash"      // 284B params, 13B actifs, rapide/économique (0.14/0.28)
     ]
   },
   // ── Groq (Open Source, ultra-rapide via LPU) ──────
@@ -1992,6 +2008,20 @@ const MODEL_GROUPS = [
 
 const CURATED_MODELS = MODEL_GROUPS.flatMap(g => g.models);
 
+// ─────────────────────────────────────────────────
+// V51 — MIGRATIONS DE MODÈLES RETIRÉS
+// Quand un fournisseur retire un ID de modèle, on bascule silencieusement
+// l'utilisateur vers le remplaçant officiel plutôt que de le renvoyer au
+// modèle par défaut (préserve son choix de fournisseur).
+// ─────────────────────────────────────────────────
+const MODEL_MIGRATIONS = {
+  "deepseek-chat":     "deepseek-v4-flash", // alias retiré le 24/07/2026 (non-thinking)
+  "deepseek-reasoner": "deepseek-v4-flash"  // alias retiré le 24/07/2026 (thinking)
+};
+function migrateModelId(model) {
+  return MODEL_MIGRATIONS[model] || model;
+}
+
 const DEF = {
   temperature: 1.0,
   top_p: 1,
@@ -2049,6 +2079,10 @@ function claudeThinkingMode(model) {
   const s = String(model || '');
   // Haiku : pas de thinking étendu géré sur la plateforme (cohérent avec caps.thinking).
   if (/haiku/i.test(s)) return null;
+  // V51 — Classe Mythos (Fable 5, Mythos 5) : le thinking est TOUJOURS actif côté serveur
+  // et un thinking:{type:"disabled"} explicite renvoie un 400 → on n'envoie JAMAIS le champ
+  // thinking pour ces modèles ; seul output_config.effort est piloté (mode 'always').
+  if (/fable|mythos/i.test(s)) return 'always';
   // Accepte les ID à deux niveaux (sonnet-4-6, opus-4-8) ET à un seul niveau
   // (sonnet-5, opus-5…). Sans cela, "claude-sonnet-5" retombait sur 'enabled'
   // et déclenchait un 400 (budget_tokens rejeté par les modèles 5.x).
@@ -2075,8 +2109,27 @@ function claudeEffortForModel(effort, model) {
   const valid = ['low', 'medium', 'high', 'xhigh', 'max'];
   let e = String(effort || 'high').toLowerCase();
   if (!valid.includes(e)) e = 'high';
-  if ((e === 'max' || e === 'xhigh') && !/opus/i.test(String(model || ''))) return 'high';
+  // V51 — Sonnet 5 supporte désormais low…max ; la restriction "xhigh/max réservés à Opus"
+  // ne s'applique plus qu'aux Sonnet 4.x (Fable 5 supporte aussi les niveaux hauts).
+  if ((e === 'max' || e === 'xhigh') && /sonnet-4/i.test(String(model || ''))) return 'high';
   return e;
+}
+
+/**
+ * V51 — Les modèles Claude récents REJETTENT les paramètres de sampling
+ * (temperature/top_p/top_k) : "sampling parameters removed" sur Opus 4.7/4.8,
+ * "non-default sampling parameters rejected" sur Sonnet 5, idem Fable 5.
+ * Envoyer temperature (même = 1) à ces modèles risque un 400 "Unsupported parameter".
+ * → true  : sampling accepté (Claude 4.0–4.6, Haiku)
+ * → false : on n'envoie QUE max_tokens (l'API applique ses défauts)
+ */
+function claudeSamplingAllowed(model) {
+  const s = String(model || '');
+  if (/fable|mythos/i.test(s)) return false;               // classe Mythos (Fable 5…)
+  if (/opus-4-[78]/i.test(s)) return false;                // Opus 4.7 / 4.8
+  const mm = /(?:sonnet|opus)-(\d+)/i.exec(s);
+  if (mm && parseInt(mm[1], 10) >= 5) return false;        // Sonnet 5, Opus 5+…
+  return true;
 }
 
 
@@ -2995,6 +3048,9 @@ function enforceChatLimitsWithToast() {
 // ─────────────────────────────────────────────────
 // BUG CORRIGÉ : inférence provider fiable
 // ─────────────────────────────────────────────────
+// V51 — Set Groq calculé UNE SEULE FOIS (avant : find + includes à chaque appel,
+// or inferProviderFromModel est appelé à chaque rendu de message / de la sidebar).
+const _GROQ_MODEL_SET = new Set(MODEL_GROUPS.find(g => g.label.includes("Groq"))?.models || []);
 function inferProviderFromModel(model) {
   const m = (model || "").toLowerCase();
   if (m.startsWith("claude"))   return "ANTHROPIC";
@@ -3002,9 +3058,7 @@ function inferProviderFromModel(model) {
   if (m.startsWith("deepseek")) return "DEEPSEEK";
   if (m.startsWith("glm"))      return "Z.AI";
   if (m.startsWith("mistral") || m.startsWith("codestral") || m.startsWith("devstral") || m.startsWith("magistral") || m.startsWith("ministral") || m.startsWith("open-mistral")) return "MISTRAL";
-  // Groq models — détection par préfixe de famille ou nom connu
-  const GROQ_MODELS = MODEL_GROUPS.find(g => g.label.includes("Groq"))?.models || [];
-  if (GROQ_MODELS.includes(model)) return "GROQ";
+  if (_GROQ_MODEL_SET.has(model)) return "GROQ";
   return "OPENAI";
 }
 
@@ -3441,7 +3495,7 @@ function createChat(projectId = null) {
   // Modèle par défaut : celui du projet si défini, sinon le global
   if (!window._userChangedModel) {
     const proj = projectId ? S.projects.find(p => p.id === projectId) : null;
-    S.model = (proj && proj.defaultModel) || "gemini-2.5-flash";
+    S.model = migrateModelId((proj && proj.defaultModel) || "gemini-2.5-flash"); // V51 — migration des ID retirés
   }
   // Appliquer les quotas (le nouveau chat est exempté car il est actif + vide)
   enforceChatLimitsWithToast();
@@ -3540,9 +3594,10 @@ function switchToChat(c) {
   let resolvedModel = null;
   if (c.projectId) {
     const proj = S.projects.find(p => p.id === c.projectId);
-    if (proj && proj.defaultModel) resolvedModel = proj.defaultModel;
+    // V51 — migre les ID retirés (ex. deepseek-chat mémorisé comme défaut de projet)
+    if (proj && proj.defaultModel) resolvedModel = migrateModelId(proj.defaultModel);
   }
-  if (!resolvedModel) resolvedModel = "gemini-2.5-flash";
+  if (!resolvedModel || !CURATED_MODELS.includes(resolvedModel)) resolvedModel = "gemini-2.5-flash";
   if (S.model !== resolvedModel) {
     S.model = resolvedModel;
     window._userChangedModel = false;
@@ -5941,17 +5996,23 @@ function renderParams() {
   };
 
   if (provider === 'ANTHROPIC') {
-    caps.temperature = !oSeries;
+    // V51 — Fable 5 / Sonnet 5 / Opus 4.7-4.8 rejettent les paramètres de sampling
+    // → grisés dans l'UI et jamais envoyés (voir claudeSamplingAllowed).
+    const _sampOk = claudeSamplingAllowed(S.model);
+    caps.temperature = _sampOk;
     caps.tempMax     = 1;        // Anthropic: max 1.0
-    caps.top_p       = !oSeries;
-    caps.top_k       = !oSeries; // Anthropic supporte top_k
+    caps.top_p       = _sampOk;
+    caps.top_k       = _sampOk;  // Anthropic supporte top_k (modèles ≤ 4.6)
     // V43 — capacité thinking alignée sur la source unique de vérité
     // (claudeThinkingMode). caps.thinkAdaptive sert à figer l'UI : pour les
     // modèles 4.6+ (Opus 4.8…) le budget de tokens n'a plus de sens, seul
     // l'effort est pertinent.
     const _tm = claudeThinkingMode(S.model);
     caps.thinking      = _tm !== null;
-    caps.thinkAdaptive = _tm === 'adaptive';
+    // V51 — 'always' (Fable 5) : le thinking est permanent côté serveur, seul l'effort
+    // se pilote → même UI que le mode adaptatif (slider d'effort, pas de budget).
+    caps.thinkAdaptive = _tm === 'adaptive' || _tm === 'always';
+    caps.thinkAlways   = _tm === 'always';
     caps.webSearch     = true;
   } else if (provider === 'OPENAI') {
     if (oSeries) {
@@ -6066,7 +6127,7 @@ function renderParams() {
         <label>Activer le thinking</label>
         <label class="toggle-switch"><input type="checkbox" id="t_think" ${(caps.thinking && P.thinking)?'checked':''} ${dis(caps.thinking)}><span class="toggle-slider"></span></label>
       </div>
-      <div class="p-hint" style="margin-top:-8px;margin-bottom:10px">${caps.thinking ? (caps.thinkAdaptive ? 'Réflexion <b>adaptive</b> (Claude 4.6+, dont Opus 4.8) : pilotée par le niveau d\'effort ci-dessous.' : 'Claude montre son raisonnement (Claude 4.5).') : `Non supporté par ${provider === 'ANTHROPIC' ? 'ce modèle Claude' : provider}.`}</div>
+      <div class="p-hint" style="margin-top:-8px;margin-bottom:10px">${caps.thinking ? (caps.thinkAlways ? 'Réflexion <b>toujours active</b> (Fable 5) : impossible à désactiver côté API ; seul le niveau d\'effort ci-dessous est piloté.' : caps.thinkAdaptive ? 'Réflexion <b>adaptive</b> (Claude 4.6+, dont Opus 4.8 et Sonnet 5) : pilotée par le niveau d\'effort ci-dessous.' : 'Claude montre son raisonnement (Claude 4.5).') : `Non supporté par ${provider === 'ANTHROPIC' ? 'ce modèle Claude' : provider}.`}</div>
 
       <div class="p-row" id="thinkingBudgetRow" style="display:${caps.thinking && P.thinking?'block':'none'}">
         <div class="p-row-head"><label>Niveau d'effort</label><span class="p-val" id="v_thinkbudget">${P.thinkingEffort || 'high'}</span></div>
@@ -6295,6 +6356,9 @@ function buildRequestParams(model, apiType) {
   // top_k supporté, PAS de penalties, PAS de seed
   if (apiType === "anthropic") {
     const out = { max_tokens: maxT };
+    // V51 — Fable 5, Sonnet 5, Opus 4.7/4.8 rejettent les paramètres de sampling
+    // ("Unsupported parameter") → on n'envoie que max_tokens pour ces modèles.
+    if (!claudeSamplingAllowed(model)) return out;
     const t = valid(temp, 0, 1) ? temp : 1.0;
     out.temperature = t;
     // top_p seulement si temperature = 1 (sinon Anthropic rejette les deux)
@@ -6761,7 +6825,11 @@ async function callAnthropic(key, model, messages, onText) {
   const _suppressThinking = window._tripleCheckInProgress === true;
   const _thinkMode = claudeThinkingMode(model);
   if (S.params.thinking && _thinkMode && !_suppressThinking) {
-    if (_thinkMode === 'adaptive') {
+    if (_thinkMode === 'always') {
+      // V51 — Fable 5 : thinking toujours actif côté serveur, champ `thinking` INTERDIT
+      // (type:"disabled" → 400, et l'omettre = adaptatif par défaut). On ne pilote que l'effort.
+      body.output_config = { effort: claudeEffortForModel(S.params.thinkingEffort, model) };
+    } else if (_thinkMode === 'adaptive') {
       // API moderne (Claude 4.6+ : Sonnet 4.6, Opus 4.6 / 4.7 / 4.8…).
       // Le "budget de tokens" n'existe plus pour ces modèles : on pilote la réflexion
       // UNIQUEMENT via output_config.effort, en figeant l'effort selon le modèle.
@@ -6772,8 +6840,13 @@ async function callAnthropic(key, model, messages, onText) {
       body.thinking = { type: "enabled", budget_tokens: S.params.thinkingBudget || 10240 };
     }
     if (body.max_tokens < 16000) body.max_tokens = 16000;
-    body.temperature = 1;
+    // V51 — temperature forcée à 1 UNIQUEMENT sur les modèles qui acceptent encore le
+    // sampling (exigence Anthropic thinking ≤ 4.6) ; les modèles récents (Fable 5,
+    // Sonnet 5, Opus 4.7/4.8) rejettent le paramètre → on ne l'envoie pas du tout.
+    if (claudeSamplingAllowed(model)) { body.temperature = 1; }
+    else { delete body.temperature; }
     delete body.top_p;
+    delete body.top_k;
   }
 
   const headers = {
@@ -7404,18 +7477,21 @@ const TOKEN_PRICES = {
   'gemini-3.5-flash':           { input: 1.50,  output: 9.00 },  // corrigé (était 0.30/1.20 — facteur ~7)
   'gemini-3.1-flash-image': { input: 0.25, output: 60.00 }, // ⚠ tarif spécial : voir computeCost — flat $0.067 par image 1024px + tokens d'entrée
 
-  // ── OpenAI ── (vérifié 30/06/2026 — developers.openai.com/api/docs/pricing)
+  // ── OpenAI ── (vérifié 14/07/2026 — developers.openai.com/api/docs/pricing)
+  'gpt-5.6':                    { input: 5.00,  output: 30.00 },  // 🆕 Sol — GA 09/07/2026, alias → gpt-5.6-sol
+  'gpt-5.6-terra':              { input: 2.50,  output: 15.00 },  // 🆕 équilibré
+  'gpt-5.6-luna':               { input: 1.00,  output: 6.00 },   // 🆕 économique
   'gpt-5.5':                    { input: 5.00,  output: 30.00 },
   'gpt-5.5-pro':                { input: 30.00, output: 180.00 },
-  'gpt-5.4':                    { input: 2.50,  output: 15.00 }, // corrigé (sortie 15, pas 10)
-  'gpt-5.4-mini':               { input: 0.75,  output: 4.50 },  // corrigé
-  'gpt-5.4-nano':               { input: 0.20,  output: 1.25 },  // corrigé
+  'gpt-5.4':                    { input: 2.50,  output: 15.00 },
+  'gpt-5.4-mini':               { input: 0.75,  output: 4.50 },
+  'gpt-5.4-nano':               { input: 0.20,  output: 1.25 },
   'gpt-4.1':                    { input: 2.00,  output: 8.00 },
   'gpt-4.1-mini':               { input: 0.40,  output: 1.60 },
-  // ℹ Famille GPT-5.6 (Sol 5/30, Terra 2.5/15, Luna 1/6) en preview limitée → non exposée.
 
-  // ── Anthropic Claude ── (vérifié 30/06/2026 — platform.claude.com/docs/pricing)
-  'claude-opus-4-8':            { input: 5.00,  output: 25.00 }, // corrigé (était 15/75)
+  // ── Anthropic Claude ── (vérifié 14/07/2026 — platform.claude.com/docs/pricing)
+  'claude-fable-5':             { input: 10.00, output: 50.00 }, // 🆕 classe Mythos, rétabli 01/07/2026
+  'claude-opus-4-8':            { input: 5.00,  output: 25.00 },
   'claude-opus-4-7':            { input: 5.00,  output: 25.00 }, // corrigé
   'claude-opus-4-6':            { input: 5.00,  output: 25.00 }, // corrigé
   'claude-sonnet-5':            { input: 2.00,  output: 10.00 }, // 🆕 tarif intro jusqu'au 31/08/2026 (ensuite ~3/15)
@@ -7431,8 +7507,8 @@ const TOKEN_PRICES = {
   // ── DeepSeek ── (vérifié 30/06/2026 — api-docs.deepseek.com/quick_start/pricing)
   'deepseek-v4-pro':            { input: 0.435, output: 0.87 }, // corrigé : baisse permanente -75% (depuis 31/05/2026)
   'deepseek-v4-flash':          { input: 0.14,  output: 0.28 }, // corrigé (sortie 0.28)
-  'deepseek-chat':              { input: 0.14,  output: 0.28 }, // alias → v4-flash (fin 24/07/2026)
-  'deepseek-reasoner':          { input: 0.14,  output: 0.28 }, // alias → v4-flash thinking (fin 24/07/2026)
+  'deepseek-chat':              { input: 0.14,  output: 0.28 }, // ⚰ alias RETIRÉ le 24/07/2026 — conservé pour l'affichage des coûts des anciens messages
+  'deepseek-reasoner':          { input: 0.14,  output: 0.28 }, // ⚰ idem (les nouveaux appels passent par deepseek-v4-flash via MODEL_MIGRATIONS)
 
   // ── Mistral ── (vérifié 30/06/2026 — mistral.ai/pricing)
   'mistral-medium-latest':      { input: 1.50,  output: 7.50 }, // Medium 3.5 — sortie corrigée (était 4.50)
@@ -7469,10 +7545,8 @@ function extractUsage(responseData, providerHint) {
   if (responseData.usage && typeof responseData.usage.prompt_tokens === 'number') {
     return { input: responseData.usage.prompt_tokens, output: responseData.usage.completion_tokens || 0 };
   }
-  // OpenAI Responses API
-  if (responseData.usage && typeof responseData.usage.input_tokens === 'number') {
-    return { input: responseData.usage.input_tokens, output: responseData.usage.output_tokens || 0 };
-  }
+  // (V51 : branche "OpenAI Responses API" retirée — code mort, elle testait
+  //  usage.input_tokens exactement comme la branche Anthropic ci-dessus.)
   // Gemini API native
   if (responseData.usageMetadata) {
     return {
@@ -7754,10 +7828,15 @@ function renderCostStats() {
 // ═════════════════════════════════════════════════════════════
 // V16 — TRIPLE CHECK : 2 modes exclusifs (économique vs premium)
 // ═════════════════════════════════════════════════════════════
-// Mode 'eco'     : Gemini 2.5 Flash → GPT-5.4-mini → Claude Haiku 4.5  (~$0.014/req)
-// Mode 'premium' : Gemini 2.5 Flash → GPT-5.4-mini → Claude Sonnet 4.5 (~$0.037/req)
+// Mode 'eco'     : Gemini 2.5 Flash → GPT-5.4-mini → Claude Haiku 4.5 (~$0.014/req)
+// Mode 'premium' : Gemini 2.5 Flash → GPT-5.4-mini → Claude Sonnet 5  (~$0.030/req)
 // Mode 'off'     : pas de Triple Check, comportement normal
 // Les deux modes ON sont mutuellement exclusifs (UI gère l'exclusivité).
+// V51 — phase 3 premium : Sonnet 4.5 → Sonnet 5. Sonnet 5 est à la fois MOINS CHER
+// (2/10 en tarif intro jusqu'au 31/08/2026, vs 3/15 pour Sonnet 4.5) et nettement
+// plus performant ; Sonnet 4.5 part en retraite à partir du 29/09/2026.
+// Note : le Triple Check supprime le champ thinking → sur Sonnet 5 le thinking
+// adaptatif serveur reste actif par défaut, ce qui renforce la vérification.
 // ─────────────────────────────────────────────────────────────
 
 const TRIPLE_CHECK_PRESETS = {
@@ -7769,7 +7848,7 @@ const TRIPLE_CHECK_PRESETS = {
   premium: {
     phase1: 'gemini-2.5-flash',
     phase2: 'gpt-5.4-mini',
-    phase3: 'claude-sonnet-4-5'
+    phase3: 'claude-sonnet-5'
   }
 };
 
@@ -10472,12 +10551,13 @@ document.addEventListener("click", e => {
 
 // MODÈLE PAR DÉFAUT : gemini-2.5-flash (économique, contexte 1M, mode thinking pour sciences).
 // ⚠ On NE force PAS le modèle si l'utilisateur en a déjà choisi un (respect du dernier choix).
-const _storedModel = localStorage.getItem("model");
+const _storedModel = migrateModelId(localStorage.getItem("model")); // V51 — bascule les ID retirés (ex. deepseek-chat → v4-flash)
 if (!_storedModel || !CURATED_MODELS.includes(_storedModel)) {
   S.model = "gemini-2.5-flash";
   localStorage.setItem("model", "gemini-2.5-flash");
 } else {
   S.model = _storedModel;
+  localStorage.setItem("model", _storedModel); // persiste l'ID migré pour ne pas re-migrer à chaque chargement
 }
 
 // Configurer marked.js
