@@ -1,6 +1,19 @@
 {
   "chats": [
     {
+      "id": "e14f25f9-ff3e-4072-9753-3b1207d75628",
+      "title": "Enumérer tous les éléments constitutifs d'une cellule…",
+      "projectId": "ce865563-c202-4593-9874-c4c126317ed6",
+      "messages": [
+        {
+          "role": "user",
+          "content": "Enumérer tous les éléments constitutifs d'une cellule humaine leurs roles et les réaction biochimique qui les caractérisent.",
+          "_text": "Enumérer tous les éléments constitutifs d'une cellule humaine leurs roles et les réaction biochimique qui les caractérisent."
+        }
+      ],
+      "_lastActivity": 1784813593954
+    },
+    {
       "id": "435b0e10-124e-4c87-b844-ce1c9bca4689",
       "title": "Nouveau chat",
       "projectId": "ce865563-c202-4593-9874-c4c126317ed6",
@@ -419,7 +432,7 @@
     "deepResearchEffort": "medium",
     "deepResearchEngine": "claude"
   },
-  "model": "gemini-2.5-flash",
+  "model": "mistral-large-latest",
   "favoriteModels": [
     "gemini-2.5-flash",
     "claude-haiku-4-5-20251001"
@@ -814,6 +827,6 @@
     "chats": {},
     "projects": {}
   },
-  "savedAt": "2026-07-23T13:24:44.219Z",
+  "savedAt": "2026-07-23T13:33:17.342Z",
   "version": 2
 }
