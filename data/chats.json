@@ -29,9 +29,20 @@
           "content": "❌ Erreur : [Anthropic invalid_request_error] Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.",
           "provider": "ANTHROPIC",
           "model": "claude-haiku-4-5-20251001"
+        },
+        {
+          "role": "user",
+          "content": "refaire",
+          "_text": "refaire"
+        },
+        {
+          "role": "assistant",
+          "content": "❌ Erreur : [Anthropic invalid_request_error] Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.",
+          "provider": "ANTHROPIC",
+          "model": "claude-haiku-4-5-20251001"
         }
       ],
-      "_lastActivity": 1784814516552
+      "_lastActivity": 1784814534695
     },
     {
       "id": "435b0e10-124e-4c87-b844-ce1c9bca4689",
@@ -847,6 +858,6 @@
     "chats": {},
     "projects": {}
   },
-  "savedAt": "2026-07-23T13:48:37.499Z",
+  "savedAt": "2026-07-23T13:48:55.154Z",
   "version": 2
 }
