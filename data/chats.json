@@ -40,9 +40,23 @@
           "content": "❌ Erreur : [Anthropic invalid_request_error] Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.",
           "provider": "ANTHROPIC",
           "model": "claude-haiku-4-5-20251001"
+        },
+        {
+          "role": "user",
+          "content": "refaire",
+          "_text": "refaire"
+        },
+        {
+          "role": "assistant",
+          "content": "## Éléments constitutifs d’une cellule humaine – structure, rôles et réactions biochimiques caractéristiques  \n\n---\n\n### 1. Membrane plasmique  \n- **Structure** : bicouche phospholipidique (phosphatidylcholine, sphingomyéline) + cholestérol + protéines (canaux, transporteurs, récepteurs) + glucides (glycolipides, glycoprotéines).  \n- **Rôles** : barrière sélective, échange de nutriments/ions, transmission de signaux, maintien du potentiel de repos (~‑70 mV).  \n- **Réactions clés**  \n  - Transport actif (Na⁺/K⁺‑ATPase) :  \n    $$3\\text{Na}^+_{\\text{in}} + 2\\text{K}^+_{\\text{out}} + \\text{ATP} \\rightarrow 3\\text{Na}^+_{\\text{out}} + 2\\text{K}^+_{\\text{in}} + \\text{ADP} + \\text{P}_i$$  \n  - Diffusion facilitée du glucose (GLUT) :  \n    $$\\text{Glucose}_{\\text{ext}} \\xrightarrow{\\text{GLUT}} \\text{Glucose}_{\\text{cyto}}$$  \n  - Signalisation via récepteurs tyrosine kinases (cascade MAPK) :  \n    $$\\text{Ligand} + \\text{RTK} \\rightarrow \\text{Autophosphorylation} \\rightarrow \\text{Ras activation} \\rightarrow \\text{MAPK cascade}$$  \n\n---\n\n### 2. Cytoplasme (cytosol)  \n- **Rôle** : milieu où se déroulent la plupart des voies métaboliques (glycolyse, synthèse d’acides gras, cycle de l’urée).  \n- **Réactions majeures**  \n  - Glycolyse (voie anaérobie) :  \n    $$\\begin{aligned}\n    \\text{Glucose} + 2\\text{ADP} + 2\\text{P}_i + 2\\text{NAD}^+ &\\rightarrow 2\\text{Pyruvate} + 2\\text{ATP} \\\\\n    &\\quad + 2\\text{NADH} + 2\\text{H}^+ + 2\\text{H}_2\\text{O}\n    \\end{aligned}$$  \n  - Lipogenèse (synthèse d’acides gras) :  \n    $$\\text{Acétyl‑CoA} \\xrightarrow{\\text{ACC}} \\text{Malonyl‑CoA} \\rightarrow \\text{Palmitate}$$  \n  - Cycle de l’urée (détoxification de l’ammoniaque) :  \n    $$\\text{NH}_3 + \\text{CO}_2 + 2\\text{ATP} \\rightarrow \\text{Carbamoyl‑phosphate} \\rightarrow \\text{Urée}$$  \n\n---\n\n### 3. Noyau  \n- **Composants** : enveloppe nucléaire (double membrane + pores), chromatine (ADN + histones H2A, H2B, H3, H4), nucléoplasme, nucléole.  \n- **Fonctions** : stockage de l’ADN, transcription, réplication, assemblage des ribosomes.  \n- **Réactions clés**  \n  - Réplication de l’ADN (phase S) :  \n    $$\\text{ADN}_{\\text{brin}} + \\text{dNTP} \\xrightarrow{\\text{DNA‑pol}} \\text{ADN}_{\\text{nouveau}}$$  \n  - Transcription (ARN polymérase II) :  \n    $$\\text{ADN} \\xrightarrow{\\text{ARN pol II}} \\text{ARNm}$$  \n  - Épissage (spliceosome) :  \n    $$\\text{pré‑ARNm} \\rightarrow \\text{ARNm mature}$$  \n\n---\n\n### 4. Réticulum endoplasmique (RE)  \n#### 4.1. RE rugueux (RER)  \n- **Rôle** : synthèse et repliement des protéines sécrétées ou membranaires, N‑glycosylation.  \n- **Réaction** : traduction couplée à la translocation :  \n  $$\\text{ARNm} \\xrightarrow{\\text{ribosome}} \\text{polypeptide nascent}$$  \n- **Glycosylation** :  \n  $$\\text{Dolichol‑P‑oligosaccharide} + \\text{Asn‑prot} \\rightarrow \\text{Prot‑Asn‑(GlcNAc)}_2\\text{Man}_9\\text{Glc}_3$$  \n\n#### 4.2. RE lisse (REL)  \n- **Rôle** : synthèse des phospholipides et stéroïdes, détoxification (cytochrome P450), stockage du Ca²⁺.  \n- **Réaction de détoxification** :  \n  $$\\text{R‑H} + \\text{O}_2 + \\text{NADPH} + \\text{H}^+ \\rightarrow \\text{R‑OH} + \\text{H}_2\\text{O} + \\text{NADP}^+$$  \n\n---\n\n### 5. Appareil de Golgi  \n- **Fonctions** : modifications post‑traductionnelles (O‑glycosylation, sulfation), tri et acheminement des protéines/lipides.  \n- **Réaction d’O‑glycosylation** :  \n  $$\\text{Prot‑Ser/Thr} + \\text{UDP‑GalNAc} \\rightarrow \\text{Prot‑Ser/Thr‑GalNAc}$$  \n\n---\n\n### 6. Lysosomes  \n- **Enzymes** : protéases (cathepsines), lipases, glycosidases, nucléases.  \n- **Réactions typiques**  \n  - Hydrolyse des protéines :  \n    $$\\text{Protéine} + \\text{H}_2\\text{O} \\xrightarrow{\\text{Protéase}} \\text{Peptides} + \\text{AA}$$  \n  - Dégradation des triglycérides :  \n    $$\\text{Triglycéride} + 3\\text{H}_2\\text{O} \\xrightarrow{\\text{Lipase}} \\text{Glycérol} + 3\\text{Acides gras}$$  \n\n---\n\n### 7. Peroxysomes  \n- **Fonctions** : détoxification du H₂O₂, β‑oxydation des acides gras très longs, synthèse des plasmalogènes.  \n- **Réactions**  \n  - Catalase :  \n    $$2\\text{H}_2\\text{O}_2 \\xrightarrow{\\text{Catalase}} 2\\text{H}_2\\text{O} + \\text{O}_2$$  \n  - β‑oxydation (acides gras C24) :  \n    $$\\text{Acide gras‑CoA}_{(C24)} \\rightarrow \\text{Acétyl‑CoA} + \\text{Acide gras‑CoA}_{(C22)}$$  \n\n---\n\n### 8. Mitochondries  \n- **Structures** : membrane externe, membrane interne (riche en cardiolipine), matrice.  \n- **Principales voies**  \n  - Cycle de Krebs :  \n    $$\\begin{aligned}\n    \\text{Acétyl‑CoA} + 3\\text{NAD}^+ + \\text{FAD} + \\text{GDP} + \\text{P}_i + 2\\text{H}_2\\text{O} \\\\\n    \\rightarrow 2\\text{CO}_2 + 3\\text{NADH} + \\text{FADH}_2 + \\text{GTP} + 2\\text{H}^+ + \\text{CoA‑SH}\n    \\end{aligned}$$  \n  - Chaîne respiratoire (phosphorylation oxydative) :  \n    $$\\begin{aligned}\n    \\text{NADH} + \\tfrac{1}{2}\\text{O}_2 + 3\\text{ADP} + 3\\text{P}_i &\\rightarrow \\text{NAD}^+ + 3\\text{ATP} + 2\\text{H}_2\\text{O} \\\\\n    \\text{FADH}_2 + \\tfrac{1}{2}\\text{O}_2 + 2\\text{ADP} + 2\\text{P}_i &\\rightarrow \\text{FAD} + 2\\text{ATP} + 2\\text{H}_2\\text{O}\n    \\end{aligned}$$  \n  - β‑oxydation :  \n    $$\\text{Acide gras‑CoA} \\rightarrow \\text{Acétyl‑CoA} + \\text{NADH} + \\text{FADH}_2$$  \n\n---\n\n### 9. Cytosquelette  \n| **Composant** | **Rôle principal** | **Réaction de polymérisation** |\n|---------------|-------------------|--------------------------------|\n| **Microfilaments (actine)** | forme, motilité, contraction | $$\\text{Actine‑G} + \\text{ATP} \\rightarrow \\text{Actine‑F} + \\text{ADP} + \\text{P}_i$$ |\n| **Microtubules (tubuline)** | transport, fuseau mitotique, support neuronal | $$\\text{Tubuline‑αβ} + \\text{GTP} \\rightarrow \\text{Microtubule} + \\text{GDP} + \\text{P}_i$$ |\n| **Filaments intermédiaires** | résistance mécanique, ancrage nucléaire | (ex. kératine, vimentine, neurofilaments) – pas de polymérisation enzymatique simple à afficher |  \n\n---\n\n### 10. Ribosomes (40S + 60S)  \n- **Fonction** : traduction de l’ARNm en protéine.  \n- **Réaction de synthèse protéique** :  \n  $$\\text{ARNm} + \\text{ARNt‑aa} \\xrightarrow{\\text{ribosome}} \\text{Polypeptide}$$  \n\n---\n\n### 11. Centrosome (MTOC)  \n- **Composition** : deux centrioles (9 triplets de microtubules) + matrice péricentriolaire (γ‑tubuline).  \n- **Rôle** : organisation des microtubules, formation du fuseau mitotique.  \n\n---\n\n### 12. Endosomes & vésicules de transport  \n- **Endosomes** : tri des récepteurs internalisés, acidification (V‑ATPase).  \n  $$\\text{ATP} + \\text{H}_2\\text{O} \\rightarrow \\text{ADP} + \\text{P}_i + \\text{H}^+_{\\text{endo}}$$  \n- **Vésicules de sécrétion** : exocytose de protéines/hormones (hydrolyse de l’ATP par la machinerie SNARE).  \n\n---\n\n### 13. Cils et flagelles  \n- **Structure** : axonème 9 + 2 (ou 9 + 0) microtubules, dynéine ATP‑dépendante.  \n- **Mouvement** :  \n  $$\\text{ATP} \\xrightarrow{\\text{Dynéine}} \\text{ADP} + \\text{P}_i + \\text{Glissement du microtubule}$$  \n\n---\n\n### 14. Inclusions cytoplasmiques  \n- **Glycogène** (réserve d’énergie) :  \n  $$\\text{Glycogène}_{(n)} + \\text{P}_i \\xrightarrow{\\text{Glycogène phosphorylase}} \\text{Glycogène}_{(n-1)} + \\text{Glucose‑1‑P}$$  \n- **Gouttelettes lipidiques** (triglycérides), pigments (mélanine, lipofuscine).  \n\n---\n\n### 15. Matrice extracellulaire (MEC) – interaction cellulaire  \n- **Composants** : collagène, élastine, fibronectine, laminine, protéoglycanes.  \n- **Synthèse du collagène (hydroxylation)** :  \n  $$\\text{Proline} + \\text{O}_2 + \\alpha\\text{-cétoglutarate} + \\text{Vit C} \\xrightarrow{\\text{Proline‑hydroxylase}} \\text{Hydroxyproline} + \\text{Succinate} + \\text{CO}_2$$  \n\n---\n\n## Synthèse des voies métaboliques majeures  \n\n| Voie | Localisation | Équation globale (simplifiée) |\n|------|--------------|------------------------------|\n| Glycolyse | Cytoplasme | Glucose + 2 ADP + 2 P_i + 2 NAD⁺ → 2 Pyruvate + 2 ATP + 2 NADH + 2 H⁺ + 2 H₂O |\n| Cycle de Krebs | Matrice mitochondriale | Acétyl‑CoA + 3 NAD⁺ + FAD + GDP + P_i + 2 H₂O → 2 CO₂ + 3 NADH + FADH₂ + GTP + CoA‑SH |\n| Chaîne respiratoire | Membrane interne mitochondriale | NADH + ½ O₂ + 3 ADP + 3 P_i → NAD⁺ + 3 ATP + 2 H₂O |\n| β‑oxydation | Mitochondrie / peroxysome | Acide gras‑CoA + NAD⁺ + FAD → Acétyl‑CoA + NADH + FADH₂ |\n| Lipogenèse | Cytoplasme | 8 Acétyl‑CoA + 7 Malonyl‑CoA + 14 NADPH → Palmitate + 7 CO₂ + 14 NADP⁺ + 8 CoA‑SH + 6 H₂O |\n| Cycle de l’urée | Mitochondrie + cytoplasme | NH₃ + CO₂ + 2 ATP + Aspartate → Urée + Fumarate + 2 ADP + 2 P_i + AMP + PP_i |\n| Transcription | Noyau | ADN → ARNm (ARN polymérase) |\n| Traduction | Ribosomes (cyto/RER) | ARNm + ARNt‑aa → Protéine |\n\n**Remarque** : chaque voie comprend de nombreuses étapes enzymatiques et régulations (allostérie, phosphorylation, contrôle transcriptionnel) qui ne sont pas détaillées ici pour des raisons de concision.",
+          "provider": "GROQ",
+          "model": "openai/gpt-oss-120b",
+          "_cost": 0.00294585,
+          "_tokensIn": 5631,
+          "_tokensOut": 3502
         }
       ],
-      "_lastActivity": 1784814534695
+      "_lastActivity": 1784814551975
     },
     {
       "id": "435b0e10-124e-4c87-b844-ce1c9bca4689",
@@ -463,7 +477,7 @@
     "deepResearchEffort": "medium",
     "deepResearchEngine": "claude"
   },
-  "model": "claude-haiku-4-5-20251001",
+  "model": "openai/gpt-oss-120b",
   "favoriteModels": [
     "gemini-2.5-flash",
     "claude-haiku-4-5-20251001"
@@ -843,14 +857,14 @@
     "2026-07-23": {
       "bc867abf-0ed0-4dd3-a6ae-ca8c6d37d3ab": {
         "_label": "PC",
-        "total": 0.0562496,
-        "count": 5,
-        "solo": 0.0562496,
+        "total": 0.05919545,
+        "count": 6,
+        "solo": 0.05919545,
         "tripleEco": 0,
         "triplePremium": 0,
         "deepResearch": 0,
-        "tokensIn": 13869,
-        "tokensOut": 13301
+        "tokensIn": 19500,
+        "tokensOut": 16803
       }
     }
   },
@@ -858,6 +872,6 @@
     "chats": {},
     "projects": {}
   },
-  "savedAt": "2026-07-23T13:48:55.154Z",
+  "savedAt": "2026-07-23T13:49:20.166Z",
   "version": 2
 }
