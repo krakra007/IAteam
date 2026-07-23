@@ -18,9 +18,20 @@
           "_cost": 0.007082,
           "_tokensIn": 754,
           "_tokensOut": 4470
+        },
+        {
+          "role": "user",
+          "content": "refaire",
+          "_text": "refaire"
+        },
+        {
+          "role": "assistant",
+          "content": "❌ Erreur : [Anthropic invalid_request_error] Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.",
+          "provider": "ANTHROPIC",
+          "model": "claude-haiku-4-5-20251001"
         }
       ],
-      "_lastActivity": 1784813593954
+      "_lastActivity": 1784814516552
     },
     {
       "id": "435b0e10-124e-4c87-b844-ce1c9bca4689",
@@ -441,7 +452,7 @@
     "deepResearchEffort": "medium",
     "deepResearchEngine": "claude"
   },
-  "model": "mistral-large-latest",
+  "model": "claude-haiku-4-5-20251001",
   "favoriteModels": [
     "gemini-2.5-flash",
     "claude-haiku-4-5-20251001"
@@ -836,6 +847,6 @@
     "chats": {},
     "projects": {}
   },
-  "savedAt": "2026-07-23T13:48:08.046Z",
+  "savedAt": "2026-07-23T13:48:37.499Z",
   "version": 2
 }
