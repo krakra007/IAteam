@@ -843,8 +843,38 @@
     }
 
     /* ════ Rendu Markdown professionnel (inspiré IA-Genius) ════ */
-    .assistant-body{font-size:18px;line-height:1.65;color:var(--text);word-wrap:break-word;overflow-wrap:break-word;user-select:text;-webkit-user-select:text}
+    /* V52 — La sélection NATIVE est désactivée sur les réponses : c'est le seul moyen
+       d'empêcher le mini-menu d'Edge (Copier/Rechercher/Copilot) et la barre native
+       tactile d'apparaître — aucune API web ne permet de les supprimer, ils se
+       déclenchent sur l'existence d'une sélection native. On repeint donc nous-mêmes
+       la sélection via la CSS Custom Highlight API (voir module bsSelection).
+       Repli : si le navigateur ne supporte pas l'API, .bs-native-sel est posé sur <html>
+       et la sélection native est rétablie (comportement V51). */
+    .assistant-body{font-size:18px;line-height:1.65;color:var(--text);word-wrap:break-word;overflow-wrap:break-word;user-select:none;-webkit-user-select:none}
+    html.bs-native-sel .assistant-body{user-select:text;-webkit-user-select:text}
     .msg.user .msg-text{user-select:text;-webkit-user-select:text}
+
+    /* Sélection repeinte par le module (n'altère pas le DOM) */
+    ::highlight(bs-selection){background:rgba(123,170,247,.34);color:#fff}
+
+    /* Barre d'actions flottante sur sélection */
+    .bs-seltool{
+      position:fixed;z-index:9998;display:flex;align-items:center;gap:2px;
+      background:#1b1f27;border:1px solid #ffffff22;border-radius:10px;
+      padding:4px;box-shadow:0 8px 24px #000000aa;
+      opacity:0;transform:translateY(4px);pointer-events:none;
+      transition:opacity .12s ease,transform .12s ease;user-select:none
+    }
+    .bs-seltool.visible{opacity:1;transform:translateY(0);pointer-events:auto}
+    .bs-seltool-btn{
+      display:inline-flex;align-items:center;gap:6px;background:transparent;border:none;
+      color:#c9d0db;font-size:13px;font-family:inherit;font-weight:500;
+      padding:6px 10px;border-radius:7px;cursor:pointer;white-space:nowrap
+    }
+    .bs-seltool-btn:hover{background:#ffffff14;color:#fff}
+    .bs-seltool-btn.primary{color:#7baaf7}
+    .bs-seltool-btn.primary:hover{background:#7baaf722}
+    .bs-seltool-sep{width:1px;height:18px;background:#ffffff1f;flex-shrink:0}
     .assistant-body p{margin:0 0 12px}
     /* V38c — cursor zoom-in pour signaler que l'image est cliquable */
     .assistant-body img{max-width:min(100%,520px);max-height:420px;object-fit:contain;border-radius:10px;display:block;margin:10px 0;box-shadow:0 2px 12px #0004;cursor:zoom-in;transition:opacity .15s}
@@ -1569,6 +1599,18 @@
        • DeepSeek : retrait de deepseek-chat / deepseek-reasoner de la liste (arrêt DÉFINITIF le 24/07/2026 15:59 UTC → 404). Nouvelle table MODEL_MIGRATIONS + migrateModelId() appliquée au chargement, au switch de conversation et aux defaultModel de projet : les utilisateurs encore sur ces alias basculent silencieusement vers deepseek-v4-flash. Tarifs des alias conservés uniquement pour l'affichage des coûts des anciens messages.
        • Triple Check PREMIUM : phase 3 Sonnet 4.5 → Sonnet 5 (moins cher en tarif intro 2/10 vs 3/15, plus performant ; Sonnet 4.5 part en retraite dès le 29/09/2026).
        • Gemini / Groq / Mistral / Z.ai : listes revérifiées le 14/07/2026, aucune modification nécessaire (gemini-3.5-flash GA, gpt-oss-120b/20b + qwen3.6-27b, Medium 3.5 / Small 4 / Large 3, glm-5.2 / glm-4.7 tous confirmés).
+
+  V52 — 23 juillet 2026 — Mise à jour modèles + sélection personnalisée.
+     Modèles (vérification web du 23/07) :
+       • Gemini : ajout gemini-3.6-flash (GA 21/07, $1.50/$7.50, 17% tokens en moins que 3.5 Flash) et gemini-3.5-flash-lite (GA 21/07, $0.30/$2.50, ultra-low latency). Gemini 3.5 Pro toujours en partner testing → non listé.
+       • Mistral : ajout ministral-14b-latest ($0.20/$0.20). Retrait mistral-medium-3-1-latest (déprécié → Medium 3.5). Retrait magistral-small-latest (pointe désormais sur Small 4 = mistral-small-latest). Correction tarifs Ministral 3B ($0.10) et 8B ($0.15).
+       • Anthropic / OpenAI / DeepSeek / Groq / Z.ai : revérifiés, aucune modification nécessaire.
+     Sélection personnalisée (V52 — feature) :
+       • Sélection de texte dans les réponses avec barre flottante « Copier / Rechercher ».
+       • Contourne les menus natifs d'Edge/Chrome en désactivant la sélection native (user-select:none) et en repeignant via la CSS Custom Highlight API (Baseline 2025).
+       • Gestes : glisser (souris), double-clic (mot), triple-clic (bloc), appui long (tactile 450ms), Ctrl+C, Ctrl+A, Escape.
+       • Rechercher : injecte la sélection dans le composeur et bascule automatiquement sur le modèle de la réponse d'origine.
+       • Repli automatique en mode natif si le navigateur ne supporte pas la Custom Highlight API.
        • Optimisations : Set Groq précalculé dans inferProviderFromModel (appelé à chaque rendu de message — évite un find+includes par appel) ; suppression d'une branche morte dans extractUsage (test input_tokens dupliqué) ; garde CURATED_MODELS sur les defaultModel de projet obsolètes. -->
 <div class="app">
   <!-- Backdrop pour fermer la sidebar sur tablette (invisible sur desktop) -->
@@ -1922,15 +1964,19 @@ const MODEL_GROUPS = [
     ]
   },
   // ── Google Gemini ─────────────────────────────────
-  // Source : ai.google.dev/gemini-api/docs — vérifié 30 juin 2026
+  // Source : ai.google.dev/gemini-api/docs — vérifié 23 juillet 2026
+  // gemini-3.6-flash : GA 21 juillet 2026, nouveau workhorse Flash, 17% tokens en moins que 3.5 Flash.
+  // gemini-3.5-flash-lite : GA 21 juillet 2026, ultra-low latency, agentic search, $0.30/$2.50.
   // gemini-3.5-flash : GA depuis I/O (19 mai 2026), flagship Flash agentic+coding (1.50/9).
-  // gemini-3.1-pro : désormais GA (le suffixe -preview a disparu), context 2M.
-  // ⚠ gemini-2.0-flash a été ARRÊTÉ le 1er juin 2026.
-  // ⚠ gemini-3.5-pro toujours pas confirmé en GA au 30/06/2026 → non listé.
+  // gemini-3.1-pro : GA (le suffixe -preview a disparu), context 2M.
+  // ⚠ gemini-2.0-flash ARRÊTÉ le 1er juin 2026.
+  // ⚠ gemini-3.5-pro toujours en partner testing au 23/07 → non listé.
   {
     label: "Google Gemini",
     models: [
+      "gemini-3.6-flash",           // 🆕 21/07/2026, nouveau workhorse Flash, 1M ctx, $1.50/$7.50
       "gemini-3.5-flash",           // I/O 2026, flagship Flash agentic+coding, 1M ctx
+      "gemini-3.5-flash-lite",      // 🆕 21/07/2026, ultra-low latency/cost, $0.30/$2.50
       "gemini-3.1-pro",             // GA — raisonnement avancé, grounding, 2M context
       "gemini-3.1-flash-lite",      // GA, économique
       "gemini-2.5-pro",             // stable production, thinking adaptatif
@@ -1964,31 +2010,33 @@ const MODEL_GROUPS = [
     ]
   },
   // ── Mistral AI ─────────────────────────────────────
-  // Source : docs.mistral.ai/models/overview — mai 2026
+  // Source : docs.mistral.ai/models/overview — vérifié 23 juillet 2026
   // API compatible OpenAI (Chat Completions)
   // Endpoint : https://api.mistral.ai/v1/chat/completions
+  // ⚠ Medium 3.1 (mistral-medium-2508) déprécié → remplacé par Medium 3.5.
+  // ⚠ magistral-small-latest pointe désormais sur Small 4 (même modèle que mistral-small-latest) → retiré.
   {
     label: "Mistral AI — Frontier",
     models: [
-      "mistral-medium-latest",    // 🆕 Medium 3.5 (avr 2026) — 128B dense, 256K ctx, vision, $1.5/M in
-      "mistral-small-latest",     // Small 4 (mars 2026) — 119B MoE, reasoning configurable, $0.15/M in
-      "mistral-large-latest",     // Large 3 (déc 2025) — flagship cost-efficient, $0.50/M in
+      "mistral-medium-latest",    // Medium 3.5 (avr 2026) — 128B dense, 256K ctx, vision, $1.50/$7.50
+      "mistral-small-latest",     // Small 4 (mars 2026) — 119B MoE, reasoning configurable, $0.10/$0.30
+      "mistral-large-latest",     // Large 3 (déc 2025) — 675B MoE, open-weight, $0.50/$1.50
     ]
   },
   {
     label: "Mistral AI — Spécialistes",
     models: [
-      "codestral-latest",          // Codestral 25.08 — code completion + FIM, $0.30/M in
+      "codestral-latest",          // Codestral 25.08 — code completion + FIM, $0.30/$0.90
       "devstral-small-latest",     // Devstral Small 2 — 24B, agents code, Apache 2.0
-      "magistral-medium-latest",   // Magistral Medium 1.2 — reasoning avancé, $2/M in
-      "mistral-medium-3-1-latest", // Medium 3.1 (août 2025) — multimodal, legacy flagship
+      "magistral-medium-latest",   // Magistral Medium — reasoning avancé, $2/$5
     ]
   },
   {
     label: "Mistral AI — Compact",
     models: [
-      "ministral-3b-latest",      // Ministral 3B — tiny, vision, $0.04/M in
-      "ministral-8b-latest",      // Ministral 8B — efficace, vision, $0.10/M in
+      "ministral-3b-latest",      // Ministral 3B — tiny, vision, $0.10/$0.10
+      "ministral-8b-latest",      // Ministral 8B — efficace, vision, $0.15/$0.15
+      "ministral-14b-latest",     // 🆕 Ministral 14B — frontier compact, $0.20/$0.20
       "open-mistral-nemo",        // Nemo 12B — multilingue, open-source
     ]
   },
@@ -5482,6 +5530,9 @@ async function generateDocxFromMarkdown(rawMarkdown, chatTitle) {
 // ─────────────────────────────────────────────────
 function renderMessages() {
   const box = el("messages");
+  // V52 — renderMessages() reconstruit tout le DOM : les Range de la sélection
+  // pointeraient vers des nœuds détachés et la barre flotterait dans le vide.
+  if (window.bsSelection) window.bsSelection.clear();
   box.innerHTML = "";
   const c = activeChat();
   if (!c) return;
@@ -5537,6 +5588,11 @@ function renderMessages() {
     d.className = "msg " + m.role;
     if (m.role === "assistant") {
       d.innerHTML = `<div class="assistant-body">${formatAssistantContent(m.content)}</div>`;
+      // V52 — on rattache le message à son DOM : la barre de sélection doit pouvoir
+      // relancer la recherche AVEC LE MODÈLE DE CETTE RÉPONSE (et pas le modèle courant,
+      // qui peut avoir changé depuis).
+      const _body = d.querySelector('.assistant-body');
+      if (_body) _body.__bsMsg = m;
     } else {
       // Afficher : texte tapé par l'utilisateur + badges compacts pour les fichiers
       // On n'affiche JAMAIS le contenu extrait (trop long et destiné au modèle, pas à l'UI)
@@ -7474,7 +7530,9 @@ const TOKEN_PRICES = {
   'gemini-2.5-pro':             { input: 1.25,  output: 10.00 }, // corrigé (sortie 10, pas 5) ; ≤200K tokens
   'gemini-3.1-pro':             { input: 2.00,  output: 12.00 }, // GA (ex -preview) ; ≤200K, x2/x1.5 au-delà
   'gemini-3.1-flash-lite':      { input: 0.25,  output: 1.50 },  // corrigé
+  'gemini-3.6-flash':           { input: 1.50,  output: 7.50 },  // 🆕 V52 — 21/07/2026, output -17% vs 3.5 Flash
   'gemini-3.5-flash':           { input: 1.50,  output: 9.00 },  // corrigé (était 0.30/1.20 — facteur ~7)
+  'gemini-3.5-flash-lite':      { input: 0.30,  output: 2.50 },  // 🆕 V52 — 21/07/2026, ultra-low latency
   'gemini-3.1-flash-image': { input: 0.25, output: 60.00 }, // ⚠ tarif spécial : voir computeCost — flat $0.067 par image 1024px + tokens d'entrée
 
   // ── OpenAI ── (vérifié 14/07/2026 — developers.openai.com/api/docs/pricing)
@@ -7517,9 +7575,9 @@ const TOKEN_PRICES = {
   'codestral-latest':           { input: 0.30,  output: 0.90 },
   'devstral-small-latest':      { input: 0.15,  output: 0.45 },
   'magistral-medium-latest':    { input: 2.00,  output: 5.00 }, // sortie corrigée (était 6.00)
-  'mistral-medium-3-1-latest':  { input: 1.00,  output: 3.00 },
-  'ministral-3b-latest':        { input: 0.04,  output: 0.04 },
-  'ministral-8b-latest':        { input: 0.10,  output: 0.10 },
+  'ministral-3b-latest':        { input: 0.10,  output: 0.10 },  // V52 — corrigé (était 0.04, tarif Ministral 3 2512)
+  'ministral-8b-latest':        { input: 0.15,  output: 0.15 },  // V52 — corrigé (était 0.10)
+  'ministral-14b-latest':       { input: 0.20,  output: 0.20 },  // 🆕 V52
   'open-mistral-nemo':          { input: 0.15,  output: 0.15 },
 
   // ── Z.ai (GLM) ── (vérifié 30/06/2026 — z.ai / docs.z.ai)
@@ -10967,6 +11025,371 @@ loadModelsFromApi();
       }
     }, { passive: true });
   }
+})();
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   V52 — SÉLECTION PERSONNALISÉE + BARRE « Copier / Rechercher »
+   ───────────────────────────────────────────────────────────────────────────
+   PROBLÈME : sélectionner du texte fait apparaître des menus natifs —
+     • Edge : le « mini menu » (Ask Copilot / Copier / Rechercher). Microsoft a
+       confirmé qu'un SITE NE PEUT PAS le désactiver : c'est un réglage utilisateur
+       (edge://settings/appearance) ou une stratégie de groupe. Aucune API web.
+     • Tactile (Chrome/Edge Android) : la barre native Copier/Partager/Recherche web.
+     • Clic droit : « Rechercher <sélection> avec Google ».
+   Tous se déclenchent sur l'EXISTENCE d'une sélection native.
+
+   SOLUTION : ne jamais créer de sélection native. `.assistant-body` est en
+   `user-select:none`, et on repeint la sélection nous-mêmes avec la
+   CSS Custom Highlight API (Chrome/Edge 105+, Baseline 2025) — qui colorie des
+   Range sans toucher au DOM. Résultat : rien à supprimer, les menus natifs n'ont
+   jamais de quoi se déclencher.
+
+   COÛT ASSUMÉ : en supprimant la sélection native, on perd aussi ses acquis, qu'il
+   faut réimplémenter — glisser, double-clic (mot), triple-clic (bloc), Ctrl+C,
+   Ctrl+A, appui long tactile. C'est fait ci-dessous. Ce qui n'est PAS réimplémenté :
+   la sélection à cheval sur PLUSIEURS réponses (bornée à une réponse — c'est le
+   périmètre voulu : « un bloc d'une partie du texte » d'une réponse).
+
+   REPLI : navigateur sans Custom Highlight API → `.bs-native-sel` sur <html>,
+   sélection native rétablie + même barre. Les menus natifs peuvent alors coexister.
+   ═══════════════════════════════════════════════════════════════════════════ */
+(function bsSelectionModule(){
+  const HL_NAME = 'bs-selection';
+
+  // Détection de capacité. La Custom Highlight API est Baseline 2025 (Chrome/Edge 105+).
+  const CUSTOM_OK = !!(window.CSS && CSS.highlights && window.Highlight &&
+                       (document.caretPositionFromPoint || document.caretRangeFromPoint));
+
+  // `native` = on laisse la sélection native faire son travail (les menus natifs
+  // peuvent alors coexister — c'est le comportement dégradé, pas la cible).
+  let native = !CUSTOM_OK;
+  if (native) document.documentElement.classList.add('bs-native-sel');
+
+  /** Bascule définitive en mode natif. Filet de sécurité : Chromium a corrigé
+   *  caretRangeFromPoint sur user-select:none dès 2013, mais WebKit traîne encore
+   *  ce bug. Si le caret est introuvable là où il y a pourtant du texte, mieux vaut
+   *  une sélection native (avec ses menus) qu'une sélection qui ne marche pas. */
+  function goNative(reason) {
+    if (native) return;
+    native = true;
+    document.documentElement.classList.add('bs-native-sel');
+    if (CSS.highlights) CSS.highlights.delete(HL_NAME);
+    console.warn('[BrAInShift] Sélection personnalisée désactivée (' + reason +
+                 ') → repli sur la sélection native du navigateur.');
+  }
+
+  // ── Barre flottante ───────────────────────────────────────────
+  const bar = document.createElement('div');
+  bar.className = 'bs-seltool';
+  bar.setAttribute('role', 'toolbar');
+  bar.innerHTML =
+    '<button class="bs-seltool-btn" data-act="copy">\u29C9 Copier</button>' +
+    '<span class="bs-seltool-sep"></span>' +
+    '<button class="bs-seltool-btn primary" data-act="search">\uD83D\uDD0D Rechercher</button>';
+  document.body.appendChild(bar);
+
+  let cur = null;                 // { range, host, text }
+  let anchor = null, host = null;
+  let dragging = false, moved = false, touchSel = false;
+  let lpTimer = null, lpPt = null, downPt = null;
+
+  // ── Peinture / effacement ─────────────────────────────────────
+  function paint(range, hostEl) {
+    const text = range.toString();
+    if (!text.trim()) { clear(); return; }
+    if (!native) CSS.highlights.set(HL_NAME, new Highlight(range));
+    cur = { range, host: hostEl, text };
+  }
+  function clear() {
+    if (!native && CSS.highlights) CSS.highlights.delete(HL_NAME);
+    if (native) {
+      const s = window.getSelection && getSelection();
+      if (s && !s.isCollapsed) s.removeAllRanges();
+    }
+    cur = null;
+    bar.classList.remove('visible');
+  }
+  window.bsSelection = { clear };
+
+  // ── Positionnement ────────────────────────────────────────────
+  function showBar() {
+    if (!cur) return;
+    const rects = Array.from(cur.range.getClientRects()).filter(r => r.width || r.height);
+    const rect  = rects.length ? rects[0] : cur.range.getBoundingClientRect();
+    if (!rect || (!rect.width && !rect.height)) return;
+    bar.classList.add('visible');
+    const bw = bar.offsetWidth, bh = bar.offsetHeight;
+    const x = rect.left + rect.width / 2 - bw / 2;
+    let   y = rect.top - bh - 8;
+    if (y < 8) {                                   // pas de place au-dessus
+      const last = rects.length ? rects[rects.length - 1] : rect;
+      y = last.bottom + 8;
+    }
+    bar.style.left = Math.max(8, Math.min(x, window.innerWidth  - bw - 8)) + 'px';
+    bar.style.top  = Math.max(8, Math.min(y, window.innerHeight - bh - 8)) + 'px';
+  }
+
+  // ── Caret depuis un point ─────────────────────────────────────
+  function firstTextIn(node) {
+    if (node.nodeType === Node.TEXT_NODE) return node;
+    return document.createTreeWalker(node, NodeFilter.SHOW_TEXT).nextNode();
+  }
+  function lastTextIn(node) {
+    if (node.nodeType === Node.TEXT_NODE) return node;
+    const w = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+    let n = null, t;
+    while ((t = w.nextNode())) n = t;
+    return n;
+  }
+  function caretFromPoint(x, y) {
+    let node = null, offset = 0;
+    if (document.caretPositionFromPoint) {
+      const p = document.caretPositionFromPoint(x, y);
+      if (!p) return null;
+      node = p.offsetNode; offset = p.offset;
+    } else if (document.caretRangeFromPoint) {
+      const r = document.caretRangeFromPoint(x, y);
+      if (!r) return null;
+      node = r.startContainer; offset = r.startOffset;
+    }
+    if (!node) return null;
+    if (node.nodeType !== Node.TEXT_NODE) {
+      const t = firstTextIn(node);
+      if (!t) return null;
+      node = t; offset = 0;
+    }
+    return { node, offset };
+  }
+  /** Caret borné au conteneur : glisser au-delà de la réponse étend jusqu'au bord,
+   *  comme le fait la sélection native, au lieu de bloquer net. */
+  function caretInHost(x, y, hostEl) {
+    const c = caretFromPoint(x, y);
+    if (c && hostEl.contains(c.node)) return c;
+    const r = hostEl.getBoundingClientRect();
+    if (y < r.top) {
+      const t = firstTextIn(hostEl);
+      return t ? { node: t, offset: 0 } : null;
+    }
+    if (y > r.bottom) {
+      const t = lastTextIn(hostEl);
+      return t ? { node: t, offset: t.textContent.length } : null;
+    }
+    return c && hostEl.contains(c.node) ? c : null;
+  }
+  function rangeBetween(a, b) {
+    const probe = document.createRange();
+    let reversed = false;
+    try {
+      probe.setStart(a.node, a.offset); probe.setEnd(a.node, a.offset);
+      reversed = probe.comparePoint(b.node, b.offset) < 0;
+    } catch (_) { return null; }
+    const r = document.createRange();
+    try {
+      if (reversed) { r.setStart(b.node, b.offset); r.setEnd(a.node, a.offset); }
+      else          { r.setStart(a.node, a.offset); r.setEnd(b.node, b.offset); }
+    } catch (_) { return null; }
+    return r;
+  }
+
+  // ── Mot / bloc ────────────────────────────────────────────────
+  function wordBounds(c) {
+    const txt = c.node.textContent || '';
+    if (!txt) return null;
+    try {
+      const seg = new Intl.Segmenter(navigator.language || 'fr', { granularity: 'word' });
+      for (const g of seg.segment(txt)) {
+        if (c.offset >= g.index && c.offset < g.index + g.segment.length) {
+          return g.isWordLike ? { s: g.index, e: g.index + g.segment.length } : null;
+        }
+      }
+      return null;
+    } catch (_) {
+      let s = c.offset, e = c.offset;                 // repli : bornes sur les espaces
+      while (s > 0 && !/\s/.test(txt[s - 1])) s--;
+      while (e < txt.length && !/\s/.test(txt[e])) e++;
+      return s === e ? null : { s, e };
+    }
+  }
+  /** Sélectionne le mot ; renvoie le point d'ancrage (début du mot) pour qu'un
+   *  glissement ultérieur étende à partir du mot et non du caret. */
+  function selectWordAt(c, hostEl) {
+    if (!c) return null;
+    const b = wordBounds(c);
+    if (!b) return null;
+    const r = document.createRange();
+    try { r.setStart(c.node, b.s); r.setEnd(c.node, b.e); } catch (_) { return null; }
+    paint(r, hostEl);
+    return cur ? { node: c.node, offset: b.s } : null;
+  }
+  function selectBlockAt(c, hostEl) {
+    if (!c) return false;
+    const block = (c.node.parentElement || hostEl)
+      .closest('p,li,pre,blockquote,h1,h2,h3,h4,h5,h6,td,th,figcaption') || hostEl;
+    const r = document.createRange();
+    r.selectNodeContents(block);
+    paint(r, hostEl);
+    return !!cur;
+  }
+
+  // ── Actions ───────────────────────────────────────────────────
+  function doCopy() {
+    if (!cur) return;
+    const text = cur.text;
+    const btn  = bar.querySelector('[data-act="copy"]');
+    if (typeof copyWithFeedback === 'function') copyWithFeedback(text, btn, '\u2713 Sélection copiée');
+    else if (navigator.clipboard) navigator.clipboard.writeText(text);
+    clear();
+  }
+  function doSearch() {
+    if (!cur) return;
+    const text = (cur.text || '').trim();
+    if (!text) return;
+    if (typeof isWaitingResponse !== 'undefined' && isWaitingResponse) {
+      if (typeof showCopyToast === 'function') showCopyToast('\u23F3 Une réponse est déjà en cours', true);
+      return;
+    }
+    // Même modèle que la réponse d'où vient la sélection — pas le modèle courant,
+    // qui peut avoir changé depuis. Le verrou « Short answers » reste prioritaire.
+    const msg    = cur.host && cur.host.__bsMsg;
+    const wanted = msg && msg.model ? migrateModelId(msg.model) : null;
+    const locked = typeof isShortAnswersActive === 'function' && isShortAnswersActive();
+    if (wanted && !locked && CURATED_MODELS.includes(wanted) && S.model !== wanted) {
+      S.model = wanted;
+      window._userChangedModel = true;
+      if (typeof save === 'function') save();
+      if (typeof renderParams === 'function') renderParams();
+      if (typeof renderModels === 'function') renderModels();
+    }
+    clear();
+    promptEl.value = text;              // même conversation, message à la suite
+    if (typeof send === 'function') send();
+  }
+
+  bar.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); });
+  bar.addEventListener('click', e => {
+    const hit = e.target.closest('[data-act]');
+    if (!hit) return;
+    if (hit.dataset.act === 'copy') doCopy(); else doSearch();
+  });
+
+  // ── Gestes (mode personnalisé) ────────────────────────────────
+  const hostOf = t => (t && t.closest) ? t.closest('.assistant-body') : null;
+  const interactive = t => (t && t.closest)
+    ? t.closest('button,a,summary,input,textarea,select,.copy-code-btn,.code-header') : null;
+
+  document.addEventListener('pointerdown', e => {
+    if (bar.contains(e.target)) return;
+    const h = hostOf(e.target);
+    if (!h || interactive(e.target)) { if (cur) clear(); return; }
+    if (native) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+
+    host = h; downPt = { x: e.clientX, y: e.clientY }; moved = false;
+
+    if (e.pointerType === 'touch') {
+      // Appui long : sinon on volerait le défilement à chaque effleurement.
+      lpPt = downPt;
+      lpTimer = setTimeout(() => {
+        lpTimer = null;
+        const c = caretInHost(lpPt.x, lpPt.y, host);
+        if (!c) return;
+        anchor   = selectWordAt(c, host) || c;
+        touchSel = true; dragging = true; moved = true;
+        if (navigator.vibrate) navigator.vibrate(8);
+        showBar();
+      }, 450);
+      return;
+    }
+
+    anchor = caretInHost(e.clientX, e.clientY, host);
+    if (anchor) { dragging = true; bar.classList.remove('visible'); }
+    else if (firstTextIn(h)) { goNative('caret introuvable sur du texte'); }
+  }, true);
+
+  document.addEventListener('pointermove', e => {
+    if (lpTimer && lpPt && Math.hypot(e.clientX - lpPt.x, e.clientY - lpPt.y) > 10) {
+      clearTimeout(lpTimer); lpTimer = null;      // l'utilisateur défile → pas de sélection
+    }
+    if (native || !dragging || !anchor || !host) return;
+    if (downPt && !moved && Math.hypot(e.clientX - downPt.x, e.clientY - downPt.y) < 3) return;
+    moved = true;
+    const f = caretInHost(e.clientX, e.clientY, host);
+    if (!f) return;
+    const r = rangeBetween(anchor, f);
+    if (r && !r.collapsed) paint(r, host); else clear();
+  });
+
+  function endGesture() {
+    if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; }
+    if (dragging) {
+      dragging = false;
+      if (moved && cur) showBar();
+      else if (!touchSel) clear();
+    }
+    touchSel = false;
+  }
+  document.addEventListener('pointerup', endGesture);
+  document.addEventListener('pointercancel', endGesture);
+
+  // Bloque le défilement pendant une sélection tactile en cours.
+  document.addEventListener('touchmove', e => { if (touchSel) e.preventDefault(); }, { passive: false });
+
+  document.addEventListener('dblclick', e => {
+    if (native) return;
+    const h = hostOf(e.target);
+    if (!h || interactive(e.target)) return;
+    if (selectWordAt(caretInHost(e.clientX, e.clientY, h), h)) showBar();
+  });
+  document.addEventListener('click', e => {
+    if (native || e.detail < 3) return;             // triple-clic uniquement
+    const h = hostOf(e.target);
+    if (!h || interactive(e.target)) return;
+    if (selectBlockAt(caretInHost(e.clientX, e.clientY, h), h)) showBar();
+  });
+
+  // ── Mode natif (repli) : on lit la sélection du navigateur ────
+  function nativeSync() {
+    if (!native) return;
+    const s = window.getSelection && getSelection();
+    if (!s || !s.rangeCount || s.isCollapsed) { cur = null; bar.classList.remove('visible'); return; }
+    const r = s.getRangeAt(0);
+    let n = r.commonAncestorContainer;
+    if (n.nodeType !== 1) n = n.parentElement;
+    const h = n && n.closest ? n.closest('.assistant-body') : null;
+    const text = s.toString();
+    if (!h || !text.trim()) { cur = null; bar.classList.remove('visible'); return; }
+    cur = { range: r, host: h, text };
+    showBar();
+  }
+  document.addEventListener('pointerup', e => {
+    if (native && !bar.contains(e.target)) setTimeout(nativeSync, 0);
+  });
+  document.addEventListener('keyup', e => { if (native && e.shiftKey) nativeSync(); });
+
+  // ── Clavier ───────────────────────────────────────────────────
+  document.addEventListener('keydown', e => {
+    if (!cur) return;
+    if (e.key === 'Escape') { clear(); return; }
+    const ae = document.activeElement;
+    if (ae && (/^(INPUT|TEXTAREA)$/.test(ae.tagName) || ae.isContentEditable)) return;
+    if (native) return;                              // le navigateur gère déjà Ctrl+C / Ctrl+A
+    const k = e.key.toLowerCase();
+    if ((e.ctrlKey || e.metaKey) && k === 'c') { e.preventDefault(); doCopy(); }
+    else if ((e.ctrlKey || e.metaKey) && k === 'a' && cur.host) {
+      e.preventDefault();                            // Ctrl+A → cette réponse, pas toute la page
+      const r = document.createRange();
+      r.selectNodeContents(cur.host);
+      paint(r, cur.host);
+      showBar();
+    }
+  });
+
+  // ── Suivi ─────────────────────────────────────────────────────
+  const msgs = document.getElementById('messages');
+  if (msgs) msgs.addEventListener('scroll', () => {
+    if (cur && bar.classList.contains('visible')) showBar();
+  }, { passive: true });
+  window.addEventListener('resize', () => { if (cur) showBar(); });
 })();
 </script>
 </body>
