@@ -8,13 +8,6 @@
       "_lastActivity": 1782895517304
     },
     {
-      "id": "0c164c1d-3bc5-4d44-9b31-3c8425cc8840",
-      "title": "Nouveau chat",
-      "projectId": null,
-      "messages": [],
-      "_lastActivity": 1782219984268
-    },
-    {
       "id": "383a071d-7646-4538-b74c-05a015d20f98",
       "title": "Donne-moi une liste détaillée des différents…",
       "projectId": "3d7ba791-0e92-4133-9215-c5ad7f1bffe6",
@@ -46,9 +39,23 @@
           "_cost": 0.0074598,
           "_tokensIn": 3416,
           "_tokensOut": 2574
+        },
+        {
+          "role": "user",
+          "content": "test",
+          "_text": "test"
+        },
+        {
+          "role": "assistant",
+          "content": "Je suis prêt. Comment puis-je vous aider ?",
+          "provider": "GOOGLE GEMINI",
+          "model": "gemini-2.5-flash",
+          "_cost": 0.0023401,
+          "_tokensIn": 5917,
+          "_tokensOut": 226
         }
       ],
-      "_lastActivity": 1784806818865
+      "_lastActivity": 1784811627142
     },
     {
       "id": "e8d70acd-1619-414d-a767-9d28cb632929",
@@ -60,7 +67,7 @@
           "content": [
             {
               "type": "text",
-              "text": "[📝 Contenu du fichier \"Expliquue moi la règle de minimis en export control.docx\" :]\n\nBRAINSHIFT\n\n \n\n\n\nExpliquue moi la règle de minimis en export control\n\nDocument généré par BrAInShift\n\n21 juillet 2026\n\nModèle : gemini-2.5-flash\n\n\n\nLa règle de minimis en matière de contrôle des exportations est une disposition cruciale qui détermine si un produit fabriqué à l'étranger, mais contenant des composants ou des technologies d'origine américaine, est soumis aux réglementations américaines en matière de contrôle des exportations (Export Administration Regulations - EAR).\n\nObjectif de la règle de minimis\n\nL'objectif principal de la règle de minimis est d'éviter que des articles d'origine américaine, soumis à des contrôles d'exportation, ne soient réexportés ou transférés vers des destinations restreintes en étant incorporés dans des produits étrangers. Sans cette règle, même une petite pièce d'origine américaine pourrait potentiellement déclencher les contrôles d'exportation américains pour l'ensemble du produit étranger.\n\nFonctionnement et calcul\n\nLa règle de minimis établit un seuil, basé sur la valeur, du contenu d'origine américaine contrôlé qu'un produit fabriqué à l'étranger peut contenir avant d'être assujetti aux EAR.\n\nVoici les points clés de son fonctionnement :\n\nContenu d'origine américaine contrôlé : Pour appliquer la règle, il faut d'abord identifier les composants ou technologies d'origine américaine incorporés dans le produit étranger. Il est ensuite nécessaire de déterminer si ces éléments nécessiteraient une licence d'exportation s'ils étaient exportés directement vers le pays de destination du produit étranger. Les articles qui pourraient être exportés sans licence ou sous certaines exceptions de licence ne sont généralement pas comptabilisés comme contenu contrôlé.\n\nSeuils de pourcentage : Les seuils de minimis varient généralement entre 10 % et 25 % de la valeur totale du produit étranger, en fonction de la destination finale et du type d'articles.\n\nCalcul de la valeur : Pour calculer le pourcentage, la valeur totale du contenu contrôlé d'origine américaine est divisée par la valeur totale du produit fabriqué à l'étranger, puis multipliée par 100. Si le pourcentage obtenu est égal ou inférieur au niveau de minimis applicable, le produit étranger n'est généralement pas soumis aux EAR.\n\nMéthodologie rigoureuse : Les entreprises doivent évaluer la nomenclature complète de leurs produits, identifier tous les composants soumis aux EAR, déterminer leurs valeurs respectives et calculer leur poids relatif dans l'article final. Une documentation claire et un suivi rigoureux de tous les calculs sont essentiels, car les régulateurs peuvent demander des justifications détaillées lors d'audits.\n\nExceptions et considérations importantes\n\nCertains articles exclus : La règle de minimis ne s'applique pas à certains articles, notamment ceux qui sont régis par l'International Traffic in Arms Regulations (ITAR) (par exemple, les exportations militaires sensibles) ou certains types de logiciels et de technologies.\n\nDestinations sous embargo : La règle de minimis ne s'applique généralement pas aux destinations soumises à des embargos complets.\n\nOutils d'aide : Le Bureau of Industry and Security (BIS) propose des outils et des lignes directrices pour aider à déterminer l'applicabilité de la règle de minimis.\n\nEn résumé, la règle de minimis est un mécanisme essentiel dans le contrôle des exportations qui permet de déterminer si un produit fabriqué à l'étranger, intégrant des composants ou technologies américains, doit être soumis aux réglementations d'exportation américaines en fonction de la proportion de son contenu d'origine américaine contrôlé.\n\n \n\nSources :\n\n[wilmarth-associates.com](https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQEygRrynMyln4pF-p11sum14-m7QdMJ9X0PBcby0iYLA_LQGjfyTwFmrLXVTbYON411uAP1xU7eRC6xmgRDVgxikL_cD5zhB3JdgYN6zVHJk1f8qvgU65ht0r9ZNJZFO6JuVgizr_6s_MKf61G2XeSrwkC5JRKTa44-lc4=)\n\n[ec-compliance.com](https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQGCTiua7tDqfdPa20HuK12Y2QAfLmwUdq21_JSMZ5F5H3N_FL6DVzVvNKF9yyaTiins8d7Vet1uW5bqiIVKplqwx-rto9oyl62vrp8UcLwwd9l7VNBGlVs4ItmbwTtcloWTua9GT9I5TsJuLn1NI9uvAoW-VbNpX5Ap4LHdc8VWY_xl8iEphvFoYfvMr5QttnzrV9ah26lxd2uvZ7ZmTg==)\n\n[sanctionsassociation.org](https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHZn-Q3BoVi_LB6SaAWzwhtgLwN1ugSOPX8xtB1mH_3wgmlp9vkGH0dQT4WqCzXEZa8zkMKzrnDwsEDoOQBITbv0jJ3lW1onCuZQmIGzNLwZ85B940zuoDD23hO7OUWke5vyNjCFMZyzZDE8MMsRulQLwcw0V2_bPkvI6TwDIAEnEoAgkNJzrrRdz54Hw==)\n\n[ocr-inc.com](https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFLQ7fomtnP3qJEQ3vohQpahI4scsNeDyrkZ76Xk92q2Hdyrr51K6ec12L4PUx1wOlgMz2pk0Krn6bbd9a44kUuPWbYXhw9kBkfgK7BL6pOMmQ7EhkHLA-5VMf8COhvDiuNoVjEUp90FTHzzkbuRegRpIT0-L39ccmFTN3ha1qEaDP_k_IeFVVjIjk=)\n\n[ecfr.gov](https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQEBfZQKDOMCsUxiF74ZE6uLZLtUmDMj8vX2Z32QupJjxisA9OXQh0RRZvIw8SfgcqgXvjRTBv-iJOEXkH1tY0ZH364FFibM-gvGxjrdaWG2_BqQZCoinkHeEfctTcTN_31XPvc9hAaFHf9hH1mQMSJ-MZdyKIRI608HLvvtuyxxqPHSlM0PS0824EA9h9NhSesLmhXqGk8LSnOy_5xySBdUfZSht40HfeeILQJTsMwvhdArHPo_2U0czxU4tqSf)\n\n[bis.gov](https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHAvkWVflIAuQdSa0lGxaAmgkgcE9cH7qL90JemaChB8uQ9VsJ498Cxjgr1ouDidjdLcuTv3NM5Q1bzcLKTz9YLvDKHeqTkZzY1xCq1kjwv6uM5btoFF2JqHJNyHsUABfs5UA==)\n\n[cisa.gov](https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQE0w4stVx42FH3U9dbo202jDVwmYeKctqmCrKwdPiD2aUzwtvQeSLrPGAZl0mCMf9ybBfde-TAxCeQi8XZC6IVoTX6-zKEUcD9GRok6k-aISXkFr0_0Fla7pN2KlLnf7UCExpRbS9eT6Dp6mQTxWxcJisleJYRpq6l2wasAsI9p)"
+              "text": "[📝 Contenu de \"Expliquue moi la règle de minimis en export control.docx\" — texte extrait non stocké en sync (6 KB localement)]"
             },
             {
               "type": "text",
@@ -403,10 +410,6 @@
     "gemini-2.5-flash",
     "claude-haiku-4-5-20251001"
   ],
-  "tombstones": {
-    "chats": {},
-    "projects": {}
-  },
   "costStatsDaily": {
     "2026-06-05": {
       "c40c92cf-fbf3-423a-b8d0-0c197e669ca0": {
@@ -782,17 +785,21 @@
     "2026-07-23": {
       "bc867abf-0ed0-4dd3-a6ae-ca8c6d37d3ab": {
         "_label": "PC",
-        "total": 0.0419193,
-        "count": 2,
-        "solo": 0.0419193,
+        "total": 0.0442594,
+        "count": 3,
+        "solo": 0.0442594,
         "tripleEco": 0,
         "triplePremium": 0,
         "deepResearch": 0,
-        "tokensIn": 4329,
-        "tokensOut": 6986
+        "tokensIn": 10246,
+        "tokensOut": 7212
       }
     }
   },
-  "savedAt": "2026-07-23T12:58:27.090Z",
+  "tombstones": {
+    "chats": {},
+    "projects": {}
+  },
+  "savedAt": "2026-07-23T13:06:35.359Z",
   "version": 2
 }
