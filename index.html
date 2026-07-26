@@ -1600,6 +1600,56 @@
        • Triple Check PREMIUM : phase 3 Sonnet 4.5 → Sonnet 5 (moins cher en tarif intro 2/10 vs 3/15, plus performant ; Sonnet 4.5 part en retraite dès le 29/09/2026).
        • Gemini / Groq / Mistral / Z.ai : listes revérifiées le 14/07/2026, aucune modification nécessaire (gemini-3.5-flash GA, gpt-oss-120b/20b + qwen3.6-27b, Medium 3.5 / Small 4 / Large 3, glm-5.2 / glm-4.7 tous confirmés).
 
+  V53 — 26 juillet 2026 — Durcissement sécurité (XSS → exfiltration de clés API).
+     Contexte : le coffre AES-GCM protège les clés SUR LE DISQUE, mais une fois déverrouillé
+     apiKeysByProvider est en clair EN MÉMOIRE pour toute la session. Tout code JS exécuté
+     dans la page lit donc les 7 clés d'un coup, plus ghToken (stocké en clair). Les correctifs
+     ci-dessous ferment les chemins menant à cette exécution. Vérifiés dans Chromium 131.
+
+     1. sanitizeModelResponse — CORRECTIF CRITIQUE
+        Faisait `div.innerHTML = raw` sur un élément détaché avant de renvoyer textContent.
+        Or innerHTML lance le chargement des ressources MÊME hors du document :
+        `<img src=x onerror=…>` s'exécutait, de façon asynchrone, avant la neutralisation.
+        → remplacé par DOMParser.parseFromString(…, 'text/html'), document INERTE.
+        12 payloads re-testés avec attente asynchrone : tous inertes. Logique métier
+        (sup/sub/strong/em/code/br, spans chimie → LaTeX) inchangée, 12 tests de non-régression.
+
+     2. escapeHtml — n'échappait que & < > : insuffisant en contexte d'ATTRIBUT.
+        `title='${x}'` avec x = `' onmouseover='…'` injectait un gestionnaire (reproduit).
+        → échappe désormais aussi " et '. Ajout de safeColor() pour les couleurs CSS
+        interpolées dans des attributs style.
+
+     3. Échappement des données synchronisées depuis GitHub (vecteur SANS clic : il suffit
+        qu'un titre piégé arrive par la synchro et que la sidebar se rende) :
+        titres de chat, tag modèle, noms/couleurs/defaultModel de projet, noms et icônes de
+        profil, badge de fournisseur inconnu, modèles favoris, badge projet + tag modèle des
+        résultats de recherche, S.model du panneau de paramètres, modèles du bandeau Triple
+        Check dégradé, noms de fichiers uploadés.
+
+     4. sanitizeRenderedUrls() — marked transformait `[clic](javascript:…)` en lien actif.
+        Nouvelle passe (DOMParser) après marked.parse et AVANT l'ajout des boutons, qui
+        portent des onclick légitimes. Schémas autorisés : http/https/mailto/tel/ftp
+        + data:image/*. Ajoute rel="noopener noreferrer", supprime tout attribut on* résiduel.
+        Bloqués : javascript: (toutes casses), data:text/html, vbscript:, java&#09;script:.
+
+     5. Liste des repos GitHub — rp.name était interpolé en HTML ET dans une chaîne JS d'un
+        attribut onclick (double contexte). Refactorisé en createElement + textContent
+        + addEventListener : plus aucune interpolation dans du code exécutable.
+
+     6. renderCostStats — costStatsDaily est synchronisé et `x || 0` laisse passer une CHAÎNE
+        non vide (truthy) injectée telle quelle ; toLocaleString existe aussi sur
+        String.prototype. → coercition numérique explicite sur compteurs, totaux et tokens.
+
+     7. Normalisation de `lang` avant interpolation dans un attribut onclick.
+
+     NON TRAITÉ (demande un test dédié, risque de casser CDN et iframes Artifact) :
+       • Content-Security-Policy — absente. Filet qui bloquerait l'exfiltration même en cas
+         d'XSS réussie. connect-src à limiter aux 7 API + api.github.com.
+       • ghToken toujours en clair dans localStorage, contrairement aux clés API.
+     RAPPEL : l'iframe Artifact est correctement sandboxée (allow-scripts SANS
+     allow-same-origin) — ne pas ajouter allow-same-origin, cela donnerait au code des
+     modèles un accès direct aux clés.
+
   V52 — 23 juillet 2026 — Mise à jour modèles + sélection personnalisée.
      Modèles (vérification web du 23/07) :
        • Gemini : ajout gemini-3.6-flash (GA 21/07, $1.50/$7.50, 17% tokens en moins que 3.5 Flash) et gemini-3.5-flash-lite (GA 21/07, $0.30/$2.50, ultra-low latency). Gemini 3.5 Pro toujours en partner testing → non listé.
@@ -2489,12 +2539,14 @@ function renderFilePreview() {
     const chip = document.createElement('div');
     chip.className = 'file-chip';
     chip.style.border = f.supported ? '1px solid #3f3f46' : '1px solid #f8717144';
+    // V53 — SÉCURITÉ : f.name vient du système de fichiers. Un fichier peut être nommé
+    // `<img src=x onerror=…>.pdf` (reçu par mail, clé USB…) → échappement systématique.
     if (f.objectUrl) {
-      chip.innerHTML = `<img src="${f.objectUrl}" alt="${f.name}">`;
+      chip.innerHTML = `<img src="${f.objectUrl}" alt="${escapeHtml(f.name)}">`;
     } else {
-      chip.innerHTML = `<span class="file-icon" title="${f.label}">${f.icon}</span>`;
+      chip.innerHTML = `<span class="file-icon" title="${escapeHtml(f.label)}">${escapeHtml(f.icon)}</span>`;
     }
-    chip.innerHTML += `<span class="file-name" title="${f.name}">${f.name}</span>`;
+    chip.innerHTML += `<span class="file-name" title="${escapeHtml(f.name)}">${escapeHtml(f.name)}</span>`;
     if (f.extractedText) {
       chip.innerHTML += `<span style="font-size:10px;color:#4ade80;margin-left:3px" title="Texte extrait (${f.extractedText.length} caractères)">✓</span>`;
     } else if (!f.supported) {
@@ -3120,8 +3172,9 @@ function providerBadgeHtml(provider) {
     "MISTRAL":      ["badge-mistral",   "Mistral"],
     "Z.AI":         ["badge-zai",       "GLM"]
   };
+  // V53 — SÉCURITÉ : provider inconnu → le label est la valeur brute (synchronisée) → échappé.
   const [cls, label] = map[provider] || ["badge-openai", provider];
-  return `<span class="provider-badge ${cls}">${label}</span>`;
+  return `<span class="provider-badge ${cls}">${escapeHtml(label)}</span>`;
 }
 
 // ─────────────────────────────────────────────────
@@ -3494,7 +3547,7 @@ function setProjectDefaultModel(projectId, anchor) {
     const lockPopup = document.createElement('div');
     lockPopup.className = 'proj-model-popup';
     lockPopup.style.cssText = 'position:fixed;z-index:9999;background:#1a1a22;border:1px solid #ff720055;border-radius:10px;padding:14px 16px;min-width:280px;max-width:320px;box-shadow:0 8px 32px rgba(0,0,0,.5);font-size:13px;line-height:1.5;color:#e0e2e8';
-    lockPopup.innerHTML = `<div style="color:#ff7200;font-weight:600;margin-bottom:8px">🔒 Modèle verrouillé</div><div style="color:#9ca3af">Le projet <b style="color:#e0e2e8">"${p.name}"</b> est figé sur <code style="background:#ffffff10;padding:2px 6px;border-radius:4px;color:#ff7200">${lockedM}</code> pour économiser les coûts. Cette restriction ne peut pas être modifiée tant que le projet porte ce nom.</div>`;
+    lockPopup.innerHTML = `<div style="color:#ff7200;font-weight:600;margin-bottom:8px">🔒 Modèle verrouillé</div><div style="color:#9ca3af">Le projet <b style="color:#e0e2e8">"${escapeHtml(p.name)}"</b> est figé sur <code style="background:#ffffff10;padding:2px 6px;border-radius:4px;color:#ff7200">${escapeHtml(lockedM)}</code> pour économiser les coûts. Cette restriction ne peut pas être modifiée tant que le projet porte ce nom.</div>`;
     document.body.appendChild(lockPopup);
     const rectL = anchor.getBoundingClientRect();
     lockPopup.style.top = Math.min(rectL.bottom + 4, window.innerHeight - 180) + 'px';
@@ -3671,7 +3724,8 @@ function chatRow(c, indent = false) {
   // Sous-titre : date + modèle séparés par un ·
   const parts = [dateStr, modelName].filter(Boolean);
   if (c._archived) parts.unshift('🗄 archivé');
-  const subTag = parts.length ? `<span class='chat-model-tag'>${parts.join(' · ')}</span>` : '';
+  // V53 — SÉCURITÉ : modelName vient des messages synchronisés depuis GitHub → échappé.
+  const subTag = parts.length ? `<span class='chat-model-tag'>${escapeHtml(parts.join(' · '))}</span>` : '';
   
   // Étoile (visible pour les chats dans un projet)
   const isStarred = !!c._starred;
@@ -3681,7 +3735,7 @@ function chatRow(c, indent = false) {
   d.innerHTML = `
     ${starHtml}
     <div class='chat-name-wrap'>
-      <span class='name' title='${c.title}'>${c.title}</span>
+      <span class='name' title='${escapeHtml(c.title)}'>${escapeHtml(c.title)}</span>
       ${subTag}
     </div>
     <button class='chat-menu-btn' data-a='menu' title='Options'>⋯</button>
@@ -3767,7 +3821,8 @@ function openChatContextMenu(chatId, anchor) {
     if (p.id === chat.projectId) return; // déjà dans ce projet
     const item = document.createElement('div');
     item.className = 'ctx-sub';
-    item.innerHTML = `<span class="proj-dot" style="background:${p.color || '#888'}"></span>${p.name}`;
+    // V53 — SÉCURITÉ : p.name et p.color sont synchronisés depuis GitHub → échappés/validés.
+    item.innerHTML = `<span class="proj-dot" style="background:${safeColor(p.color)}"></span>${escapeHtml(p.name)}`;
     item.onclick = e => { e.stopPropagation(); chat.projectId = p.id; save(); render(); closeChatContextMenu(); };
     menu.appendChild(item);
   });
@@ -3933,12 +3988,13 @@ function renderChats() {
     h.className = "item project-item" + (p.id === S.activeProject ? " active" : "");
     h.style.borderLeftColor = p.color || PROJECT_COLORS[0];
     const dotColor = p.color || PROJECT_COLORS[0];
-    const projModelTag = p.defaultModel ? `<span style="font-size:9px;color:#6b7280;display:block;margin-top:1px">${p.defaultModel}</span>` : '';
+    // V53 — SÉCURITÉ : p.defaultModel est synchronisé depuis GitHub → échappé.
+    const projModelTag = p.defaultModel ? `<span style="font-size:9px;color:#6b7280;display:block;margin-top:1px">${escapeHtml(p.defaultModel)}</span>` : '';
     h.innerHTML = `
       <span class='proj-toggle' data-a='toggle' title='${isCollapsed ? "Déplier" : "Replier"}'>${isCollapsed ? '▶' : '▼'}</span>
-      <span class='proj-dot' style='background:${dotColor}' title='Couleur projet'></span>
+      <span class='proj-dot' style='background:${safeColor(dotColor)}' title='Couleur projet'></span>
       <div style="flex:1;overflow:hidden;min-width:0">
-        <span class='name' title='${p.name}'>${p.name}</span>
+        <span class='name' title='${escapeHtml(p.name)}'>${escapeHtml(p.name)}</span>
         ${projModelTag}
       </div>
       <span class='quota-counter${projCls}' title='${projCounterTitle}'>${projUsed}/${projLim}</span>
@@ -4008,11 +4064,94 @@ function renderChats() {
 // ─────────────────────────────────────────────────
 // FORMATAGE DES MESSAGES
 // ─────────────────────────────────────────────────
+/**
+ * V53 — SÉCURITÉ : échappement HTML complet.
+ * L'ancienne version n'échappait que & < > — insuffisant en contexte d'ATTRIBUT :
+ * `title='${x}'` avec x = `' onmouseover='...'` injectait un gestionnaire d'événement
+ * (vérifié : l'attribut était bien créé dans le DOM). On échappe donc aussi " et '.
+ * Les entités &quot; / &#39; s'affichent normalement comme " et ' à l'écran.
+ */
 function escapeHtml(str) {
-  return (str || "")
+  return String(str ?? "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/**
+ * V53 — SÉCURITÉ : couleur CSS injectée dans un attribut style.
+ * Sans validation, p.color = `red" onload="…` ou `#fff"><img src=x onerror=…>`
+ * permet de sortir de l'attribut. On n'accepte que des couleurs bien formées.
+ */
+function safeColor(c, fallback = '#888') {
+  const v = String(c ?? '').trim();
+  // Regex littérale inline : évite toute temporal dead zone si appelée tôt au chargement.
+  return /^(#[0-9a-f]{3,8}|rgba?\([\d\s.,%]+\)|hsla?\([\d\s.,%deg]+\)|[a-z]{3,20})$/i.test(v)
+    ? v : fallback;
+}
+
+/**
+ * V53 — SÉCURITÉ : neutralise les URL exécutables et les gestionnaires d'événements
+ * dans le HTML produit par marked.
+ *
+ * Pourquoi DOMParser et non `div.innerHTML = html` : le document créé par DOMParser est
+ * INERTE — aucune ressource n'est chargée, aucun `onerror` ne se déclenche pendant l'analyse.
+ * Passer par innerHTML sur un div détaché exposerait au risque inverse.
+ *
+ * Schémas autorisés : http, https, mailto, tel, ftp + `data:image/*` (images markdown
+ * légitimes). Tout le reste — javascript:, vbscript:, data:text/html, file: — est neutralisé.
+ * Le test porte sur le schéma APRÈS décodage effectué par le parser, ce qui couvre
+ * les contournements par entités HTML ou caractères de contrôle (`java&#09;script:`).
+ */
+function sanitizeRenderedUrls(html) {
+  // Sortie rapide : renderMessages() reconstruit tous les messages, on évite un
+  // DOMParser inutile sur les réponses sans lien, sans image et sans attribut on*.
+  // (Un simple includes('on') matcherait "bon", "on", … et ne filtrerait rien.)
+  if (!html || (!/<a[\s>]/i.test(html) && !/<img[\s>]/i.test(html) && !/\son[a-z]+\s*=/i.test(html))) return html;
+  let doc;
+  try {
+    doc = new DOMParser().parseFromString(html, 'text/html');
+  } catch (e) {
+    return html;                       // parser indisponible : on renvoie tel quel
+  }
+
+  const SAFE_SCHEME = /^(https?|mailto|tel|ftp):/i;
+  const isSafeUrl = (raw, allowDataImage) => {
+    // Le parser a déjà décodé les entités ; on retire espaces et caractères de contrôle
+    // (\u0000-\u0020) que les navigateurs ignorent aussi lors de la résolution d'URL.
+    const v = String(raw || '').replace(/[\u0000-\u0020]/g, '');
+    if (!v) return false;
+    if (allowDataImage && /^data:image\/(png|jpe?g|gif|webp|avif|bmp);base64,/i.test(v)) return true;
+    if (/^[a-z][a-z0-9+.-]*:/i.test(v)) return SAFE_SCHEME.test(v);  // schéma explicite
+    return true;                       // URL relative ou ancre → sans danger
+  };
+
+  doc.querySelectorAll('a[href]').forEach(a => {
+    if (!isSafeUrl(a.getAttribute('href'), false)) {
+      a.removeAttribute('href');
+      a.setAttribute('title', 'Lien bloqué pour raison de sécurité');
+      a.style.textDecoration = 'line-through';
+      a.style.opacity = '.6';
+    } else {
+      a.setAttribute('rel', 'noopener noreferrer');   // évite l'accès à window.opener
+      a.setAttribute('target', '_blank');
+    }
+  });
+
+  doc.querySelectorAll('img[src]').forEach(img => {
+    if (!isSafeUrl(img.getAttribute('src'), true)) img.removeAttribute('src');
+  });
+
+  // Filet : aucun gestionnaire inline n'a de raison d'exister à ce stade du pipeline.
+  doc.querySelectorAll('*').forEach(node => {
+    [...node.attributes].forEach(attr => {
+      if (/^on/i.test(attr.name)) node.removeAttribute(attr.name);
+    });
+  });
+
+  return doc.body.innerHTML;
 }
 
 function formatInline(text) {
@@ -4033,9 +4172,21 @@ function sanitizeModelResponse(raw) {
   // Sortie rapide si pas de HTML
   if (!raw || !raw.includes('<')) return raw;
 
-  // Utiliser le parser DOM du navigateur — pas de regex complexe
-  const tmp = document.createElement('div');
-  tmp.innerHTML = raw;
+  // V53 — SÉCURITÉ (correctif critique) : on utilise DOMParser et NON `div.innerHTML = raw`.
+  // Assigner innerHTML — même sur un élément DÉTACHÉ, jamais inséré dans la page — lance
+  // le chargement des ressources : `<img src=x onerror="…">` déclenche bien son gestionnaire.
+  // La fonction renvoie pourtant du textContent, ce qui donnait l'illusion d'être sûre : le
+  // code s'exécutait AVANT que le HTML soit neutralisé, et de façon asynchrone (d'où un test
+  // synchrone qui ne le détecte pas).
+  // DOMParser.parseFromString(..., 'text/html') produit un document INERTE : aucune ressource
+  // n'est chargée, aucun gestionnaire ne se déclenche. Les manipulations ci-dessous sont
+  // identiques (querySelectorAll / replaceWith / textContent fonctionnent de la même façon).
+  let tmp;
+  try {
+    tmp = new DOMParser().parseFromString(String(raw), 'text/html').body;
+  } catch (e) {
+    return String(raw).replace(/</g, '&lt;').replace(/>/g, '&gt;');  // repli : neutraliser
+  }
 
   // ── Étape 1 : éléments feuilles d'abord ──────────────────────
   // (ils sont à l'intérieur des spans → traiter avant les spans)
@@ -4329,6 +4480,14 @@ function formatAssistantContent(text) {
 
   let html = marked.parse(text, { gfm: true, breaks: false });
 
+  // V53 — SÉCURITÉ : neutraliser les URL exécutables produites par le markdown.
+  // sanitizeModelResponse renvoie du texte pur, donc marked ne voit pas de HTML brut ;
+  // en revanche `[clic](javascript:…)` produit bien un <a href="javascript:…"> actif.
+  // Un clic suffirait alors à exécuter du code AVEC accès aux clés API déchiffrées en mémoire.
+  // Placé ICI (avant l'ajout des boutons) : à ce stade aucun on* légitime n'existe encore,
+  // on peut donc tous les supprimer sans casser les boutons Copier/Artifact ajoutés ensuite.
+  html = sanitizeRenderedUrls(html);
+
   // Boutons copier sur les blocs de code + bouton Artifact pour HTML/SVG/CSS
   html = html.replace(/<pre><code class="language-(\w+)">/g, (_, l) => {
     const isMarkdown = /^(markdown|md)$/i.test(l);
@@ -4369,6 +4528,11 @@ function formatAssistantContent(text) {
     const pre = codeEl.parentElement;
     const header = pre.previousElementSibling;
     const lang = header?.querySelector('span')?.textContent || 'code';
+    // V53 — SÉCURITÉ : `lang` est relu depuis le DOM puis réinjecté dans une chaîne JS
+    // d'un attribut onclick (double contexte). Il provient d'une regex \w+ donc il est sain
+    // en pratique, mais on le normalise pour que ce soit vrai par construction et non par
+    // dépendance à un invariant distant.
+    const langSafe = (String(lang).match(/[A-Za-z0-9_+-]{1,20}/) || ['code'])[0];
     const ext = { html:'html', javascript:'js', js:'js', python:'py', css:'css', json:'json', typescript:'ts', bash:'sh', shell:'sh', sql:'sql', xml:'xml', yaml:'yml', markdown:'md' }[lang.toLowerCase()] || 'txt';
     const filename = `code.${ext}`;
 
@@ -4385,9 +4549,9 @@ function formatAssistantContent(text) {
     wrapper.className = 'collapsed-code';
     wrapper.innerHTML = `
       <div class="code-header">
-        <span>${lang} · ${lineCount} lignes</span>
+        <span>${escapeHtml(lang)} · ${lineCount} lignes</span>
         <div style="display:flex;gap:6px">
-          <button class="copy-code-btn"${artifactStyle} onclick="openArtifactFromBtn(this, '${lang}')" title="${isMdBlock ? 'Ouvrir comme document professionnel' : 'Ouvrir dans le panneau Artifact'}">${artifactLabel}</button>
+          <button class="copy-code-btn"${artifactStyle} onclick="openArtifactFromBtn(this, '${langSafe}')" title="${isMdBlock ? 'Ouvrir comme document professionnel' : 'Ouvrir dans le panneau Artifact'}">${artifactLabel}</button>
           <button class="copy-code-btn" onclick="this.closest('.collapsed-code').querySelector('details').open=!this.closest('.collapsed-code').querySelector('details').open;this.textContent=this.closest('.collapsed-code').querySelector('details').open?'Replier':'Déplier'">Déplier</button>
           <button class="copy-code-btn" onclick="copyCodeBlock(this)">Copier</button>
           <button class="copy-code-btn" onclick="downloadCodeBlock(this, '${filename}')">⬇ ${filename}</button>
@@ -5656,7 +5820,9 @@ function renderMessages() {
             const reason = (x.err && /quota|insufficient|billing|payment/i.test(x.err)) ? 'quota épuisé'
                          : (x.err && /authentication|invalid_api_key|permission/i.test(x.err)) ? 'clé API invalide'
                          : 'indisponible';
-            return `Phase ${x.idx} (${x.model}) ignorée : <strong>${reason}</strong>`;
+            // V53 — SÉCURITÉ : x.model vient de m._tripleCheckModels, stocké dans le message
+            // et donc synchronisé depuis GitHub. `reason` et `x.idx` sont sûrs par construction.
+            return `Phase ${x.idx} (${escapeHtml(x.model)}) ignorée : <strong>${reason}</strong>`;
           }).join(' · ');
           warn.innerHTML = `⚠ <strong>Triple Check dégradé</strong> — ${lines}. La réponse a été générée avec les modèles restants.`;
           foot.appendChild(warn);
@@ -5894,11 +6060,13 @@ function renderModels() {
   // ── Groupe favoris ──
   if (favs.length) {
     html += '<div class="model-dd-group">⭐ Les plus utilisés</div>';
+    // V53 — SÉCURITÉ : S.favoriteModels est synchronisé depuis GitHub → échappé.
     favs.forEach(m => {
       const isActive = m === S.model ? ' active' : '';
-      html += `<div class="model-dd-item${isActive}" data-model="${m}">
-        <span class="model-name">${m}</span>
-        <span class="model-dd-dots" data-fav-remove="${m}" title="Retirer des favoris">✕</span>
+      const me = escapeHtml(m);
+      html += `<div class="model-dd-item${isActive}" data-model="${me}">
+        <span class="model-name">${me}</span>
+        <span class="model-dd-dots" data-fav-remove="${me}" title="Retirer des favoris">✕</span>
       </div>`;
     });
     html += '<div class="model-dd-sep"></div>';
@@ -6116,7 +6284,7 @@ function renderParams() {
       <h3>⚙ Paramètres LLM</h3>
       <button class="params-close" id="paramsCloseBtn">✕</button>
     </div>
-    <div style="padding:4px 18px 0;font-size:11px;color:var(--muted)">Modèle : <strong style="color:#c9d0db">${S.model}</strong> · ${provider}</div>
+    <div style="padding:4px 18px 0;font-size:11px;color:var(--muted)">Modèle : <strong style="color:#c9d0db">${escapeHtml(S.model)}</strong> · ${escapeHtml(provider)}</div>
 
     <!-- ÉCHANTILLONNAGE -->
     <div class="params-section">
@@ -7866,18 +8034,24 @@ function renderCostStats() {
   if (!body) return;
   const s = getCurrentMonthStats();
   const month = new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
-  const total = (s.solo || 0) + (s.tripleEco || 0) + (s.triplePremium || 0) + (s.deepResearch || 0);
-  const totalCount = (s.soloCount || 0) + (s.tripleEcoCount || 0) + (s.triplePremiumCount || 0) + (s.deepResearchCount || 0);
+  // V53 — SÉCURITÉ : costStatsDaily est synchronisé depuis GitHub. `x || 0` laisse passer
+  // une CHAÎNE non vide (truthy), qui serait ensuite concaténée puis injectée en HTML
+  // → coercition numérique explicite, qui garantit aussi que fmtUSD reçoit un nombre.
+  const _n = v => Number.isFinite(Number(v)) ? Number(v) : 0;
+  const total = _n(s.solo) + _n(s.tripleEco) + _n(s.triplePremium) + _n(s.deepResearch);
+  const totalCount = _n(s.soloCount) + _n(s.tripleEcoCount) + _n(s.triplePremiumCount) + _n(s.deepResearchCount);
 
   let html = `<div style="text-transform:capitalize;color:#cbd5e1;margin-bottom:4px">${month}</div>`;
   html += `<div style="display:grid;grid-template-columns:1fr auto auto;gap:4px 12px;font-variant-numeric:tabular-nums">`;
-  html += `<span>Solo (1 modèle)</span><span>${s.soloCount || 0}×</span><span style="color:#cbd5e1">${fmtUSD(s.solo || 0)}</span>`;
-  html += `<span>🔺 Triple Check ÉCO</span><span>${s.tripleEcoCount || 0}×</span><span style="color:#ef4444">${fmtUSD(s.tripleEco || 0)}</span>`;
-  html += `<span>🔺 Triple Check PREMIUM</span><span>${s.triplePremiumCount || 0}×</span><span style="color:#fbbf24">${fmtUSD(s.triplePremium || 0)}</span>`;
+  html += `<span>Solo (1 modèle)</span><span>${_n(s.soloCount)}×</span><span style="color:#cbd5e1">${fmtUSD(_n(s.solo))}</span>`;
+  html += `<span>🔺 Triple Check ÉCO</span><span>${_n(s.tripleEcoCount)}×</span><span style="color:#ef4444">${fmtUSD(_n(s.tripleEco))}</span>`;
+  html += `<span>🔺 Triple Check PREMIUM</span><span>${_n(s.triplePremiumCount)}×</span><span style="color:#fbbf24">${fmtUSD(_n(s.triplePremium))}</span>`;
   html += `<span style="border-top:1px solid #2c2c2c;padding-top:4px;font-weight:600;color:#e2e8f0">TOTAL du mois</span><span style="border-top:1px solid #2c2c2c;padding-top:4px;font-weight:600;color:#e2e8f0">${totalCount}×</span><span style="border-top:1px solid #2c2c2c;padding-top:4px;font-weight:600;color:#22c55e">${fmtUSD(total)}</span>`;
   html += `</div>`;
   if (s.totalTokensIn || s.totalTokensOut) {
-    const fmt = n => (n || 0).toLocaleString('fr-FR');
+    // V53 — SÉCURITÉ : toLocaleString existe aussi sur String.prototype, donc une CHAÎNE
+    // synchronisée traverserait ce formatage intacte → on passe par _n() comme ci-dessus.
+    const fmt = n => _n(n).toLocaleString('fr-FR');
     html += `<div style="font-size:10px;color:#6b7280;margin-top:6px">Tokens : ${fmt(s.totalTokensIn)} in / ${fmt(s.totalTokensOut)} out</div>`;
   }
   body.innerHTML = html;
@@ -8961,8 +9135,8 @@ function renderProfiles() {
     const d = document.createElement("div");
     d.className = "profile-item" + (isActive ? " active" : "");
     d.innerHTML = `
-      <span class="profile-icon">${p.icon || "🤖"}</span>
-      <span class="profile-name" title="${p.name}">${p.name}</span>
+      <span class="profile-icon">${escapeHtml(p.icon || "🤖")}</span>
+      <span class="profile-name" title="${escapeHtml(p.name)}">${escapeHtml(p.name)}</span>
       <span class="profile-active-dot" title="${isActive ? 'Actif (cliquer pour désactiver)' : 'Inactif (cliquer pour activer)'}"></span>
       <div class="profile-btns">
         <button class="profile-btn" data-a="edit"  title="Modifier">✎</button>
@@ -10017,15 +10191,38 @@ async function ghListRepos() {
     }
     ghStatus(`✅ ${repos.length} repo(s) trouvé(s) — cliquez sur le bon pour le sélectionner :`, "ok");
     listEl.style.display = "block";
-    listEl.innerHTML = repos.map(rp => `
-      <div style="padding:5px 8px;border-radius:6px;cursor:pointer;display:flex;gap:6px;align-items:center"
-           onmouseover="this.style.background='#222'" onmouseout="this.style.background=''"
-           onclick="el('ghRepo').value='${rp.name}';ghAutoSave();el('ghReposList').style.display='none';ghStatus('Repo sélectionné : ${rp.name}','ok')">
-        <span style="color:${rp.private?'#7baaf7':'#6abf69'}">${rp.private ? '🔒' : '🌐'}</span>
-        <span style="color:#e2e8f0;font-weight:500">${rp.name}</span>
-        <span style="color:#6b7280;font-size:11px;margin-left:auto">${rp.private?'privé':'public'}</span>
-      </div>
-    `).join("");
+    // V53 — SÉCURITÉ : rp.name est une donnée externe (réponse de l'API GitHub) qui était
+    // interpolée à la fois en HTML ET dans une chaîne JS d'un attribut onclick — double
+    // contexte, difficile à échapper correctement. On construit les nœuds par le DOM et on
+    // attache les gestionnaires en JS : plus aucune interpolation dans du code exécutable.
+    listEl.innerHTML = "";
+    repos.forEach(rp => {
+      const row = document.createElement('div');
+      row.style.cssText = 'padding:5px 8px;border-radius:6px;cursor:pointer;display:flex;gap:6px;align-items:center';
+      row.onmouseover = () => { row.style.background = '#222'; };
+      row.onmouseout  = () => { row.style.background = ''; };
+
+      const lock = document.createElement('span');
+      lock.style.color = rp.private ? '#7baaf7' : '#6abf69';
+      lock.textContent = rp.private ? '🔒' : '🌐';
+
+      const nameEl = document.createElement('span');
+      nameEl.style.cssText = 'color:#e2e8f0;font-weight:500';
+      nameEl.textContent = rp.name;                    // textContent : jamais interprété
+
+      const vis = document.createElement('span');
+      vis.style.cssText = 'color:#6b7280;font-size:11px;margin-left:auto';
+      vis.textContent = rp.private ? 'privé' : 'public';
+
+      row.append(lock, nameEl, vis);
+      row.onclick = () => {
+        el('ghRepo').value = rp.name;
+        ghAutoSave();
+        el('ghReposList').style.display = 'none';
+        ghStatus('Repo sélectionné : ' + rp.name, 'ok');
+      };
+      listEl.appendChild(row);
+    });
   } catch(e) {
     ghStatus("❌ " + e.message, "err");
   }
@@ -10218,8 +10415,12 @@ function renderSearchResults(query) {
     item.className = 'search-result-item' + (r.chatId === S.activeChat ? ' active' : '');
 
     // Badge projet
+    // V53 — SÉCURITÉ : project.color/.name viennent de la synchro GitHub.
+    // La couleur est concaténée avec un suffixe d'opacité (22/44) → on valide le format
+    // hexadécimal, sinon on retombe sur une couleur neutre.
+    const _pc = /^#[0-9a-f]{6}$/i.test(String(r.project?.color || '')) ? r.project.color : '#888888';
     const projBadge = r.project
-      ? `<span class="proj-badge" style="background:${r.project.color}22;color:${r.project.color};border:1px solid ${r.project.color}44">${r.project.name}</span>`
+      ? `<span class="proj-badge" style="background:${_pc}22;color:${_pc};border:1px solid ${_pc}44">${escapeHtml(r.project.name)}</span>`
       : '';
 
     // Aperçu du meilleur match
@@ -10231,7 +10432,7 @@ function renderSearchResults(query) {
 
     // Meta
     const modelTag = r.bestMatch?.model
-      ? `<span class="model-tag">${r.bestMatch.model}</span>`
+      ? `<span class="model-tag">${escapeHtml(r.bestMatch.model)}</span>`
       : '';
 
     item.innerHTML = `
