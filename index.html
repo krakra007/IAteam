@@ -1600,6 +1600,59 @@
        • Triple Check PREMIUM : phase 3 Sonnet 4.5 → Sonnet 5 (moins cher en tarif intro 2/10 vs 3/15, plus performant ; Sonnet 4.5 part en retraite dès le 29/09/2026).
        • Gemini / Groq / Mistral / Z.ai : listes revérifiées le 14/07/2026, aucune modification nécessaire (gemini-3.5-flash GA, gpt-oss-120b/20b + qwen3.6-27b, Medium 3.5 / Small 4 / Large 3, glm-5.2 / glm-4.7 tous confirmés).
 
+  V54 — 31 juillet 2026 — Mise à jour catalogue : 43 → 29 modèles.
+     Vérification web des 7 fournisseurs le 31/07/2026.
+
+     AJOUT
+       • claude-opus-5 (24 juil. 2026) — nouveau flagship Opus, 1M contexte, 128K sortie,
+         tarif inchangé 5/25. Aucune adaptation de code nécessaire : claudeSamplingAllowed(),
+         claudeThinkingMode() et claudeEffortForModel() utilisent des règles génériques
+         (major >= 5) écrites en V51 qui le couvrent déjà. Vérifié par test.
+
+     BAISSES TARIFAIRES OpenAI (30/07/2026)
+       • gpt-5.6-terra : 2.50/15 → 2/12 (−20 %)
+       • gpt-5.6-luna  : 1/6 → 0.20/1.20 (−80 %). Luna devient le plancher tarifaire
+         du catalogue, moins cher que gemini-3.1-flash-lite en entrée.
+       • gpt-5.6 (Sol) inchangé à 5/30.
+
+     RETRAITS DU CATALOGUE (14 modèles) — tous conservés dans MODEL_MIGRATIONS + TOKEN_PRICES
+       • Anthropic : Opus 4.6/4.7/4.8, Sonnet 4.5/4.6. Toujours appelables (aucune date de
+         retrait annoncée) mais hors catalogue self-serve, qui ne liste plus que 4 IDs.
+       • OpenAI : GPT-5.5, 5.5-pro, 5.4, 5.4-mini, 5.4-nano, 4.1, 4.1-mini — classés
+         « legacy », absents de la page tarifaire courante. Le groupe « OpenAI GPT-4 »
+         disparaît de fait.
+       • Gemini : famille 2.5 (pro/flash/flash-lite) — RETRAIT PROGRAMMÉ par Google au
+         16/10/2026, anticipé ici.
+
+     CONSÉQUENCES TRAITÉES
+       • MODEL_MIGRATIONS étendu de 2 à 17 entrées. Indispensable : un chat ou un projet
+         créé avant ces retraits — y compris arrivé par la synchro GitHub depuis une machine
+         encore en V53 — bascule silencieusement sur le successeur au lieu de retomber sur
+         le défaut sans explication. Vérifié : toutes les cibles existent, aucune chaîne.
+       • Le modèle par défaut était gemini-2.5-flash (retiré) → gemini-3.5-flash-lite,
+         choisi car son tarif est IDENTIQUE (0.30/2.50) tout en étant plus récent.
+         Corrigé aux 8 emplacements concernés (défaut global, favoris, replis, post-pull).
+       • ghPullSilent applique désormais migrateModelId() au modèle reçu : l'autre machine
+         peut encore envoyer un ID retiré.
+       • TRIPLE_CHECK_PRESETS utilisait gemini-2.5-flash (phase 1) et gpt-5.4-mini (phase 2),
+         tous deux retirés → gemini-3.1-flash-lite et gpt-5.6-luna. Les successeurs étant
+         moins chers, le coût indicatif baisse : ÉCO 13.05 → 9.15, PREMIUM 23.05 → 15.15
+         (somme in+out par M de tokens). Structure d'origine préservée (phases 1-2 communes
+         aux deux modes, seule la phase 3 distingue Haiku 4.5 de Sonnet 5).
+       • Tarifs des modèles retirés CONSERVÉS dans TOKEN_PRICES : sans cela le coût des
+         anciens messages cesserait de s'afficher.
+
+     INCHANGÉS APRÈS VÉRIFICATION : DeepSeek (V4 Pro/Flash ; les alias deepseek-chat et
+     deepseek-reasoner sont bien morts le 24/07 comme prévu — la migration V51 a fonctionné),
+     Groq, Mistral, Z.ai, et tous les tarifs Gemini restants.
+
+     NON TRANCHÉ — sources contradictoires, valeurs actuelles conservées plutôt qu'un
+     tarif erroné ; à vérifier sur les pages officielles si le suivi de coût compte :
+       • mistral-small-latest : 0.10/0.30 (retenu) vs 0.15/0.60 selon les sources.
+       • devstral-small-latest : 0.15/0.45 (retenu) vs 0.10/0.30.
+       • glm-4.7 : 0.60/2.20 (retenu) vs 0.40/1.75 selon un agrégateur.
+     RAPPEL : le tarif intro de Sonnet 5 (2/10) expire le 31/08/2026 → repassera à 3/15.
+
   V53 — 26 juillet 2026 — Durcissement sécurité (XSS → exfiltration de clés API).
      Contexte : le coffre AES-GCM protège les clés SUR LE DISQUE, mais une fois déverrouillé
      apiKeysByProvider est en clair EN MÉMOIRE pour toute la session. Tout code JS exécuté
@@ -1971,67 +2024,63 @@ const MODEL_GROUPS = [
   //    Claude Opus 4.8 (28 mai 2026) reste le flagship Opus.
   // ⚠ API Fable 5 / Sonnet 5 : thinking toujours actif (thinking:{type:"disabled"} → 400),
   //   paramètres de sampling non-défaut rejetés → gérés par claudeSamplingAllowed() ci-dessous.
+  // Source : platform.claude.com/docs — vérifié 31 juillet 2026
+  // V54 — Catalogue self-serve Anthropic réduit aux 4 IDs courants :
+  //    Claude Opus 5 (24 juil. 2026) — nouveau flagship Opus, 1M ctx, 128K out, 5/25.
+  //    Claude Fable 5 — classe Mythos, le plus capable en GA (rétabli 01/07/2026), 10/50.
+  //    Claude Sonnet 5 (30 juin 2026) — tarif intro 2/10 jusqu'au 31/08/2026, puis 3/15.
+  //    Claude Haiku 4.5 — le plus rapide / économique (seul de la gamme pas encore en 5).
+  // ⚠ Les Opus 4.6/4.7/4.8 et Sonnet 4.5/4.6 restent APPELABLES (aucune date de retrait
+  //   annoncée) mais ne figurent plus au catalogue → retirés de la liste, conservés dans
+  //   MODEL_MIGRATIONS et TOKEN_PRICES.
+  // ⚠ API Fable 5 / Sonnet 5 / Opus 5 : thinking toujours actif (thinking:{type:"disabled"}
+  //   → 400), paramètres de sampling non-défaut rejetés → gérés par claudeSamplingAllowed().
   {
     label: "Anthropic Claude",
     models: [
-      "claude-fable-5",        // 🆕 classe Mythos — le plus capable en GA (rétabli 01/07/2026), 10/50
-      "claude-opus-4-8",       // flagship Opus (28 mai 2026), reasoning + long-horizon coding
+      "claude-opus-5",         // 🆕 V54 — flagship Opus (24 juil. 2026), 1M ctx, 128K out, 5/25
+      "claude-fable-5",        // classe Mythos — le plus capable en GA (rétabli 01/07/2026), 10/50
       "claude-sonnet-5",       // Sonnet courant (30 juin 2026) — tarif intro 2/10 jusqu'au 31/08/2026
-      "claude-opus-4-7",       // Opus précédent (avril 2026), coding avancé, vision HD
-      "claude-sonnet-4-6",     // Sonnet précédent, bon rapport vitesse/intelligence
-      "claude-haiku-4-5-20251001", // le plus rapide / économique
-      "claude-opus-4-6",       // Opus antérieur (context 1M tokens)
-      "claude-sonnet-4-5"      // Sonnet antérieur (stable, retraite ≥ 29/09/2026)
+      "claude-haiku-4-5-20251001"  // le plus rapide / économique
     ]
   },
   // ── OpenAI GPT-5.x (Responses API) ────────────────
   // Source : developers.openai.com — vérifié 14 juillet 2026
   // Tous via Responses API (/v1/responses)
-  // 🆕 Famille GPT-5.6 en GA depuis le 9 juillet 2026 : Sol (flagship, alias gpt-5.6),
+  // Famille GPT-5.6 en GA depuis le 9 juillet 2026 : Sol (flagship, alias gpt-5.6),
   //    Terra (équilibré) et Luna (économique). Contexte 1.05M, sortie max 128K.
+  // V54 — Baisse tarifaire du 30/07/2026 : Terra −20% (2/12), Luna −80% (0.20/1.20).
+  // ⚠ GPT-5.5, GPT-5.4 et GPT-4.1 ne figurent plus sur la page tarifaire courante d'OpenAI
+  //   (classés « legacy »). Toujours appelables → retirés de la liste, conservés dans
+  //   MODEL_MIGRATIONS et TOKEN_PRICES. Le groupe « OpenAI GPT-4 » disparaît de fait.
+  // NOTE : la série « o » (o3, o4-mini…) avait déjà été retirée — remplacée par le mode
+  //   raisonnement de la famille GPT-5.
   {
     label: "OpenAI GPT-5",
     models: [
-      "gpt-5.6",               // 🆕 GPT-5.6 Sol (9 juil 2026) — flagship raisonnement + coding, 5/30
-      "gpt-5.6-terra",         // 🆕 équilibre intelligence/coût, 2.50/15
-      "gpt-5.6-luna",          // 🆕 économique haut-volume, 1/6
-      "gpt-5.5",               // flagship précédent (avril 2026)
-      "gpt-5.5-pro",           // raisonnement maximal, plus lent (30/180)
-      "gpt-5.4",               // flagship antérieur (mars 2026), context 1M
-      "gpt-5.4-mini",          // rapide / économique
-      "gpt-5.4-nano"           // ultra-rapide / très économique
-    ]
-  },
-  // ── OpenAI GPT-4.x (Chat Completions) ─
-  // Restent disponibles via API (Chat Completions)
-  // NOTE : la série « o » (o3, o4-mini…) a été retirée — modèles legacy,
-  // remplacés par le mode raisonnement de la famille GPT-5.
-  {
-    label: "OpenAI GPT-4",
-    models: [
-      "gpt-4.1",               // stable, bon rapport qualité/coût
-      "gpt-4.1-mini"           // léger, rapide
+      "gpt-5.6",               // GPT-5.6 Sol (9 juil 2026) — flagship raisonnement + coding, 5/30
+      "gpt-5.6-terra",         // équilibre intelligence/coût, 2/12 depuis le 30/07/2026
+      "gpt-5.6-luna"           // économique haut-volume, 0.20/1.20 depuis le 30/07/2026
     ]
   },
   // ── Google Gemini ─────────────────────────────────
-  // Source : ai.google.dev/gemini-api/docs — vérifié 23 juillet 2026
-  // gemini-3.6-flash : GA 21 juillet 2026, nouveau workhorse Flash, 17% tokens en moins que 3.5 Flash.
-  // gemini-3.5-flash-lite : GA 21 juillet 2026, ultra-low latency, agentic search, $0.30/$2.50.
-  // gemini-3.5-flash : GA depuis I/O (19 mai 2026), flagship Flash agentic+coding (1.50/9).
-  // gemini-3.1-pro : GA (le suffixe -preview a disparu), context 2M.
-  // ⚠ gemini-2.0-flash ARRÊTÉ le 1er juin 2026.
-  // ⚠ gemini-3.5-pro toujours en partner testing au 23/07 → non listé.
+  // Source : ai.google.dev/gemini-api/docs — vérifié 31 juillet 2026
+  // gemini-3.6-flash : GA 21 juillet 2026, workhorse Flash, 17% tokens en moins que 3.5 Flash.
+  // gemini-3.5-flash-lite : GA 21 juillet 2026, ultra-low latency, agentic search.
+  // gemini-3.5-flash : GA depuis I/O (19 mai 2026), Flash agentic+coding (1.50/9).
+  // gemini-3.1-pro : GA, context 2M. gemini-3.1-flash-lite : le moins cher du catalogue.
+  // ⚠ V54 — La famille Gemini 2.5 (pro / flash / flash-lite) est programmée pour RETRAIT
+  //   le 16 octobre 2026 → retirée de la liste par anticipation, conservée dans
+  //   MODEL_MIGRATIONS et TOKEN_PRICES. gemini-2.0-flash était déjà arrêté (01/06/2026).
+  // ⚠ gemini-3.5-pro toujours en partner testing au 31/07 → non listé.
   {
     label: "Google Gemini",
     models: [
-      "gemini-3.6-flash",           // 🆕 21/07/2026, nouveau workhorse Flash, 1M ctx, $1.50/$7.50
-      "gemini-3.5-flash",           // I/O 2026, flagship Flash agentic+coding, 1M ctx
-      "gemini-3.5-flash-lite",      // 🆕 21/07/2026, ultra-low latency/cost, $0.30/$2.50
+      "gemini-3.6-flash",           // 21/07/2026, workhorse Flash, 1M ctx, 1.50/7.50
+      "gemini-3.5-flash",           // I/O 2026, Flash agentic+coding, 1M ctx, 1.50/9
+      "gemini-3.5-flash-lite",      // 21/07/2026, ultra-low latency/cost, 0.30/2.50
       "gemini-3.1-pro",             // GA — raisonnement avancé, grounding, 2M context
-      "gemini-3.1-flash-lite",      // GA, économique
-      "gemini-2.5-pro",             // stable production, thinking adaptatif
-      "gemini-2.5-flash",           // économique stable
-      "gemini-2.5-flash-lite"       // très économique stable
+      "gemini-3.1-flash-lite"       // le plus économique du catalogue, 0.25/1.50
     ]
   },
   // ── DeepSeek ──────────────────────────────────────
@@ -2112,9 +2161,40 @@ const CURATED_MODELS = MODEL_GROUPS.flatMap(g => g.models);
 // l'utilisateur vers le remplaçant officiel plutôt que de le renvoyer au
 // modèle par défaut (préserve son choix de fournisseur).
 // ─────────────────────────────────────────────────
+/**
+ * Table de migration des ID de modèles retirés du catalogue.
+ * Appliquée au chargement, au changement de conversation et sur les defaultModel de projet.
+ * OBJECTIF : un chat (ou un projet) créé avant un retrait — y compris arrivé par la synchro
+ * GitHub depuis une autre machine — bascule silencieusement sur le successeur au lieu de
+ * retomber sur le modèle par défaut sans explication.
+ * NOTE : les tarifs des modèles retirés restent dans TOKEN_PRICES pour que le coût des
+ * anciens messages continue de s'afficher correctement.
+ */
 const MODEL_MIGRATIONS = {
+  // DeepSeek — alias retirés le 24/07/2026 (V51)
   "deepseek-chat":     "deepseek-v4-flash", // alias retiré le 24/07/2026 (non-thinking)
-  "deepseek-reasoner": "deepseek-v4-flash"  // alias retiré le 24/07/2026 (thinking)
+  "deepseek-reasoner": "deepseek-v4-flash", // alias retiré le 24/07/2026 (thinking)
+
+  // V54 — Anthropic : génération 4.x hors catalogue self-serve (toujours appelable)
+  "claude-opus-4-8":   "claude-opus-5",
+  "claude-opus-4-7":   "claude-opus-5",
+  "claude-opus-4-6":   "claude-opus-5",
+  "claude-sonnet-4-6": "claude-sonnet-5",
+  "claude-sonnet-4-5": "claude-sonnet-5",
+
+  // V54 — OpenAI : familles 5.5 / 5.4 / 4.1 classées « legacy » par OpenAI
+  "gpt-5.5":           "gpt-5.6",           // même positionnement flagship, même tarif 5/30
+  "gpt-5.5-pro":       "gpt-5.6",           // « Pro » est désormais un mode de raisonnement sur Sol
+  "gpt-5.4":           "gpt-5.6-terra",     // équivalent équilibré, moins cher (2/12 vs 2.50/15)
+  "gpt-5.4-mini":      "gpt-5.6-luna",      // moins cher (0.20/1.20 vs 0.75/4.50)
+  "gpt-5.4-nano":      "gpt-5.6-luna",      // Luna est le nouveau plancher tarifaire OpenAI
+  "gpt-4.1":           "gpt-5.6-terra",
+  "gpt-4.1-mini":      "gpt-5.6-luna",
+
+  // V54 — Gemini : famille 2.5 retirée par Google le 16/10/2026
+  "gemini-2.5-pro":        "gemini-3.1-pro",
+  "gemini-2.5-flash":      "gemini-3.5-flash-lite", // tarif identique (0.30/2.50), modèle plus récent
+  "gemini-2.5-flash-lite": "gemini-3.1-flash-lite"  // le moins cher du catalogue restant
 };
 function migrateModelId(model) {
   return MODEL_MIGRATIONS[model] || model;
@@ -2300,7 +2380,7 @@ const S = {
     }
   ],
   activeProfiles: JSON.parse(localStorage.getItem("activeProfiles") || "[]"),
-  favoriteModels: JSON.parse(localStorage.getItem("favoriteModels") || '["gemini-2.5-flash","claude-haiku-4-5-20251001"]'),
+  favoriteModels: JSON.parse(localStorage.getItem("favoriteModels") || '["gemini-3.5-flash-lite","claude-haiku-4-5-20251001"]'),
   // V42 — Tombstones : ID de chats/projets supprimés, avec timestamp.
   // Sert à empêcher le pull de "ressusciter" les éléments qu'on a supprimés localement
   // (race condition entre delete local et auto-pull périodique).
@@ -2312,7 +2392,7 @@ const S = {
   })(),
   activeChat:    localStorage.getItem("activeChat")    || null,
   activeProject: localStorage.getItem("activeProject") || null,
-  model:  "gemini-2.5-flash",  // ← Modèle par défaut : économique, contexte 1M, mode thinking pour sciences
+  model:  "gemini-3.5-flash-lite",  // ← Modèle par défaut (V54, remplace gemini-2.5-flash retiré) : économique, contexte 1M, mode thinking pour sciences
   params: (() => {
     const raw = JSON.parse(localStorage.getItem("params") || "null");
     if (!raw) return { ...DEF };
@@ -2330,7 +2410,7 @@ let isWaitingResponse = false;
 let waitingStartTime = 0;
 let waitingTimerInterval = null;
 let _currentAbortController = null; // Controller global pour annuler les requêtes
-if (!CURATED_MODELS.includes(S.model)) S.model = "gemini-2.5-flash";
+if (!CURATED_MODELS.includes(S.model)) S.model = "gemini-3.5-flash-lite";
 
 const promptEl   = el("prompt");
 
@@ -3596,7 +3676,7 @@ function createChat(projectId = null) {
   // Modèle par défaut : celui du projet si défini, sinon le global
   if (!window._userChangedModel) {
     const proj = projectId ? S.projects.find(p => p.id === projectId) : null;
-    S.model = migrateModelId((proj && proj.defaultModel) || "gemini-2.5-flash"); // V51 — migration des ID retirés
+    S.model = migrateModelId((proj && proj.defaultModel) || "gemini-3.5-flash-lite"); // V51 — migration des ID retirés
   }
   // Appliquer les quotas (le nouveau chat est exempté car il est actif + vide)
   enforceChatLimitsWithToast();
@@ -3673,7 +3753,7 @@ function forkChatFromHere(chatId, msgIdx) {
  *
  * Logique modèle (V35 — le défaut prime, plus la continuité) :
  *   1) Modèle par défaut du projet de la conv (ex: Short answers → mistral-small-latest)
- *   2) gemini-2.5-flash (défaut global) pour tout chat libre ou projet sans defaultModel
+ *   2) gemini-3.5-flash-lite (défaut global) pour tout chat libre ou projet sans defaultModel
  *
  * Rationale : on veut un comportement PRÉVISIBLE — chaque projet a un modèle
  * connu, et l'entrée dans n'importe quelle conv ramène au défaut du projet (ou
@@ -3698,7 +3778,7 @@ function switchToChat(c) {
     // V51 — migre les ID retirés (ex. deepseek-chat mémorisé comme défaut de projet)
     if (proj && proj.defaultModel) resolvedModel = migrateModelId(proj.defaultModel);
   }
-  if (!resolvedModel || !CURATED_MODELS.includes(resolvedModel)) resolvedModel = "gemini-2.5-flash";
+  if (!resolvedModel || !CURATED_MODELS.includes(resolvedModel)) resolvedModel = "gemini-3.5-flash-lite";
   if (S.model !== resolvedModel) {
     S.model = resolvedModel;
     window._userChangedModel = false;
@@ -7705,8 +7785,10 @@ const TOKEN_PRICES = {
 
   // ── OpenAI ── (vérifié 14/07/2026 — developers.openai.com/api/docs/pricing)
   'gpt-5.6':                    { input: 5.00,  output: 30.00 },  // 🆕 Sol — GA 09/07/2026, alias → gpt-5.6-sol
-  'gpt-5.6-terra':              { input: 2.50,  output: 15.00 },  // 🆕 équilibré
-  'gpt-5.6-luna':               { input: 1.00,  output: 6.00 },   // 🆕 économique
+  'gpt-5.6-terra':              { input: 2.00,  output: 12.00 },  // V54 — baisse 30/07/2026 (−20%, était 2.50/15)
+  'gpt-5.6-luna':               { input: 0.20,  output: 1.20 },   // V54 — baisse 30/07/2026 (−80%, était 1/6)
+  // ── V54 — Modèles RETIRÉS de la liste : tarifs conservés pour que le coût des
+  //    anciens messages (et ceux arrivant par la synchro) reste affichable. ──
   'gpt-5.5':                    { input: 5.00,  output: 30.00 },
   'gpt-5.5-pro':                { input: 30.00, output: 180.00 },
   'gpt-5.4':                    { input: 2.50,  output: 15.00 },
@@ -7716,7 +7798,8 @@ const TOKEN_PRICES = {
   'gpt-4.1-mini':               { input: 0.40,  output: 1.60 },
 
   // ── Anthropic Claude ── (vérifié 14/07/2026 — platform.claude.com/docs/pricing)
-  'claude-fable-5':             { input: 10.00, output: 50.00 }, // 🆕 classe Mythos, rétabli 01/07/2026
+  'claude-fable-5':             { input: 10.00, output: 50.00 }, // classe Mythos, rétabli 01/07/2026
+  'claude-opus-5':              { input: 5.00,  output: 25.00 }, // 🆕 V54 — 24/07/2026, tarif inchangé vs Opus 4.8
   'claude-opus-4-8':            { input: 5.00,  output: 25.00 },
   'claude-opus-4-7':            { input: 5.00,  output: 25.00 }, // corrigé
   'claude-opus-4-6':            { input: 5.00,  output: 25.00 }, // corrigé
@@ -8071,15 +8154,21 @@ function renderCostStats() {
 // adaptatif serveur reste actif par défaut, ce qui renforce la vérification.
 // ─────────────────────────────────────────────────────────────
 
+// V54 — Les phases 1 et 2 utilisaient gemini-2.5-flash et gpt-5.4-mini, tous deux retirés.
+// Remplacés par leurs successeurs, qui se trouvent être MOINS CHERS :
+//   phase1 : gemini-2.5-flash (0.30/2.50) → gemini-3.1-flash-lite (0.25/1.50)
+//   phase2 : gpt-5.4-mini    (0.75/4.50) → gpt-5.6-luna          (0.20/1.20 depuis le 30/07)
+// Les phases 1 et 2 restent identiques entre les deux modes : seule la phase 3 distingue
+// ÉCO (Haiku 4.5) de PREMIUM (Sonnet 5) — structure d'origine préservée.
 const TRIPLE_CHECK_PRESETS = {
   eco: {
-    phase1: 'gemini-2.5-flash',
-    phase2: 'gpt-5.4-mini',
+    phase1: 'gemini-3.1-flash-lite',
+    phase2: 'gpt-5.6-luna',
     phase3: 'claude-haiku-4-5-20251001'
   },
   premium: {
-    phase1: 'gemini-2.5-flash',
-    phase2: 'gpt-5.4-mini',
+    phase1: 'gemini-3.1-flash-lite',
+    phase2: 'gpt-5.6-luna',
     phase3: 'claude-sonnet-5'
   }
 };
@@ -10150,9 +10239,9 @@ async function ghPull() {
     if (raw.favoriteModels)  S.favoriteModels = raw.favoriteModels;
     if (raw.activeProfiles)  S.activeProfiles  = raw.activeProfiles;
     if (raw.params)        S.params        = { ...DEF, ...raw.params };
-    if (raw.model)         S.model         = raw.model;
+    if (raw.model)         S.model         = migrateModelId(raw.model); // V54 — l'autre machine peut envoyer un ID retiré
     // Toujours forcer le modèle par défaut après un pull
-    if (!window._userChangedModel) S.model = "gemini-2.5-flash";
+    if (!window._userChangedModel) S.model = "gemini-3.5-flash-lite";
 
     if (!S.chats.find(c => c.id === S.activeChat))
       S.activeChat = S.chats[0]?.id || null;
@@ -10808,12 +10897,13 @@ document.addEventListener("click", e => {
 // INIT
 // ─────────────────────────────────────────────────
 
-// MODÈLE PAR DÉFAUT : gemini-2.5-flash (économique, contexte 1M, mode thinking pour sciences).
+// MODÈLE PAR DÉFAUT : gemini-3.5-flash-lite (V54 — tarif identique à l'ancien défaut
+// gemini-2.5-flash (0.30/2.50) mais modèle plus récent ; la famille 2.5 est retirée le 16/10/2026).
 // ⚠ On NE force PAS le modèle si l'utilisateur en a déjà choisi un (respect du dernier choix).
 const _storedModel = migrateModelId(localStorage.getItem("model")); // V51 — bascule les ID retirés (ex. deepseek-chat → v4-flash)
 if (!_storedModel || !CURATED_MODELS.includes(_storedModel)) {
-  S.model = "gemini-2.5-flash";
-  localStorage.setItem("model", "gemini-2.5-flash");
+  S.model = "gemini-3.5-flash-lite";
+  localStorage.setItem("model", "gemini-3.5-flash-lite");
 } else {
   S.model = _storedModel;
   localStorage.setItem("model", _storedModel); // persiste l'ID migré pour ne pas re-migrer à chaque chargement
