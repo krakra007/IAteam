@@ -1600,6 +1600,36 @@
        • Triple Check PREMIUM : phase 3 Sonnet 4.5 → Sonnet 5 (moins cher en tarif intro 2/10 vs 3/15, plus performant ; Sonnet 4.5 part en retraite dès le 29/09/2026).
        • Gemini / Groq / Mistral / Z.ai : listes revérifiées le 14/07/2026, aucune modification nécessaire (gemini-3.5-flash GA, gpt-oss-120b/20b + qwen3.6-27b, Medium 3.5 / Small 4 / Large 3, glm-5.2 / glm-4.7 tous confirmés).
 
+  V55 — 5 août 2026 — Titre de conversation affiné par SLM.
+     Constat : generateSmartTitle() (pipeline de règles) garde la structure de la phrase
+     puis tronque à 55 caractères — sur "Explique-moi le rôle de l'appareil de Golgi dans
+     la cellule", le titre affiché coupait avant d'atteindre le sujet réel.
+
+     Nouvelle fonction refineTitleWithSLM() : demande à Ministral 3B (déjà dans le
+     catalogue, 0.10/0.10 $/M) d'extraire le sujet en 2-4 mots ("Appareil de Golgi").
+     Appelée en ARRIÈRE-PLAN juste après la pose du titre par règles dans send() — sans
+     await, donc aucune latence ajoutée à l'envoi du message.
+
+     Comportement en cas d'échec — TOUJOURS silencieux, le titre par règles reste affiché :
+       • pas de clé Mistral configurée → aucun appel
+       • timeout réseau (6s) → capté, pas de blocage
+       • réponse HTTP non-OK (401, 429…) → ignorée
+       • réponse vide, trop longue (>60 car.) ou aberrante → rejetée
+     Protection anti-course : si le titre a été renommé manuellement (ou par un nouveau
+     message) PENDANT l'appel réseau, le résultat du SLM est abandonné et n'écrase jamais
+     le renommage. Vérifié par test : re-vérification de chat.title juste avant l'écriture,
+     pas seulement au début de la fonction.
+     Coût non comptabilisé dans les stats (appel utilitaire ~15 tokens, comme ghTest()).
+
+     Testé (Chromium 131, mock fetch) : extraction correcte, guillemets/ponctuation
+     nettoyés, sans-clé, timeout, 401, réponse vide/aberrante, et la course renommage
+     manuel vs réponse SLM — tous vérifiés indépendamment.
+
+     NON TRAITÉ (hors périmètre de cette demande, signalé pour mémoire) : bug préexistant
+     dans generateSmartTitle() — "Explication de le rôle" au lieu de "du rôle" (élision
+     manquante devant une voyelle). N'affecte que le titre instantané, immédiatement
+     corrigé par le SLM si une clé Mistral est configurée.
+
   V54 — 31 juillet 2026 — Mise à jour catalogue : 43 → 29 modèles.
      Vérification web des 7 fournisseurs le 31/07/2026.
 
@@ -2738,6 +2768,69 @@ function generateSmartTitle(text) {
   best = best.replace(/[.\s]+$/, '').trim();
 
   return best.length > 2 ? best : 'Conversation';
+}
+
+/**
+ * V55 — Affinage du titre par SLM (Ministral 3B).
+ * generateSmartTitle() est un pipeline de règles : il garde la structure de la phrase
+ * ("Explication du rôle de l'appareil de Golgi dans la cellule…") puis tronque à 55
+ * caractères — le sujet réel se retrouve noyé au milieu et coupé avant d'apparaître.
+ * Cette fonction demande à un SLM d'extraire directement le sujet ("Appareil de Golgi").
+ *
+ * Appelée en ARRIÈRE-PLAN après la pose du titre instantané (voir send()) : n'ajoute
+ * aucune latence à l'envoi du message. Échec silencieux si pas de clé Mistral configurée,
+ * timeout, ou réponse vide — le titre par règles reste alors affiché tel quel.
+ * Coût négligeable : ~15 tokens de sortie sur Ministral 3B ($0.10/M) → non comptabilisé
+ * dans les stats de coût, comme les autres appels utilitaires (ex. ghTest).
+ */
+async function refineTitleWithSLM(chatId, text) {
+  const key = (apiKeysByProvider["MISTRAL"] || "").trim();
+  if (!key || !text || text.length < 8) return;   // pas de clé, ou texte trop court pour valoir l'appel
+
+  const chat = S.chats.find(c => c.id === chatId);
+  // Le titre a pu changer entre-temps (renommage manuel, nouveau message) → ne pas écraser.
+  if (!chat || chat.title !== generateSmartTitle(text)) return;
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 6000);   // arrière-plan : ne pas s'éterniser
+    const res = await fetch("https://api.mistral.ai/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model: "ministral-3b-latest",
+        max_tokens: 20,
+        temperature: 0.2,
+        messages: [{
+          role: "user",
+          content: "Extrais le sujet principal de cette question en 2 à 4 mots, sous forme de "
+            + "groupe nominal en français, sans article initial ni ponctuation finale. "
+            + "Réponds UNIQUEMENT avec ces mots, rien d'autre.\n\nQuestion : " + text.slice(0, 500)
+        }]
+      })
+    });
+    clearTimeout(timeout);
+    if (!res.ok) return;                              // échec silencieux : le titre par règles reste
+    const data = await res.json();
+    let title = (data.choices?.[0]?.message?.content || "").trim();
+    // Nettoyage : retirer guillemets et point final que le modèle ajoute parfois malgré la consigne
+    title = title.replace(/^["'«]+|["'»]+$/g, '').replace(/[.!?]+$/, '').trim();
+    if (!title || title.length < 2 || title.length > 60) return;
+    title = title.charAt(0).toUpperCase() + title.slice(1);
+
+    // Le titre a pu changer PENDANT l'appel réseau (course avec un renommage ou un nouveau
+    // message) → re-vérifier juste avant d'écrire, pas seulement au début de la fonction.
+    const stillCurrent = S.chats.find(c => c.id === chatId);
+    if (stillCurrent && stillCurrent.title === generateSmartTitle(text)) {
+      stillCurrent.title = title;
+      save();
+      renderChats();
+    }
+  } catch (e) {
+    // Timeout, réseau coupé, clé invalide… le titre par règles reste affiché. Pas de UI
+    // d'erreur : c'est un raffinement cosmétique, pas une action demandée explicitement.
+  }
 }
 
 function buildUserContent(text, files) {
@@ -8641,7 +8734,13 @@ async function send() {
   c.messages.push({ role: "user", content: msgContent, _text: displayText });
 
   // Titre intelligent basé sur le contenu du prompt
-  if (c.title === "Nouveau chat") c.title = generateSmartTitle(displayText);
+  if (c.title === "Nouveau chat") {
+    c.title = generateSmartTitle(displayText);
+    // V55 — Affinage en ARRIÈRE-PLAN (pas de await) : le titre par règles s'affiche
+    // immédiatement, l'appel SLM le remplace silencieusement quelques centaines de ms
+    // plus tard si une clé Mistral est configurée. N'ajoute aucune latence à l'envoi.
+    refineTitleWithSLM(c.id, displayText);
+  }
 
   promptEl.value      = "";
   promptEl.style.height = ''; // Reset auto-resize
