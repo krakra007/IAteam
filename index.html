@@ -1600,6 +1600,34 @@
        • Triple Check PREMIUM : phase 3 Sonnet 4.5 → Sonnet 5 (moins cher en tarif intro 2/10 vs 3/15, plus performant ; Sonnet 4.5 part en retraite dès le 29/09/2026).
        • Gemini / Groq / Mistral / Z.ai : listes revérifiées le 14/07/2026, aucune modification nécessaire (gemini-3.5-flash GA, gpt-oss-120b/20b + qwen3.6-27b, Medium 3.5 / Small 4 / Large 3, glm-5.2 / glm-4.7 tous confirmés).
 
+  V56 — 5 août 2026 — Deux bugs corrigés sur les titres de conversation.
+
+     1. generateSmartTitle() — contraction grammaticale.
+        La règle qui insère "de" devant un article produisait "Explication de le rôle"
+        (au lieu de "du rôle") — et pire, si le texte contenait déjà "du"/"des" (contraction
+        correcte), elle produisait "de du"/"de des" (double faute). Remplacée par les vraies
+        règles de contraction française : de+le=du, de+les=des, de+la et de+l' inchangés
+        (déjà corrects), de+un=d'un, de+une=d'une, du/des déjà corrects → non modifiés.
+
+     2. refineTitleWithSLM() — hallucination lexicale du SLM (bug réel signalé par l'utilisateur).
+        Sur "explique-moi le rôle de l'appareil de Golgi", Ministral 3B a restitué
+        "Apparat de Golgi" — "apparat" (faste, cérémonie) est un mot français différent,
+        pas une coquille : le modèle a substitué un mot proche plutôt que de le recopier.
+        Deux mesures :
+          a) Prompt durci : consigne explicite de recopier mot pour mot, sans synonyme ni
+             reformulation même approximative.
+          b) GARDE-FOU (le vrai filet, indépendant de l'obéissance du modèle au prompt) :
+             chaque mot significatif (≥4 lettres, hors mots courts) du titre renvoyé doit
+             exister littéralement dans la question source, comparaison insensible aux
+             accents/casse. Si un seul mot est absent → titre rejeté en bloc, le titre par
+             règles (V55) reste affiché. "Apparat" n'existe pas dans un texte contenant
+             "appareil" → aurait été rejeté quelle que soit la réponse du modèle.
+
+     Testé (Chromium 131, mock fetch) : le cas réel "Apparat de Golgi" est bien rejeté ;
+     "Appareil de Golgi" (correct) reste accepté ; une paraphrase plausible non détectée par
+     simple diff ("rôle"→"fonction", synonyme absent du texte) est aussi rejetée ; les titres
+     par règles pré-existants avec "du"/"des"/"de la" ne régressent pas.
+
   V55 — 5 août 2026 — Titre de conversation affiné par SLM.
      Constat : generateSmartTitle() (pipeline de règles) garde la structure de la phrase
      puis tronque à 55 caractères — sur "Explique-moi le rôle de l'appareil de Golgi dans
@@ -2745,9 +2773,20 @@ function generateSmartTitle(text) {
   // Nettoyer les mots résiduels après la transformation
   best = best.replace(/^\s*(moi|nous|me)\s+/i, '');
   best = best.replace(/\s*(et\s+)?(faire|lister|identifier|produire)\s+.*$/i, '');
-  // Ajouter "de" si le titre commence par un nom suivi d'un article
-  best = best.replace(/^(Résumé|Explication|Analyse|Comparaison|Description|Définition|Conception|Identification|Création|Lecture|Liste|Calcul|Recherche|Présentation|Production)\s+(la|le|les|l[''']|du|des|un|une)\s/i, 
-    (_, noun, art) => noun + ' de ' + art + ' ');
+  // V56 — CORRECTIF : la règle précédente insérait "de " sans contracter avec l'article,
+  // produisant "Explication de le rôle" au lieu de "Explication du rôle". Pire : si le texte
+  // contenait déjà "du"/"des" (contraction correcte), elle produisait "de du"/"de des"
+  // (double faute). Règles de contraction française : de+le=du, de+les=des, de+la=de la
+  // (inchangé), de+l'=de l' (inchangé), de+un=d'un, de+une=d'une, du/des déjà corrects → rien.
+  best = best.replace(/^(Résumé|Explication|Analyse|Comparaison|Description|Définition|Conception|Identification|Création|Lecture|Liste|Calcul|Recherche|Présentation|Production)\s+(la|le|les|l[''']|du|des|un|une)\s/i,
+    (_, noun, art) => {
+      const a = art.toLowerCase();
+      if (a === 'le')  return noun + ' du ';
+      if (a === 'les') return noun + ' des ';
+      if (a === 'un')  return noun + " d'un ";
+      if (a === 'une') return noun + " d'une ";
+      return noun + ' ' + art + ' ';   // la / l' / du / des : déjà grammaticalement corrects
+    });
   // Supprimer "?" en fin de titre
   best = best.replace(/\s*\?\s*$/, '');
 
@@ -2804,9 +2843,16 @@ async function refineTitleWithSLM(chatId, text) {
         temperature: 0.2,
         messages: [{
           role: "user",
+          // V56 — DURCI après un cas réel : "appareil de Golgi" restitué "Apparat de Golgi"
+          // (mot français différent, faux sens). Un SLM à cette taille peut substituer un
+          // mot par un autre proche plutôt que le recopier. On l'instruit explicitement de
+          // recopier mot pour mot ; la validation ci-dessous est le vrai filet de sécurité,
+          // car cette consigne seule ne garantit rien.
           content: "Extrais le sujet principal de cette question en 2 à 4 mots, sous forme de "
             + "groupe nominal en français, sans article initial ni ponctuation finale. "
-            + "Réponds UNIQUEMENT avec ces mots, rien d'autre.\n\nQuestion : " + text.slice(0, 500)
+            + "RECOPIE EXACTEMENT les mots de la question, ne les remplace par aucun synonyme "
+            + "ni reformulation, même approximatif. Réponds UNIQUEMENT avec ces mots, rien d'autre."
+            + "\n\nQuestion : " + text.slice(0, 500)
         }]
       })
     });
@@ -2817,6 +2863,20 @@ async function refineTitleWithSLM(chatId, text) {
     // Nettoyage : retirer guillemets et point final que le modèle ajoute parfois malgré la consigne
     title = title.replace(/^["'«]+|["'»]+$/g, '').replace(/[.!?]+$/, '').trim();
     if (!title || title.length < 2 || title.length > 60) return;
+
+    // V56 — GARDE-FOU ANTI-HALLUCINATION : chaque mot significatif du titre doit exister
+    // littéralement dans la question source (comparaison insensible aux accents/casse).
+    // "Apparat" (faste, cérémonie — un mot français différent) n'apparaît pas dans une
+    // question qui contient "appareil" → rejeté ici, quelle que soit la consigne du prompt.
+    // Les mots courts (articles, prépositions) sont ignorés : ils varient légitimement
+    // ("l'appareil" → "appareil", contraction perdue en extrayant le groupe nominal).
+    const stripAccents = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const STOPWORDS = new Set(['de','du','des','la','le','les','l','un','une','et','dans','pour','a','au','aux','en','sur','avec','ce','cet','cette']);
+    const sourceNorm = stripAccents(text);
+    const titleWords = stripAccents(title).split(/[^a-zà-ÿ0-9]+/).filter(w => w.length >= 4 && !STOPWORDS.has(w));
+    const hallucinated = titleWords.filter(w => !sourceNorm.includes(w));
+    if (hallucinated.length > 0) return;   // au moins un mot n'existe pas dans la question → rejet total
+
     title = title.charAt(0).toUpperCase() + title.slice(1);
 
     // Le titre a pu changer PENDANT l'appel réseau (course avec un renommage ou un nouveau
