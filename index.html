@@ -14,7 +14,15 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="BrAInShift" />
   <!-- Icône d'écran d'accueil iPad/iPhone (SVG inline data URI pour zéro dépendance externe) -->
-  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23212121'/%3E%3Ctext x='50' y='68' font-size='62' font-family='-apple-system,sans-serif' font-weight='700' fill='%23ef4444' text-anchor='middle'%3EB%3C/text%3E%3C/svg%3E" />
+  <!-- V58 — apple-touch-icon en PNG (remplace l'ancien SVG). Confirmé par vérification
+       externe : iOS Safari continue de préférer apple-touch-icon au manifest pour
+       l'icône elle-même (contrairement au display:standalone, respecté depuis 2026), et
+       n'accepte QUE du PNG — un SVG y est ignoré, avec repli sur une capture d'écran
+       générique du site à la place du logo. 180×180 (taille de référence Apple actuelle),
+       carré plein SANS coins arrondis manuels : iOS applique lui-même son masque arrondi
+       à l'affichage, les pré-arrondir créerait un double-arrondi. Opaque (mode RGB, pas de
+       canal alpha) : iOS gère mal la transparence sur cette icône. -->
+  <link rel="apple-touch-icon" href="data:image/png;base64,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" />
 
   <!-- V57 — PWA : icône Android sur l'écran d'accueil, lancement plein écran (sans barre
        d'adresse) une fois installée depuis GitHub Pages (HTTPS requis, satisfait ici).
@@ -1609,6 +1617,34 @@
        • DeepSeek : retrait de deepseek-chat / deepseek-reasoner de la liste (arrêt DÉFINITIF le 24/07/2026 15:59 UTC → 404). Nouvelle table MODEL_MIGRATIONS + migrateModelId() appliquée au chargement, au switch de conversation et aux defaultModel de projet : les utilisateurs encore sur ces alias basculent silencieusement vers deepseek-v4-flash. Tarifs des alias conservés uniquement pour l'affichage des coûts des anciens messages.
        • Triple Check PREMIUM : phase 3 Sonnet 4.5 → Sonnet 5 (moins cher en tarif intro 2/10 vs 3/15, plus performant ; Sonnet 4.5 part en retraite dès le 29/09/2026).
        • Gemini / Groq / Mistral / Z.ai : listes revérifiées le 14/07/2026, aucune modification nécessaire (gemini-3.5-flash GA, gpt-oss-120b/20b + qwen3.6-27b, Medium 3.5 / Small 4 / Large 3, glm-5.2 / glm-4.7 tous confirmés).
+
+  V58 — 5 août 2026 — Compatibilité iPhone/iOS de l'installation écran d'accueil.
+     Suite à la V57 (Android) : vérification externe de l'état actuel du support iOS Safari
+     avant d'affirmer quoi que ce soit — le support PWA d'Apple ne recoupe pas exactement
+     celui du W3C que lit Android/Chrome, et évolue version après version.
+
+     BUG CORRIGÉ : apple-touch-icon était un SVG. Confirmé par plusieurs sources récentes
+     (2026) : iOS Safari ignore le SVG pour cette icône — contrainte historique jamais
+     levée — et affiche à la place une capture d'écran générique du site sur l'écran
+     d'accueil. Remplacé par un PNG 180×180 (taille de référence Apple actuelle), encodé en
+     base64 pour rester cohérent avec l'architecture mono-fichier (même mécanisme que le
+     manifest Android de la V57). Deux choix délibérés, contrairement aux icônes Android :
+       • carré PLEIN, sans coins arrondis manuels — iOS applique lui-même son masque arrondi
+         à l'affichage ; les pré-arrondir aurait produit un double-arrondi visuel.
+       • image OPAQUE (mode RGB, sans canal alpha) — iOS gère mal la transparence sur cette
+         icône spécifique, contrairement aux icônes "maskable" d'Android qui l'acceptent.
+
+     DÉJÀ CORRECT, vérifié sans modification : les meta tags apple-mobile-web-app-capable,
+     apple-mobile-web-app-status-bar-style et apple-mobile-web-app-title étaient déjà
+     présents dans le fichier avant la V57 — aucun ajout nécessaire sur ce point.
+
+     Le manifest ajouté en V57 pour Android continue de fonctionner en parallèle : depuis
+     2026, iOS Safari le respecte désormais pour le mode standalone (plein écran, sans
+     barre d'adresse), même s'il continue de privilégier apple-touch-icon pour l'icône
+     elle-même plutôt que les icônes déclarées dans ce manifest.
+
+     Pour installer sur iPhone : Safari (pas Chrome — le "Ajouter à l'écran d'accueil"
+     d'iOS n'est disponible que dans Safari) → bouton Partager → "Sur l'écran d'accueil".
 
   V57 — 5 août 2026 — Installation Android (PWA).
      Objectif : une icône sur l'écran d'accueil qui lance BrAInShift en plein écran, sans
