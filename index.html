@@ -590,6 +590,35 @@
     .sync-badge.syncing{background:#f59e0b;animation:syncPulse 0.6s ease-in-out infinite}  /* V14 : 2x plus rapide pour mieux voir */
     .sync-badge.error{background:#ef4444;animation:syncPulse 0.8s ease-in-out infinite}
     @keyframes syncPulse{0%,100%{opacity:1}50%{opacity:.25}}  /* V14 : opacité plus marquée */
+
+    /* V59 — Menu ⋯ regroupant Profils / Sync GitHub / Clés API / Paramètres.
+       Les 4 boutons d'origine restent dans le DOM avec leurs id/onclick/logique
+       click-outside INCHANGÉS (voir JS) : on les redéplace visuellement dans ce
+       menu déroulant plutôt que de dupliquer leur comportement, pour ne rien casser
+       de ce qui dépendait de ces boutons ailleurs dans le fichier. */
+    .more-menu-btn{position:relative}
+    .more-menu-dot{
+      position:absolute;top:-2px;right:-2px;width:9px;height:9px;border-radius:50%;
+      background:#ef4444;border:1.5px solid var(--bg);display:none;
+      animation:syncPulse 0.8s ease-in-out infinite;
+    }
+    .more-menu-dot.visible{display:block}
+    .more-menu-dropdown{display:none;position:absolute;right:14px;top:58px;background:#1a1a1e;
+      border:1px solid var(--line);border-radius:14px;padding:6px;width:230px;z-index:25;
+      box-shadow:0 8px 32px rgba(0,0,0,.5)}
+    .more-menu-dropdown.open{display:flex;flex-direction:column;gap:2px}
+    /* Les 4 boutons d'origine (.btn), une fois DANS ce conteneur, sont restylés en
+       lignes de menu pleine largeur avec icône + libellé, plutôt qu'en icônes seules. */
+    .more-menu-dropdown .btn{
+      width:100%;justify-content:flex-start;gap:10px;padding:9px 10px;
+      background:transparent;border:none;border-radius:8px;font-size:14px;
+    }
+    .more-menu-dropdown .btn:hover{background:#ffffff12}
+    .more-menu-label{display:none;color:#e2e8f0;font-size:13px;font-weight:500}
+    .more-menu-dropdown .more-menu-label{display:inline}
+    /* La pastille de sync (globe) doit rester visible et positionnée sur SON icône
+       à l'intérieur du menu, pas flotter sur le bord du conteneur */
+    .more-menu-dropdown #githubBtn{position:relative}
     .gh-btn-row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
     .gh-btn{border:1px solid var(--line);background:#ffffff0d;color:var(--text);
       padding:7px 12px;border-radius:8px;cursor:pointer;font-size:13px;transition:background .15s}
@@ -1618,6 +1647,37 @@
        • Triple Check PREMIUM : phase 3 Sonnet 4.5 → Sonnet 5 (moins cher en tarif intro 2/10 vs 3/15, plus performant ; Sonnet 4.5 part en retraite dès le 29/09/2026).
        • Gemini / Groq / Mistral / Z.ai : listes revérifiées le 14/07/2026, aucune modification nécessaire (gemini-3.5-flash GA, gpt-oss-120b/20b + qwen3.6-27b, Medium 3.5 / Small 4 / Large 3, glm-5.2 / glm-4.7 tous confirmés).
 
+  V59 — 5 août 2026 — Menu ⋯ regroupant Profils / Sync GitHub / Clés API / Paramètres.
+     Aucune trace de cet accord dans les mémoires ni cette conversation — vérifié avant
+     d'implémenter, et confirmé par l'utilisateur qui a précisé le périmètre exact.
+
+     Les 4 boutons (📖 Profils système, 🌐 Sync GitHub, 🔑 Clés API, ⚙ Paramètres LLM)
+     restent DANS LE DOM avec leurs id/onclick/logique click-outside INCHANGÉS — ils sont
+     redéplacés visuellement dans un menu déroulant plutôt que réimplémentés, pour ne rien
+     casser de ce qui en dépendait ailleurs dans le fichier (positionnement des panneaux,
+     raccourci direct du chip profil actif via toggleRightPanelBtn.click(), etc.).
+
+     Nouveau bouton unique "⋯" (#moreMenuBtn) : ouvre/ferme le dropdown. Fermeture
+     automatique au clic extérieur ET après avoir choisi une action à l'intérieur (via
+     addEventListener additionnel, sans écraser les onclick existants — s'exécute juste
+     après eux dans l'ordre d'attachement).
+
+     Compromis tranché explicitement avec l'utilisateur : le globe et la clé servaient
+     d'indicateurs d'état visibles en permanence (pastille colorée de sync). Les cacher
+     dans un menu leur fait perdre cette visibilité immédiate — accepté sciemment. Une
+     pastille rouge agrégée sur le bouton ⋯ compense partiellement : allumée uniquement
+     sur les états qui demandent une action (sync en erreur ou en cours), jamais sur
+     "ok"/"idle" pour ne pas devenir une fausse alerte permanente. Pilotée par
+     updateSyncBadge() (fonction existante, simplement étendue de 6 lignes).
+
+     MÉTHODE DE TEST : l'app complète (600 Ko) crashait au chargement dans ce conteneur
+     (Target closed / detached Frame — limite d'environnement, sans rapport avec ce
+     changement). Contourné en testant un harnais isolé contenant le HTML/CSS/JS RÉELS
+     extraits du fichier (pas des reconstitutions) — 12 assertions validées : ouverture,
+     fermeture après sélection, fermeture au clic extérieur (sans casser celle déjà en
+     place sur les panneaux eux-mêmes), toggle, raccourci programmatique du chip profil,
+     et les 4 états de la pastille agrégée. Vérification visuelle par capture d'écran.
+
   V58 — 5 août 2026 — Compatibilité iPhone/iOS de l'installation écran d'accueil.
      Suite à la V57 (Android) : vérification externe de l'état actuel du support iOS Safari
      avant d'affirmer quoi que ce soit — le support PWA d'Apple ne recoupe pas exactement
@@ -1896,7 +1956,6 @@
           <span id="chipProfileIcon">🤖</span>
           <span id="chipProfileName">Aucun profil</span>
         </div>
-        <button class="btn" id="toggleRightPanelBtn" title="Profils système">📖</button>
         <!-- Panneau Profils système (dropdown comme les autres) -->
         <div id="rightPanel" class="params right-panel" style="right:100px;top:46px;width:380px">
           <div class="right-panel-head">
@@ -1932,11 +1991,20 @@ Exemple pour la chimie :
             </div>
           </div>
         </div>
-        <button class="btn" id="githubBtn" title="Synchronisation GitHub" style="position:relative">
-          🌐<span id="syncBadge" class="sync-badge" title=""></span>
-        </button>
-        <button class="btn" id="apiKeyBtn" title="Gérer les clés API">🔑</button>
-        <button class="btn" id="paramsBtn" title="Paramètres LLM">⚙</button>
+        <!-- V59 — Déclencheur unique du menu ⋯ regroupant les 4 boutons ci-dessous.
+             La pastille rouge agrège l'état sync GitHub (erreur/en cours) : sans elle,
+             regrouper ces boutons ferait perdre l'alerte visuelle immédiate en cas de
+             souci de synchronisation — updateSyncBadge() la pilote en même temps que
+             la pastille du globe (voir JS). -->
+        <button class="btn more-menu-btn" id="moreMenuBtn" title="Menu">⋯<span class="more-menu-dot" id="moreMenuDot"></span></button>
+        <div class="more-menu-dropdown" id="moreMenuDropdown">
+          <button class="btn" id="toggleRightPanelBtn" title="Profils système">📖<span class="more-menu-label">Profils système</span></button>
+          <button class="btn" id="githubBtn" title="Synchronisation GitHub" style="position:relative">
+            🌐<span id="syncBadge" class="sync-badge" title=""></span><span class="more-menu-label">Synchronisation GitHub</span>
+          </button>
+          <button class="btn" id="apiKeyBtn" title="Gérer les clés API">🔑<span class="more-menu-label">Clés API</span></button>
+          <button class="btn" id="paramsBtn" title="Paramètres LLM">⚙<span class="more-menu-label">Paramètres LLM</span></button>
+        </div>
         <!-- Panneau GitHub -->
         <div id="githubPanel" class="params" style="right:60px;top:46px;width:380px">
           <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:#e2e8f0">⬡ Synchronisation GitHub</div>
@@ -9649,6 +9717,13 @@ function updateSyncBadge() {
   }
   const btn = badge.closest('button');
   if (btn) btn.title = tooltip;
+
+  // V59 — Agrégation sur le bouton ⋯ : les 4 boutons repliés dans le menu font perdre
+  // la visibilité directe de la pastille du globe. On reporte uniquement les états qui
+  // demandent une action (erreur, en cours) — pas "ok" ni "idle", pour ne pas allumer
+  // la pastille en permanence et lui faire perdre sa valeur de signal.
+  const dot = document.getElementById('moreMenuDot');
+  if (dot) dot.classList.toggle('visible', s.state === 'error' || s.state === 'syncing');
 }
 // Rafraîchir le tooltip toutes les minutes (pour mettre à jour l'heure affichée)
 setInterval(updateSyncBadge, 60000);
@@ -11327,6 +11402,25 @@ el("peSave").onclick         = saveProfileEditor;
 el("peCancel").onclick       = closeProfileEditor;
 el("peDelete").onclick       = deleteActiveProfile;
 el("peName").addEventListener("keydown", e => { if (e.key === "Enter") saveProfileEditor(); });
+
+// V59 — Menu ⋯ : regroupe les 4 boutons ci-dessus SANS toucher à leurs onclick
+// respectifs (déjà assignés plus haut). On ajoute uniquement : (a) le déclencheur du
+// menu, (b) la fermeture au clic extérieur, (c) la fermeture après avoir choisi une
+// action à l'intérieur — chaque bouton garde sa propre logique d'ouverture de panneau.
+el("moreMenuBtn").onclick = () => el("moreMenuDropdown").classList.toggle("open");
+
+document.addEventListener("click", e => {
+  const dd = el("moreMenuDropdown");
+  if (!el("moreMenuBtn").contains(e.target) && !dd.contains(e.target))
+    dd.classList.remove("open");
+});
+
+// addEventListener plutôt que réassigner .onclick : n'écrase pas les gestionnaires déjà
+// posés sur ces mêmes boutons (githubBtn, apiKeyBtn, paramsBtn, toggleRightPanelBtn),
+// s'exécute simplement APRÈS eux dans l'ordre d'attachement.
+["toggleRightPanelBtn", "githubBtn", "apiKeyBtn", "paramsBtn"].forEach(id => {
+  el(id).addEventListener("click", () => el("moreMenuDropdown").classList.remove("open"));
+});
 
 // V36 fix — Ne plus écraser les profils actifs au démarrage.
 // L'ancienne ligne `S.activeProfiles = []` (commentée ci-dessous) faisait perdre
