@@ -1189,6 +1189,15 @@
       #modelSelect { display:none }
       .model-dd-btn { font-size: 13px; max-width: 160px; }
 
+      /* V60 — Chip profil actif ("🤖 Aucun profil") caché sur iPhone/Android : gagne de
+         la place sur une barre déjà serrée (jusqu'à 67px de débordement horizontal mesuré
+         sur un Pixel 7 en 412px). Aucune perte de fonction : son seul rôle (onclick)
+         est d'ouvrir rightPanel, action identique et TOUJOURS disponible via
+         ⋯ → "Profils système" (toggleRightPanelBtn, dans le menu regroupé depuis la V59).
+         Seule perte réelle : le nom du profil actif n'est plus visible au premier coup
+         d'œil sur mobile — acceptable, l'info reste à un tap dans le menu ⋯. */
+      #activeProfileChip { display: none; }
+
       /* ── Panneaux dropdown : pleine largeur ── */
       .params {
         right: 6px !important;
@@ -1646,6 +1655,42 @@
        • DeepSeek : retrait de deepseek-chat / deepseek-reasoner de la liste (arrêt DÉFINITIF le 24/07/2026 15:59 UTC → 404). Nouvelle table MODEL_MIGRATIONS + migrateModelId() appliquée au chargement, au switch de conversation et aux defaultModel de projet : les utilisateurs encore sur ces alias basculent silencieusement vers deepseek-v4-flash. Tarifs des alias conservés uniquement pour l'affichage des coûts des anciens messages.
        • Triple Check PREMIUM : phase 3 Sonnet 4.5 → Sonnet 5 (moins cher en tarif intro 2/10 vs 3/15, plus performant ; Sonnet 4.5 part en retraite dès le 29/09/2026).
        • Gemini / Groq / Mistral / Z.ai : listes revérifiées le 14/07/2026, aucune modification nécessaire (gemini-3.5-flash GA, gpt-oss-120b/20b + qwen3.6-27b, Medium 3.5 / Small 4 / Large 3, glm-5.2 / glm-4.7 tous confirmés).
+
+  V60 — 5 août 2026 — Vérification empirique mobile + chip profil caché sur iPhone/Android.
+
+     CONTEXTE : question directe sur l'adaptation smartphone/Android de la V59. Plutôt que
+     de répondre sur la base de la lecture du CSS, test empirique à une largeur d'écran
+     Android réelle (Pixel 7, 412px) avec un harnais reconstruisant la structure RÉELLE
+     .app > .main > .top (une première version simplifiée du harnais, sans cette structure,
+     avait produit un FAUX POSITIF de débordement du menu ⋯ — corrigé avant de conclure).
+
+     BUG RÉEL TROUVÉ ET CORRIGÉ : la barre du haut débordait horizontalement de 67px sur
+     un Android courant (412px de large, contenu réel mesuré à 479px) — barre scrollable
+     silencieusement, ou boutons coupés selon le navigateur. Cause identifiée précisément :
+     #activeProfileChip ("🤖 Aucun profil") + les autres éléments de la barre (sélecteur de
+     modèle, boutons Triple Check) dépassaient cumulativement la largeur d'écran.
+
+     CORRECTIF (demande explicite) : #activeProfileChip caché sur mobile (même point de
+     rupture @media max-width:1024px que les autres adaptations de la barre du haut).
+     Aucune perte de fonction : son onclick n'ouvrait déjà que rightPanel — action
+     identique et toujours disponible via ⋯ → "Profils système" (fusionné en V59). Seule
+     perte réelle : le nom du profil actif n'est plus visible au premier coup d'œil sur
+     mobile. Vérifié après coup : débordement ramené de 67px à 0px.
+
+     CONSTAT FACTUEL, NON MODIFIÉ (hors périmètre de la demande) : à ≤480px de large (les
+     plus petits téléphones), une règle PRÉEXISTANTE (non liée à la V59) réduit tous les
+     boutons de .top à 40×40px au lieu des 44px recommandés (Apple HIG / Material Design).
+     Comportement uniforme sur TOUS les boutons de la barre, pas spécifique au nouveau menu
+     ⋯ — mes 4 boutons regroupés en héritent simplement comme les autres. Non corrigé sans
+     confirmation explicite : élargir à 44px sur les écrans les plus étroits redonnerait
+     de la place, mais c'est un choix de compromis pré-existant dans le fichier, pas un
+     défaut introduit par ce travail.
+
+     RESTE HORS PÉRIMÈTRE, identifié en cours de diagnostic : même une fois le chip profil
+     caché, la barre du haut sur les plus petits écrans reste dense (sélecteur de modèle,
+     2 boutons Triple Check, badge de coût, menu ⋯) — plus de marge que le seul chip
+     profil, mais pas de débordement mesuré après ce correctif. À surveiller si d'autres
+     éléments s'ajoutent un jour à la barre du haut.
 
   V59 — 5 août 2026 — Menu ⋯ regroupant Profils / Sync GitHub / Clés API / Paramètres.
      Aucune trace de cet accord dans les mémoires ni cette conversation — vérifié avant
