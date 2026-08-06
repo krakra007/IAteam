@@ -1198,6 +1198,20 @@
          d'œil sur mobile — acceptable, l'info reste à un tap dans le menu ⋯. */
       #activeProfileChip { display: none; }
 
+      /* V61 — Boutons "3×"/"3×+" (Triple Check) et "📄 Word" cachés sur iPhone/Android :
+         libère le centre de la barre du haut, déjà dense sur les petits écrans (V60).
+         ⚠ Asymétrie à connaître, contrairement au chip profil (V60) qui restait accessible
+         via ⋯ : ces deux fonctions n'ont AUCUN autre point d'entrée dans tout le fichier.
+           • Triple Check (#tripleCheckBtn/#tripleCheckBtnPrem) : perte réelle d'accès sur
+             mobile — aucun moyen alternatif de l'activer une fois ces boutons masqués.
+           • Word forcé (#forceWordBtn) : impact plus limité — c'est un forçage manuel
+             au-dessus d'une détection automatique par le contenu du prompt (voir son
+             title d'origine : "quels que soient les mots du prompt"), qui continue très
+             probablement de fonctionner sans ce bouton si on demande un Word explicitement.
+         Repli si besoin : agrandir la fenêtre en mode "Bureau" dans le navigateur mobile,
+         ou repasser par un PC pour ces deux actions précises. */
+      #tripleCheckBtn, #tripleCheckBtnPrem, #forceWordBtn { display: none; }
+
       /* ── Panneaux dropdown : pleine largeur ── */
       .params {
         right: 6px !important;
@@ -1655,6 +1669,26 @@
        • DeepSeek : retrait de deepseek-chat / deepseek-reasoner de la liste (arrêt DÉFINITIF le 24/07/2026 15:59 UTC → 404). Nouvelle table MODEL_MIGRATIONS + migrateModelId() appliquée au chargement, au switch de conversation et aux defaultModel de projet : les utilisateurs encore sur ces alias basculent silencieusement vers deepseek-v4-flash. Tarifs des alias conservés uniquement pour l'affichage des coûts des anciens messages.
        • Triple Check PREMIUM : phase 3 Sonnet 4.5 → Sonnet 5 (moins cher en tarif intro 2/10 vs 3/15, plus performant ; Sonnet 4.5 part en retraite dès le 29/09/2026).
        • Gemini / Groq / Mistral / Z.ai : listes revérifiées le 14/07/2026, aucune modification nécessaire (gemini-3.5-flash GA, gpt-oss-120b/20b + qwen3.6-27b, Medium 3.5 / Small 4 / Large 3, glm-5.2 / glm-4.7 tous confirmés).
+
+  V61 — 5 août 2026 — Triple Check et Word forcé cachés sur iPhone/Android.
+     #tripleCheckBtn, #tripleCheckBtnPrem, #forceWordBtn cachés sur mobile (même point de
+     rupture @media max-width:1024px que les autres adaptations de la barre du haut).
+
+     ASYMÉTRIE SIGNALÉE AVANT IMPLÉMENTATION, contrairement au chip profil de la V60 qui
+     restait joignable via ⋯ : vérifié qu'aucun de ces deux boutons n'a d'autre point
+     d'entrée dans tout le fichier.
+       • Triple Check (3×/3×+) : perte RÉELLE d'accès sur mobile — aucun moyen alternatif
+         de l'activer une fois ces boutons masqués.
+       • Word forcé : impact plus limité — c'est un forçage manuel au-dessus d'une
+         détection automatique par le contenu du prompt (son title d'origine le précise :
+         "quels que soient les mots du prompt"), qui continue très probablement de
+         fonctionner sans ce bouton si un document est demandé explicitement dans le texte.
+
+     Testé (Chromium 131, Pixel 7 412px, structure .app > .main > .top réelle) : les 3
+     boutons masqués, le chip profil (V60) toujours caché sans régression, le menu ⋯
+     toujours pleinement fonctionnel après ces retraits, et surtout — aucun débordement
+     horizontal résiduel de la barre du haut (scroll=412 = client=412, contre 67px de trop
+     avant la V60).
 
   V60 — 5 août 2026 — Vérification empirique mobile + chip profil caché sur iPhone/Android.
 
