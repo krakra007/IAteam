@@ -1670,6 +1670,60 @@
        • Triple Check PREMIUM : phase 3 Sonnet 4.5 → Sonnet 5 (moins cher en tarif intro 2/10 vs 3/15, plus performant ; Sonnet 4.5 part en retraite dès le 29/09/2026).
        • Gemini / Groq / Mistral / Z.ai : listes revérifiées le 14/07/2026, aucune modification nécessaire (gemini-3.5-flash GA, gpt-oss-120b/20b + qwen3.6-27b, Medium 3.5 / Small 4 / Large 3, glm-5.2 / glm-4.7 tous confirmés).
 
+  V62 — 7 août 2026 — Balayage des 7 fournisseurs : correctif Gemini + 3 tarifs corrigés.
+
+     CORRECTIF DE CODE (pas qu'une mise à jour de prix) — dépréciation Gemini.
+     Confirmé par les notes de version Google et la doc Firebase AI Logic : depuis
+     gemini-3.6-flash ET gemini-3.5-flash-lite (sortis le même jour, 21/07/2026),
+     temperature/top_p/top_k sont ignorés silencieusement côté Gemini — Google annonce
+     explicitement qu'une future génération renverra une erreur 400. Même trajectoire que
+     claudeSamplingAllowed() en V51, avant qu'Anthropic ne passe de "ignoré" à "rejeté".
+       • Nouvelle fonction geminiSamplingAllowed(model), câblée aux DEUX points qui comptent
+         (comme pour Claude) : les capacités UI (curseurs grisés) ET buildRequestParams
+         (paramètres réellement omis de la requête, pas seulement cachés visuellement).
+       • ⚠ PIÈGE DE VERSIONING identifié en vérifiant : ce n'est PAS un seuil "version ≥ 3.6"
+         — gemini-3.5-flash (sans "lite") N'EST PAS concerné, alors que
+         gemini-3.5-flash-lite (aussi en 3.5) L'EST. Le point de bascule est la date de
+         sortie du modèle, pas son numéro de version → liste explicite plutôt que
+         comparaison numérique.
+       • Défaut REFUSÉ pour tout modèle inconnu de la liste (cohérent avec l'annonce de
+         Google : "s'applique à tous les modèles futurs") : un nouveau modèle Gemini
+         ajouté plus tard sans mise à jour de cette liste sera traité par prudence comme
+         ne supportant pas ces paramètres, plutôt que l'inverse.
+       • Testé sur le code réel extrait du fichier (pas une reconstitution) : les 9 cas
+         limites de geminiSamplingAllowed() passent, y compris le piège de versioning et
+         le défaut sécurisé sur modèle futur inconnu ; buildRequestParams('gemini-3.6-flash',
+         'gemini') produit une requête sans aucun champ de sampling, tandis que
+         gemini-3.5-flash / gemini-3.1-pro continuent de les recevoir normalement.
+
+     3 TARIFS CORRIGÉS (sources concordantes, datées d'août 2026) :
+       • qwen/qwen3.6-27b (Groq) : 0.40/1.20 → 0.60/3.00. L'ancien tarif portait déjà la
+         mention "non confirmé" depuis le 30/06 — 2 sources indépendantes, même relevé du
+         21/07, concordent maintenant sur 0.60/3.00.
+       • mistral-small-latest (Small 4) : 0.10/0.30 → 0.15/0.60. Incertitude notée en V54
+         ("sources contradictoires") — 4+ sources d'août 2026 convergent sur 0.15/0.60.
+       • devstral-small-latest : 0.15/0.45 → 0.10/0.30. Même origine (incertitude V54),
+         2 sources concordantes.
+
+     CONFIRMÉS INCHANGÉS après vérification complète : Anthropic (4 modèles, tarifs
+     identiques), OpenAI (Sol/Terra/Luna identiques), Gemini (tarifs identiques, seul le
+     comportement des paramètres change — voir ci-dessus), DeepSeek (V4 Flash/Pro
+     identiques), le reste de Mistral (Medium 3.5, Large 3, Codestral, Magistral, les 3
+     Ministral), Z.ai GLM-5.2 (confirmé par plusieurs sources concordantes).
+
+     NON TRANCHÉ, reporté depuis V54 faute de preuve suffisante : GLM-4.7 — un seul
+     agrégateur (pricepertoken.com) donne 0.40/1.75 contre notre 0.60/2.20, même situation
+     qu'en V54, pas assez solide pour trancher sur une source unique de ce type.
+
+     POINTS DE VIGILANCE, aucune action requise maintenant :
+       • OpenAI a introduit une facturation à paliers au-delà de 272K tokens d'entrée
+         (tarifs Sol/Terra/Luna doublent au-delà) — notre modèle de coût actuel est à taux
+         fixe, ne gère pas cette structure. Changement structurel, hors périmètre d'une
+         mise à jour de prix — à traiter séparément si le besoin se présente.
+       • DeepSeek a annoncé une surcharge "heures de pointe" (×2, plages horaires
+         pékinoises) sans date d'entrée en vigueur confirmée — toujours inactive au
+         5 août selon la dernière vérification disponible.
+
   V61 — 5 août 2026 — Triple Check et Word forcé cachés sur iPhone/Android.
      #tripleCheckBtn, #tripleCheckBtnPrem, #forceWordBtn cachés sur mobile (même point de
      rupture @media max-width:1024px que les autres adaptations de la barre du haut).
@@ -2587,6 +2641,30 @@ function claudeSamplingAllowed(model) {
   const mm = /(?:sonnet|opus)-(\d+)/i.exec(s);
   if (mm && parseInt(mm[1], 10) >= 5) return false;        // Sonnet 5, Opus 5+…
   return true;
+}
+
+/**
+ * V62 — DÉPRÉCIATION GEMINI : temperature/top_p/top_k. Confirmé par Google (notes de
+ * version + doc Firebase AI Logic) : à partir de gemini-3.6-flash ET gemini-3.5-flash-lite
+ * (sortis le même jour, 21/07/2026), ces paramètres sont ignorés silencieusement — Google
+ * annonce explicitement qu'une future génération renverra une erreur 400 si on les envoie
+ * encore. Même trajectoire que claudeSamplingAllowed() en V51, avant qu'Anthropic ne passe
+ * de "ignoré" à "rejeté" sur les modèles Opus 4.7+.
+ * ⚠ PIÈGE DE VERSIONING : ce n'est PAS un simple seuil "version ≥ 3.6" — gemini-3.5-flash
+ * (sans "lite") reste À 3.5 et N'EST PAS concerné, alors que gemini-3.5-flash-lite (aussi
+ * en 3.5) L'EST. Le point de bascule est la date de sortie du modèle, pas son numéro de
+ * version. D'où une LISTE EXPLICITE des modèles antérieurs à la dépréciation plutôt qu'une
+ * comparaison numérique — et un défaut REFUSÉ (pas autorisé) pour tout modèle inconnu de
+ * cette liste, cohérent avec l'annonce de Google ("s'applique à tous les modèles futurs") :
+ * un nouveau modèle Gemini ajouté plus tard au catalogue sans mise à jour de cette liste
+ * sera prudemment traité comme ne supportant PAS ces paramètres, plutôt que l'inverse.
+ */
+const GEMINI_SAMPLING_ALLOWED = new Set([
+  'gemini-3.5-flash', 'gemini-3.1-pro', 'gemini-3.1-flash-lite',
+  'gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.5-flash-lite',  // legacy, encore dans MODEL_MIGRATIONS
+]);
+function geminiSamplingAllowed(model) {
+  return GEMINI_SAMPLING_ALLOWED.has(String(model || ''));
 }
 
 
@@ -6707,9 +6785,13 @@ function renderParams() {
     }
     caps.webSearch = true;
   } else if (provider === 'GOOGLE GEMINI') {
-    caps.temperature = true;
-    caps.top_p       = true;
-    caps.top_k       = true;
+    // V62 — gemini-3.6-flash / gemini-3.5-flash-lite ignorent déjà ces paramètres
+    // (Google annonce un futur 400) → grisés dans l'UI, jamais envoyés côté requête
+    // (voir geminiSamplingAllowed / buildRequestParams).
+    const _gSampOk = geminiSamplingAllowed(S.model);
+    caps.temperature = _gSampOk;
+    caps.top_p       = _gSampOk;
+    caps.top_k       = _gSampOk;
     caps.webSearch   = true;
   } else if (provider === 'DEEPSEEK') {
     caps.temperature       = true;
@@ -7059,9 +7141,13 @@ function buildRequestParams(model, apiType) {
   // temperature, top_p, top_k, max_tokens. PAS de penalties.
   if (apiType === "gemini") {
     const out = { max_tokens: maxT };
-    if (valid(temp, 0, 2)) out.temperature = temp;
-    if (valid(topP, 0, 1) && topP > 0) out.top_p = topP;
-    if (topK > 0) out.top_k = topK;
+    // V62 — voir geminiSamplingAllowed() : gemini-3.6-flash et gemini-3.5-flash-lite
+    // ignorent ces paramètres aujourd'hui, Google annonce un futur 400 s'ils sont envoyés.
+    if (geminiSamplingAllowed(model)) {
+      if (valid(temp, 0, 2)) out.temperature = temp;
+      if (valid(topP, 0, 1) && topP > 0) out.top_p = topP;
+      if (topK > 0) out.top_k = topK;
+    }
     return out;
   }
 
@@ -8185,7 +8271,7 @@ const TOKEN_PRICES = {
   // ── Groq ── (vérifié 30/06/2026 — console.groq.com/docs/models)
   'openai/gpt-oss-120b':                          { input: 0.15,  output: 0.60 },
   'openai/gpt-oss-20b':                           { input: 0.075, output: 0.30 }, // corrigé (officiel Groq)
-  'qwen/qwen3.6-27b':                             { input: 0.40,  output: 1.20 }, // ⚠ cible de migration annoncée par Groq, non confirmée dans la liste publique au 30/06 — vérifier l'ID/tarif
+  'qwen/qwen3.6-27b':                             { input: 0.60,  output: 3.00 }, // V62 — corrigé (était 0.40/1.20, non confirmé). 2 sources indépendantes, même relevé du 21/07/2026, concordent sur 0.60/3.00.
 
   // ── DeepSeek ── (vérifié 30/06/2026 — api-docs.deepseek.com/quick_start/pricing)
   'deepseek-v4-pro':            { input: 0.435, output: 0.87 }, // corrigé : baisse permanente -75% (depuis 31/05/2026)
@@ -8195,10 +8281,10 @@ const TOKEN_PRICES = {
 
   // ── Mistral ── (vérifié 30/06/2026 — mistral.ai/pricing)
   'mistral-medium-latest':      { input: 1.50,  output: 7.50 }, // Medium 3.5 — sortie corrigée (était 4.50)
-  'mistral-small-latest':       { input: 0.10,  output: 0.30 }, // Small 4 — corrigé
+  'mistral-small-latest':       { input: 0.15,  output: 0.60 }, // V62 — corrigé (était 0.10/0.30, incertitude notée en V54). 4+ sources concordantes datées d'août confirment 0.15/0.60.
   'mistral-large-latest':       { input: 0.50,  output: 1.50 }, // Large 3 — flagship cost-efficient, corrigé (était 2/6)
   'codestral-latest':           { input: 0.30,  output: 0.90 },
-  'devstral-small-latest':      { input: 0.15,  output: 0.45 },
+  'devstral-small-latest':      { input: 0.10,  output: 0.30 }, // V62 — corrigé (était 0.15/0.45, incertitude notée en V54). 2 sources concordantes confirment 0.10/0.30.
   'magistral-medium-latest':    { input: 2.00,  output: 5.00 }, // sortie corrigée (était 6.00)
   'ministral-3b-latest':        { input: 0.10,  output: 0.10 },  // V52 — corrigé (était 0.04, tarif Ministral 3 2512)
   'ministral-8b-latest':        { input: 0.15,  output: 0.15 },  // V52 — corrigé (était 0.10)
