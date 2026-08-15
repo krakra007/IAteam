@@ -388,6 +388,10 @@
     .params-header h3{margin:0;font-size:15px;font-weight:600;color:#e0e0e0}
     .params-close{background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0 4px;line-height:1}
     .params-close:hover{color:#fff}
+    /* V66 — sur desktop, les boutons ✕ des panneaux sont discrets (clic-extérieur suffit
+       pour fermer). Sur mobile le clic-extérieur est impossible quand le panneau couvre
+       tout l'écran → le bouton ✕ est le SEUL moyen de sortir. */
+    .panel-close-mobile{position:sticky;top:8px;float:right;z-index:2;font-size:14px;padding:2px 6px}
     .params-section{padding:14px 18px 10px;border-bottom:1px solid #2a2a2e}
     .params-section:last-child{border-bottom:none}
     .params-section-title{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#4abfbf;margin-bottom:10px;display:flex;align-items:center;gap:6px}
@@ -1364,6 +1368,22 @@
         max-height: 100dvh !important;
         border-radius: 0 !important;
         z-index: 60 !important;
+        padding-top: 12px !important;
+      }
+
+      /* V66 — Bouton ✕ gros et accessible en mode plein écran : c'est le SEUL
+         moyen de fermer le panneau quand il couvre tout l'écran. Sans lui,
+         l'utilisateur est piégé (pas de clic-extérieur possible, pas de geste
+         retour, pas d'autre élément accessible derrière le panneau z-index:60). */
+      .panel-close-mobile {
+        font-size: 22px !important;
+        min-width: 44px; min-height: 44px;          /* cible tactile Apple/Google */
+        display: flex; align-items: center; justify-content: center;
+        position: sticky; top: 0; float: right;
+        margin: 0 4px 8px 0;
+        background: #ffffff12; border-radius: 50%;
+        color: #e2e8f0;
+        z-index: 2;
       }
 
       /* ══════════════════════════════════════════════════
@@ -1698,6 +1718,25 @@
        • DeepSeek : retrait de deepseek-chat / deepseek-reasoner de la liste (arrêt DÉFINITIF le 24/07/2026 15:59 UTC → 404). Nouvelle table MODEL_MIGRATIONS + migrateModelId() appliquée au chargement, au switch de conversation et aux defaultModel de projet : les utilisateurs encore sur ces alias basculent silencieusement vers deepseek-v4-flash. Tarifs des alias conservés uniquement pour l'affichage des coûts des anciens messages.
        • Triple Check PREMIUM : phase 3 Sonnet 4.5 → Sonnet 5 (moins cher en tarif intro 2/10 vs 3/15, plus performant ; Sonnet 4.5 part en retraite dès le 29/09/2026).
        • Gemini / Groq / Mistral / Z.ai : listes revérifiées le 14/07/2026, aucune modification nécessaire (gemini-3.5-flash GA, gpt-oss-120b/20b + qwen3.6-27b, Medium 3.5 / Small 4 / Large 3, glm-5.2 / glm-4.7 tous confirmés).
+
+  V66 — 15 août 2026 — Bouton ✕ de fermeture sur les panneaux mobiles plein écran.
+     Signalement avec capture d'écran : le panneau Clés API, une fois ouvert sur mobile,
+     couvre tout l'écran (position:fixed, 100vw×100vh, z-index:60) sans aucun moyen de le
+     refermer — pas de bouton ✕, pas de clic-extérieur possible (rien n'est visible
+     derrière le z-index:60), pas de geste retour. L'utilisateur est piégé.
+
+     Cause : les 4 panneaux (Clés API, GitHub, Profils, Paramètres) passent en plein écran
+     via une media query existante pour les petits écrans, mais seul paramsPanel avait déjà
+     un bouton ✕ (injecté par son JS de rendu). Les 3 autres comptaient sur le clic-
+     extérieur, impossible quand le panneau recouvre tout.
+
+     Correctif : bouton ✕ (.panel-close-mobile) ajouté dans le HTML des 3 panneaux
+     concernés (apiKeyPanel, githubPanel, rightPanel) avec onclick direct fermant le
+     panneau. En mode plein écran mobile, ces boutons sont rendus plus gros (44×44px,
+     cible tactile conforme), fond semi-transparent, positionnés en haut à droite via
+     position:sticky + float:right. Sur desktop, ils restent discrets (petit texte sans
+     fond), le clic-extérieur continuant de fonctionner normalement.
+     Testé (iPhone 15, 390px) : bouton visible, tap ferme le panneau.
 
   V65 — 15 août 2026 — CORRECTIF menu ⋯ non fonctionnel sur iPhone/Android.
      Régression directe de la V64 : le correctif de portrait ajoutait overflow:hidden sur
@@ -2207,6 +2246,8 @@
         <!-- Panneau Profils système (dropdown comme les autres) -->
         <div id="rightPanel" class="params right-panel" style="right:100px;top:46px;width:380px">
           <div class="right-panel-head">
+            <!-- V66 — Bouton fermer -->
+            <button class="params-close panel-close-mobile" onclick="el('rightPanel').classList.remove('open')" title="Fermer" style="margin-left:auto;order:99">✕</button>
             <span class="right-panel-title">📖 Profils système</span>
             <button class="icon-btn" id="newProfileBtn" title="Nouveau profil" style="font-size:18px;color:#7baaf7">＋</button>
           </div>
@@ -2255,6 +2296,8 @@ Exemple pour la chimie :
         </div>
         <!-- Panneau GitHub -->
         <div id="githubPanel" class="params" style="right:60px;top:46px;width:380px">
+          <!-- V66 — Bouton fermer -->
+          <button class="params-close panel-close-mobile" onclick="el('githubPanel').classList.remove('open')" title="Fermer">✕</button>
           <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:#e2e8f0">⬡ Synchronisation GitHub</div>
           <div style="display:grid;gap:8px">
             <div class="param" style="grid-template-columns:110px 1fr">
@@ -2310,6 +2353,8 @@ Exemple pour la chimie :
           </div>
         </div>
         <div id="apiKeyPanel" class="params">
+          <!-- V66 — Bouton fermer, indispensable sur mobile où le panneau couvre tout l'écran -->
+          <button class="params-close panel-close-mobile" onclick="el('apiKeyPanel').classList.remove('open')" title="Fermer">✕</button>
           <!-- Chip modèle actif -->
           <div id="activeModelChip" class="active-model-chip" style="margin-bottom:10px;width:100%">
             <span class="dot" id="chipDot"></span>
