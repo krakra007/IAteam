@@ -1368,22 +1368,32 @@
         max-height: 100dvh !important;
         border-radius: 0 !important;
         z-index: 60 !important;
-        padding-top: 12px !important;
+        padding-top: 60px !important;   /* V67 — dégager la zone du bouton ✕ fixe (44px + 12px de marge) */
       }
 
       /* V66 — Bouton ✕ gros et accessible en mode plein écran : c'est le SEUL
          moyen de fermer le panneau quand il couvre tout l'écran. Sans lui,
          l'utilisateur est piégé (pas de clic-extérieur possible, pas de geste
          retour, pas d'autre élément accessible derrière le panneau z-index:60). */
+      /* V67 — CORRECTIF : le bouton ✕ utilisait position:sticky, qui ne fonctionne pas
+         de façon fiable dans un conteneur scrollable sur iOS Safari — le bouton
+         disparaissait en scrollant le panneau vers le bas, rendant l'utilisateur piégé
+         exactement comme avant la V66 dès qu'il faisait défiler le contenu.
+         Passé en position:fixed : puisque le panneau lui-même est déjà fixed (100vw×100vh),
+         le bouton est ancré au coin supérieur droit du VIEWPORT, pas du panneau — il reste
+         visible quel que soit le scroll du contenu. z-index:61 (panneau = 60). */
       .panel-close-mobile {
         font-size: 22px !important;
         min-width: 44px; min-height: 44px;          /* cible tactile Apple/Google */
         display: flex; align-items: center; justify-content: center;
-        position: sticky; top: 0; float: right;
-        margin: 0 4px 8px 0;
-        background: #ffffff12; border-radius: 50%;
+        position: fixed !important;
+        top: 12px; right: 12px;
+        float: none;
+        margin: 0;
+        background: #333; border: 1px solid #555; border-radius: 50%;
         color: #e2e8f0;
-        z-index: 2;
+        z-index: 61;
+        box-shadow: 0 2px 8px rgba(0,0,0,.5);
       }
 
       /* ══════════════════════════════════════════════════
@@ -1718,6 +1728,17 @@
        • DeepSeek : retrait de deepseek-chat / deepseek-reasoner de la liste (arrêt DÉFINITIF le 24/07/2026 15:59 UTC → 404). Nouvelle table MODEL_MIGRATIONS + migrateModelId() appliquée au chargement, au switch de conversation et aux defaultModel de projet : les utilisateurs encore sur ces alias basculent silencieusement vers deepseek-v4-flash. Tarifs des alias conservés uniquement pour l'affichage des coûts des anciens messages.
        • Triple Check PREMIUM : phase 3 Sonnet 4.5 → Sonnet 5 (moins cher en tarif intro 2/10 vs 3/15, plus performant ; Sonnet 4.5 part en retraite dès le 29/09/2026).
        • Gemini / Groq / Mistral / Z.ai : listes revérifiées le 14/07/2026, aucune modification nécessaire (gemini-3.5-flash GA, gpt-oss-120b/20b + qwen3.6-27b, Medium 3.5 / Small 4 / Large 3, glm-5.2 / glm-4.7 tous confirmés).
+
+  V67 — 15 août 2026 — CORRECTIF bouton ✕ invisible après scroll sur iOS/Android.
+     Le bouton ✕ de la V66 utilisait position:sticky, qui ne fonctionne pas de façon
+     fiable dans un conteneur scrollable sur iOS Safari — dès que l'utilisateur faisait
+     défiler le panneau (ex. liste des clés API, config GitHub), le ✕ disparaissait et
+     l'utilisateur se retrouvait piégé exactement comme avant la V66.
+     Passé en position:fixed (z-index:61, panneau = 60) : ancré au coin supérieur droit
+     du VIEWPORT, pas du panneau — reste visible quel que soit le scroll du contenu.
+     Fond opaque (#333) avec ombre, pour se détacher visuellement du contenu qui défile
+     derrière. Padding-top du panneau augmenté à 60px pour que le contenu ne passe pas
+     sous le bouton. Testé : visible avant et après scroll, tap ferme le panneau.
 
   V66 — 15 août 2026 — Bouton ✕ de fermeture sur les panneaux mobiles plein écran.
      Signalement avec capture d'écran : le panneau Clés API, une fois ouvert sur mobile,
