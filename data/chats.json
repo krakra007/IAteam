@@ -82,8 +82,7 @@
     }
   ],
   "activeProfiles": [
-    "a3dc6099-e5da-4e32-9f66-a20d41254a0f",
-    "redaction"
+    "a3dc6099-e5da-4e32-9f66-a20d41254a0f"
   ],
   "params": {
     "temperature": 0.2,
@@ -595,6 +594,6 @@
     "chats": {},
     "projects": {}
   },
-  "savedAt": "2026-08-15T05:48:12.472Z",
+  "savedAt": "2026-08-15T05:54:58.659Z",
   "version": 2
 }
