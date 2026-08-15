@@ -1205,7 +1205,13 @@
          4. .top en overflow:hidden : même si un élément débordait, il ne serait
             plus poussé hors écran de façon invisible (il serait coupé visiblement).
          5. Le bouton ⋯ a flex-shrink:0 : c'est le DERNIER élément à disparaître. */
-      .top { overflow: hidden; }
+      /* V64 avait ajouté overflow:hidden sur .top comme "filet de sécurité" — RETIRÉ
+         en V65 : le menu déroulant (.more-menu-dropdown) est DANS .top avec position:
+         absolute et top:58px, il se déploie EN DESSOUS de la barre. overflow:hidden le
+         coupe net, rendant le menu invisible même quand la classe "open" est bien ajoutée
+         au clic. Le vrai correctif, ce sont les flex-shrink:0 et min-width:0 ci-dessous,
+         qui empêchent le débordement à la source — le overflow:hidden était redondant ET
+         nuisible. */
       .model-dd-btn { min-width: 0 !important; max-width: 140px; flex-shrink: 1; }
       .top > div:last-child { flex-shrink: 0; }           /* groupe droite : ne rétrécit jamais */
       .more-menu-btn { flex-shrink: 0 !important; }       /* bouton ⋯ : TOUJOURS visible */
@@ -1692,6 +1698,17 @@
        • DeepSeek : retrait de deepseek-chat / deepseek-reasoner de la liste (arrêt DÉFINITIF le 24/07/2026 15:59 UTC → 404). Nouvelle table MODEL_MIGRATIONS + migrateModelId() appliquée au chargement, au switch de conversation et aux defaultModel de projet : les utilisateurs encore sur ces alias basculent silencieusement vers deepseek-v4-flash. Tarifs des alias conservés uniquement pour l'affichage des coûts des anciens messages.
        • Triple Check PREMIUM : phase 3 Sonnet 4.5 → Sonnet 5 (moins cher en tarif intro 2/10 vs 3/15, plus performant ; Sonnet 4.5 part en retraite dès le 29/09/2026).
        • Gemini / Groq / Mistral / Z.ai : listes revérifiées le 14/07/2026, aucune modification nécessaire (gemini-3.5-flash GA, gpt-oss-120b/20b + qwen3.6-27b, Medium 3.5 / Small 4 / Large 3, glm-5.2 / glm-4.7 tous confirmés).
+
+  V65 — 15 août 2026 — CORRECTIF menu ⋯ non fonctionnel sur iPhone/Android.
+     Régression directe de la V64 : le correctif de portrait ajoutait overflow:hidden sur
+     .top pour empêcher le débordement. Le menu déroulant (.more-menu-dropdown) est DANS
+     .top avec position:absolute et top:58px — il se déploie EN DESSOUS de la barre, et
+     overflow:hidden le coupait net. Le menu recevait bien la classe "open" au tap (le JS
+     fonctionnait), mais il était invisible parce que clippé par son parent.
+     Retiré : le vrai correctif de la V64, ce sont les flex-shrink:0 et min-width:0,
+     qui empêchent le débordement à la source — le overflow:hidden était redondant et
+     nuisible. Testé sur 3 tailles (iPhone 15, Realme, Android 360px) : bouton visible,
+     menu ouvert et visible après tap, 4 items tous accessibles. Capture vérifiée à 360px.
 
   V64 — 15 août 2026 — CORRECTIF PORTRAIT MOBILE (bouton ⋯ invisible).
      Signalement récurrent (3e signalement) : le bouton ⋯ est poussé hors écran en
