@@ -92,45 +92,6 @@
     "claude-haiku-4-5-20251001"
   ],
   "costStatsDaily": {
-    "2026-06-12": {
-      "a073c97b-1ba2-4de4-b825-7be6602283c5": {
-        "_label": "iPad",
-        "total": 0.00098775,
-        "count": 1,
-        "solo": 0.00098775,
-        "tripleEco": 0,
-        "triplePremium": 0,
-        "deepResearch": 0,
-        "tokensIn": 1369,
-        "tokensOut": 1304
-      }
-    },
-    "2026-06-13": {
-      "c40c92cf-fbf3-423a-b8d0-0c197e669ca0": {
-        "_label": "Mac",
-        "total": 0.007284,
-        "count": 3,
-        "solo": 0.007284,
-        "tripleEco": 0,
-        "triplePremium": 0,
-        "deepResearch": 0,
-        "tokensIn": 25764,
-        "tokensOut": 5699
-      }
-    },
-    "2026-06-15": {
-      "2df0d7b6-b4c1-44bf-a230-bda71f5eda26": {
-        "_label": "PC",
-        "total": 0.00184905,
-        "count": 3,
-        "solo": 0.00184905,
-        "tripleEco": 0,
-        "triplePremium": 0,
-        "deepResearch": 0,
-        "tokensIn": 3197,
-        "tokensOut": 1826
-      }
-    },
     "2026-06-16": {
       "c40c92cf-fbf3-423a-b8d0-0c197e669ca0": {
         "_label": "Mac",
@@ -605,6 +566,6 @@
     "chats": {},
     "projects": {}
   },
-  "savedAt": "2026-08-11T15:34:53.850Z",
+  "savedAt": "2026-08-15T05:35:03.289Z",
   "version": 2
 }
