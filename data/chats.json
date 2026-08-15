@@ -91,6 +91,10 @@
     "gemini-3.5-flash-lite",
     "claude-haiku-4-5-20251001"
   ],
+  "tombstones": {
+    "chats": {},
+    "projects": {}
+  },
   "costStatsDaily": {
     "2026-06-16": {
       "c40c92cf-fbf3-423a-b8d0-0c197e669ca0": {
@@ -562,10 +566,6 @@
       }
     }
   },
-  "tombstones": {
-    "chats": {},
-    "projects": {}
-  },
-  "savedAt": "2026-08-15T05:35:03.289Z",
+  "savedAt": "2026-08-15T05:39:04.093Z",
   "version": 2
 }
