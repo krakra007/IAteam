@@ -1693,7 +1693,7 @@
       .app.sidebar-collapsed .sidebar { transform: none; width: 0; }
     }
 
-    /* V71 — Badge warning anti-hallucination (citations non vérifiées) */
+    /* V71/V72 — Badge warning anti-hallucination (citations non vérifiées, NCT non vérifiés) */
     .citation-warning{
       display:inline;
       background:#f59e0b22;color:#d97706;
@@ -7291,8 +7291,10 @@ function postProcessLLMResponse(text) {
 
   let cleaned = text;
   const flaggedCitations = [];
+  const WARN = '<span class="citation-warning" title="⚠ Citation non vérifiée — le modèle peut fabriquer des références plausibles mais inexistantes">⚠ réf. non vérifiée</span>';
+  const WARN_NCT = '<span class="citation-warning" title="⚠ Numéro d\'essai clinique non vérifié — le modèle peut générer des identifiants NCT plausibles mais inexistants">⚠ NCT non vérifié</span>';
 
-  // ── 1. Citations formatées : (*Journal*, YYYY) ou (Auteur, YYYY) ──
+  // ── 1. Citations formatées ──
   // On les remplace par un badge warning visible plutôt que de les supprimer
   // silencieusement, pour que l'utilisateur sache qu'il y avait une affirmation
   // non vérifiable à cet endroit.
@@ -7304,37 +7306,72 @@ function postProcessLLMResponse(text) {
     // Ridley, AJ. (2015) — hors parenthèses
     /([A-Z][a-zàâäéèêëïîôöùûüçA-Z]+,?\s+[A-Z]{1,3}\.)\s*\(\d{4}\)/g,
     // *Journal of Cell Science*, 2019 — sans parenthèses englobantes
-    /\*([^*]{4,60})\*,?\s*\d{4}/g
+    /\*([^*]{4,60})\*,?\s*\d{4}/g,
+    // V72 — (Nature Cancer, 2022) / (Cancer Cell, 2020) — journal multi-mots sans italique
+    // Matche : ( Mot Mot[...], YYYY ) — 2 à 6 mots capitalisés séparés par des espaces
+    /\(([A-Z][a-z]+(?:\s+[A-Za-z&]+){1,5}),?\s*(\d{4})\)/g,
+    // V72 — (Nature Biotech, 2016) hors parenthèses : Journal Multi-Mots, YYYY ou Journal Multi-Mots (YYYY)
+    /([A-Z][a-z]+(?:\s+[A-Za-z&]+){1,5}),?\s*\((\d{4})\)/g
   ];
 
   patterns.forEach(pattern => {
     cleaned = cleaned.replace(pattern, (match) => {
+      // Éviter les faux positifs sur des expressions courantes non bibliographiques
+      // ex: (Phase I, 2021), (Figure 3, 2020), (Ex vivo, 2020)
+      if (/^(\(?(Phase|Figure|Table|Étape|Step|Version|Fig|In vitro|In vivo|Ex vivo|De novo|In situ|In silico)\b)/i.test(match)) return match;
       flaggedCitations.push(match);
-      return '<span class="citation-warning" title="⚠ Citation non vérifiée — le modèle peut fabriquer des références plausibles mais inexistantes">⚠ réf. non vérifiée</span>';
+      return WARN;
     });
   });
 
-  // ── 2. Bloc "Références" / "Sources" en fin de réponse ──
-  // Section entière de citations formatées (souvent hallucinées sur les petits modèles)
+  // ── 2. Numéros d'essais cliniques NCT ──
+  // V72 — Aucun LLM ne peut garantir l'exactitude d'un numéro NCT.
+  // On badge TOUS les NCT, sans exception. Format : NCT suivi de 8 chiffres.
+  cleaned = cleaned.replace(/\bNCT\d{8}\b/g, (match) => {
+    flaggedCitations.push(match);
+    return match + ' ' + WARN_NCT;
+  });
+
+  // ── 3. Faux liens bibliographiques ──
+  // V72 — Liens markdown pointant vers des domaines racines de journaux
+  // ex: [titre](https://www.nature.com) ou [titre](https://www.science.org)
   cleaned = cleaned.replace(
-    /\n---\s*\n###?\s*\*{0,2}(?:Références?|Sources?|Bibliographie)\b[\s\S]*$/i,
-    (match) => {
-      // Vérifier qu'il y a effectivement des patterns de citation dedans
-      if (/\(\d{4}\)|\*[A-Z][^*]+\*|\d{4}\)/.test(match)) {
-        flaggedCitations.push('[Section références complète supprimée]');
-        return '\n\n---\n*📚 Section références retirée automatiquement — les citations générées par le modèle ne sont pas vérifiées. Consultez la littérature de synthèse sur le sujet pour des sources fiables.*';
-      }
-      return match; // pas de citation détectée → on laisse
+    /\[([^\]]+)\]\(https?:\/\/(?:www\.)?(?:nature|science|cell|thelancet|nejm|bmj|pnas|wiley|springer|elsevier|sciencedirect)\.(?:com|org)\/?\)/gi,
+    (match, linkText) => {
+      flaggedCitations.push(match);
+      return linkText + ' ' + WARN;
     }
   );
 
-  // ── 3. Relance finale (question ou invitation à poursuivre) ──
+  // ── 4. Sections finales hallucinogènes ──
+  // V72 — Élargi : couvre Références, Sources, Bibliographie, Ressources, Question pour Approfondir
+  // Cherche la DERNIÈRE section de ce type (peut y en avoir plusieurs)
+  cleaned = cleaned.replace(
+    /\n---\s*\n###?\s*\*{0,2}(?:Références?|Sources?|Bibliographie|Ressources?\s+pour\s+[Aa]ller\s+[Pp]lus\s+[Ll]oin|Question\s+pour\s+[Aa]pprofondir)\b[\s\S]*$/i,
+    (match) => {
+      // Section "Question pour Approfondir" → relance déguisée, supprimer
+      if (/question\s+pour\s+approfondir/i.test(match)) {
+        flaggedCitations.push('[Section "Question pour Approfondir" supprimée — relance]');
+        return '';
+      }
+      // Sections références/ressources → vérifier qu'il y a des citations dedans
+      if (/\(\d{4}\)|\*[A-Z][^*]+\*|\d{4}\)|NCT\d{8}|\]\(https?:/.test(match)) {
+        flaggedCitations.push('[Section références/ressources supprimée]');
+        return '\n\n---\n*📚 Section références retirée automatiquement — les citations générées par le modèle ne sont pas vérifiées. Consultez la littérature de synthèse sur le sujet pour des sources fiables.*';
+      }
+      return match;
+    }
+  );
+
+  // ── 5. Relance finale (question ou invitation à poursuivre) ──
+  // V72 — Élargi : scanne les 3 derniers paragraphes (pas seulement le dernier),
+  // car certaines relances s'étalent sur plusieurs paragraphes (options numérotées, etc.)
   let relanceRemoved = false;
   const paragraphs = cleaned.trim().split(/\n\n+/);
-  if (paragraphs.length > 1) {
-    const lastPara = paragraphs[paragraphs.length - 1];
-    const relanceRx = /(\?\s*$|si\s+vous\s+(souhaitez|voulez)|pour\s+aller\s+plus\s+loin|n'hésitez\s+pas|je\s+peux\s+(fournir|développer|approfondir|détailler|préciser)|souhaitez[\s-]vous|voulez[\s-]vous\s+que\s+je|puis-je\s+vous|dites[\s-]moi\s+si)/i;
-    if (relanceRx.test(lastPara)) {
+  if (paragraphs.length > 2) {
+    const relanceRx = /(\?\s*$|si\s+vous\s+(souhaitez|voulez)|pour\s+aller\s+plus\s+loin|n'hésitez\s+pas|je\s+peux\s+(fournir|développer|approfondir|détailler|préciser)|souhaitez[\s-]vous|voulez[\s-]vous\s+que\s+je|puis-je\s+vous|dites[\s-]moi\s+si|prochaine\s+étape\s*(critique)?\s*:/i;
+    // Retirer les paragraphes de relance en partant de la fin
+    while (paragraphs.length > 2 && relanceRx.test(paragraphs[paragraphs.length - 1])) {
       paragraphs.pop();
       relanceRemoved = true;
     }
