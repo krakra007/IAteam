@@ -1368,7 +1368,7 @@
         max-height: 100dvh !important;
         border-radius: 0 !important;
         z-index: 60 !important;
-        padding-top: 60px !important;   /* V67 — dégager la zone du bouton ✕ fixe (44px + 12px de marge) */
+        padding-top: calc(env(safe-area-inset-top, 0px) + 60px) !important;   /* V68 — dégager la zone sécurisée (Dynamic Island) + le bouton ✕ fixe */
       }
 
       /* V66 — Bouton ✕ gros et accessible en mode plein écran : c'est le SEUL
@@ -1382,12 +1382,18 @@
          Passé en position:fixed : puisque le panneau lui-même est déjà fixed (100vw×100vh),
          le bouton est ancré au coin supérieur droit du VIEWPORT, pas du panneau — il reste
          visible quel que soit le scroll du contenu. z-index:61 (panneau = 60). */
+      /* V68 — CORRECTIF : sur iPhone avec Dynamic Island/notch, le bouton ✕ à top:12px
+         était caché derrière la barre de statut (~59px sur les iPhone récents). En mode
+         PWA standalone avec viewport-fit:cover, le contenu s'étend sous le matériel
+         sans env(safe-area-inset-top). Le panneau lui-même doit aussi décaler son
+         padding-top pour ne pas commencer sous la zone masquée. */
       .panel-close-mobile {
         font-size: 22px !important;
-        min-width: 44px; min-height: 44px;          /* cible tactile Apple/Google */
+        min-width: 44px; min-height: 44px;
         display: flex; align-items: center; justify-content: center;
         position: fixed !important;
-        top: 12px; right: 12px;
+        top: calc(env(safe-area-inset-top, 0px) + 12px);
+        right: 12px;
         float: none;
         margin: 0;
         background: #333; border: 1px solid #555; border-radius: 50%;
@@ -1728,6 +1734,32 @@
        • DeepSeek : retrait de deepseek-chat / deepseek-reasoner de la liste (arrêt DÉFINITIF le 24/07/2026 15:59 UTC → 404). Nouvelle table MODEL_MIGRATIONS + migrateModelId() appliquée au chargement, au switch de conversation et aux defaultModel de projet : les utilisateurs encore sur ces alias basculent silencieusement vers deepseek-v4-flash. Tarifs des alias conservés uniquement pour l'affichage des coûts des anciens messages.
        • Triple Check PREMIUM : phase 3 Sonnet 4.5 → Sonnet 5 (moins cher en tarif intro 2/10 vs 3/15, plus performant ; Sonnet 4.5 part en retraite dès le 29/09/2026).
        • Gemini / Groq / Mistral / Z.ai : listes revérifiées le 14/07/2026, aucune modification nécessaire (gemini-3.5-flash GA, gpt-oss-120b/20b + qwen3.6-27b, Medium 3.5 / Small 4 / Large 3, glm-5.2 / glm-4.7 tous confirmés).
+
+  V68 — 17 août 2026 — Suppression Z.AI, modèle par défaut Ministral 14B, Gemini 3.7 Flash.
+
+     SUPPRESSIONS (demande explicite de l'utilisateur) :
+       • Fournisseur Z.AI (GLM) supprimé : groupe retiré de MODEL_GROUPS, PROVIDERS réduit
+         de 7 à 6, inferProviderFromModel, providerBadgeHtml, PROVIDER_META, test de clé,
+         buildRequestParams (branche zai), routage send(), diagnostic réseau — tous retirés.
+         Tarifs conservés dans TOKEN_PRICES (coût des anciens messages), glm-5.2 et glm-4.7
+         ajoutés à MODEL_MIGRATIONS → ministral-14b-latest.
+       • L'utilisateur doit supprimer manuellement la clé Z.AI du panneau 🔑 sur chaque
+         machine — la clé vit dans le coffre/localStorage, pas dans le code.
+       • Les projets (Export Control, Dust, Short) et les quotas de conversations sont des
+         DONNÉES UTILISATEUR stockées dans localStorage/synchro GitHub, pas dans le HTML —
+         l'utilisateur les supprime depuis l'interface (menu ⋯ du projet → Supprimer).
+
+     MODÈLE PAR DÉFAUT changé : gemini-3.5-flash-lite → ministral-14b-latest.
+     Corrigé aux 6 emplacements (défaut global, favoris initiaux, replis, post-pull, reset).
+
+     MISE À JOUR MODÈLES :
+       • Gemini 3.7 Flash ajouté — sorti le 13/08/2026 (il y a 4 jours), model ID
+         gemini-3.7-flash, 1M contexte, 64K sortie. Tarif intro $0.75/$3.75 jusqu'au
+         31/12/2026, puis $1.50/$7.50. Gains majeurs sur coding et agentic vs 3.6 Flash.
+         geminiSamplingAllowed le traite correctement par défaut (REFUSÉ pour tout modèle
+         inconnu de la liste des anciens, cohérent avec la dépréciation annoncée par Google).
+       • Catalogue : 28 modèles (29 → 28 après retrait des 2 GLM et ajout de 3.7 Flash).
+       • RAPPEL : tarif intro Sonnet 5 ($2/$10) expire le 31/08/2026 → repassera à $3/$15.
 
   V67 — 15 août 2026 — CORRECTIF bouton ✕ invisible après scroll sur iOS/Android.
      Le bouton ✕ de la V66 utilisait position:sticky, qui ne fonctionne pas de façon
@@ -2586,10 +2618,11 @@ const MODEL_GROUPS = [
   // ⚠ V54 — La famille Gemini 2.5 (pro / flash / flash-lite) est programmée pour RETRAIT
   //   le 16 octobre 2026 → retirée de la liste par anticipation, conservée dans
   //   MODEL_MIGRATIONS et TOKEN_PRICES. gemini-2.0-flash était déjà arrêté (01/06/2026).
-  // ⚠ gemini-3.5-pro toujours en partner testing au 31/07 → non listé.
+  // ⚠ gemini-3.5-pro toujours en partner testing au 17/08 → non listé.
   {
     label: "Google Gemini",
     models: [
+      "gemini-3.7-flash",           // 🆕 V68 — 13/08/2026, coding+agentic, 1M ctx, intro 0.75/3.75 jusqu'au 31/12/2026
       "gemini-3.6-flash",           // 21/07/2026, workhorse Flash, 1M ctx, 1.50/7.50
       "gemini-3.5-flash",           // I/O 2026, Flash agentic+coding, 1M ctx, 1.50/9
       "gemini-3.5-flash-lite",      // 21/07/2026, ultra-low latency/cost, 0.30/2.50
@@ -2653,18 +2686,9 @@ const MODEL_GROUPS = [
       "open-mistral-nemo",        // Nemo 12B — multilingue, open-source
     ]
   },
-  // ── Z.ai — GLM (poids ouverts, licence MIT) ────────
-  // Source : z.ai / docs.z.ai — vérifié 30 juin 2026. API OpenAI-compatible.
-  // Endpoint : https://api.z.ai/api/paas/v4/chat/completions
-  // Flagship courant = GLM-5.2 (13 juin 2026), contexte 1M. GLM-5 (fév.) est déjà 2 gén. en arrière.
-  // ⚠ Serveurs principalement en Chine (~100-200 ms depuis l'UE) ; vérifier le CORS navigateur.
-  {
-    label: "🧠 Z.ai GLM — Open-weight",
-    models: [
-      "glm-5.2",   // flagship agentic + coding (juin 2026), contexte 1M, MIT
-      "glm-4.7"    // tier économique
-    ]
-  }
+  // V68 — Z.ai (GLM) retiré du catalogue : fournisseur supprimé à la demande de l'utilisateur.
+  // Modèles glm-5.2 et glm-4.7 conservés dans TOKEN_PRICES (coût des anciens messages)
+  // et ajoutés à MODEL_MIGRATIONS (conversations existantes → ministral-14b-latest).
 ];
 
 const CURATED_MODELS = MODEL_GROUPS.flatMap(g => g.models);
@@ -2708,7 +2732,11 @@ const MODEL_MIGRATIONS = {
   // V54 — Gemini : famille 2.5 retirée par Google le 16/10/2026
   "gemini-2.5-pro":        "gemini-3.1-pro",
   "gemini-2.5-flash":      "gemini-3.5-flash-lite", // tarif identique (0.30/2.50), modèle plus récent
-  "gemini-2.5-flash-lite": "gemini-3.1-flash-lite"  // le moins cher du catalogue restant
+  "gemini-2.5-flash-lite": "gemini-3.1-flash-lite",  // le moins cher du catalogue restant
+
+  // V68 — Z.ai supprimé à la demande de l'utilisateur
+  "glm-5.2":             "ministral-14b-latest",
+  "glm-4.7":             "ministral-14b-latest"
 };
 function migrateModelId(model) {
   return MODEL_MIGRATIONS[model] || model;
@@ -2918,7 +2946,7 @@ const S = {
     }
   ],
   activeProfiles: JSON.parse(localStorage.getItem("activeProfiles") || "[]"),
-  favoriteModels: JSON.parse(localStorage.getItem("favoriteModels") || '["gemini-3.5-flash-lite","claude-haiku-4-5-20251001"]'),
+  favoriteModels: JSON.parse(localStorage.getItem("favoriteModels") || '["ministral-14b-latest","claude-haiku-4-5-20251001"]'),
   // V42 — Tombstones : ID de chats/projets supprimés, avec timestamp.
   // Sert à empêcher le pull de "ressusciter" les éléments qu'on a supprimés localement
   // (race condition entre delete local et auto-pull périodique).
@@ -2930,7 +2958,7 @@ const S = {
   })(),
   activeChat:    localStorage.getItem("activeChat")    || null,
   activeProject: localStorage.getItem("activeProject") || null,
-  model:  "gemini-3.5-flash-lite",  // ← Modèle par défaut (V54, remplace gemini-2.5-flash retiré) : économique, contexte 1M, mode thinking pour sciences
+  model:  "ministral-14b-latest",  // ← Modèle par défaut (V68, remplace gemini-3.5-flash-lite) : SLM versatile pour usage quotidien
   params: (() => {
     const raw = JSON.parse(localStorage.getItem("params") || "null");
     if (!raw) return { ...DEF };
@@ -2948,7 +2976,7 @@ let isWaitingResponse = false;
 let waitingStartTime = 0;
 let waitingTimerInterval = null;
 let _currentAbortController = null; // Controller global pour annuler les requêtes
-if (!CURATED_MODELS.includes(S.model)) S.model = "gemini-3.5-flash-lite";
+if (!CURATED_MODELS.includes(S.model)) S.model = "ministral-14b-latest";
 
 const promptEl   = el("prompt");
 
@@ -3408,7 +3436,7 @@ const apiErrorEl = el("apiError");
 // ─────────────────────────────────────────────────
 // CLÉS API — 4 fournisseurs
 // ─────────────────────────────────────────────────
-const PROVIDERS = ["ANTHROPIC", "OPENAI", "DEEPSEEK", "GOOGLE GEMINI", "GROQ", "MISTRAL", "Z.AI"];
+const PROVIDERS = ["ANTHROPIC", "OPENAI", "DEEPSEEK", "GOOGLE GEMINI", "GROQ", "MISTRAL"];
 const providerKeysEl = el("providerKeys");
 const apiKeysByProvider = JSON.parse(localStorage.getItem("apiKeysByProvider") || "{}");
 PROVIDERS.forEach(p => { if (!(p in apiKeysByProvider)) apiKeysByProvider[p] = ""; });
@@ -3869,7 +3897,6 @@ function inferProviderFromModel(model) {
   if (m.startsWith("claude"))   return "ANTHROPIC";
   if (m.startsWith("gemini"))   return "GOOGLE GEMINI";
   if (m.startsWith("deepseek")) return "DEEPSEEK";
-  if (m.startsWith("glm"))      return "Z.AI";
   if (m.startsWith("mistral") || m.startsWith("codestral") || m.startsWith("devstral") || m.startsWith("magistral") || m.startsWith("ministral") || m.startsWith("open-mistral")) return "MISTRAL";
   if (_GROQ_MODEL_SET.has(model)) return "GROQ";
   return "OPENAI";
@@ -3883,7 +3910,6 @@ function providerBadgeHtml(provider) {
     "GOOGLE GEMINI":["badge-gemini",    "Gemini"],
     "GROQ":         ["badge-groq",      "Groq"],
     "MISTRAL":      ["badge-mistral",   "Mistral"],
-    "Z.AI":         ["badge-zai",       "GLM"]
   };
   // V53 — SÉCURITÉ : provider inconnu → le label est la valeur brute (synchronisée) → échappé.
   const [cls, label] = map[provider] || ["badge-openai", provider];
@@ -3904,7 +3930,6 @@ function renderApiKeys() {
     "GOOGLE GEMINI":{ color:"#7baaf7", icon:"🔷", placeholder:"AIza..." },
     "GROQ":         { color:"#f55016", icon:"🔴", placeholder:"gsk_..." },
     "MISTRAL":      { color:"#ff7200", icon:"🟧", placeholder:"mistral-..." },
-    "Z.AI":         { color:"#6366f1", icon:"🟣", placeholder:"Clé Z.ai (Bearer)..." }
   };
 
   container.innerHTML = "";
@@ -4019,15 +4044,6 @@ async function testApiKey(provider, key) {
     } else if (provider === "MISTRAL") {
       const r = await fetch("https://api.mistral.ai/v1/models", {
         headers: { "Authorization": "Bearer " + key }
-      });
-      ok = r.status === 200;
-      msg = ok ? "Clé valide ✓" : `Erreur ${r.status}`;
-    } else if (provider === "Z.AI") {
-      // Ping chat minimal : valide la clé ET le CORS navigateur (api.z.ai)
-      const r = await fetch("https://api.z.ai/api/paas/v4/chat/completions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + key },
-        body: JSON.stringify({ model: "glm-5.2", messages: [{ role: "user", content: "ping" }], max_tokens: 1 })
       });
       ok = r.status === 200;
       msg = ok ? "Clé valide ✓" : `Erreur ${r.status}`;
@@ -4411,7 +4427,7 @@ function switchToChat(c) {
     // V51 — migre les ID retirés (ex. deepseek-chat mémorisé comme défaut de projet)
     if (proj && proj.defaultModel) resolvedModel = migrateModelId(proj.defaultModel);
   }
-  if (!resolvedModel || !CURATED_MODELS.includes(resolvedModel)) resolvedModel = "gemini-3.5-flash-lite";
+  if (!resolvedModel || !CURATED_MODELS.includes(resolvedModel)) resolvedModel = "ministral-14b-latest";
   if (S.model !== resolvedModel) {
     S.model = resolvedModel;
     window._userChangedModel = false;
@@ -7332,17 +7348,6 @@ function buildRequestParams(model, apiType) {
     return out;
   }
 
-  // ── Z.ai GLM (couche OpenAI compat) ─────────────────────────
-  // max_tokens, temperature, top_p. Pas de penalties (GLM peut les rejeter).
-  // Le raisonnement GLM (thinking/reasoning_effort) est un champ hors-standard
-  // non piloté ici → GLM répond en mode par défaut, ce qui convient pour le chat.
-  if (apiType === "zai") {
-    const out = { max_tokens: maxT, ...stop };
-    if (valid(temp, 0, 2)) out.temperature = temp;
-    if (valid(topP, 0, 1) && topP > 0) out.top_p = topP;
-    return out;
-  }
-
   // ── DeepSeek ────────────────────────────────────────────────
   // max_tokens (pas max_completion_tokens), temperature, top_p, penalties, stop.
   if (apiType === "deepseek") {
@@ -8419,7 +8424,8 @@ const TOKEN_PRICES = {
   'gemini-2.5-pro':             { input: 1.25,  output: 10.00 }, // corrigé (sortie 10, pas 5) ; ≤200K tokens
   'gemini-3.1-pro':             { input: 2.00,  output: 12.00 }, // GA (ex -preview) ; ≤200K, x2/x1.5 au-delà
   'gemini-3.1-flash-lite':      { input: 0.25,  output: 1.50 },  // corrigé
-  'gemini-3.6-flash':           { input: 1.50,  output: 7.50 },  // 🆕 V52 — 21/07/2026, output -17% vs 3.5 Flash
+  'gemini-3.7-flash':           { input: 0.75,  output: 3.75 },  // 🆕 V68 — 13/08/2026, intro pricing jusqu'au 31/12/2026, puis 1.50/7.50
+  'gemini-3.6-flash':           { input: 1.50,  output: 7.50 },  // 21/07/2026, output -17% vs 3.5 Flash
   'gemini-3.5-flash':           { input: 1.50,  output: 9.00 },  // corrigé (était 0.30/1.20 — facteur ~7)
   'gemini-3.5-flash-lite':      { input: 0.30,  output: 2.50 },  // 🆕 V52 — 21/07/2026, ultra-low latency
   'gemini-3.1-flash-image': { input: 0.25, output: 60.00 }, // ⚠ tarif spécial : voir computeCost — flat $0.067 par image 1024px + tokens d'entrée
@@ -9474,13 +9480,6 @@ async function send() {
         key, S.model, c.messages, "deepseek", _streamSink
       );
 
-    } else if (provider === "Z.AI") {
-      // Z.ai GLM — API compatible OpenAI (Chat Completions), endpoint paas/v4
-      responseContent = await callOpenAICompatible(
-        "https://api.z.ai/api/paas/v4/chat/completions",
-        key, S.model, c.messages, "zai", _streamSink
-      );
-
     } else if (isGPT5Model(S.model)) {
       // GPT-5.x → Responses API (/v1/responses)
       responseContent = await callOpenAIResponses(key, S.model, c.messages);
@@ -9691,7 +9690,6 @@ async function send() {
         "GOOGLE GEMINI": "generativelanguage.googleapis.com",
         "GROQ": "api.groq.com",
         "MISTRAL": "api.mistral.ai",
-        "Z.AI": "api.z.ai"
       };
       const host = providerUrls[provider] || '?';
       hints.push(`Vérifiez que ${host} est accessible (ouvrez https://${host} dans un nouvel onglet).`);
@@ -10895,7 +10893,7 @@ async function ghPull() {
     if (raw.params)        S.params        = { ...DEF, ...raw.params };
     if (raw.model)         S.model         = migrateModelId(raw.model); // V54 — l'autre machine peut envoyer un ID retiré
     // Toujours forcer le modèle par défaut après un pull
-    if (!window._userChangedModel) S.model = "gemini-3.5-flash-lite";
+    if (!window._userChangedModel) S.model = "ministral-14b-latest";
 
     if (!S.chats.find(c => c.id === S.activeChat))
       S.activeChat = S.chats[0]?.id || null;
@@ -11556,8 +11554,8 @@ document.addEventListener("click", e => {
 // ⚠ On NE force PAS le modèle si l'utilisateur en a déjà choisi un (respect du dernier choix).
 const _storedModel = migrateModelId(localStorage.getItem("model")); // V51 — bascule les ID retirés (ex. deepseek-chat → v4-flash)
 if (!_storedModel || !CURATED_MODELS.includes(_storedModel)) {
-  S.model = "gemini-3.5-flash-lite";
-  localStorage.setItem("model", "gemini-3.5-flash-lite");
+  S.model = "ministral-14b-latest";
+  localStorage.setItem("model", "ministral-14b-latest");
 } else {
   S.model = _storedModel;
   localStorage.setItem("model", _storedModel); // persiste l'ID migré pour ne pas re-migrer à chaque chargement
