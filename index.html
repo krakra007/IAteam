@@ -1693,6 +1693,18 @@
       .app.sidebar-collapsed .sidebar { transform: none; width: 0; }
     }
 
+    /* V71 — Badge warning anti-hallucination (citations non vérifiées) */
+    .citation-warning{
+      display:inline;
+      background:#f59e0b22;color:#d97706;
+      border:1px solid #f59e0b55;border-radius:4px;
+      padding:1px 5px;font-size:.82em;
+      cursor:help;
+    }
+    @media(prefers-color-scheme:dark){
+      .citation-warning{background:#f59e0b18;color:#fbbf24;border-color:#f59e0b44}
+    }
+
   </style>
   <!-- marked.js + highlight.js + KaTeX — stack pro comme IA-Genius -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
@@ -7269,6 +7281,73 @@ function showApiError(msg) {
 
 
 // ─────────────────────────────────────────────────────────────
+// V71 — POST-TRAITEMENT ANTI-HALLUCINATION
+// Filtre les citations bibliographiques non vérifiées (auteur/journal/année)
+// et les relances finales typiques des LLM. Zéro appel API supplémentaire :
+// regex pur, exécution <1 ms, appliqué entre réception API et affichage.
+// ─────────────────────────────────────────────────────────────
+function postProcessLLMResponse(text) {
+  if (!text || typeof text !== 'string') return { text: text || '', flaggedCitations: [], relanceRemoved: false };
+
+  let cleaned = text;
+  const flaggedCitations = [];
+
+  // ── 1. Citations formatées : (*Journal*, YYYY) ou (Auteur, YYYY) ──
+  // On les remplace par un badge warning visible plutôt que de les supprimer
+  // silencieusement, pour que l'utilisateur sache qu'il y avait une affirmation
+  // non vérifiable à cet endroit.
+  const patterns = [
+    // (*Nature Reviews Cancer*, 2018) — journal en italique markdown entre parenthèses
+    /\(\*([^*]+)\*,?\s*(\d{4})\)/g,
+    // (Ridley, AJ. 2015) / (Ridley, 2015) / (Ridley AJ, 2015)
+    /\(([A-Z][a-zàâäéèêëïîôöùûüçA-Z]+(?:,?\s+[A-Z]{1,3}\.)?),?\s*\(?\d{4}\)?\)/g,
+    // Ridley, AJ. (2015) — hors parenthèses
+    /([A-Z][a-zàâäéèêëïîôöùûüçA-Z]+,?\s+[A-Z]{1,3}\.)\s*\(\d{4}\)/g,
+    // *Journal of Cell Science*, 2019 — sans parenthèses englobantes
+    /\*([^*]{4,60})\*,?\s*\d{4}/g
+  ];
+
+  patterns.forEach(pattern => {
+    cleaned = cleaned.replace(pattern, (match) => {
+      flaggedCitations.push(match);
+      return '<span class="citation-warning" title="⚠ Citation non vérifiée — le modèle peut fabriquer des références plausibles mais inexistantes">⚠ réf. non vérifiée</span>';
+    });
+  });
+
+  // ── 2. Bloc "Références" / "Sources" en fin de réponse ──
+  // Section entière de citations formatées (souvent hallucinées sur les petits modèles)
+  cleaned = cleaned.replace(
+    /\n---\s*\n###?\s*\*{0,2}(?:Références?|Sources?|Bibliographie)\b[\s\S]*$/i,
+    (match) => {
+      // Vérifier qu'il y a effectivement des patterns de citation dedans
+      if (/\(\d{4}\)|\*[A-Z][^*]+\*|\d{4}\)/.test(match)) {
+        flaggedCitations.push('[Section références complète supprimée]');
+        return '\n\n---\n*📚 Section références retirée automatiquement — les citations générées par le modèle ne sont pas vérifiées. Consultez la littérature de synthèse sur le sujet pour des sources fiables.*';
+      }
+      return match; // pas de citation détectée → on laisse
+    }
+  );
+
+  // ── 3. Relance finale (question ou invitation à poursuivre) ──
+  let relanceRemoved = false;
+  const paragraphs = cleaned.trim().split(/\n\n+/);
+  if (paragraphs.length > 1) {
+    const lastPara = paragraphs[paragraphs.length - 1];
+    const relanceRx = /(\?\s*$|si\s+vous\s+(souhaitez|voulez)|pour\s+aller\s+plus\s+loin|n'hésitez\s+pas|je\s+peux\s+(fournir|développer|approfondir|détailler|préciser)|souhaitez[\s-]vous|voulez[\s-]vous\s+que\s+je|puis-je\s+vous|dites[\s-]moi\s+si)/i;
+    if (relanceRx.test(lastPara)) {
+      paragraphs.pop();
+      relanceRemoved = true;
+    }
+  }
+
+  return {
+    text: paragraphs.join('\n\n'),
+    flaggedCitations,
+    relanceRemoved
+  };
+}
+
+// ─────────────────────────────────────────────────────────────
 // FILTRAGE AUTOMATIQUE DES PARAMÈTRES PAR MODÈLE
 // Chaque famille de modèle a ses propres contraintes.
 // Cette fonction centrale évite les erreurs "Unsupported parameter".
@@ -9494,6 +9573,24 @@ async function send() {
         "https://api.openai.com/v1/chat/completions",
         key, S.model, c.messages, undefined, _streamSink
       );
+    }
+
+    // ── V71 — POST-TRAITEMENT ANTI-HALLUCINATION ──────────────────────────
+    // Appliqué à toute réponse textuelle avant stockage : badge les citations
+    // non vérifiées et retire les relances finales. Zéro latence, zéro coût API.
+    if (typeof responseContent === 'string' && !_tripleCheckActiveThisTurn) {
+      const _pp = postProcessLLMResponse(responseContent);
+      if (_pp.flaggedCitations.length > 0 || _pp.relanceRemoved) {
+        responseContent = _pp.text;
+        console.log(
+          '[BrAInShift] 🛡️ Post-traitement anti-hallucination :',
+          _pp.flaggedCitations.length, 'citation(s) signalée(s)',
+          _pp.relanceRemoved ? '· relance finale retirée' : ''
+        );
+        if (_pp.flaggedCitations.length > 0) {
+          console.log('[BrAInShift] 🛡️ Citations détectées :', _pp.flaggedCitations);
+        }
+      }
     }
 
     // On stocke provider ET modèle pour badge + sidebar (sauf si déjà fait par Triple Check)
