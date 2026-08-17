@@ -7369,7 +7369,7 @@ function postProcessLLMResponse(text) {
   let relanceRemoved = false;
   const paragraphs = cleaned.trim().split(/\n\n+/);
   if (paragraphs.length > 2) {
-    const relanceRx = /(\?\s*$|si\s+vous\s+(souhaitez|voulez)|pour\s+aller\s+plus\s+loin|n'hésitez\s+pas|je\s+peux\s+(fournir|développer|approfondir|détailler|préciser)|souhaitez[\s-]vous|voulez[\s-]vous\s+que\s+je|puis-je\s+vous|dites[\s-]moi\s+si|prochaine\s+étape\s*(critique)?\s*:/i;
+    const relanceRx = /(\?\s*$|si\s+vous\s+(souhaitez|voulez)|pour\s+aller\s+plus\s+loin|n'hésitez\s+pas|je\s+peux\s+(fournir|développer|approfondir|détailler|préciser)|souhaitez[\s-]vous|voulez[\s-]vous\s+que\s+je|puis-je\s+vous|dites[\s-]moi\s+si|prochaine\s+étape\s*(critique)?\s*:)/i;
     // Retirer les paragraphes de relance en partant de la fin
     while (paragraphs.length > 2 && relanceRx.test(paragraphs[paragraphs.length - 1])) {
       paragraphs.pop();
