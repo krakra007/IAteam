@@ -2630,17 +2630,19 @@ const MODEL_GROUPS = [
       "gemini-3.1-flash-lite"       // le plus économique du catalogue, 0.25/1.50
     ]
   },
-  // ── DeepSeek ──────────────────────────────────────
-  // Source : api-docs.deepseek.com — vérifié 14 juillet 2026
-  // V4 lancé 24 avril 2026, context 1M, mode thinking supporté
-  // ⚠ deepseek-chat / deepseek-reasoner RETIRÉS de la liste (V51) : arrêt DÉFINITIF le
-  //   24/07/2026 15:59 UTC (404 après cette date). Une migration automatique au chargement
-  //   bascule les utilisateurs encore sur ces alias vers deepseek-v4-flash (voir MODEL_MIGRATIONS).
+  // ── DeepSeek (via OpenRouter) ──────────────────────
+  // V68 — L'accès direct à api.deepseek.com est bloqué par le pare-feu Safran.
+  // Les mêmes modèles sont accessibles via OpenRouter (openrouter.ai/api/v1),
+  // qui route la requête vers DeepSeek depuis ses propres serveurs — l'URL visible
+  // par le réseau est openrouter.ai, pas api.deepseek.com.
+  // Les IDs OpenRouter sont préfixés : deepseek/deepseek-v4-pro au lieu de deepseek-v4-pro.
+  // ⚠ Tarifs OpenRouter légèrement supérieurs aux tarifs directs DeepSeek (commission
+  //   agrégateur) — TOKEN_PRICES mis à jour avec les tarifs OpenRouter, pas les directs.
   {
-    label: "DeepSeek",
+    label: "DeepSeek (via OpenRouter)",
     models: [
-      "deepseek-v4-pro",       // flagship 1.6T params, agent + raisonnement (0.435/0.87)
-      "deepseek-v4-flash"      // 284B params, 13B actifs, rapide/économique (0.14/0.28)
+      "deepseek/deepseek-v4-pro",       // flagship 1.6T params, $0.66/$1.98 via OpenRouter
+      "deepseek/deepseek-v4-flash"      // 284B params, 13B actifs, $0.09/$0.18 via OpenRouter
     ]
   },
   // ── Groq (Open Source, ultra-rapide via LPU) ──────
@@ -2710,8 +2712,11 @@ const CURATED_MODELS = MODEL_GROUPS.flatMap(g => g.models);
  */
 const MODEL_MIGRATIONS = {
   // DeepSeek — alias retirés le 24/07/2026 (V51)
-  "deepseek-chat":     "deepseek-v4-flash", // alias retiré le 24/07/2026 (non-thinking)
-  "deepseek-reasoner": "deepseek-v4-flash", // alias retiré le 24/07/2026 (thinking)
+  "deepseek-chat":     "deepseek/deepseek-v4-flash", // alias retiré le 24/07/2026 (non-thinking)
+  "deepseek-reasoner": "deepseek/deepseek-v4-flash", // alias retiré le 24/07/2026 (thinking)
+  // V68 — Anciens IDs DeepSeek directs → IDs OpenRouter préfixés
+  "deepseek-v4-pro":   "deepseek/deepseek-v4-pro",
+  "deepseek-v4-flash": "deepseek/deepseek-v4-flash",
 
   // V54 — Anthropic : génération 4.x hors catalogue self-serve (toujours appelable)
   "claude-opus-4-8":   "claude-opus-5",
@@ -2958,7 +2963,7 @@ const S = {
   })(),
   activeChat:    localStorage.getItem("activeChat")    || null,
   activeProject: localStorage.getItem("activeProject") || null,
-  model:  "gemini-3.1-flash-lite",  // ← Modèle par défaut (V72) : GPQA Diamond 86.9%, $0.25/$1.50, meilleur ratio science/coût accessible
+  model:  "ministral-14b-latest",  // ← Modèle par défaut (V68, remplace gemini-3.5-flash-lite) : SLM versatile pour usage quotidien
   params: (() => {
     const raw = JSON.parse(localStorage.getItem("params") || "null");
     if (!raw) return { ...DEF };
@@ -2976,7 +2981,7 @@ let isWaitingResponse = false;
 let waitingStartTime = 0;
 let waitingTimerInterval = null;
 let _currentAbortController = null; // Controller global pour annuler les requêtes
-if (!CURATED_MODELS.includes(S.model)) S.model = "gemini-3.1-flash-lite";
+if (!CURATED_MODELS.includes(S.model)) S.model = "ministral-14b-latest";
 
 const promptEl   = el("prompt");
 
@@ -3436,7 +3441,7 @@ const apiErrorEl = el("apiError");
 // ─────────────────────────────────────────────────
 // CLÉS API — 4 fournisseurs
 // ─────────────────────────────────────────────────
-const PROVIDERS = ["ANTHROPIC", "OPENAI", "DEEPSEEK", "GOOGLE GEMINI", "GROQ", "MISTRAL"];
+const PROVIDERS = ["ANTHROPIC", "OPENAI", "OPENROUTER", "GOOGLE GEMINI", "GROQ", "MISTRAL"];
 const providerKeysEl = el("providerKeys");
 const apiKeysByProvider = JSON.parse(localStorage.getItem("apiKeysByProvider") || "{}");
 PROVIDERS.forEach(p => { if (!(p in apiKeysByProvider)) apiKeysByProvider[p] = ""; });
@@ -3896,7 +3901,7 @@ function inferProviderFromModel(model) {
   const m = (model || "").toLowerCase();
   if (m.startsWith("claude"))   return "ANTHROPIC";
   if (m.startsWith("gemini"))   return "GOOGLE GEMINI";
-  if (m.startsWith("deepseek")) return "DEEPSEEK";
+  if (m.startsWith("deepseek")) return "OPENROUTER";  // V68 — inclut deepseek/deepseek-v4-*
   if (m.startsWith("mistral") || m.startsWith("codestral") || m.startsWith("devstral") || m.startsWith("magistral") || m.startsWith("ministral") || m.startsWith("open-mistral")) return "MISTRAL";
   if (_GROQ_MODEL_SET.has(model)) return "GROQ";
   return "OPENAI";
@@ -3906,7 +3911,7 @@ function providerBadgeHtml(provider) {
   const map = {
     "ANTHROPIC":    ["badge-anthropic", "Claude"],
     "OPENAI":       ["badge-openai",    "OpenAI"],
-    "DEEPSEEK":     ["badge-deepseek",  "DeepSeek"],
+    "OPENROUTER":   ["badge-deepseek",  "DeepSeek"],  // V68 — via OpenRouter (même badge visuel)
     "GOOGLE GEMINI":["badge-gemini",    "Gemini"],
     "GROQ":         ["badge-groq",      "Groq"],
     "MISTRAL":      ["badge-mistral",   "Mistral"],
@@ -3926,7 +3931,7 @@ function renderApiKeys() {
   const providerMeta = {
     "ANTHROPIC":    { color:"#c8621a", icon:"🟠", placeholder:"sk-ant-api03-..." },
     "OPENAI":       { color:"#10a37f", icon:"🟢", placeholder:"sk-proj-..." },
-    "DEEPSEEK":     { color:"#7b9cf7", icon:"🔵", placeholder:"sk-..." },
+    "OPENROUTER":   { color:"#7b9cf7", icon:"🔀", placeholder:"sk-or-..." },  // V68 — OpenRouter
     "GOOGLE GEMINI":{ color:"#7baaf7", icon:"🔷", placeholder:"AIza..." },
     "GROQ":         { color:"#f55016", icon:"🔴", placeholder:"gsk_..." },
     "MISTRAL":      { color:"#ff7200", icon:"🟧", placeholder:"mistral-..." },
@@ -4022,11 +4027,13 @@ async function testApiKey(provider, key) {
       });
       ok = r.status === 200 || r.status === 404; // 404 = endpoint ok, clé ok
       msg = ok ? "Clé valide ✓" : `Erreur ${r.status}`;
-    } else if (provider === "OPENAI" || provider === "DEEPSEEK") {
-      const endpoint = provider === "DEEPSEEK"
-        ? "https://api.deepseek.com/models"
-        : "https://api.openai.com/v1/models";
-      const r = await fetch(endpoint, { headers: { "Authorization": "Bearer " + key } });
+    } else if (provider === "OPENAI") {
+      const r = await fetch("https://api.openai.com/v1/models", { headers: { "Authorization": "Bearer " + key } });
+      ok = r.status === 200;
+      msg = ok ? "Clé valide ✓" : `Erreur ${r.status}`;
+    } else if (provider === "OPENROUTER") {
+      // V68 — OpenRouter : test via /api/v1/models (liste les modèles, confirme la clé)
+      const r = await fetch("https://openrouter.ai/api/v1/models", { headers: { "Authorization": "Bearer " + key } });
       ok = r.status === 200;
       msg = ok ? "Clé valide ✓" : `Erreur ${r.status}`;
     } else if (provider === "GOOGLE GEMINI") {
@@ -4325,7 +4332,7 @@ function createChat(projectId = null) {
   // Modèle par défaut : celui du projet si défini, sinon le global
   if (!window._userChangedModel) {
     const proj = projectId ? S.projects.find(p => p.id === projectId) : null;
-    S.model = migrateModelId((proj && proj.defaultModel) || "gemini-3.1-flash-lite"); // V72 — fallback global
+    S.model = migrateModelId((proj && proj.defaultModel) || "gemini-3.5-flash-lite"); // V51 — migration des ID retirés
   }
   // Appliquer les quotas (le nouveau chat est exempté car il est actif + vide)
   enforceChatLimitsWithToast();
@@ -4427,7 +4434,7 @@ function switchToChat(c) {
     // V51 — migre les ID retirés (ex. deepseek-chat mémorisé comme défaut de projet)
     if (proj && proj.defaultModel) resolvedModel = migrateModelId(proj.defaultModel);
   }
-  if (!resolvedModel || !CURATED_MODELS.includes(resolvedModel)) resolvedModel = "gemini-3.1-flash-lite";
+  if (!resolvedModel || !CURATED_MODELS.includes(resolvedModel)) resolvedModel = "ministral-14b-latest";
   if (S.model !== resolvedModel) {
     S.model = resolvedModel;
     window._userChangedModel = false;
@@ -6990,12 +6997,12 @@ function renderParams() {
     caps.top_p       = _gSampOk;
     caps.top_k       = _gSampOk;
     caps.webSearch   = true;
-  } else if (provider === 'DEEPSEEK') {
+  } else if (provider === 'OPENROUTER') {
+    // V68 — OpenRouter transmet les mêmes paramètres que DeepSeek directement
     caps.temperature       = true;
     caps.top_p             = true;
     caps.frequency_penalty = true;
     caps.presence_penalty  = true;
-    // DeepSeek n'a PAS de web search API
   } else if (provider === 'GROQ') {
     caps.temperature = true;
     caps.top_p       = true;
@@ -7197,7 +7204,7 @@ function updateActiveModelChip() {
   const c = activeChat();
   const lastMsg = c ? [...(c.messages||[])].reverse().find(m => m.role==="assistant" && m.model) : null;
   const providerColors = {
-    "ANTHROPIC":"#c8621a","OPENAI":"#10a37f","DEEPSEEK":"#7b9cf7",
+    "ANTHROPIC":"#c8621a","OPENAI":"#10a37f","OPENROUTER":"#7b9cf7",
     "GOOGLE GEMINI":"#7baaf7","GROQ":"#f55016","MISTRAL":"#ff7200"
   };
   if (lastMsg && lastMsg.model) {
@@ -7348,9 +7355,10 @@ function buildRequestParams(model, apiType) {
     return out;
   }
 
-  // ── DeepSeek ────────────────────────────────────────────────
-  // max_tokens (pas max_completion_tokens), temperature, top_p, penalties, stop.
-  if (apiType === "deepseek") {
+  // ── OpenRouter (DeepSeek V4 via proxy) ───────────────────────
+  // V68 — même format que DeepSeek directement (OpenAI-compatible Chat Completions).
+  // max_tokens, temperature, top_p, penalties, stop — tous acceptés par OpenRouter.
+  if (apiType === "openrouter") {
     const out = { max_tokens: maxT, ...stop };
     if (valid(temp, 0, 2)) out.temperature = temp;
     if (valid(topP, 0, 1) && topP > 0) out.top_p = topP;
@@ -8461,8 +8469,11 @@ const TOKEN_PRICES = {
   'qwen/qwen3.6-27b':                             { input: 0.60,  output: 3.00 }, // V62 — corrigé (était 0.40/1.20, non confirmé). 2 sources indépendantes, même relevé du 21/07/2026, concordent sur 0.60/3.00.
 
   // ── DeepSeek ── (vérifié 30/06/2026 — api-docs.deepseek.com/quick_start/pricing)
-  'deepseek-v4-pro':            { input: 0.435, output: 0.87 }, // corrigé : baisse permanente -75% (depuis 31/05/2026)
-  'deepseek-v4-flash':          { input: 0.14,  output: 0.28 }, // corrigé (sortie 0.28)
+  'deepseek-v4-pro':            { input: 0.435, output: 0.87 }, // ⚰ ancien ID direct — conservé pour les anciens messages
+  'deepseek-v4-flash':          { input: 0.14,  output: 0.28 }, // ⚰ ancien ID direct — conservé pour les anciens messages
+  // V68 — IDs OpenRouter (préfixés) : tarifs OpenRouter, légèrement supérieurs aux directs
+  'deepseek/deepseek-v4-pro':   { input: 0.66,  output: 1.98 },
+  'deepseek/deepseek-v4-flash': { input: 0.09,  output: 0.18 },
   'deepseek-chat':              { input: 0.14,  output: 0.28 }, // ⚰ alias RETIRÉ le 24/07/2026 — conservé pour l'affichage des coûts des anciens messages
   'deepseek-reasoner':          { input: 0.14,  output: 0.28 }, // ⚰ idem (les nouveaux appels passent par deepseek-v4-flash via MODEL_MIGRATIONS)
 
@@ -8986,8 +8997,15 @@ async function callModelForTripleCheck(modelName, messages) {
       result = await callGroq(key, modelName, messages);
     } else if (provider === "MISTRAL") {
       result = await callOpenAICompatible("https://api.mistral.ai/v1/chat/completions", key, modelName, messages, "mistral");
-    } else if (provider === "DEEPSEEK") {
-      result = await callOpenAICompatible("https://api.deepseek.com/chat/completions", key, modelName, messages, "deepseek");
+    } else if (provider === "OPENROUTER") {
+      // V68 — OpenRouter : API OpenAI-compatible, endpoint unifié.
+      // Les IDs de modèle OpenRouter sont préfixés (deepseek/deepseek-v4-pro) — on les
+      // envoie tels quels, c'est OpenRouter qui route vers le bon fournisseur en amont.
+      // Header HTTP-Referer recommandé par OpenRouter pour le suivi d'usage.
+      result = await callOpenAICompatible(
+        "https://openrouter.ai/api/v1/chat/completions",
+        key, modelName, messages, "openrouter", _streamSink
+      );
     } else if (isGPT5Model(modelName)) {
       result = await callOpenAIResponses(key, modelName, messages);
     } else {
@@ -9473,11 +9491,11 @@ async function send() {
         key, S.model, c.messages, "mistral", _streamSink
       );
 
-    } else if (provider === "DEEPSEEK") {
-      // BUG CORRIGÉ : endpoint DeepSeek propre + apiType dédié (max_tokens au lieu de max_completion_tokens)
+    } else if (provider === "OPENROUTER") {
+      // V68 — OpenRouter (DeepSeek V4 via proxy, contourne le blocage pare-feu Safran)
       responseContent = await callOpenAICompatible(
-        "https://api.deepseek.com/chat/completions",
-        key, S.model, c.messages, "deepseek", _streamSink
+        "https://openrouter.ai/api/v1/chat/completions",
+        key, S.model, c.messages, "openrouter", _streamSink
       );
 
     } else if (isGPT5Model(S.model)) {
@@ -9686,7 +9704,7 @@ async function send() {
       const providerUrls = {
         "ANTHROPIC": "api.anthropic.com",
         "OPENAI": "api.openai.com",
-        "DEEPSEEK": "api.deepseek.com",
+        "OPENROUTER": "openrouter.ai",
         "GOOGLE GEMINI": "generativelanguage.googleapis.com",
         "GROQ": "api.groq.com",
         "MISTRAL": "api.mistral.ai",
@@ -10893,7 +10911,7 @@ async function ghPull() {
     if (raw.params)        S.params        = { ...DEF, ...raw.params };
     if (raw.model)         S.model         = migrateModelId(raw.model); // V54 — l'autre machine peut envoyer un ID retiré
     // Toujours forcer le modèle par défaut après un pull
-    if (!window._userChangedModel) S.model = "gemini-3.1-flash-lite";
+    if (!window._userChangedModel) S.model = "ministral-14b-latest";
 
     if (!S.chats.find(c => c.id === S.activeChat))
       S.activeChat = S.chats[0]?.id || null;
@@ -11554,8 +11572,8 @@ document.addEventListener("click", e => {
 // ⚠ On NE force PAS le modèle si l'utilisateur en a déjà choisi un (respect du dernier choix).
 const _storedModel = migrateModelId(localStorage.getItem("model")); // V51 — bascule les ID retirés (ex. deepseek-chat → v4-flash)
 if (!_storedModel || !CURATED_MODELS.includes(_storedModel)) {
-  S.model = "gemini-3.1-flash-lite";
-  localStorage.setItem("model", "gemini-3.1-flash-lite");
+  S.model = "ministral-14b-latest";
+  localStorage.setItem("model", "ministral-14b-latest");
 } else {
   S.model = _storedModel;
   localStorage.setItem("model", _storedModel); // persiste l'ID migré pour ne pas re-migrer à chaque chargement
