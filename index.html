@@ -1263,7 +1263,7 @@
       }
 
       /* ── Zone de saisie ── */
-      .input-area { padding: 8px 10px; }
+      .composer { padding: 8px 10px; }
       .textarea-wrap textarea {
         font-size: 16px !important; /* évite le zoom auto iOS */
         padding-right: 130px;
@@ -1304,7 +1304,7 @@
       .katex-display { overflow-x: auto; -webkit-overflow-scrolling: touch; padding: 10px 12px; }
 
       /* V40 — Safe area pour la barre home iPad/iPhone en portrait (et notch en paysage) */
-      .input-area { padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
+      .composer { padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
       .app { padding-top: env(safe-area-inset-top); }
     }
 
@@ -1318,7 +1318,7 @@
       .resizer::after { height: 48px; opacity: .6; }
       /* Garder les boutons à taille tactile */
       .top .btn { min-width: 44px; min-height: 44px; }
-      .input-area { padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
+      .composer { padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
     }
 
     /* ── iPhone (≤ 480px) ── */
@@ -1326,7 +1326,7 @@
 
       /* ── Safe areas (encoche + barre home) ── */
       .app { padding: env(safe-area-inset-top) 0 0 0; }
-      .input-area { padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
+      .composer { padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
 
       /* ── Sidebar overlay plus étroite ── */
       .sidebar { width: 82vw !important; max-width: 320px; }
@@ -1506,7 +1506,7 @@
       .export-menu .ex-item { padding: 12px 14px; font-size: 14px; }
 
       /* ── Zone de saisie ── */
-      .input-area { padding: 6px 6px; }
+      .composer { padding: 6px 6px; }
       .textarea-wrap textarea {
         font-size: 16px !important;
         min-height: 44px;
@@ -1554,6 +1554,7 @@
     @supports (height: 100dvh) {
       @media (max-width: 1024px) {
         .app { height: 100dvh; }
+        .main { height: 100dvh; }  /* V68 — .main utilisait 100vh (inclut la barre Chrome), le composer sortait du cadre visible */
         .sidebar { height: 100dvh; }
       }
     }
@@ -11914,7 +11915,7 @@ loadModelsFromApi();
       const vv = window.visualViewport;
       document.documentElement.style.setProperty('--vvh', vv.height + 'px');
       // Garder la zone de saisie visible au-dessus du clavier
-      const inputArea = document.querySelector('.input-area');
+      const inputArea = document.querySelector('.composer'); // V68 — était '.input-area' (n'existait pas dans le DOM)
       if (inputArea && vv.height < window.innerHeight * 0.75) {
         inputArea.style.position = 'fixed';
         inputArea.style.bottom = (window.innerHeight - vv.height - vv.offsetTop) + 'px';
