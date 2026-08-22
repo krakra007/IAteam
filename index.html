@@ -1759,7 +1759,6 @@
          geminiSamplingAllowed le traite correctement par défaut (REFUSÉ pour tout modèle
          inconnu de la liste des anciens, cohérent avec la dépréciation annoncée par Google).
        • Catalogue : 28 modèles (29 → 28 après retrait des 2 GLM et ajout de 3.7 Flash).
-       • RAPPEL : tarif intro Sonnet 5 ($2/$10) expire le 31/08/2026 → repassera à $3/$15.
 
   V67 — 15 août 2026 — CORRECTIF bouton ✕ invisible après scroll sur iOS/Android.
      Le bouton ✕ de la V66 utilisait position:sticky, qui ne fonctionne pas de façon
@@ -2183,7 +2182,6 @@
        • mistral-small-latest : 0.10/0.30 (retenu) vs 0.15/0.60 selon les sources.
        • devstral-small-latest : 0.15/0.45 (retenu) vs 0.10/0.30.
        • glm-4.7 : 0.60/2.20 (retenu) vs 0.40/1.75 selon un agrégateur.
-     RAPPEL : le tarif intro de Sonnet 5 (2/10) expire le 31/08/2026 → repassera à 3/15.
 
   V53 — 26 juillet 2026 — Durcissement sécurité (XSS → exfiltration de clés API).
      Contexte : le coffre AES-GCM protège les clés SUR LE DISQUE, mais une fois déverrouillé
@@ -2566,7 +2564,7 @@ const MODEL_GROUPS = [
   // 🆕 Claude Fable 5 (classe Mythos) : la directive d'export a été LEVÉE fin juin ;
   //    Anthropic a redéployé Fable 5 mondialement depuis le 1er juillet 2026 → réexposé ici.
   //    Tarif 10/50 (2× Opus 4.8). Mythos 5 reste réservé au Project Glasswing → non exposé.
-  //    Claude Sonnet 5 (30 juin 2026) — Sonnet courant, tarif intro 2/10 jusqu'au 31/08/2026.
+  //    Claude Sonnet 5 (30 juin 2026) — Sonnet courant, tarif 2/10 PERMANENT.
   //    Claude Opus 4.8 (28 mai 2026) reste le flagship Opus.
   // ⚠ API Fable 5 / Sonnet 5 : thinking toujours actif (thinking:{type:"disabled"} → 400),
   //   paramètres de sampling non-défaut rejetés → gérés par claudeSamplingAllowed() ci-dessous.
@@ -2574,7 +2572,7 @@ const MODEL_GROUPS = [
   // V54 — Catalogue self-serve Anthropic réduit aux 4 IDs courants :
   //    Claude Opus 5 (24 juil. 2026) — nouveau flagship Opus, 1M ctx, 128K out, 5/25.
   //    Claude Fable 5 — classe Mythos, le plus capable en GA (rétabli 01/07/2026), 10/50.
-  //    Claude Sonnet 5 (30 juin 2026) — tarif intro 2/10 jusqu'au 31/08/2026, puis 3/15.
+  //    Claude Sonnet 5 (30 juin 2026) — tarif 2/10 PERMANENT (hausse vers 3/15 annulée le 10/08/2026).
   //    Claude Haiku 4.5 — le plus rapide / économique (seul de la gamme pas encore en 5).
   // ⚠ Les Opus 4.6/4.7/4.8 et Sonnet 4.5/4.6 restent APPELABLES (aucune date de retrait
   //   annoncée) mais ne figurent plus au catalogue → retirés de la liste, conservés dans
@@ -2586,7 +2584,7 @@ const MODEL_GROUPS = [
     models: [
       "claude-opus-5",         // 🆕 V54 — flagship Opus (24 juil. 2026), 1M ctx, 128K out, 5/25
       "claude-fable-5",        // classe Mythos — le plus capable en GA (rétabli 01/07/2026), 10/50
-      "claude-sonnet-5",       // Sonnet courant (30 juin 2026) — tarif intro 2/10 jusqu'au 31/08/2026
+      "claude-sonnet-5",       // Sonnet courant (30 juin 2026) — 2/10 permanent (hausse annulée le 10/08/2026)
       "claude-haiku-4-5-20251001"  // le plus rapide / économique
     ]
   },
@@ -2630,19 +2628,25 @@ const MODEL_GROUPS = [
       "gemini-3.1-flash-lite"       // le plus économique du catalogue, 0.25/1.50
     ]
   },
+  // ── DeepSeek (accès direct) ─────────────────────────
+  // V68 — Accès direct à api.deepseek.com, fonctionnel depuis la maison (pas de pare-feu).
+  // Tarifs directs, sans commission agrégateur. Bloqué depuis le PC pro Safran → utiliser
+  // le groupe "DeepSeek (via OpenRouter)" ci-dessous à la place dans ce cas.
+  {
+    label: "DeepSeek (direct)",
+    models: [
+      "deepseek-v4-pro",       // flagship 1.6T params, $0.66/$1.98 off-peak direct (peak=2x)
+      "deepseek-v4-flash"      // 284B params, 13B actifs, $0.22/$0.66 off-peak direct (peak=2x)
+    ]
+  },
   // ── DeepSeek (via OpenRouter) ──────────────────────
-  // V68 — L'accès direct à api.deepseek.com est bloqué par le pare-feu Safran.
-  // Les mêmes modèles sont accessibles via OpenRouter (openrouter.ai/api/v1),
-  // qui route la requête vers DeepSeek depuis ses propres serveurs — l'URL visible
-  // par le réseau est openrouter.ai, pas api.deepseek.com.
-  // Les IDs OpenRouter sont préfixés : deepseek/deepseek-v4-pro au lieu de deepseek-v4-pro.
-  // ⚠ Tarifs OpenRouter légèrement supérieurs aux tarifs directs DeepSeek (commission
-  //   agrégateur) — TOKEN_PRICES mis à jour avec les tarifs OpenRouter, pas les directs.
+  // Mêmes modèles que ci-dessus, routés via openrouter.ai pour contourner le pare-feu
+  // Safran au bureau. IDs préfixés (deepseek/deepseek-v4-*), tarifs avec commission.
   {
     label: "DeepSeek (via OpenRouter)",
     models: [
-      "deepseek/deepseek-v4-pro",       // flagship 1.6T params, $0.66/$1.98 via OpenRouter
-      "deepseek/deepseek-v4-flash"      // 284B params, 13B actifs, $0.09/$0.18 via OpenRouter
+      "deepseek/deepseek-v4-pro",       // $0.66/$1.98 via OpenRouter
+      "deepseek/deepseek-v4-flash"      // $0.09/$0.18 via OpenRouter
     ]
   },
   // ── Groq (Open Source, ultra-rapide via LPU) ──────
@@ -2712,11 +2716,10 @@ const CURATED_MODELS = MODEL_GROUPS.flatMap(g => g.models);
  */
 const MODEL_MIGRATIONS = {
   // DeepSeek — alias retirés le 24/07/2026 (V51)
-  "deepseek-chat":     "deepseek/deepseek-v4-flash", // alias retiré le 24/07/2026 (non-thinking)
-  "deepseek-reasoner": "deepseek/deepseek-v4-flash", // alias retiré le 24/07/2026 (thinking)
-  // V68 — Anciens IDs DeepSeek directs → IDs OpenRouter préfixés
-  "deepseek-v4-pro":   "deepseek/deepseek-v4-pro",
-  "deepseek-v4-flash": "deepseek/deepseek-v4-flash",
+  "deepseek-chat":     "deepseek-v4-flash", // alias retiré le 24/07/2026 (non-thinking)
+  "deepseek-reasoner": "deepseek-v4-flash", // alias retiré le 24/07/2026 (thinking)
+  // NOTE V68 : deepseek-v4-pro et deepseek-v4-flash ne sont PLUS migrés vers les IDs
+  // OpenRouter — les deux groupes (direct et via OpenRouter) coexistent dans le catalogue.
 
   // V54 — Anthropic : génération 4.x hors catalogue self-serve (toujours appelable)
   "claude-opus-4-8":   "claude-opus-5",
@@ -3441,7 +3444,7 @@ const apiErrorEl = el("apiError");
 // ─────────────────────────────────────────────────
 // CLÉS API — 4 fournisseurs
 // ─────────────────────────────────────────────────
-const PROVIDERS = ["ANTHROPIC", "OPENAI", "OPENROUTER", "GOOGLE GEMINI", "GROQ", "MISTRAL"];
+const PROVIDERS = ["ANTHROPIC", "OPENAI", "DEEPSEEK", "OPENROUTER", "GOOGLE GEMINI", "GROQ", "MISTRAL"];
 const providerKeysEl = el("providerKeys");
 const apiKeysByProvider = JSON.parse(localStorage.getItem("apiKeysByProvider") || "{}");
 PROVIDERS.forEach(p => { if (!(p in apiKeysByProvider)) apiKeysByProvider[p] = ""; });
@@ -3901,7 +3904,8 @@ function inferProviderFromModel(model) {
   const m = (model || "").toLowerCase();
   if (m.startsWith("claude"))   return "ANTHROPIC";
   if (m.startsWith("gemini"))   return "GOOGLE GEMINI";
-  if (m.startsWith("deepseek")) return "OPENROUTER";  // V68 — inclut deepseek/deepseek-v4-*
+  if (m.startsWith("deepseek/")) return "OPENROUTER"; // deepseek/deepseek-v4-* → via OpenRouter
+  if (m.startsWith("deepseek"))  return "DEEPSEEK";   // deepseek-v4-* → accès direct api.deepseek.com
   if (m.startsWith("mistral") || m.startsWith("codestral") || m.startsWith("devstral") || m.startsWith("magistral") || m.startsWith("ministral") || m.startsWith("open-mistral")) return "MISTRAL";
   if (_GROQ_MODEL_SET.has(model)) return "GROQ";
   return "OPENAI";
@@ -3911,7 +3915,8 @@ function providerBadgeHtml(provider) {
   const map = {
     "ANTHROPIC":    ["badge-anthropic", "Claude"],
     "OPENAI":       ["badge-openai",    "OpenAI"],
-    "OPENROUTER":   ["badge-deepseek",  "DeepSeek"],  // V68 — via OpenRouter (même badge visuel)
+    "DEEPSEEK":     ["badge-deepseek",  "DeepSeek"],
+    "OPENROUTER":   ["badge-openrouter","OR:DeepSeek"],  // distinguer visuellement
     "GOOGLE GEMINI":["badge-gemini",    "Gemini"],
     "GROQ":         ["badge-groq",      "Groq"],
     "MISTRAL":      ["badge-mistral",   "Mistral"],
@@ -3931,7 +3936,8 @@ function renderApiKeys() {
   const providerMeta = {
     "ANTHROPIC":    { color:"#c8621a", icon:"🟠", placeholder:"sk-ant-api03-..." },
     "OPENAI":       { color:"#10a37f", icon:"🟢", placeholder:"sk-proj-..." },
-    "OPENROUTER":   { color:"#7b9cf7", icon:"🔀", placeholder:"sk-or-..." },  // V68 — OpenRouter
+    "DEEPSEEK":     { color:"#7b9cf7", icon:"🔵", placeholder:"sk-..." },
+    "OPENROUTER":   { color:"#9b59b6", icon:"🔀", placeholder:"sk-or-..." },
     "GOOGLE GEMINI":{ color:"#7baaf7", icon:"🔷", placeholder:"AIza..." },
     "GROQ":         { color:"#f55016", icon:"🔴", placeholder:"gsk_..." },
     "MISTRAL":      { color:"#ff7200", icon:"🟧", placeholder:"mistral-..." },
@@ -4029,6 +4035,10 @@ async function testApiKey(provider, key) {
       msg = ok ? "Clé valide ✓" : `Erreur ${r.status}`;
     } else if (provider === "OPENAI") {
       const r = await fetch("https://api.openai.com/v1/models", { headers: { "Authorization": "Bearer " + key } });
+      ok = r.status === 200;
+      msg = ok ? "Clé valide ✓" : `Erreur ${r.status}`;
+    } else if (provider === "DEEPSEEK") {
+      const r = await fetch("https://api.deepseek.com/models", { headers: { "Authorization": "Bearer " + key } });
       ok = r.status === 200;
       msg = ok ? "Clé valide ✓" : `Erreur ${r.status}`;
     } else if (provider === "OPENROUTER") {
@@ -6997,6 +7007,11 @@ function renderParams() {
     caps.top_p       = _gSampOk;
     caps.top_k       = _gSampOk;
     caps.webSearch   = true;
+  } else if (provider === 'DEEPSEEK') {
+    caps.temperature       = true;
+    caps.top_p             = true;
+    caps.frequency_penalty = true;
+    caps.presence_penalty  = true;
   } else if (provider === 'OPENROUTER') {
     // V68 — OpenRouter transmet les mêmes paramètres que DeepSeek directement
     caps.temperature       = true;
@@ -7204,7 +7219,7 @@ function updateActiveModelChip() {
   const c = activeChat();
   const lastMsg = c ? [...(c.messages||[])].reverse().find(m => m.role==="assistant" && m.model) : null;
   const providerColors = {
-    "ANTHROPIC":"#c8621a","OPENAI":"#10a37f","OPENROUTER":"#7b9cf7",
+    "ANTHROPIC":"#c8621a","OPENAI":"#10a37f","DEEPSEEK":"#7b9cf7","OPENROUTER":"#9b59b6",
     "GOOGLE GEMINI":"#7baaf7","GROQ":"#f55016","MISTRAL":"#ff7200"
   };
   if (lastMsg && lastMsg.model) {
@@ -7352,6 +7367,17 @@ function buildRequestParams(model, apiType) {
       if (valid(topP, 0, 1) && topP > 0) out.top_p = topP;
       if (topK > 0) out.top_k = topK;
     }
+    return out;
+  }
+
+  // ── DeepSeek (accès direct) ────────────────────────────────
+  // max_tokens (pas max_completion_tokens), temperature, top_p, penalties, stop.
+  if (apiType === "deepseek") {
+    const out = { max_tokens: maxT, ...stop };
+    if (valid(temp, 0, 2)) out.temperature = temp;
+    if (valid(topP, 0, 1) && topP > 0) out.top_p = topP;
+    if (freqP !== 0 && valid(freqP, -2, 2)) out.frequency_penalty = freqP;
+    if (presP !== 0 && valid(presP, -2, 2)) out.presence_penalty  = presP;
     return out;
   }
 
@@ -8458,7 +8484,7 @@ const TOKEN_PRICES = {
   'claude-opus-4-8':            { input: 5.00,  output: 25.00 },
   'claude-opus-4-7':            { input: 5.00,  output: 25.00 }, // corrigé
   'claude-opus-4-6':            { input: 5.00,  output: 25.00 }, // corrigé
-  'claude-sonnet-5':            { input: 2.00,  output: 10.00 }, // 🆕 tarif intro jusqu'au 31/08/2026 (ensuite ~3/15)
+  'claude-sonnet-5':            { input: 2.00,  output: 10.00 }, // tarif PERMANENT (annonce Anthropic 10/08/2026, hausse annulée)
   'claude-sonnet-4-6':          { input: 3.00,  output: 15.00 },
   'claude-sonnet-4-5':          { input: 3.00,  output: 15.00 },
   'claude-haiku-4-5-20251001':  { input: 1.00,  output: 5.00 },
@@ -8469,8 +8495,8 @@ const TOKEN_PRICES = {
   'qwen/qwen3.6-27b':                             { input: 0.60,  output: 3.00 }, // V62 — corrigé (était 0.40/1.20, non confirmé). 2 sources indépendantes, même relevé du 21/07/2026, concordent sur 0.60/3.00.
 
   // ── DeepSeek ── (vérifié 30/06/2026 — api-docs.deepseek.com/quick_start/pricing)
-  'deepseek-v4-pro':            { input: 0.435, output: 0.87 }, // ⚰ ancien ID direct — conservé pour les anciens messages
-  'deepseek-v4-flash':          { input: 0.14,  output: 0.28 }, // ⚰ ancien ID direct — conservé pour les anciens messages
+  'deepseek-v4-pro':            { input: 0.66,  output: 1.98 }, // V68 — tarif off-peak depuis le 16/08/2026 (était 0.435/0.87). Peak = 2x (01:00-04:00, 06:00-10:00 UTC)
+  'deepseek-v4-flash':          { input: 0.22,  output: 0.66 }, // V68 — tarif off-peak depuis le 16/08/2026 (était 0.14/0.28). Peak = 2x
   // V68 — IDs OpenRouter (préfixés) : tarifs OpenRouter, légèrement supérieurs aux directs
   'deepseek/deepseek-v4-pro':   { input: 0.66,  output: 1.98 },
   'deepseek/deepseek-v4-flash': { input: 0.09,  output: 0.18 },
@@ -8806,7 +8832,7 @@ function renderCostStats() {
 // Mode 'off'     : pas de Triple Check, comportement normal
 // Les deux modes ON sont mutuellement exclusifs (UI gère l'exclusivité).
 // V51 — phase 3 premium : Sonnet 4.5 → Sonnet 5. Sonnet 5 est à la fois MOINS CHER
-// (2/10 en tarif intro jusqu'au 31/08/2026, vs 3/15 pour Sonnet 4.5) et nettement
+// (2/10 permanent — hausse annulée le 10/08/2026) et nettement
 // plus performant ; Sonnet 4.5 part en retraite à partir du 29/09/2026.
 // Note : le Triple Check supprime le champ thinking → sur Sonnet 5 le thinking
 // adaptatif serveur reste actif par défaut, ce qui renforce la vérification.
@@ -8997,11 +9023,9 @@ async function callModelForTripleCheck(modelName, messages) {
       result = await callGroq(key, modelName, messages);
     } else if (provider === "MISTRAL") {
       result = await callOpenAICompatible("https://api.mistral.ai/v1/chat/completions", key, modelName, messages, "mistral");
+    } else if (provider === "DEEPSEEK") {
+      result = await callOpenAICompatible("https://api.deepseek.com/chat/completions", key, modelName, messages, "deepseek");
     } else if (provider === "OPENROUTER") {
-      // V68 — OpenRouter : API OpenAI-compatible, endpoint unifié.
-      // Les IDs de modèle OpenRouter sont préfixés (deepseek/deepseek-v4-pro) — on les
-      // envoie tels quels, c'est OpenRouter qui route vers le bon fournisseur en amont.
-      // Header HTTP-Referer recommandé par OpenRouter pour le suivi d'usage.
       result = await callOpenAICompatible(
         "https://openrouter.ai/api/v1/chat/completions",
         key, modelName, messages, "openrouter", _streamSink
@@ -9491,8 +9515,15 @@ async function send() {
         key, S.model, c.messages, "mistral", _streamSink
       );
 
+    } else if (provider === "DEEPSEEK") {
+      // DeepSeek direct — api.deepseek.com (fonctionnel à la maison, bloqué au bureau)
+      responseContent = await callOpenAICompatible(
+        "https://api.deepseek.com/chat/completions",
+        key, S.model, c.messages, "deepseek", _streamSink
+      );
+
     } else if (provider === "OPENROUTER") {
-      // V68 — OpenRouter (DeepSeek V4 via proxy, contourne le blocage pare-feu Safran)
+      // DeepSeek via OpenRouter — openrouter.ai (contourne le pare-feu Safran au bureau)
       responseContent = await callOpenAICompatible(
         "https://openrouter.ai/api/v1/chat/completions",
         key, S.model, c.messages, "openrouter", _streamSink
@@ -9704,6 +9735,7 @@ async function send() {
       const providerUrls = {
         "ANTHROPIC": "api.anthropic.com",
         "OPENAI": "api.openai.com",
+        "DEEPSEEK": "api.deepseek.com",
         "OPENROUTER": "openrouter.ai",
         "GOOGLE GEMINI": "generativelanguage.googleapis.com",
         "GROQ": "api.groq.com",
