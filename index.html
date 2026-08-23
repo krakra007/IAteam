@@ -3299,40 +3299,52 @@ async function _fbLoadAllChats() {
 /**
  * Écoute les changements en temps réel sur la collection de chats.
  * Quand un autre appareil modifie un chat, l'UI se met à jour instantanément.
+ *
+ * V2 CORRECTIF : trois protections contre les écrasements parasites :
+ * 1. Fenêtre anti-écho de 15 secondes (pas 5) — le debounce + écriture + retour écho
+ *    prend facilement 6-7 secondes au total.
+ * 2. Le chat ACTIF (celui que l'utilisateur regarde en ce moment) n'est JAMAIS écrasé
+ *    par un écho — une réponse en cours d'affichage serait effacée par le re-rendu.
+ * 3. render() n'est appelé que si des chats NON actifs ont changé — pour mettre à jour
+ *    la sidebar sans perturber l'affichage du chat en cours.
  */
 function _fbListenChats() {
   const col = _fbChatsCol();
   if (!col || _fbSyncActive) return;
   _fbUnsubChats = col.onSnapshot(snap => {
-    let changed = false;
+    let sidebarChanged = false;
     snap.docChanges().forEach(change => {
       const remote = change.doc.data();
       const chatId = change.doc.id;
-      // Ignorer les échos de nos propres écritures (< 5 secondes)
-      if (_fbLastWriteTs[chatId] && (Date.now() - _fbLastWriteTs[chatId]) < 5000) return;
+
+      // 1. Ignorer les échos de nos propres écritures (< 15 secondes)
+      if (_fbLastWriteTs[chatId] && (Date.now() - _fbLastWriteTs[chatId]) < 15000) return;
+
+      // 2. Ne JAMAIS écraser le chat actif — l'utilisateur est en train de le lire/écrire
+      if (chatId === S.activeChat) return;
 
       if (change.type === 'added' || change.type === 'modified') {
         const local = S.chats.find(c => c.id === chatId);
         if (!local) {
           S.chats.push(remote);
-          changed = true;
+          sidebarChanged = true;
         } else if ((remote._fbUpdatedAt || 0) > (local._fbUpdatedAt || 0)) {
           Object.assign(local, remote);
-          changed = true;
+          sidebarChanged = true;
         }
       } else if (change.type === 'removed') {
         const idx = S.chats.findIndex(c => c.id === chatId);
         if (idx >= 0) {
           S.chats.splice(idx, 1);
-          changed = true;
+          sidebarChanged = true;
         }
       }
     });
-    if (changed) {
+    if (sidebarChanged) {
       save();  // persister en localStorage
+      // 3. Ne rafraîchir que la sidebar, PAS le chat affiché
       if (typeof renderChats === 'function') renderChats();
-      if (typeof render === 'function') render();
-      console.log('[Firebase] 🔄 Mise à jour temps réel reçue');
+      console.log('[Firebase] 🔄 Mise à jour temps réel reçue (sidebar)');
     }
   }, err => {
     console.warn('[Firebase] ⚠ Listener interrompu :', err.message);
