@@ -2353,6 +2353,8 @@ Exemple pour la chimie :
           <button class="btn" id="paramsBtn" title="Paramètres LLM">⚙<span class="more-menu-label">Paramètres LLM</span></button>
           <!-- V1-Firebase — Bouton connexion/déconnexion Google dans le menu ⋯ -->
           <button class="btn" id="fbAuthBtn" title="Connexion Google">🔴<span class="more-menu-label">Connexion Google</span></button>
+          <!-- V2-Firebase — Bouton installation PWA (visible uniquement quand Chrome le propose) -->
+          <button class="btn" id="installPwaBtn" style="display:none" title="Installer sur l'écran d'accueil">📲<span class="more-menu-label">Installer l'app</span></button>
         </div>
         <!-- Panneau GitHub -->
         <div id="githubPanel" class="params" style="right:60px;top:46px;width:380px">
@@ -3381,6 +3383,42 @@ if (_fbAuth) {
 }
 
 // Fin du module Firebase — le reste du code existant suit
+
+// ═══════════════════════════════════════════════════════════
+// V2-Firebase — Installation PWA depuis l'interface BrAInShift
+// ═══════════════════════════════════════════════════════════
+// Chrome Android cache sa barre d'adresse quand body et .app ont overflow:hidden
+// (comportement voulu pour éviter les doubles scrollbars en mode desktop). L'utilisateur
+// ne peut donc pas accéder au menu Chrome "Installer l'application". On capture l'événement
+// beforeinstallprompt (standard Web App Manifest) et on affiche un bouton dans le menu ⋯
+// qui déclenche le dialogue natif d'installation sans passer par le menu Chrome.
+
+let _deferredInstallPrompt = null;
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();  // empêche le mini-bandeau automatique de Chrome
+  _deferredInstallPrompt = e;
+  const btn = document.getElementById('installPwaBtn');
+  if (btn) {
+    btn.style.display = '';  // rendre visible dans le menu ⋯
+    btn.onclick = async () => {
+      if (!_deferredInstallPrompt) return;
+      _deferredInstallPrompt.prompt();  // affiche le dialogue natif Chrome
+      const result = await _deferredInstallPrompt.userChoice;
+      console.log('[PWA] Installation :', result.outcome);  // 'accepted' ou 'dismissed'
+      _deferredInstallPrompt = null;
+      btn.style.display = 'none';  // cacher le bouton après installation
+    };
+  }
+});
+
+// Si l'app est déjà installée (lancée en mode standalone), cacher le bouton
+window.addEventListener('appinstalled', () => {
+  _deferredInstallPrompt = null;
+  const btn = document.getElementById('installPwaBtn');
+  if (btn) btn.style.display = 'none';
+  console.log('[PWA] ✅ Application installée');
+});
 // ═══════════════════════════════════════════════════════════
 let isWaitingResponse = false;
 let waitingStartTime = 0;
