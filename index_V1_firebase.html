@@ -3395,6 +3395,25 @@ if (_fbAuth) {
 
 let _deferredInstallPrompt = null;
 
+// V2-Firebase — Service Worker minimal requis par Chrome pour considérer la page
+// "installable" et déclencher l'événement beforeinstallprompt. Sans SW enregistré,
+// Chrome ne propose jamais l'installation, même avec un manifest valide.
+// Comme l'architecture est mono-fichier (pas de sw.js séparé sur GitHub Pages),
+// on enregistre le SW en tant que blob URL inline.
+if ('serviceWorker' in navigator) {
+  const swCode = `
+    self.addEventListener('fetch', event => {
+      event.respondWith(fetch(event.request));
+    });
+  `;
+  const swBlob = new Blob([swCode], { type: 'application/javascript' });
+  const swUrl = URL.createObjectURL(swBlob);
+  navigator.serviceWorker.register(swUrl, { scope: '/' }).then(
+    reg => console.log('[PWA] Service Worker enregistré (scope:', reg.scope, ')'),
+    err => console.warn('[PWA] Service Worker non enregistré :', err.message)
+  );
+}
+
 window.addEventListener('beforeinstallprompt', e => {
   e.preventDefault();  // empêche le mini-bandeau automatique de Chrome
   _deferredInstallPrompt = e;
