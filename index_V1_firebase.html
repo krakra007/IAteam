@@ -3080,22 +3080,11 @@ async function fbTestFirestore() {
  * rafraîchissement de token, retour de redirection). Met à jour l'UI et lance le
  * test Firestore au premier login.
  */
-if (_fbAuth) {
-  _fbAuth.onAuthStateChanged(async user => {
-    _fbUser = user;
-    _updateFirebaseUI();
-    if (user) {
-      console.log('[Firebase] Auth :', user.displayName, '(' + user.email + ')');
-      // Premier login sur cet appareil → test Firestore
-      const testResult = await fbTestFirestore();
-      if (testResult.ok) {
-        console.log('[Firebase] 🟢 Prêt — Auth + Firestore opérationnels');
-      }
-    } else {
-      console.log('[Firebase] Aucun utilisateur connecté');
-    }
-  });
-}
+// V1 observer désactivé — remplacé par l'observer V2 (ligne ~3377) qui charge
+// les chats et lance le listener en plus de mettre à jour l'UI.
+// if (_fbAuth) {
+//   _fbAuth.onAuthStateChanged(async user => { ... });
+// }
 
 /**
  * V1-Firebase — Met à jour l'affichage du bouton de connexion dans le menu ⋯.
@@ -3115,6 +3104,282 @@ function _updateFirebaseUI() {
 }
 
 // ═══════════════════════════════════════════════════════════
+// V2-Firebase — Sync temps réel des conversations via Firestore
+// ═══════════════════════════════════════════════════════════
+//
+// Architecture :
+//   users/{uid}/chats/{chatId}  — un document par conversation
+//   users/{uid}/state/config    — modèle actif, projets, profils, favoris, paramètres
+//
+// Principe : chaque appel à save() déclenche un push vers Firestore (debounced).
+// Un listener onSnapshot() écoute les changements en temps réel et met à jour
+// S.chats + l'UI dès qu'une modification arrive d'un autre appareil.
+// localStorage reste le cache local primaire (+ persistence Firestore hors-ligne).
+
+let _fbSyncActive = false;       // true une fois le listener lancé
+let _fbSaveTimer = null;         // debounce pour éviter les écritures en rafale
+let _fbLastWriteTs = {};         // timestamp du dernier write par chatId (évite les boucles)
+let _fbUnsubChats = null;        // fonction pour stopper le listener
+const _FB_DEBOUNCE_MS = 2000;    // délai avant push vers Firestore après un save()
+const _FB_MAX_DOC_BYTES = 900000; // 900 Ko — marge sous la limite Firestore de 1 Mo
+
+/**
+ * Référence Firestore vers la collection de chats de l'utilisateur courant.
+ */
+function _fbChatsCol() {
+  if (!_fbUser || !_fbDb) return null;
+  return _fbDb.collection('users').doc(_fbUser.uid).collection('chats');
+}
+
+/**
+ * Référence Firestore vers le document de config (état global).
+ */
+function _fbConfigDoc() {
+  if (!_fbUser || !_fbDb) return null;
+  return _fbDb.collection('users').doc(_fbUser.uid).collection('state').doc('config');
+}
+
+/**
+ * Prépare un chat pour Firestore : retire les données binaires volumineuses
+ * (même nettoyage que save() pour localStorage) et vérifie la taille.
+ */
+function _fbCleanChat(chat) {
+  const clean = {
+    ...chat,
+    messages: (chat.messages || []).map(m => {
+      if (!Array.isArray(m.content)) return m;
+      return { ...m, content: m.content.map(b => {
+        if ((b.type === 'document' || b.type === 'image') && b.source?.data?.length > 50000) {
+          return { type: 'text', text: `[Fichier joint : ${b.title || b.type} — non stocké]` };
+        }
+        return b;
+      })};
+    }),
+    _fbUpdatedAt: Date.now()  // timestamp local pour détecter les changements
+  };
+  // Vérification de taille — Firestore limite à 1 Mo par document
+  const size = new Blob([JSON.stringify(clean)]).size;
+  if (size > _FB_MAX_DOC_BYTES) {
+    console.warn(`[Firebase] ⚠ Chat "${chat.title}" trop volumineux (${(size/1024).toFixed(0)} Ko) — non synchronisé`);
+    return null;
+  }
+  return clean;
+}
+
+/**
+ * Pousse UN chat vers Firestore. Silencieux en cas d'échec.
+ */
+async function _fbSaveOneChat(chat) {
+  const col = _fbChatsCol();
+  if (!col || !chat?.id) return;
+  const clean = _fbCleanChat(chat);
+  if (!clean) return;  // trop volumineux
+  try {
+    _fbLastWriteTs[chat.id] = Date.now();
+    await col.doc(chat.id).set(clean);
+  } catch (e) {
+    console.warn(`[Firebase] ⚠ Échec écriture chat "${chat.title}" :`, e.message);
+  }
+}
+
+/**
+ * Pousse l'état global (projets, profils, modèle actif, paramètres) vers Firestore.
+ */
+async function _fbSaveConfig() {
+  const ref = _fbConfigDoc();
+  if (!ref) return;
+  try {
+    await ref.set({
+      projects: S.projects || [],
+      profiles: S.profiles || [],
+      activeProfiles: S.activeProfiles || [],
+      model: S.model,
+      params: S.params,
+      favoriteModels: S.favoriteModels || [],
+      activeChat: S.activeChat || '',
+      activeProject: S.activeProject || '',
+      _updatedAt: Date.now()
+    });
+  } catch (e) {
+    console.warn('[Firebase] ⚠ Échec écriture config :', e.message);
+  }
+}
+
+/**
+ * Push debounced vers Firestore — appelé par save().
+ * Au lieu de pousser chaque chat individuellement à chaque frappe, on attend
+ * 2 secondes d'inactivité puis on pousse tous les chats modifiés d'un coup.
+ */
+function _fbScheduleSync() {
+  if (!_fbUser || !_fbDb) return;
+  if (_fbSaveTimer) clearTimeout(_fbSaveTimer);
+  _fbSaveTimer = setTimeout(async () => {
+    const col = _fbChatsCol();
+    if (!col) return;
+    const start = Date.now();
+    let pushed = 0;
+    // Pousser tous les chats (Firestore déduplique via set() — pas de double écriture)
+    for (const chat of S.chats) {
+      const clean = _fbCleanChat(chat);
+      if (!clean) continue;
+      _fbLastWriteTs[chat.id] = Date.now();
+      try {
+        await col.doc(chat.id).set(clean);
+        pushed++;
+      } catch (e) {
+        console.warn(`[Firebase] ⚠ Chat "${chat.title}" :`, e.message);
+      }
+    }
+    // Pousser aussi la config
+    await _fbSaveConfig();
+    if (pushed > 0) {
+      console.log(`[Firebase] ✅ Sync → ${pushed} chat(s) poussé(s) en ${((Date.now()-start)/1000).toFixed(1)}s`);
+    }
+  }, _FB_DEBOUNCE_MS);
+}
+
+/**
+ * Charge tous les chats depuis Firestore et fusionne avec S.chats.
+ * Stratégie de fusion : le chat avec le _fbUpdatedAt le plus récent gagne.
+ * Appelé au login (chargement initial).
+ */
+async function _fbLoadAllChats() {
+  const col = _fbChatsCol();
+  if (!col) return;
+  try {
+    const snap = await col.get();
+    if (snap.empty) {
+      console.log('[Firebase] Aucun chat en ligne — push initial des chats locaux…');
+      // Premier appareil : pousser les chats locaux vers Firestore
+      for (const chat of S.chats) await _fbSaveOneChat(chat);
+      await _fbSaveConfig();
+      console.log(`[Firebase] ✅ ${S.chats.length} chat(s) poussé(s) (migration initiale)`);
+      return;
+    }
+    let added = 0, updated = 0;
+    snap.forEach(doc => {
+      const remote = doc.data();
+      const local = S.chats.find(c => c.id === doc.id);
+      if (!local) {
+        // Chat présent en ligne mais pas en local → l'ajouter
+        S.chats.push(remote);
+        added++;
+      } else if ((remote._fbUpdatedAt || 0) > (local._fbUpdatedAt || 0)) {
+        // Version en ligne plus récente → remplacer
+        Object.assign(local, remote);
+        updated++;
+      }
+    });
+    // Charger aussi la config
+    const configRef = _fbConfigDoc();
+    if (configRef) {
+      const configSnap = await configRef.get();
+      if (configSnap.exists) {
+        const cfg = configSnap.data();
+        if (cfg.projects) S.projects = cfg.projects;
+        if (cfg.profiles) S.profiles = cfg.profiles;
+        if (cfg.activeProfiles) S.activeProfiles = cfg.activeProfiles;
+        if (cfg.favoriteModels) S.favoriteModels = cfg.favoriteModels;
+        // Ne pas écraser le modèle et les params si l'utilisateur les a changés localement
+      }
+    }
+    if (added || updated) {
+      save();  // persister en localStorage
+      if (typeof renderChats === 'function') renderChats();
+      if (typeof render === 'function') render();
+    }
+    console.log(`[Firebase] ✅ Chargement : ${snap.size} chat(s) en ligne, ${added} ajouté(s), ${updated} mis à jour`);
+  } catch (e) {
+    console.error('[Firebase] ❌ Chargement échoué :', e.message);
+  }
+}
+
+/**
+ * Écoute les changements en temps réel sur la collection de chats.
+ * Quand un autre appareil modifie un chat, l'UI se met à jour instantanément.
+ */
+function _fbListenChats() {
+  const col = _fbChatsCol();
+  if (!col || _fbSyncActive) return;
+  _fbUnsubChats = col.onSnapshot(snap => {
+    let changed = false;
+    snap.docChanges().forEach(change => {
+      const remote = change.doc.data();
+      const chatId = change.doc.id;
+      // Ignorer les échos de nos propres écritures (< 5 secondes)
+      if (_fbLastWriteTs[chatId] && (Date.now() - _fbLastWriteTs[chatId]) < 5000) return;
+
+      if (change.type === 'added' || change.type === 'modified') {
+        const local = S.chats.find(c => c.id === chatId);
+        if (!local) {
+          S.chats.push(remote);
+          changed = true;
+        } else if ((remote._fbUpdatedAt || 0) > (local._fbUpdatedAt || 0)) {
+          Object.assign(local, remote);
+          changed = true;
+        }
+      } else if (change.type === 'removed') {
+        const idx = S.chats.findIndex(c => c.id === chatId);
+        if (idx >= 0) {
+          S.chats.splice(idx, 1);
+          changed = true;
+        }
+      }
+    });
+    if (changed) {
+      save();  // persister en localStorage
+      if (typeof renderChats === 'function') renderChats();
+      if (typeof render === 'function') render();
+      console.log('[Firebase] 🔄 Mise à jour temps réel reçue');
+    }
+  }, err => {
+    console.warn('[Firebase] ⚠ Listener interrompu :', err.message);
+    _fbSyncActive = false;
+  });
+  // Écouter aussi les changements de config
+  const configRef = _fbConfigDoc();
+  if (configRef) {
+    configRef.onSnapshot(snap => {
+      if (!snap.exists) return;
+      const cfg = snap.data();
+      // Mettre à jour projets et profils si changés depuis un autre appareil
+      if (cfg.projects && JSON.stringify(cfg.projects) !== JSON.stringify(S.projects)) {
+        S.projects = cfg.projects;
+        if (typeof renderChats === 'function') renderChats();
+      }
+      if (cfg.profiles && JSON.stringify(cfg.profiles) !== JSON.stringify(S.profiles)) {
+        S.profiles = cfg.profiles;
+      }
+    });
+  }
+  _fbSyncActive = true;
+  console.log('[Firebase] 👂 Écoute temps réel activée');
+}
+
+// ═══════════════════════════════════════════════════════════
+// Branchement sur l'Auth : quand l'utilisateur se connecte,
+// charger les chats depuis Firestore puis écouter les changements.
+// ═══════════════════════════════════════════════════════════
+
+if (_fbAuth) {
+  // Remplacer l'observer V1 par celui de V2 (plus complet)
+  _fbAuth.onAuthStateChanged(async user => {
+    _fbUser = user;
+    _updateFirebaseUI();
+    if (user) {
+      console.log('[Firebase] Auth :', user.displayName, '(' + user.email + ')');
+      await _fbLoadAllChats();
+      _fbListenChats();
+      console.log('[Firebase] 🟢 V2 — Sync temps réel active');
+    } else {
+      // Déconnecté → stopper le listener
+      if (_fbUnsubChats) { _fbUnsubChats(); _fbUnsubChats = null; }
+      _fbSyncActive = false;
+      console.log('[Firebase] Déconnecté — sync stoppée');
+    }
+  });
+}
+
 // Fin du module Firebase — le reste du code existant suit
 // ═══════════════════════════════════════════════════════════
 let isWaitingResponse = false;
@@ -3697,6 +3962,9 @@ function save() {
     localStorage.setItem("favoriteModels",     JSON.stringify(S.favoriteModels || []));
     // V42 — Persister les tombstones pour qu'ils survivent au rechargement
     localStorage.setItem("tombstones",         JSON.stringify(S.tombstones || { chats: {}, projects: {} }));
+
+    // V2-Firebase — Pousser vers Firestore (debounced, 2s après le dernier save())
+    if (_fbUser && _fbDb) _fbScheduleSync();
   } catch (e) {
     console.warn('[BrAInShift] ⚠ Sauvegarde échouée:', e.message);
     try {
