@@ -3376,22 +3376,120 @@ function _fbListenChats() {
 // ═══════════════════════════════════════════════════════════
 
 if (_fbAuth) {
-  // Remplacer l'observer V1 par celui de V2 (plus complet)
   _fbAuth.onAuthStateChanged(async user => {
     _fbUser = user;
     _updateFirebaseUI();
     if (user) {
       console.log('[Firebase] Auth :', user.displayName, '(' + user.email + ')');
+      // V2 — Charger les conversations
       await _fbLoadAllChats();
       _fbListenChats();
-      console.log('[Firebase] 🟢 V2 — Sync temps réel active');
+      // V3 — Charger les clés API (après les chats, car ça peut déclencher renderApiKeys)
+      await fbLoadApiKeys();
+      console.log('[Firebase] 🟢 V3 — Sync temps réel + clés API active');
     } else {
-      // Déconnecté → stopper le listener
       if (_fbUnsubChats) { _fbUnsubChats(); _fbUnsubChats = null; }
       _fbSyncActive = false;
       console.log('[Firebase] Déconnecté — sync stoppée');
     }
   });
+}
+
+// ═══════════════════════════════════════════════════════════
+// V3-Firebase — Clés API chiffrées dans Firestore
+// ═══════════════════════════════════════════════════════════
+//
+// Problème résolu : chaque appareil avait son propre coffre (localStorage), chacun avec
+// sa propre passphrase. Ajouter un nouvel appareil = re-saisir les 7 clés API.
+//
+// Solution : les clés sont chiffrées côté client (AES-GCM, même algo que le coffre local)
+// avec une clé dérivée de l'UID Google (PBKDF2, 250K itérations), puis stockées dans
+// Firestore sous users/{uid}/state/apikeys. Sur un nouvel appareil, la connexion Google
+// suffit à récupérer et déchiffrer les clés — aucune passphrase, aucune re-saisie.
+//
+// Sécurité : l'UID Google n'est pas un secret (il apparaît dans les chemins Firestore),
+// mais il n'est accessible qu'après authentification. La sécurité repose sur trois couches :
+//   1. Firebase Auth — seul l'utilisateur authentifié accède à ses documents
+//   2. Firestore Security Rules — documents users/{uid}/ limités à ce uid
+//   3. Chiffrement client AES-GCM — même si les données Firestore fuitaient, les clés
+//      sont chiffrées avec un sel aléatoire et l'UID comme passphrase
+
+/**
+ * Chiffre et pousse les clés API vers Firestore.
+ * Appelé à chaque sauvegarde de clés (bouton 💾 Enregistrer).
+ */
+async function fbSaveApiKeys() {
+  if (!_fbUser || !_fbDb) return;
+  try {
+    const uid = _fbUser.uid;
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const key = await _deriveKey(uid, salt);
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const pt = new TextEncoder().encode(JSON.stringify(apiKeysByProvider));
+    const ct = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, pt);
+    const doc = {
+      salt: _b64.enc(salt),
+      iv: _b64.enc(iv),
+      ct: _b64.enc(ct),
+      _updatedAt: Date.now(),
+      providers: Object.keys(apiKeysByProvider).filter(k => (apiKeysByProvider[k] || '').trim())
+    };
+    await _fbDb.collection('users').doc(uid).collection('state').doc('apikeys').set(doc);
+    console.log('[Firebase] ✅ Clés API chiffrées et synchronisées (' + doc.providers.length + ' fournisseurs)');
+  } catch (e) {
+    console.warn('[Firebase] ⚠ Échec sauvegarde clés API :', e.message);
+  }
+}
+
+/**
+ * Charge et déchiffre les clés API depuis Firestore.
+ * Appelé au login Google. Si des clés existent en ligne, elles remplacent celles du
+ * coffre local — c'est le comportement souhaité : un seul jeu de clés, celui de Firestore.
+ * Si Firestore est vide (premier appareil), on pousse les clés locales vers Firestore.
+ */
+async function fbLoadApiKeys() {
+  if (!_fbUser || !_fbDb) return false;
+  try {
+    const uid = _fbUser.uid;
+    const ref = _fbDb.collection('users').doc(uid).collection('state').doc('apikeys');
+    const snap = await ref.get();
+
+    if (!snap.exists) {
+      // Firestore vide → pousser les clés locales (migration initiale)
+      const hasLocalKeys = Object.values(apiKeysByProvider).some(v => (v || '').trim());
+      if (hasLocalKeys) {
+        console.log('[Firebase] Aucune clé en ligne — push initial des clés locales…');
+        await fbSaveApiKeys();
+      }
+      return false;
+    }
+
+    const data = snap.data();
+    const saltBytes = _b64.dec(data.salt);
+    const key = await _deriveKey(uid, saltBytes);
+    const pt = await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: _b64.dec(data.iv) }, key, _b64.dec(data.ct)
+    );
+    const keys = JSON.parse(new TextDecoder().decode(pt));
+    // Fusionner : les clés Firestore remplacent les locales, mais on ne supprime pas
+    // une clé locale qui n'existe pas dans Firestore (cas d'un fournisseur ajouté localement)
+    let loaded = 0;
+    for (const [provider, value] of Object.entries(keys)) {
+      if ((value || '').trim()) {
+        apiKeysByProvider[provider] = value;
+        loaded++;
+      }
+    }
+    // Persister dans le coffre local aussi (cache, fonctionnement hors-ligne)
+    if (_vaultKey) await persistVault();
+    // Rafraîchir l'UI des clés si le panneau est ouvert
+    if (typeof renderApiKeys === 'function') renderApiKeys();
+    console.log('[Firebase] ✅ ' + loaded + ' clé(s) API récupérée(s) depuis Firestore');
+    return true;
+  } catch (e) {
+    console.warn('[Firebase] ⚠ Échec chargement clés API :', e.message);
+    return false;
+  }
 }
 
 // Fin du module Firebase — le reste du code existant suit
@@ -11965,7 +12063,8 @@ el("saveApiKeyBtn").onclick = async () => {
     apiKeysByProvider[inp.dataset.provider] = inp.value.trim();
   });
   save();
-  await persistVault();   // [SÉCURITÉ] chiffre et stocke les clés (AES-GCM)
+  await persistVault();   // [SÉCURITÉ] chiffre et stocke les clés (AES-GCM) en local
+  await fbSaveApiKeys();  // V3-Firebase — synchronise les clés vers Firestore
   // Feedback visuel bouton vert
   const btn = el("saveApiKeyBtn");
   btn.textContent = "✅ Clés enregistrées !";
@@ -12389,7 +12488,14 @@ loadModelsFromApi();
       document.documentElement.style.setProperty('--vvh', vv.height + 'px');
       // Garder la zone de saisie visible au-dessus du clavier
       const inputArea = document.querySelector('.composer'); // V68 — était '.input-area' (n'existait pas dans le DOM)
-      if (inputArea && vv.height < window.innerHeight * 0.75) {
+      // V3-Firebase — Ne PAS repositionner le composer quand un panneau est ouvert
+      // (apiKeyPanel, githubPanel, paramsPanel, rightPanel). Sinon le composer flotte
+      // par-dessus le panneau plein écran quand l'utilisateur touche un champ de saisie
+      // dans ce panneau (le clavier virtuel déclenche ce handler pour TOUS les inputs,
+      // pas seulement le textarea du chat).
+      const anyPanelOpen = ['apiKeyPanel','githubPanel','paramsPanel','rightPanel']
+        .some(id => { const p = el(id); return p && p.classList.contains('open'); });
+      if (inputArea && !anyPanelOpen && vv.height < window.innerHeight * 0.75) {
         inputArea.style.position = 'fixed';
         inputArea.style.bottom = (window.innerHeight - vv.height - vv.offsetTop) + 'px';
         inputArea.style.left = '0';
