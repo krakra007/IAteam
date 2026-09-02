@@ -10,7 +10,7 @@
   <link id="favicon" rel="icon" type="image/png">
   <style>
     :root{--bg:#212121;--side:#171717;--panel:#2b2b2b;--line:#3b3b3b;--text:#f1f1f1;--muted:#a5a5a5;--accent:#6ea8fe;--user:#2968d8}
-    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;overflow:hidden}
+    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;overflow:hidden}
     button,input,select,textarea{font:inherit} button{cursor:pointer}.app{height:100vh;height:100dvh;display:grid;grid-template-columns:270px minmax(0,1fr);transition:grid-template-columns .18s ease}.app.sidebar-collapsed{grid-template-columns:0 minmax(0,1fr)}.app.sidebar-collapsed aside{padding:0;border:0;overflow:hidden}
     aside{background:var(--side);border-right:1px solid var(--line);padding:12px 10px;display:flex;flex-direction:column;min-width:0;min-height:0;height:100%;max-height:100dvh;overflow:hidden}.brand{font-size:16px;font-weight:700;padding:7px 8px 13px;letter-spacing:-.2px}.aside-head{display:flex;align-items:center;justify-content:space-between}.history-close{display:none;border:0;background:#353535;color:#fff;border-radius:7px;width:32px;height:32px;font-size:22px;line-height:1}
     .new-chat{width:100%;padding:10px;border:1px solid #555;border-radius:9px;background:#292929;color:var(--text);text-align:left;margin-bottom:14px}.new-chat:hover,.icon:hover{background:#363636}.history-label{color:var(--muted);font-size:12px;padding:3px 8px 7px}.history{height:0;overflow-x:hidden;overflow-y:scroll;flex:1 1 0;min-height:0;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;scrollbar-width:thin;scrollbar-color:#606060 transparent}.history::-webkit-scrollbar{width:9px}.history::-webkit-scrollbar-thumb{background:#606060;border-radius:8px;border:2px solid var(--side)}.history::-webkit-scrollbar-thumb:hover{background:#808080}.history-group{margin:0 0 10px}.history-group-label{color:#8f8f8f;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:9px 8px 4px}.chat-item{display:flex;align-items:center;gap:5px;padding:8px;border-radius:8px;margin:1px 0}.chat-item:hover,.chat-item.active{background:#2d2d2d}.chat-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}.trash{border:0;color:#aaa;background:transparent;padding:3px 5px;border-radius:5px;opacity:0}.chat-item:hover .trash{opacity:1}.trash:hover{color:#fff;background:#4a2525}
@@ -70,6 +70,39 @@
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    /* Confort de lecture global */
+    .brand{font-size:18px}
+    .new-chat{font-size:16px;padding:11px}
+    .history-label{font-size:13px}
+    .history-group-label{font-size:12px}
+    .chat-title{font-size:16px;line-height:1.4}
+    .assistant .bubble{font-size:17px;line-height:1.65}
+    .user .bubble{font-size:16px;line-height:1.55}
+    .model-tag,.usage,.hint,.key-result,.sync-status{font-size:12px}
+    .settings h2{font-size:18px}.settings p,.field span{font-size:13px}
+    .field input,.field select,.test-key,.signout{font-size:15px}
+    .history-search-input{font-size:15px}.history-empty{font-size:13px}
+    .footer-note{font-size:12px}
+    @media(max-width:900px),(pointer:coarse){
+      body{font-size:17px;line-height:1.55}
+      .brand{font-size:21px}
+      .new-chat{font-size:19px;padding:13px 14px}
+      .history-label{font-size:15px}
+      .history-group-label{font-size:14px;padding:12px 12px 6px}
+      .chat-item{padding:12px 12px}
+      .chat-title{font-size:19px;line-height:1.4}
+      .history-search-input{font-size:17px;padding:11px 12px}
+      .history-empty{font-size:15px}
+      .new-chat,.icon,.select{font-size:17px}
+      .settings{font-size:17px}.settings h2{font-size:21px}.settings p,.field span{font-size:15px}
+      .field input,.field select{font-size:17px;padding:12px}.test-key,.signout{font-size:16px}
+      .assistant .bubble{font-size:19px;line-height:1.68}.assistant .bubble h1{font-size:27px}.assistant .bubble h2{font-size:23px}.assistant .bubble h3{font-size:20px}
+      .user .bubble{font-size:18px;line-height:1.6}
+      .model-tag,.usage,.hint,.key-result,.sync-status{font-size:13px}
+      .composer textarea{font-size:18px;line-height:1.55}.footer-note{font-size:12px}
+    }
+  </style>
 </head>
 <body>
 <div class="app" id="app">
